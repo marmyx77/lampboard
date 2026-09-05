@@ -63,15 +63,17 @@ public struct Workspace: Sendable, Equatable, Hashable {
     ///
     /// Deliberately **without** the host: this value is matched against window
     /// titles, and adding anything to it would break that match.
+    ///
+    /// It is also the only name there is. There used to be a second one, `label`,
+    /// that appended ` @host` for the column to draw, and on a machine called
+    /// `minisforum` it ate the name it was meant to qualify: eleven characters of
+    /// a field about a hundred points wide, on every row of that machine, saying
+    /// the same word every time. The row shows a mark instead and the host is
+    /// spelled out in the tooltip, where there is room for the word "on" — see
+    /// `RowSummary.subtitle`.
     public var name: String {
         let last = (path as NSString).lastPathComponent
         return last.isEmpty ? path : last
-    }
-
-    /// What a person reads in the column. Same as `name` here, plus where it is.
-    public var label: String {
-        guard let host else { return name }
-        return "\(name) @\(host)"
     }
 }
 

@@ -237,10 +237,41 @@ enum RemoteSessionsSuite {
             t.expect(!muted.contains(keys[2]), "and neither does the other node inherit it")
         },
 
-        TestCase("The label says where it is, the name does not") { t in
+        TestCase("The name is the folder, wherever the folder is") { t in
+            // There is one name and the machine is not in it. The second one that
+            // used to exist — `.notes @node` — was what the column drew, and on a
+            // host with a long name it ate the row: the mark and the tooltip carry
+            // where it is now, and neither of them is a name.
             let w = Workspace(path: "/home/dev/.notes", host: host)
-            t.expectEqual(w.label, ".notes @node", "label")
             t.expectEqual(w.name, ".notes", "the name stays the folder")
+            t.expect(!w.name.contains(host), "and never carries the machine")
+            t.expectEqual(w.key, "node:/home/dev/.notes", "which the key still does")
+        },
+
+        TestCase("A row on another machine reads like any other, and says where in its card") { t in
+            // Reported from use, on a node called `minisforum`: the rows of that
+            // machine all read `AWeve…isforum`, because the host was appended to
+            // every one of them and the middle of the name was what got truncated.
+            // The fix is not a wider panel — it is that the machine was never a
+            // name, and belongs in the layer with room for a sentence.
+            let moment = Date(timeIntervalSince1970: 1_788_000_000)
+            let remote = ColumnRow(
+                id: "minisforum:/srv/aworld-events",
+                workspace: Workspace(path: "/srv/aworld-events", host: "minisforum"),
+                sessions: [SessionState(
+                    id: "s1", status: .working,
+                    workspace: Workspace(path: "/srv/aworld-events", host: "minisforum"),
+                    updatedAt: moment, statusSince: moment
+                )]
+            )
+
+            t.expectEqual(remote.displayName, "aworld-events", "the folder, and nothing appended")
+            t.expect(!remote.displayName.contains("minisforum"), "the host is not in the name")
+            t.expect(remote.workspace.isRemote, "which is what the row's mark reads")
+            t.expectEqual(
+                RowSummary.of(remote, now: moment).subtitle, "on minisforum",
+                "and the card is where the machine is spelled out"
+            )
         },
 
         // MARK: Which hosts to ask

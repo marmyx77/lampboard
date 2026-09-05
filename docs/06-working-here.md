@@ -26,7 +26,7 @@ permission. It has already cost one wasted diagnosis.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 710 cases, instantaneous
+swift run LampBoardTests              # 711 cases, instantaneous
 swift run LampBoardE2E                # 98 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
@@ -36,7 +36,7 @@ in a temporary root they delete, no filesystem.
 
 Both suites print `Instrument proved: 19 checks, the assertions bite.` before
 anything else. That line is the reason the count under it means something: one
-early `return` added to `expect` once made all 710 cases report success while
+early `return` added to `expect` once made all 711 cases report success while
 verifying nothing at all, and nothing in the project would have said so. The
 instrument is now calibrated before it is read, and a blunt one ends the run
 with exit 70 rather than the 1 of an ordinary failure.

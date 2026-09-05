@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-710 cases, instantaneous. They verify Core.
+711 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
@@ -246,8 +246,10 @@ reverse ssh tunnel this app opens and keeps open (`RemoteTunnel`) back to its
 own 9877 — and the script installed there
 (`RemoteHookInstaller`, over ssh, with the same merge as the local installer) adds
 an `X-LampBoard-Host` header. A signal with a host skips the editor-window lookup: no
-lock on this Mac claims `/home/…`, so the session's own folder is its workspace,
-labelled `folder @host`.
+lock on this Mac claims `/home/…`, so the session's own folder is its workspace.
+The row is named like any other and carries an `R` before the name; which machine
+it is on is in its card (`RowSummary.subtitle`), because the host was the same
+word on every row of that node and it was eating the names.
 
 The probe (`RemoteProbeScript`) is kept for one question the hooks cannot answer
 — *is this pid still alive* — and a remote row is confirmed by it, never created:

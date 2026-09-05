@@ -107,14 +107,15 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// named the way that session is (its title, for a terminal one); a row
     /// holding several is the folder — one name for three conversations would
     /// be a lie about two of them.
+    ///
+    /// The machine is **not** part of it. A row on another machine used to read
+    /// `AWorld Events @minisforum`, and in a field that fits about twenty
+    /// characters the host took half of them and left `AWeve…isforum` — a name
+    /// nobody can pick out of a column, repeated identically on every row of that
+    /// node. Where it is has one mark on the row and a sentence in the tooltip;
+    /// what it is called gets the whole line back.
     public var displayName: String {
         alias ?? (sessions.count == 1 ? primary.displayName : workspace.name)
-    }
-
-    /// `displayName`, plus where it is when that is another machine.
-    public var displayLabel: String {
-        guard let host = workspace.host else { return displayName }
-        return "\(displayName) @\(host)"
     }
 
     /// How full the context is of the session a click would open.

@@ -93,15 +93,9 @@ struct TrafficLightRow: View {
             }
 
             if !compact {
-                // A terminal row says so, the way a remote one says where it is:
-                // its click leads to a tab, not to an editor window.
-                if row.isTerminal {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(StatusPalette.timeColor)
-                }
+                place
 
-                Text(row.displayLabel)
+                Text(row.displayName)
                     // Twelve points, not eleven. The point came out of the
                     // timestamp: `yesterday` was 49.83 points of a field this one
                     // shares, `1d` is 13.04, and the tooltip says the word. Even
@@ -183,6 +177,41 @@ struct TrafficLightRow: View {
         //
         // What stays is the handle and the light it puts in the grip: this row
         // starts the drag, it just does not draw it.
+    }
+
+    /// Where this row is, when that is not "in an editor window on this Mac".
+    ///
+    /// One slot and one glyph, and the remote mark takes it. The two answer the
+    /// same question — what a click can reach — and if a row were ever both, the
+    /// machine is the half that changes the answer: no folder here to open, no
+    /// transcript here to read, which is exactly what the row's menu drops. As it
+    /// stands they cannot collide, because a signal that names a host skips the
+    /// unclaimed-folder branch that makes a row terminal.
+    ///
+    /// `R` and not the machine's name. The name was on the row until today and it
+    /// was the loudest thing on it: `@minisforum` is eleven characters out of a
+    /// field a project name has to fit in, identical on every row of that node,
+    /// and `AWorld Events @minisforum` reached the screen as `AWeve…isforum`. A
+    /// letter says *not here* in the width of a glyph; **which** machine is a
+    /// question one person asks at a time, and the card answers it in words.
+    private var place: some View {
+        Group {
+            if row.workspace.isRemote {
+                Text("R")
+                    .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(StatusPalette.badgeForeground)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 0.5)
+                    .background(RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(StatusPalette.badgeBackground))
+                    .fixedSize()
+            } else if row.isTerminal {
+                // Its click leads to a tab, not to an editor window.
+                Image(systemName: "terminal")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(StatusPalette.timeColor)
+            }
+        }
     }
 
     /// How full this session's context is, and on which model.
