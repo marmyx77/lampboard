@@ -61,6 +61,28 @@ final class MenuBarLamp: NSObject {
     /// not shown, which is exactly when there is nothing to hang a drop-down on.
     var anchorButton: NSStatusBarButton? { item?.button }
 
+    /// Where the lamp actually landed, in screen coordinates.
+    var frameOnScreen: CGRect? {
+        guard let button = item?.button, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    /// Whether the system is drawing this lamp where somebody could click it.
+    ///
+    /// `isVisible` cannot answer this and does not claim to: it reports what was
+    /// asked for. A menu bar with no room left says yes to every request and
+    /// draws none of them, which is why the question is answered from the
+    /// geometry instead — see `MenuBarPlacement`.
+    var placement: MenuBarPlacement.Verdict {
+        guard let frame = frameOnScreen else { return .notYetPlaced }
+        // The screen the lamp is on, which is the one carrying the menu bar it
+        // was put in — not necessarily `NSScreen.main`, and on a two-screen desk
+        // asking the wrong one would compare a frame against another display's
+        // notch.
+        let screen = NSScreen.screens.first { $0.frame.intersects(frame) } ?? NSScreen.main
+        return MenuBarPlacement.verdict(lamp: frame, in: screen?.auxiliaryTopRightArea)
+    }
+
     func show() {
         guard item == nil else { return }
         let created = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

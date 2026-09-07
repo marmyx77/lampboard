@@ -1804,3 +1804,49 @@ say no; a drag does not.
 panel is gone whenever you look away, and getting to a row is two gestures rather
 than none. That is the trade somebody makes by choosing it, and the footer button
 makes it one click to change their mind.
+
+
+## D41 · A home you cannot be brought back from is not a home
+
+**Decided.** The panel may live in the menu bar only while something can open it,
+and the application itself is now always that something: starting LampBoard when
+it is already running puts the panel on screen, whatever home it is in. On top of
+that, a panel in the menu bar checks that its lamp was actually drawn, and comes
+back to its own window — saying why — when it was not.
+
+**What made this necessary.** D40 already refuses the switch that would strand
+the panel (*Hide this lamp*, greyed while the panel lives up there) and refuses
+the drag that would do it silently (`.removalAllowed` off). Both defend against a
+person removing the lamp. Neither defends against **macOS never drawing it**, and
+that is not hypothetical: a full menu bar accepts a status item, reports it
+visible, hands out a frame, and draws nothing. The panel then exists, answers on
+its port, and cannot be reached by any gesture anybody knows. Reported from use
+as *it doesn't start any more*, which was the only fair reading. The measurement
+is in [07-traps.md](07-traps.md#the-status-item-the-system-agreed-to-and-never-drew).
+
+**Why the reopen is the primary fix and the check is the secondary one.** The
+check is a judgement about geometry that can be wrong in both directions: on a
+screen with no notch the system offers nothing to compare against, and a rule
+that guessed there would be moving panels on a hunch. Starting the application
+again cannot be wrong. It is also what somebody who cannot see the panel actually
+does — the gesture was already being made, twice, three times, and until now
+nothing was listening.
+
+**Why the check still exists.** Without it the panel comes back only for as long
+as the person keeps summoning it: the next login puts it behind the same absent
+lamp. A home is a place you are returned to, so the state is corrected rather
+than worked around, and it is written to the preferences so the correction
+outlives the run.
+
+**Why an alert and not a quiet correction.** The user chose that home. Moving the
+panel out of it without a word would be the app disagreeing with them in silence,
+and the next thing they would do is put it back — into the same trap. The alert
+says what happened and that the lamp stays switched on, so it returns of its own
+accord when the bar has room.
+
+**Alternatives.** Refusing the menu bar home when the bar is full, at the moment
+somebody chooses it: it reads as the feature being broken, and the bar's fullness
+changes through the day. Falling back silently: see above. A command-line escape
+hatch (`lampboard panel floating`): a real door, and a poor primary one — somebody
+who thinks the app will not start does not open a terminal. Worth adding beside
+these, not instead of them.

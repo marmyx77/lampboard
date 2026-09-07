@@ -269,6 +269,16 @@ who keeps the panel out all day may still want the lamp for those moments. Only
 one direction is forced — a panel that lives in the menu bar keeps its lamp,
 since nothing else could bring it back.
 
+**Start LampBoard again and the panel appears**, wherever it lives. It is an
+accessory application with no Dock icon, so that gesture used to do nothing at
+all; it is now the door that needs no lamp and nothing learned in advance.
+
+**A full menu bar cannot swallow the panel.** `NSStatusItem` says yes to a lamp
+it will not draw — measured: twenty-six items accepted, twenty-six reported
+visible, none on screen — and a panel living behind one of those could not be
+opened by anything. A panel in the menu bar now checks that its lamp was really
+drawn, and comes back to its own window, saying so, when it was not.
+
 ### What the lamp says
 
 One lamp, carrying the most urgent state the column is showing, with a number
@@ -1215,7 +1225,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 711 domain tests, instantaneous
+swift run LampBoardTests              # 717 domain tests, instantaneous
 swift run LampBoardE2E                # 98 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

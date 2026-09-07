@@ -1933,3 +1933,62 @@ tool to reach for the next time something inside this panel has to be clicked
 from a script, and the reason is worth keeping: **the panel is invisible to
 accessibility on purpose**, so anything that drives it through accessibility is
 measuring something else.
+
+
+## The status item the system agreed to and never drew
+
+**Symptom.** Reported from use, the evening of a release: *it doesn't start any
+more*. Started from Spotlight, from the Finder, twice, three times — nothing.
+
+**What was true.** The application was running the whole time. Its process was
+alive, its server answered `GET /health`, its window existed in the window list
+with the right size. The panel was living in its menu bar home, which is a home
+whose only door is the lamp — and there was no lamp in the menu bar.
+
+**Cause.** `NSStatusItem` has no way of failing. The bar was full, and asking for
+an item on a full bar succeeds: an item comes back, `isVisible` answers `true`,
+its button has a window, that window has a frame, and macOS draws nothing at all.
+
+Measured, because a claim like that has to be. Twenty-six items created in one
+process on a 14-inch MacBook with a busy bar: twenty-six reported visible, zero
+on screen, and the frames handed out marching leftward from the notch — 809, 755,
+711, … down to **−345**, off the side of the display. A photograph of the menu
+bar taken while that process was alive shows none of them.
+
+The lamp of the machine this happened on had landed at x=809. The screen's own
+answer for where status items live — `NSScreen.auxiliaryTopRightArea`, the strip
+to the right of the notch — began at 848. Thirty-nine points between a feature
+and an application nobody can open.
+
+**Why it looked like a launch failure and not a missing icon.** An accessory
+application has no Dock icon and no window macOS will raise for you, so starting
+it a second time did *nothing at all*: the reopen event arrived and nobody
+answered it. Everything a person can do had been done, and every one of those
+gestures was a no-op.
+
+**Fix, in two halves, because one of them is a guess and the other is not.**
+
+The half that cannot be wrong: starting the app again now summons the panel
+(`applicationShouldHandleReopen` → `PanelController.summon()`). It needs no lamp,
+no pointer aimed at twenty-two points of menu bar, and nothing learned in
+advance. It is also the gesture that had already been made.
+
+The half that is a judgement: a panel in the menu bar asks the lamp where it
+landed, and a lamp outside the strip brings the panel back to its own window with
+an alert saying why (`MenuBarPlacement`). The judgement is in the third answer.
+The frame is not laid out at once — `(0, 0, 28, 0)` on the turn the item is
+created and on the next one, settled about three tenths of a second later — so
+*not yet* is retried rather than believed. Five tries, two seconds, and then the
+panel comes home anyway: rescuing one that did not need it costs an alert, and
+leaving one nobody can open costs the application.
+
+On a screen with no notch there is no strip to compare against and the rule says
+so instead of guessing. That home keeps its lamp; the door that needs no pixels
+is the one above.
+
+**What it cost to find, and what it did not.** Nothing, in the end, because the
+window list answers questions the eye cannot: a process with a window at level
+101 and no lamp beside the clock is the whole diagnosis in one line. What made it
+worth writing down is that every honest-looking signal said the feature was fine.
+`isVisible` said yes. The frame said a number. The item existed. Only the
+photograph disagreed.

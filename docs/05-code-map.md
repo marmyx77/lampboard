@@ -1,13 +1,13 @@
 # Code map
 
-~38,448 lines of Swift across five targets. For each file: what it contains, why
+~38,704 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  10,368 lines · 86 files   pure logic, zero AppKit
-  LampBoardApp/    15,145 lines · 80 files   shell: AppKit, network, windows
-  LampBoardTests/  9,859 lines · 54 files   711 cases, instantaneous
+  LampBoardCore/  10,434 lines · 87 files   pure logic, zero AppKit
+  LampBoardApp/    15,266 lines · 80 files   shell: AppKit, network, windows
+  LampBoardTests/  9,928 lines · 54 files   717 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -378,6 +378,21 @@ project is not a forgotten one.
 It blinks for exactly the three states a click clears — the three that mean
 *there is news here nobody has taken in*. Yellow and blue never blink, because a
 signal that is on for most of the day is not a signal.
+
+### `MenuBarPlacement.swift` · 68
+Whether the lamp the system agreed to show is a lamp anybody can see.
+
+`NSStatusItem` has no way of failing: on a full menu bar it hands out an item,
+reports it visible, gives its button a window with a frame, and draws nothing.
+Measured — twenty-six items in one process, twenty-six visible, none on screen,
+frames marching leftward from the notch to −345. So the question is answered from
+geometry: is that frame inside `auxiliaryTopRightArea`, the strip the screen says
+status items live in.
+
+Three answers and not two. The frame is `(0, 0, 28, 0)` on the turn the item is
+created and settles three tenths of a second later, so *not yet placed* is its own
+verdict — read as a refusal it would move everybody's panel out of the menu bar on
+every launch. See [D41](04-decisions.md#d41--a-home-you-cannot-be-brought-back-from-is-not-a-home).
 
 ### `PanelPlacement.swift`
 Where the panel hangs, and why it hangs from the **top**.
@@ -810,7 +825,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 282
+### `main.swift` · `AppDelegate.swift` · 322
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1003,8 +1018,8 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 317 | colors and measurements |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
-| `PanelHomes.swift` | 261 | the two homes and the lamp that stands for the panel up there, plus the list of every switch the menus offer |
-| `MenuBarLamp.swift` | 196 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person |
+| `PanelHomes.swift` | 348 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
+| `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
@@ -1026,7 +1041,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 711 cases
+## `LampBoardTests/` — 717 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

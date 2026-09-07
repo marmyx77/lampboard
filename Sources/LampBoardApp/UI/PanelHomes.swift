@@ -43,6 +43,93 @@ extension PanelController {
             panel.orderOut(nil)
         }
         Diagnostics.log("panel home=\(home.rawValue) lamp=\(lamp.isVisible) showing=\(showing)")
+        if home == .menuBar { checkTheLampCanBeSeen() }
+    }
+
+    /// A home whose only door is a lamp the system will not draw is not a home.
+    ///
+    /// The menu bar can be full, and `NSStatusItem` does not say so — it hands
+    /// out an item, reports it visible, and draws nothing (`MenuBarPlacement`
+    /// carries the measurement). The panel then lives behind a lamp that is not
+    /// there: the app is running, the server answers, and nothing a person knows
+    /// how to do opens it. That was reported from use as *it doesn't start any
+    /// more*, which was the only reasonable reading.
+    ///
+    /// So the lamp is asked where it landed, and a panel with no reachable lamp
+    /// goes back to its own window and says why.
+    ///
+    /// - Parameter attempt: how many times the frame has been asked for already.
+    ///   It is not laid out at once — measured at `(0, 0, 28, 0)` on the turn it
+    ///   is created and settled about three tenths of a second later — so an
+    ///   answer of *not yet* is retried rather than believed.
+    func checkTheLampCanBeSeen(attempt: Int = 0) {
+        guard home == .menuBar else { return }
+        switch lamp.placement {
+        case .reachable:
+            return
+        case .notYetPlaced where attempt < Self.lampSettlingAttempts:
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.lampSettlingDelay) { [weak self] in
+                self?.checkTheLampCanBeSeen(attempt: attempt + 1)
+            }
+        case .notYetPlaced, .unreachable:
+            // A lamp that never got a frame is a lamp that is not there, and after
+            // two seconds the two answers mean the same thing on screen. The error
+            // is deliberately made in this direction: rescuing a panel that did not
+            // need it costs somebody one alert and a window back in its corner,
+            // where leaving a panel nobody can open costs them the application.
+            rescueFromTheMenuBar()
+        }
+    }
+
+    /// Every tenth of a second the lamp is given to settle, and how many times.
+    /// Two seconds in total: measured, it needs three tenths.
+    private static let lampSettlingDelay: TimeInterval = 0.4
+    private static let lampSettlingAttempts = 5
+
+    /// Brings the panel home when the menu bar had no room for its lamp.
+    private func rescueFromTheMenuBar() {
+        Diagnostics.log("no room in the menu bar for the lamp: the panel comes back to its window")
+        home = .floating
+        preferences.home = .floating
+        applyHome(showing: true)
+        rebuildContent()
+        Alerts.tell(
+            title: "The menu bar had no room for the lamp",
+            message: "The panel is back in its own window, because nothing else could "
+                + "have opened it up there. The lamp stays switched on and appears "
+                + "again as soon as the bar has room for it."
+        )
+    }
+
+    /// Puts the panel in front of whoever just asked for it.
+    ///
+    /// This is what starting the app a second time does, which is the gesture
+    /// somebody makes when they believe it is not running — and, before this
+    /// existed, the gesture that did nothing at all: an accessory application
+    /// that is already running has no window to raise and no Dock icon to bounce,
+    /// so a panel living in the menu bar behind a lamp nobody drew stayed exactly
+    /// as invisible as it had been.
+    func summon() {
+        switch home {
+        case .floating:
+            // A panel saved on a screen that is no longer attached is the same
+            // stranding by another route, and this is the moment to undo it.
+            if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(panel.frame) }) {
+                returnToItsOwnCorner()
+            }
+            panel.orderFrontRegardless()
+        case .menuBar:
+            guard lamp.placement != .unreachable else {
+                rescueFromTheMenuBar()
+                return
+            }
+            if panel.isVisible {
+                panel.orderFrontRegardless()
+            } else {
+                toggleDropDown()
+            }
+        }
+        Diagnostics.log("summoned: home=\(home.rawValue) frame=\(panel.frame)")
     }
 
     func wireLamp() {

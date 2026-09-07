@@ -134,6 +134,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         !skipSetupPrompt && !preferences.wasSetupPromptShown && HookSetup.needsInstalling()
     }
 
+    /// Starting the app while it is already running: show the panel.
+    ///
+    /// An accessory application has no Dock icon and no window of the kind macOS
+    /// raises for you, so before this the gesture did nothing whatsoever — and
+    /// the person making it is, by definition, somebody who cannot see the panel.
+    /// Answering it is the one door that needs no lamp, no pointer aimed at
+    /// twenty-two points of menu bar, and nothing learned in advance.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        panelController?.summon()
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         store.stopPolling()
         fleet.stop()
