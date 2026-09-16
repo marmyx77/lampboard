@@ -76,6 +76,22 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
     <string>$VERSION</string>
     <key>CFBundleVersion</key>
     <string>$VERSION</string>
+
+    <!-- The two keys nothing here reads and a fleet manager might.
+         An MDM tracks the installed version through CFBundleShortVersionString,
+         falls back to CFBundleVersion, and falls back again to
+         CFBundleInfoDictionaryVersion; the first two are above and the third was
+         simply absent, because this plist is written by hand rather than by
+         Xcode, which puts both of these in every bundle it produces. They cost
+         nothing and they remove a question — is this bundle missing something? —
+         that is expensive to answer from the other side of a deployment. -->
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
 
