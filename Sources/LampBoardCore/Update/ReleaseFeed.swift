@@ -50,24 +50,43 @@ public enum ReleaseFeed {
         guard version > current else {
             return .upToDate(current: current)
         }
-        guard let url = diskImage(in: object) else {
+        guard let url = diskImage(in: object, version: version) else {
             return .unreadable("version \(version) is published without a disk image")
         }
         return .available(version: version, downloadURL: url)
     }
 
-    /// The `.dmg` among the assets, if it is one of ours.
-    private static func diskImage(in object: [String: Any]) -> URL? {
+    /// The `.dmg` to fetch: the one that says which version it is.
+    ///
+    /// A release carries two disk images now and they are the same bytes:
+    /// `LampBoard-0.2.9.dmg`, and a copy called `LampBoard.dmg` that exists so
+    /// `/releases/latest/download/LampBoard.dmg` is an address nobody has to
+    /// edit — what a fleet manager polls on a schedule.
+    ///
+    /// This picks the versioned one deliberately rather than taking whichever
+    /// GitHub happens to list first. Either would install the same application;
+    /// the difference is what can be read back afterwards. Everything this app
+    /// says about an update — the sentence in the menu, a failure while
+    /// downloading, a line in the log — carries the name of the file it went
+    /// for, and `LampBoard.dmg` names no version at all. Choosing by luck of the
+    /// listing order would also mean the answer could change between two checks
+    /// with nothing having changed.
+    private static func diskImage(in object: [String: Any], version: ReleaseVersion) -> URL? {
         guard let assets = object["assets"] as? [[String: Any]] else { return nil }
 
+        var fallback: URL?
         for asset in assets {
             guard let name = asset["name"] as? String, name.lowercased().hasSuffix(".dmg"),
                   let raw = asset["browser_download_url"] as? String,
                   raw.hasPrefix(downloadPrefix),
                   let url = URL(string: raw)
             else { continue }
-            return url
+            if name.contains(version.description) { return url }
+            // Still a disk image of ours, and better than refusing the update:
+            // a release published under names nobody here predicted is a release
+            // somebody can still install.
+            if fallback == nil { fallback = url }
         }
-        return nil
+        return fallback
     }
 }

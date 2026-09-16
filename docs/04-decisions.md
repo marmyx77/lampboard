@@ -1850,3 +1850,51 @@ changes through the day. Falling back silently: see above. A command-line escape
 hatch (`lampboard panel floating`): a real door, and a poor primary one — somebody
 who thinks the app will not start does not open a terminal. Worth adding beside
 these, not instead of them.
+
+
+## D42 · The published address does not carry a version
+
+**Decided.** Every release publishes two disk images: `LampBoard-<version>.dmg`,
+and a byte-for-byte copy called `LampBoard.dmg`. The copy exists so that
+
+```
+https://github.com/marmyx77/lampboard/releases/latest/download/LampBoard.dmg
+```
+
+is an address nobody ever has to edit. It is what the site's download button
+points at, and what anything fetching on a schedule should use.
+
+**What is wrong with a link that names a release.** It is correct on the day it
+is written and wrong at the next one — while still answering `200`, because the
+old asset stays where it was. Nothing breaks loudly: the button works, the file
+downloads, it installs, and it is the previous build. Nobody reports it, because
+nobody who already has the app ever clicks it. The site was gated against this
+already (the stamp, and a rule that refuses a page naming any other version) but
+the gate only runs when somebody releases the web half, and a person who forgets
+that step gets exactly the silent failure above.
+
+Asked for from outside, which is what settled it: the fleet manager deploying
+this to other people's Macs polls an address periodically, and a versioned one
+would pin it to 0.2.9 for ever with no error anywhere.
+
+**What the site gives up.** The page no longer states, in its link, which file it
+hands you; the version is on the label beside it. That trade is the right way
+round: with a version-free link, the thing that can go stale is a **label**,
+which is visible, and the thing that cannot is the **download**. Before, it was
+the other way about.
+
+**Why a copy and not a rename.** The versioned name is what a person downloading
+by hand should end up with in `~/Downloads`, and it is what the update feed
+fetches — everything the app says afterwards about an update names the file it
+went for, and `LampBoard.dmg` names no version at all. So both exist, and
+`ReleaseFeed` picks the versioned one deliberately rather than taking whichever
+GitHub happens to list first.
+
+**Why the copy is made last.** After notarization and stapling. A copy taken
+earlier would be an unstapled image wearing a trusted name — refused on a Mac
+that has never seen it, in the one channel where nobody is watching the output.
+
+**What keeps it true.** A rule in `_release/check.py`: the newest release carries
+that name, the address answers 200, and the bytes it serves are the size of this
+release's image. Without it, forgetting the second asset once turns the address
+into a 404 for every machine polling it and for nobody else.

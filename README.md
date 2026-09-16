@@ -654,6 +654,20 @@ names neither the cask nor a reason a newcomer can act on. Measured here on
 Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
 from untrusted tap*.
 
+**Without Homebrew, or from a fleet manager**, the disk image lives at one
+address that never changes:
+
+```
+https://github.com/marmyx77/lampboard/releases/latest/download/LampBoard.dmg
+```
+
+Every release publishes two images: `LampBoard-<version>.dmg`, and a
+byte-for-byte copy under that version-free name, made after notarization so the
+ticket travels with it. The address is meant for anything that fetches on a
+schedule rather than by hand — an MDM polling for a newer build — because a link
+carrying a version is correct the day it is written and wrong at the next
+release, while still answering 200.
+
 > **macOS asks once, and everything waits until you answer.** Homebrew marks
 > every download, so the first launch raises the *downloaded from the Internet*
 > dialog — while you are still reading the terminal. Click **Open**. Until you
@@ -1225,7 +1239,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 717 domain tests, instantaneous
+swift run LampBoardTests              # 719 domain tests, instantaneous
 swift run LampBoardE2E                # 98 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

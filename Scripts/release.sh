@@ -96,6 +96,10 @@ else
 fi
 
 DMG="$ROOT/dist/$APP_NAME-$VERSION.dmg"
+# The same image under a name that carries no version: what
+# `/releases/latest/download/LampBoard.dmg` serves. Written at the end, from the
+# stapled file.
+STABLE_DMG="$ROOT/dist/$APP_NAME.dmg"
 IDENTITY="${LAMPBOARD_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${LAMPBOARD_NOTARY_PROFILE:-}"
 
@@ -243,12 +247,34 @@ if [ "$GATE" != "0" ]; then
     echo "    (dry run: refused, and that would stop a real release)"
 fi
 
+# ---------------------------------------------------------------------------
+# The second name, which is the one machines use
+# ---------------------------------------------------------------------------
+#
+# A byte-for-byte copy under a name with no version in it, published beside the
+# versioned one. It exists so that
+#
+#     …/releases/latest/download/LampBoard.dmg
+#
+# is an address that never has to be edited: GitHub redirects `latest` to the
+# newest published release, and the file inside it is found by name. A link
+# carrying a version is correct on the day it is written and wrong at the next
+# release, silently, while still answering 200 — which is the failure mode for
+# anything that fetches on a schedule rather than by hand. Asked for by the
+# people deploying this through an MDM, which polls exactly such an address.
+#
+# The copy is made **after** notarization and stapling, so the ticket travels
+# with it: a copy made earlier would be an unstapled image wearing a trusted
+# name. Same bytes, same checksum, both verifiable against each other.
+cp "$DMG" "$STABLE_DMG"
+
 echo
 echo "✓ $DMG"
+echo "✓ $STABLE_DMG  (the same file, under the name the latest address serves)"
 echo
 if [ "$NOTARIZED" = "1" ]; then
     echo "  Notarized and stapled: it opens with a double click on any Mac."
-    echo "  Publish:  gh release create v$VERSION '$DMG' --title 'lampboard $VERSION'"
+    echo "  Publish:  gh release create v$VERSION '$DMG' '$STABLE_DMG' --title 'lampboard $VERSION'"
 elif [ -n "$IDENTITY" ]; then
     echo "  Signed but not notarized: on a Mac that has never seen it, macOS"
     echo "  will still refuse the first launch. Set the profile and run again:"

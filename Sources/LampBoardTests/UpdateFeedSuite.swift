@@ -59,6 +59,52 @@ enum UpdateFeedSuite {
             t.expect(url.absoluteString.hasPrefix(ReleaseFeed.downloadPrefix), "pinned host")
         },
 
+        TestCase("With two disk images it fetches the one that names the version") { t in
+            // A release carries two now, and they are the same bytes: the
+            // versioned name, and a copy called `LampBoard.dmg` so that
+            // `/releases/latest/download/LampBoard.dmg` never has to be edited.
+            // Either would install the same application. The versioned one is
+            // chosen so that everything this app says afterwards — the sentence
+            // in the menu, a failure, a line in the log — names a build somebody
+            // can identify, and so that the answer cannot change between two
+            // checks because GitHub listed the assets in another order.
+            let both: [String: Any] = [
+                "tag_name": "v0.2.0",
+                "assets": [
+                    ["name": "LampBoard.dmg",
+                     "browser_download_url": ReleaseFeed.downloadPrefix + "v0.2.0/LampBoard.dmg"],
+                    ["name": "LampBoard-0.2.0.dmg",
+                     "browser_download_url": ReleaseFeed.downloadPrefix + "v0.2.0/LampBoard-0.2.0.dmg"],
+                ],
+            ]
+            guard case .available(_, let url) = ReleaseFeed.decide(
+                payload: payload(both), current: current
+            ) else {
+                t.expect(false, "an update should be offered")
+                return
+            }
+            t.expectEqual(
+                url.lastPathComponent, "LampBoard-0.2.0.dmg",
+                "the stable name is listed first and is still not the one taken"
+            )
+        },
+
+        TestCase("A release named in a way nobody predicted is still installable") { t in
+            // The preference above must not become a requirement: a disk image
+            // published under some other name is still ours — it is behind the
+            // same address on the same repository — and refusing it would turn a
+            // naming slip into an app that can never update itself again.
+            let odd = ReleaseFeed.downloadPrefix + "v0.2.0/LampBoard-universal.dmg"
+            guard case .available(_, let url) = ReleaseFeed.decide(
+                payload: release(tag: "v0.2.0", assetName: "LampBoard-universal.dmg", url: odd),
+                current: current
+            ) else {
+                t.expect(false, "an update should still be offered")
+                return
+            }
+            t.expectEqual(url.absoluteString, odd, "the one disk image there is")
+        },
+
         TestCase("The same version, or an older one, is not an update") { t in
             for tag in ["v0.1.0", "v0.0.9"] {
                 guard case .upToDate = ReleaseFeed.decide(
