@@ -654,19 +654,37 @@ names neither the cask nor a reason a newcomer can act on. Measured here on
 Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
 from untrusted tap*.
 
-**Without Homebrew, or from a fleet manager**, the disk image lives at one
-address that never changes:
+**Without Homebrew**, the disk image lives at one address that never changes:
 
 ```
 https://github.com/marmyx77/lampboard/releases/latest/download/LampBoard.dmg
 ```
 
-Every release publishes two images: `LampBoard-<version>.dmg`, and a
-byte-for-byte copy under that version-free name, made after notarization so the
-ticket travels with it. The address is meant for anything that fetches on a
-schedule rather than by hand — an MDM polling for a newer build — because a link
-carrying a version is correct the day it is written and wrong at the next
-release, while still answering 200.
+**From a fleet manager**, the signed and notarized installer package, at an
+address that never changes either:
+
+```
+https://github.com/marmyx77/lampboard/releases/latest/download/LampBoard.pkg
+```
+
+It installs `LampBoard.app` into `/Applications` and declares `com.lampboard.app`
+and its version in the package's own metadata, which is what an MDM reads to
+decide whether the copy on a Mac is older than this one. A disk image has no
+version field anywhere in the format, so with one of those the number has to be
+typed by hand — typed high, update commands never stop; typed low, they never
+start.
+
+Every release publishes four files: each artefact under its version, and a
+byte-for-byte copy under the version-free name, made after notarization so the
+ticket travels with it. Those two addresses are meant for anything that fetches
+on a schedule rather than by hand, because a link carrying a version is correct
+the day it is written and wrong at the next release, while still answering 200.
+
+The package carries no install scripts. The hooks live in each person's own
+`~/.claude/settings.json` and the app offers to register them on first launch,
+which is the moment somebody is there to answer; a package runs as root with no
+session around it, and `lampboard install-hooks` can be run per user from a
+script if you would rather not wait for that.
 
 > **macOS asks once, and everything waits until you answer.** Homebrew marks
 > every download, so the first launch raises the *downloaded from the Internet*

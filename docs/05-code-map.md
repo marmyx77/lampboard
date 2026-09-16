@@ -1124,7 +1124,8 @@ the realignment is asynchronous.
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
 | `Scripts/make-screenshots.sh` | the README's images, taken from the real app against a temporary home of invented projects, so they never carry anybody's real work and never fall behind the panel; `screencapture -l` reads the window's backing store, which works with the screen locked |
 | `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
-| `Scripts/release.sh` | disk image into `dist/`; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
+| `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
+| `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
 | `Scripts/test.sh` | both suites, then the documentation check |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |

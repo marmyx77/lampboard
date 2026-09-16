@@ -268,13 +268,41 @@ fi
 # name. Same bytes, same checksum, both verifiable against each other.
 cp "$DMG" "$STABLE_DMG"
 
+# ---------------------------------------------------------------------------
+# The package, for the Macs nobody sits in front of
+# ---------------------------------------------------------------------------
+#
+# Built here rather than left to a line in the runbook, because a manual step in
+# a runbook is a step nobody does — measured in this very project, where a gate's
+# own mutation went stale for three releases behind exactly such a line.
+#
+# Only when the disk image was notarized: a package wraps the stapled bundle, and
+# wrapping an unstapled one produces something that installs and then refuses to
+# open. Only when there is a certificate for it, which is a different certificate
+# from the one that signs the app — a machine without it still cuts a release,
+# and the gate in the site's `check.py` is what refuses to publish one that is
+# missing its package.
+PKG=""
+STABLE_PKG=""
+if [ "$NOTARIZED" = "1" ] && [ "$DRY_RUN" = "0" ] \
+   && security find-identity -v 2>/dev/null | grep -q 'Developer ID Installer'; then
+    echo
+    "$ROOT/Scripts/make-pkg.sh"
+    PKG="$ROOT/dist/$APP_NAME-$VERSION.pkg"
+    STABLE_PKG="$ROOT/dist/$APP_NAME.pkg"
+elif [ "$NOTARIZED" = "1" ] && [ "$DRY_RUN" = "0" ]; then
+    echo
+    echo "▸ No package: no Developer ID Installer certificate here."
+    echo "  The fleet manager needs one — see Scripts/make-pkg.sh for why and how."
+fi
+
 echo
 echo "✓ $DMG"
 echo "✓ $STABLE_DMG  (the same file, under the name the latest address serves)"
 echo
 if [ "$NOTARIZED" = "1" ]; then
     echo "  Notarized and stapled: it opens with a double click on any Mac."
-    echo "  Publish:  gh release create v$VERSION '$DMG' '$STABLE_DMG' --title 'lampboard $VERSION'"
+    echo "  Publish:  gh release create v$VERSION '$DMG' '$STABLE_DMG'${PKG:+ '$PKG' '$STABLE_PKG'} --title 'lampboard $VERSION'"
 elif [ -n "$IDENTITY" ]; then
     echo "  Signed but not notarized: on a Mac that has never seen it, macOS"
     echo "  will still refuse the first launch. Set the profile and run again:"

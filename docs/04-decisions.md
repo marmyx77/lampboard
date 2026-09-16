@@ -1895,9 +1895,32 @@ earlier would be an unstapled image wearing a trusted name — refused on a Mac
 that has never seen it, in the one channel where nobody is watching the output.
 
 **What keeps it true.** A rule in `_release/check.py`: the newest release carries
-that name, the address answers 200, and the bytes it serves are the size of this
-release's image. Without it, forgetting the second asset once turns the address
+those names, each address answers 200, and the bytes each serves are the size the
+release published under it. Without it, forgetting one asset once turns an address
 into a 404 for every machine polling it and for nobody else.
+
+**And a package, for the same address and a different reason.** A disk image is a
+disk image: the format has no version field anywhere in it. A person mounting one
+does not care; a fleet manager does, because it has to answer *is the copy on that
+Mac older than this* before it sends anything, and with nothing to read the
+administrator types the number by hand — high means update commands that never
+stop, low means updates that never start. A package carries `identifier` and
+`version` in its own metadata, which is what gets read.
+
+So a release publishes four files: the disk image and the package, each under its
+version and each under a version-free name. `Scripts/make-pkg.sh` wraps the
+bundle `release.sh` has already stapled — never one of its own, because wrapping
+an unstapled application produces something that installs and then refuses to
+open, in the one channel where nobody is watching. It signs with a **Developer ID
+Installer** certificate, which is a different certificate from the one that signs
+the app, and it refuses to produce an unsigned package: the disk image has a use
+unsigned, for a tester who knows how to answer Gatekeeper, and this has none.
+
+No install scripts in it, and that is a decision too. The hooks live in each
+person's own `~/.claude/settings.json`; a package runs as root with nobody's
+session around it, and one that wrote into a home directory it guessed would be
+writing into the wrong one on any Mac with two accounts. The application asks on
+first launch, which is where somebody is there to answer.
 
 
 ## D43 · The panel is dark on a Mac set to either
