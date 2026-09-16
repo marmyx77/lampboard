@@ -1898,3 +1898,42 @@ that has never seen it, in the one channel where nobody is watching the output.
 that name, the address answers 200, and the bytes it serves are the size of this
 release's image. Without it, forgetting the second asset once turns the address
 into a 404 for every machine polling it and for nobody else.
+
+
+## D43 · The panel is dark on a Mac set to either
+
+**Decided.** The panel and its card are drawn in the dark appearance whatever the
+Mac is set to. Settings, the legend and the conversation window follow the system
+like any other window.
+
+**What happened.** Reported from use, on a Mac in light mode: *black on grey,
+unreadable*. It was not a small miss. Half the surface is written for a dark
+ground and cannot follow a light one — the hover wash and the block edges are
+white at low opacity, the material is `.hudWindow`, and every lamp hue was chosen
+and measured against that. The other half — names, timestamps, badges — is
+`Color.primary`, which does follow. So the two halves disagreed, and what broke
+was the one thing the column exists for: reading which project is which.
+
+Measured on two photographs of the same panel, before and after: a project's name
+against its own background, **4.5:1** following the system and **6.8:1** held
+dark. The ratio flatters the first number — it compares the darkest pixel of a
+stem with the commonest pixel of the background, and most of a twelve-point glyph
+over a translucent surface sits nearer the middle — but it is the right
+direction, and the second is what everything here was tuned against.
+
+**The alternative, and why not now.** A real light theme: new hues, a glow that
+survives on white, every overlay inverted, the lamps re-measured against a pale
+ground. That is a design pass with somebody's taste in the loop, not a switch,
+and it would double what has to be kept true — two palettes, two sets of
+screenshots, two things to check on every change. It stays available and it is
+not what this defect asked for.
+
+**Why holding it dark is not a workaround.** The panel is an instrument that sits
+on top of the work, like the dashboard of a car, which is dark whatever the
+weather outside. It is what this has been drawn, measured and photographed as
+since the first day, and the README's pictures have never shown anything else.
+
+**Where it stops.** Two surfaces, named explicitly: the panel and its tooltip.
+Settings and the legend are ordinary windows full of ordinary controls, built from
+semantic colours and system materials, and a person's Mac should decide how those
+look. The menu on the lamp is a menu bar menu and follows the menu bar.

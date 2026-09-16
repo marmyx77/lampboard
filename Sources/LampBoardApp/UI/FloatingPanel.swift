@@ -34,6 +34,9 @@ final class FloatingPanel: NSPanel {
 
         // It must not show up in the window switcher, nor be resizable.
         isExcludedFromWindowsMenu = true
+
+        // Dark, on a Mac set to either. See `StatusPalette.appearance`.
+        appearance = StatusPalette.appearance
     }
 
     /// Called when the panel stops being key, so a drop-down can put itself away

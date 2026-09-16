@@ -1,12 +1,12 @@
 # Code map
 
-~38,769 lines of Swift across five targets. For each file: what it contains, why
+~38,808 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  10,453 lines · 87 files   pure logic, zero AppKit
-  LampBoardApp/    15,266 lines · 80 files   shell: AppKit, network, windows
+  LampBoardApp/    15,305 lines · 80 files   shell: AppKit, network, windows
   LampBoardTests/  9,974 lines · 54 files   719 cases, instantaneous
   LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -1016,7 +1016,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 317 | colors and measurements |
+| `StatusPalette.swift` | 317 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 348 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |

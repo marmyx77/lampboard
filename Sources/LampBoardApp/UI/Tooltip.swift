@@ -146,6 +146,8 @@ enum Tooltip {
             backing: .buffered,
             defer: true
         )
+        // The card is the panel's second layer and is drawn in the same light.
+        panel.appearance = StatusPalette.appearance
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true

@@ -1,3 +1,4 @@
+import AppKit
 import LampBoardCore
 import SwiftUI
 
@@ -8,6 +9,39 @@ import SwiftUI
 /// eye would stop distinguishing the state that actually matters. So rest is
 /// muted and brightness grows with urgency.
 enum StatusPalette {
+
+    /// The appearance the panel and its card are drawn in, whatever the Mac is set to.
+    ///
+    /// WHY IT IS NOT LEFT TO THE SYSTEM
+    /// Half of this surface is written for a dark ground and cannot follow a
+    /// light one: the hover wash and the block edges are `Color.white` at low
+    /// opacity, the material is `.hudWindow`, and every lamp hue above was chosen
+    /// and measured against that. The other half — the names, the timestamps, the
+    /// badges — is `Color.primary`, which does follow.
+    ///
+    /// On a Mac in light mode the two halves disagreed, and the result was
+    /// reported in the only words it deserved: black text on grey, unreadable.
+    ///
+    /// Measured on the two photographs of the same panel, one before this line
+    /// and one after: a project's name against its own background was **4.5:1**
+    /// following the system and **6.8:1** held dark. The ratio understates what
+    /// the eye gets — it takes the darkest pixel in a stem against the commonest
+    /// pixel of the background, where most of a twelve-point glyph over a
+    /// translucent surface sits much nearer the middle, and the background itself
+    /// is whatever window happens to be behind the panel. The direction is the
+    /// point: the second number is the one everything here was tuned against.
+    ///
+    /// There were two ways out. Tune a second palette for a light ground — new
+    /// hues, a glow that survives on white, every overlay inverted — which is a
+    /// design pass and not a switch, and would double what has to be kept true.
+    /// Or say what the panel already is: a dark instrument, like the dashboard of
+    /// a car, which is dark whatever the weather outside. That is what it has
+    /// been drawn, measured and photographed as since the first day.
+    ///
+    /// It applies to the panel and its tooltip, and to nothing else. Settings and
+    /// the legend are ordinary windows full of ordinary controls, and they follow
+    /// the Mac like every other window a person has open.
+    static let appearance = NSAppearance(named: .darkAqua)
 
     static func color(for status: SessionStatus) -> Color {
         switch status {
