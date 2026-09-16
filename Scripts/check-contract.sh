@@ -154,7 +154,12 @@ head_ "Message delivery (rewake)"
 # The chat window's send path depends on hook options Claude Code marks @internal.
 # When they are renamed nothing errors — the message simply never arrives — so the
 # only defence is asserting the names still exist in the shipped binary.
-CLAUDE_BIN="$(readlink -f "$(command -v claude 2>/dev/null)" 2>/dev/null || true)"
+# Overridable so the rules that read it can be shown to bite: the thing this
+# section checks is somebody else's binary, which no mutation can edit. Pointing
+# it at a small file carrying a fake registry is the only way to watch these
+# rules go red on purpose. Empty or missing, the checks say *could not look* and
+# never *pass*.
+CLAUDE_BIN="${CLAUDE_BIN:-$(readlink -f "$(command -v claude 2>/dev/null)" 2>/dev/null || true)}"
 if [ -z "$CLAUDE_BIN" ] || [ ! -f "$CLAUDE_BIN" ]; then
     skip "claude binary not found — the message delivery contract was not examined"
 else
@@ -288,13 +293,46 @@ for name, window in sorted(recorded.items()):
     elif actual != window:
         problems.append(f"{name} says {window:,}, the binary says {actual:,}")
 
-# A model the binary knows and this table does not gets no percentage at all,
-# which is safe but silent. Naming it here is how the table gets extended.
-for name, window in sorted(found.items()):
-    if name not in recorded:
-        problems.append(f"{name} ({window:,}) is in the binary and not in the table - sessions on it show no figure")
+# The same rule `ContextReading.parentOf` applies: a trailing one- or two-digit
+# group on an id with more than two parts is a point release, and it borrows its
+# parent's window. Kept in step with the Swift by hand, which is the cost of a
+# checker that is not the thing it checks.
+def parent_of(name):
+    parts = name.split("-")
+    if len(parts) > 2 and parts[-1].isdigit() and len(parts[-1]) <= 2:
+        return "-".join(parts[:-1])
+    return None
 
-print(f"    {len(found)} models in the binary, {len(recorded)} recorded", file=sys.stderr)
+
+# A model the binary knows and this table does not. Two different situations
+# wearing the same shape, and calling both a failure was wrong: a point release
+# inherits its parent's window and gets a correct figure without being written
+# down anywhere, which is the whole point of the inheritance added in 0.2.6.
+#
+# What matters for those is not whether they are listed, it is whether the number
+# they inherit is the number the binary carries. A point release that quietly
+# doubled its window would otherwise be divided by its parent's, confidently and
+# for everybody — the exact failure this section exists to catch, one generation
+# further down.
+inherited = []
+for name, window in sorted(found.items()):
+    if name in recorded:
+        continue
+    parent = parent_of(name)
+    if parent is not None and parent in recorded:
+        if recorded[parent] != window:
+            problems.append(
+                f"{name} carries {window:,} and inherits {recorded[parent]:,} from {parent}"
+                " - the point release moved the window")
+        else:
+            inherited.append(f"{name} inherits {window:,} from {parent}")
+        continue
+    problems.append(f"{name} ({window:,}) is in the binary and not in the table - sessions on it show no figure")
+
+print(f"    {len(found)} models in the binary, {len(recorded)} recorded,"
+      f" {len(inherited)} inheriting", file=sys.stderr)
+for line in inherited:
+    print(f"    {line}", file=sys.stderr)
 for problem in problems:
     print(f"    {problem}", file=sys.stderr)
 sys.exit(1 if problems else 0)

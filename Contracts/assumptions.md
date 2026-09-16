@@ -357,10 +357,17 @@ becoming wrong.
 **Depends at** [ContextWindows](../Sources/LampBoardCore/Transcript/ContextReading.swift)
 · [required-fields.json](required-fields.json)
 
-**How verified** — `binary`, on 2.1.251: sixteen models, each with a `window:`
-in Claude Code's own registry. And by contradiction: a session started with
-`--model sonnet`, with **no** `[1m]` suffix anywhere, reported a window of
-1,000,000 — so the suffix is not the discriminator and the model id is.
+**How verified** — `binary`, on 2.1.268: eighteen models in Claude Code's own
+registry, each with a `window:`. Sixteen are recorded here; the other two,
+`claude-fable-5-1` and `claude-mythos-5-1`, are point releases that inherit their
+parent's window, and the check confirms the number they inherit is the number the
+binary carries rather than merely noting they are absent. A point release that
+moved its window would otherwise be divided by its parent's, confidently, for
+everybody — the same failure this section exists for, one generation down.
+
+And by contradiction: a session started with `--model sonnet`, with **no** `[1m]`
+suffix anywhere, reported a window of 1,000,000 — so the suffix is not the
+discriminator and the model id is.
 
 **Failure mode** — a release changes a window and nothing else changes. The
 panel would divide by the old number with full confidence, which is why this is
