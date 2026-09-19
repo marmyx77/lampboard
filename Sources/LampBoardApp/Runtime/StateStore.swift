@@ -97,6 +97,10 @@ final class StateStore: ObservableObject {
     /// — the same rule that stopped this app pruning live local sessions.
     private var remoteSessions: [String: [LiveSession]] = [:]
 
+    /// Which sessions have ever held a conversation. See `ConversationIndex` for
+    /// why a live process is not enough to earn a row.
+    let conversations = ConversationIndex()
+
     /// When each host's last answer was **asked for** — not received. A probe may
     /// only declare dead what it looked for after a row's last sign of life: a
     /// session that spoke through the tunnel after the probe started is not
@@ -112,7 +116,7 @@ final class StateStore: ObservableObject {
     private var remoteHosts: [String] { preferences.remoteHosts }
 
     /// Whether folders no editor claims get rows (D25), as configured.
-    private var showsTerminalSessions: Bool { preferences.showsTerminalSessions }
+    var showsTerminalSessions: Bool { preferences.showsTerminalSessions }
 
     /// Sessions whose transcript is being read for a title right now, so a
     /// burst of signals does not start a read per signal.
@@ -179,7 +183,7 @@ final class StateStore: ObservableObject {
     ///
     /// Called when the row is born and at every `Stop` while it is still unnamed:
     /// a title appears after the first exchange, not before.
-    private func requestTitleIfMissing(sessionId: String) {
+    func requestTitleIfMissing(sessionId: String) {
         guard let session = state.sessions[sessionId],
               session.title == nil, !titleReadsInFlight.contains(sessionId)
         else { return }
@@ -358,6 +362,17 @@ final class StateStore: ObservableObject {
     /// Applies a hook signal, first resolving the workspace hosting it.
     func handle(_ signal: HookSignal) {
         let now = clock()
+
+        // A process announcing itself is not a conversation, and only a
+        // conversation earns a row. `ConversationIndex` carries the reasoning and
+        // the cost.
+        guard conversations.startIsWorthARow(
+            signal, alreadyKnown: state.sessions[signal.sessionId] != nil
+        ) else {
+            Diagnostics.log("session start with no conversation behind it: \(signal.sessionId.prefix(8))")
+            return
+        }
+
         var workspace: Workspace?
         if let host = signal.host, remoteHosts.contains(host) {
             // Through the tunnel. No lock on this machine can claim a folder that
@@ -637,57 +652,7 @@ final class StateStore: ObservableObject {
             apply(.forget(origin: .terminal), now: now)
         }
 
-        for session in live where session.host == nil {
-            let resolved = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
-            // Unclaimed and terminal sessions on: the file's own folder is the
-            // row's (D25) — the file is the anchor, so no `cd` can move it.
-            guard let workspace = resolved ?? (showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
-                continue
-            }
-            let origin: SessionOrigin = resolved == nil ? .terminal : .editor
-            let known = state.sessions[session.sessionId] != nil
-            // State `idle`: the app does not know what a session it has never seen
-            // is doing, and this is where it says so.
-            //
-            // It was briefly inferred instead — "the transcript moved in the last
-            // forty-five seconds, therefore a turn is in flight" — and that was
-            // wrong in a way worth recording. A transcript is appended on plenty of
-            // things that are not a turn, **resuming a session among them**. So
-            // after a reboot, when Claude Code resumes everything at once, every
-            // file moved at once and the whole column went yellow: twelve sessions
-            // claiming to be working while none of them were.
-            //
-            // A column that is uniformly wrong is worse than one that is
-            // uniformly cautious, because the panel exists to make the one session
-            // that needs you stand out. `idle` here is not a guess dressed up as a
-            // fact; it is the absence of information, and the first hook replaces it.
-            //
-            // The timestamp, by contrast, IS evidence and is kept: it comes from
-            // the transcript, which is the only file that moves when a session
-            // does something.
-            apply(
-                .adopt(
-                    SessionState(
-                        id: session.sessionId,
-                        status: .idle,
-                        workspace: workspace,
-                        updatedAt: session.modifiedAt,
-                        statusSince: session.modifiedAt,
-                        entrypoint: session.entrypoint,
-                        origin: origin
-                    )
-                ),
-                now: now
-            )
-            if !known {
-                if origin == .terminal {
-                    Diagnostics.log(
-                        "adopted as a terminal session: \(session.sessionId.prefix(8)) in \(session.cwd)"
-                    )
-                }
-                requestTitleIfMissing(sessionId: session.sessionId)
-            }
-        }
+        adoptLiveSessions(live, windows: windows, at: now)
 
         // Only what was actually confirmed is exempt from the age rule. A remote
         // row nobody can confirm — its host silent, its probe broken — must still

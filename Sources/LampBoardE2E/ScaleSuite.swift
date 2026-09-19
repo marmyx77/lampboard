@@ -21,6 +21,12 @@ enum ScaleSuite {
                     cwd: LifecycleSuite.workspace,
                     name: "project-alpha-7"
                 )
+                // A conversation behind it, because that is what a row stands
+                // for: a process with nothing in it is refused at this door on
+                // purpose (see the coverage suite).
+                app.writeTranscript(
+                    sessionId: id, cwd: LifecycleSuite.workspace, title: "Wire the release script"
+                )
                 // No hook for this session: it existed before the app started.
                 // Without adoption it would stay invisible until the user did
                 // something inside it.
@@ -83,6 +89,10 @@ enum ScaleSuite {
                 app.writeLiveSession(
                     sessionId: "e2e-really-alive",
                     cwd: LifecycleSuite.workspace
+                )
+                app.writeTranscript(
+                    sessionId: "e2e-really-alive", cwd: LifecycleSuite.workspace,
+                    title: "Still going"
                 )
 
                 a.expect(

@@ -36,6 +36,77 @@ extension StateStore {
     ///
     /// Cloud sessions are not here and cannot be: they run on Anthropic's
     /// servers and leave nothing on this machine to read.
+    /// The Claude Code sessions already running when nobody was watching.
+    ///
+    /// Every `claude` writes a file into `~/.claude/sessions` when it starts, and
+    /// this is what turns those files into rows: after a restart of the panel it
+    /// is the only way a session that is not currently speaking appears at all.
+    ///
+    /// Moved here from the poll when `StateStore` reached the eight hundred lines
+    /// this project holds itself to. It belongs with its neighbours rather than
+    /// beside the signal intake: like them it is a surface that never announces
+    /// itself and has to be found by looking at the disk.
+    func adoptLiveSessions(_ live: [LiveSession], windows: [IDEWindow], at now: Date) {
+        for session in live where session.host == nil {
+            // A live process with nothing to show is not a row. The same rule the
+            // signal intake applies, at the other door: this one adopts sessions
+            // from their files, and those files are written by every `claude` that
+            // starts, including the ones nobody will ever type into.
+            guard conversations.hasConversation(sessionId: session.sessionId, cwd: session.cwd) else {
+                continue
+            }
+            let resolved = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
+            // Unclaimed and terminal sessions on: the file's own folder is the
+            // row's (D25) — the file is the anchor, so no `cd` can move it.
+            guard let workspace = resolved ?? (showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
+                continue
+            }
+            let origin: SessionOrigin = resolved == nil ? .terminal : .editor
+            let known = state.sessions[session.sessionId] != nil
+            // State `idle`: the app does not know what a session it has never seen
+            // is doing, and this is where it says so.
+            //
+            // It was briefly inferred instead — "the transcript moved in the last
+            // forty-five seconds, therefore a turn is in flight" — and that was
+            // wrong in a way worth recording. A transcript is appended on plenty of
+            // things that are not a turn, **resuming a session among them**. So
+            // after a reboot, when Claude Code resumes everything at once, every
+            // file moved at once and the whole column went yellow: twelve sessions
+            // claiming to be working while none of them were.
+            //
+            // A column that is uniformly wrong is worse than one that is
+            // uniformly cautious, because the panel exists to make the one session
+            // that needs you stand out. `idle` here is not a guess dressed up as a
+            // fact; it is the absence of information, and the first hook replaces it.
+            //
+            // The timestamp, by contrast, IS evidence and is kept: it comes from
+            // the transcript, which is the only file that moves when a session
+            // does something.
+            apply(
+                .adopt(
+                    SessionState(
+                        id: session.sessionId,
+                        status: .idle,
+                        workspace: workspace,
+                        updatedAt: session.modifiedAt,
+                        statusSince: session.modifiedAt,
+                        entrypoint: session.entrypoint,
+                        origin: origin
+                    )
+                ),
+                now: now
+            )
+            if !known {
+                if origin == .terminal {
+                    Diagnostics.log(
+                        "adopted as a terminal session: \(session.sessionId.prefix(8)) in \(session.cwd)"
+                    )
+                }
+                requestTitleIfMissing(sessionId: session.sessionId)
+            }
+        }
+    }
+
     func adoptDesktopSessions(at now: Date) -> Set<String> {
         guard case .observed(let evidence) = desktopScanner.scan() else {
             // A probe that could not answer removes nothing. Every row it would

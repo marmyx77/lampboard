@@ -1960,3 +1960,55 @@ since the first day, and the README's pictures have never shown anything else.
 Settings and the legend are ordinary windows full of ordinary controls, built from
 semantic colours and system materials, and a person's Mac should decide how those
 look. The menu on the lamp is a menu bar menu and follows the menu bar.
+
+
+## D44 · A row stands for a conversation, not for a process
+
+**Decided.** A session earns a line in the column when it has a conversation on
+disk. A `claude` process that has never said anything does not, at either door:
+neither the `SessionStart` hook that announces it, nor the adoption pass that
+finds its file in `~/.claude/sessions`. Every other hook still creates a row on
+its own, because every other hook reports something that happened.
+
+**What happened.** Reported from use: a project showed two conversations where
+the editor had one, one of them named as if it were a conversation of the
+person's own. Both processes were alive. VS Code had started a second `claude`
+twenty-three seconds after the first, when the session was restarted, and never
+killed the first. Measured on that machine at that moment: six `claude`
+processes alive, one of them for thirteen days, and exactly one with no
+transcript anywhere on the disk — the row that had been reported.
+
+The panel was not inventing anything. It was answering a question nobody asks:
+*which processes are running*. The question it exists to answer is *what are my
+agents doing*, and a process with no conversation is doing nothing and never
+will.
+
+**Why the transcript and not the process.** It is the only evidence that
+distinguishes them, and it is the right one on its own terms: the transcript
+**is** the conversation. Everything a row shows — the state, the last message,
+how much context is left, what a click opens — comes from it. A row without one
+is a row where every field is empty.
+
+**Why the search and not the derived path.** `TranscriptLocator` derives where a
+transcript would be, and is right 7065 times out of 7066. The exception is a
+session in a **git worktree**, which reports the main repository as its `cwd`
+while Claude Code files the transcript under the worktree. Refusing a row on
+"nothing at the derived path" would make every worktree session vanish, and this
+project is worked on in worktrees. So the derived path is the fast answer and a
+search by session id across the project folders settles it: measured here, 74
+folders, 11,788 transcripts, 2 ms, and it runs only where the derivation missed.
+When the folder cannot be listed at all the answer is *yes*, because not being
+able to look is not evidence of silence.
+
+**The cost, stated.** A **new** session writes its transcript at its first turn,
+not when it starts — measured on one here, 101.8 seconds later, which was the
+time somebody took to type. So a session opened and not yet spoken to has no
+row, and gets one the moment it is used. A resumed session is unaffected: its
+conversation is on disk before it announces itself.
+
+**The alternative, and why not.** Admit the row on `SessionStart` and prune it
+after some number of minutes if it is still empty. It keeps the row for a
+freshly opened tab, and it pays for that with a row that appears and then
+vanishes while somebody is looking at the session it belongs to, which reads as
+a fault. A row that has not appeared yet reads as a rule, and it is one that can
+be said in a sentence.

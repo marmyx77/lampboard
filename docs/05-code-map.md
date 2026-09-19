@@ -1,18 +1,18 @@
 # Code map
 
-~38,808 lines of Swift across five targets. For each file: what it contains, why
+~38,968 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  10,453 lines · 87 files   pure logic, zero AppKit
-  LampBoardApp/    15,305 lines · 80 files   shell: AppKit, network, windows
+  LampBoardApp/    15,465 lines · 81 files   shell: AppKit, network, windows
   LampBoardTests/  9,974 lines · 54 files   719 cases, instantaneous
-  LampBoardE2E/    2,707 lines · 12 files   98 cases, the real binary
+  LampBoardE2E/    2,768 lines · 12 files   99 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 795 lines. The limit the project sets itself is 800.
+No file exceeds 769 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -884,7 +884,7 @@ there, the hooks are registered — and it names the link that broke.
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 780 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 143 | the rows nobody announced: Codex from an open rollout, Claude Desktop from its index and transcript. Both obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStoreAdoption.swift` | 221 | the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
@@ -910,6 +910,7 @@ there, the hooks are registered — and it names the link that broke.
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
 | `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
+| `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
@@ -1098,7 +1099,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 98 cases
+## `LampBoardE2E/` — 99 cases
 
 | Suite | Covers |
 |---|---|

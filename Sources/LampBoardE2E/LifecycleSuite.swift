@@ -160,8 +160,17 @@ enum LifecycleSuite {
                 a.expectEqual(app.status(of: id), "working", "status")
             },
 
-            TestCase("a real session start puts it at rest") { a in
+            TestCase("a session start with a conversation behind it puts it at rest") { a in
                 let id = "e2e-startup"
+                // The transcript first, because that is the order the world
+                // happens in for the case this covers: a session being resumed
+                // has its conversation on disk before it announces itself. A
+                // start with nothing behind it is refused, which the coverage
+                // suite covers and this one deliberately does not repeat.
+                let transcript = HookPayloads.transcriptPath(id)
+                app.writeTranscript(sessionId: id, cwd: workspace, title: "Picking it up again", at: transcript)
+                defer { try? FileManager.default.removeItem(atPath: transcript) }
+
                 app.sendHook(HookPayloads.sessionStart(
                     sessionId: id, cwd: workspace, source: "startup"
                 ))

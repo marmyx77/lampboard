@@ -27,7 +27,7 @@ permission. It has already cost one wasted diagnosis.
 
 ```bash
 swift run LampBoardTests              # 719 cases, instantaneous
-swift run LampBoardE2E                # 98 cases, about a minute
+swift run LampBoardE2E                # 99 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
 
@@ -249,7 +249,7 @@ Every time a decision slipped into the shell, it became invisible to the tests.
 ## Style
 
 - **immutability**: produce new values, don't modify existing ones
-- **small files**: 200–400 lines typical, 800 the limit; the longest today is 795
+- **small files**: 200–400 lines typical, 800 the limit; the longest today is 769
 - **no magic values**: everything goes through `AppConfig`
 - **comments explain the why**, not the what
 

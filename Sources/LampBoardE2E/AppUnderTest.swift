@@ -55,7 +55,11 @@ final class AppUnderTest {
         }
 
         try? FileManager.default.removeItem(at: home)
-        for sub in [".claude/ide", ".claude/sessions", ".lampboard"] {
+        // `.claude/projects` among them, and not as decoration: a real home has
+        // it, and the rule that a session needs a conversation to earn a row
+        // answers "keep the row" when it cannot look — a fake home missing the
+        // folder was passing every session through the check it exists to make.
+        for sub in [".claude/ide", ".claude/sessions", ".claude/projects", ".lampboard"] {
             try FileManager.default.createDirectory(
                 at: home.appendingPathComponent(sub), withIntermediateDirectories: true
             )

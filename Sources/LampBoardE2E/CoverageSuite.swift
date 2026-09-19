@@ -53,6 +53,44 @@ enum CoverageSuite {
             // With the switch on, a folder nobody claims is a place too — but only
             // for a session whose live file names it: the file's cwd is the row's
             // folder, and a signal with no file behind it is still nothing.
+            // Reported from use: a project showed two conversations where the
+            // editor had one. Both processes were alive — VS Code had started a
+            // second `claude` twenty-three seconds after the first and never
+            // killed it — but only one of them had ever held a conversation. The
+            // other had no transcript anywhere on the disk, and its row was a
+            // line you could click into an empty window.
+            TestCase("a session that has never said a word gets no row, and gets one the moment it does") { a in
+                let id = "e2e-never-spoke"
+                let folder = LifecycleSuite.workspace
+                // Alive for certain: pid 1 answers EPERM to `kill(1, 0)`, which
+                // the reader counts as alive.
+                app.writeLiveSession(sessionId: id, cwd: folder, pid: 1)
+                defer { app.removeLiveSessions() }
+
+                // The event that says a process exists. It is not the event that
+                // says something happened.
+                app.sendHook(HookPayloads.sessionStart(sessionId: id, cwd: folder))
+
+                a.expect(
+                    app.holdsThroughTwoSweeps { app.session(id: id) == nil },
+                    "a live process with no conversation behind it is not a row"
+                )
+
+                // And the first word it says brings it back, with no gesture from
+                // anybody: the rule is about having nothing to show, not about
+                // having been refused once.
+                app.writeTranscript(sessionId: id, cwd: folder, title: "Wire the release script")
+                defer {
+                    try? FileManager.default.removeItem(
+                        at: TranscriptLocator.candidateURL(sessionId: id, cwd: folder, home: app.home)
+                    )
+                }
+                a.expect(
+                    app.waitUntil { app.session(id: id) != nil },
+                    "the row appears as soon as there is a conversation to open"
+                )
+            },
+
             TestCase("a terminal session in a folder nobody claims gets a row when told so") { a in
                 a.expectEqual(app.runCommand(["terminal", "on"]).status, 0, "switch on")
                 defer { app.runCommand(["terminal", "off"]) }
