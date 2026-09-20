@@ -55,9 +55,11 @@ and `Stop`, for reasons `HookConfigMerger.commandOnlyEvents` gives in full. The
 other seven are `"type": "http"` entries posting to the panel's loopback port,
 with the token and the harness in `headers` and `CLAUDE_CODE_ENTRYPOINT` in
 `allowedEnvVars`. The `http` type appeared in Claude Code **2.1.63**, per its
-changelog; the reference says a non-2xx answer and a refused connection are both
-"non-blocking error, execution continues", which is what makes refusing a wrong
-token on `/signal` safe (D7).
+changelog, and the installer checks: below that release every event stays on the
+script, `install-hooks` and `status` say so, and a version that cannot be read is
+taken as current (D49). The reference says a non-2xx answer and a refused
+connection are both "non-blocking error, execution continues", which is what makes
+refusing a wrong token on `/signal` safe (D7).
 
 **Mind the lifecycle.** Claude Code sessions that are **already open** do not
 re-read `settings.json`: they pick up the new configuration only the next time

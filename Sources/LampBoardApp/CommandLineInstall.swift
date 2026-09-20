@@ -27,6 +27,12 @@ extension CommandLineInterface {
                 print("\(harness.displayName) hooks installed for: "
                     + installer.installedEvents().joined(separator: ", "))
                 print("Script: \(installer.scriptPath)")
+                // Said here, because nothing else about a degraded installation
+                // is visible: the events are registered, the panel works, and
+                // the only difference is a process per event that need not be.
+                if harness == .claudeCode, let note = ClaudeCodeInstallation.nativeHooksNote() {
+                    print(note)
+                }
             case .failed(let reason):
                 FileHandle.standardError.write(
                     Data("\(harness.displayName) hooks were not installed: \(reason)\n".utf8)

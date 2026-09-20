@@ -16,6 +16,12 @@ extension CommandLineInterface {
         let events = installer.installedEvents()
 
         print("Claude Code")
+        // Read, not assumed, because the hooks' shape depends on it (D49). "Not
+        // found" is a different fact from an old version, and the installer
+        // treats the first as current.
+        let version = ClaudeCodeInstallation.installedVersion()
+        print("  Version:      \(version.map(String.init(describing:)) ?? "not found, taken as current")")
+        if let note = NativeHookSupport.note(for: version) { print("                \(note)") }
         print("  Hook script:  \(installer.scriptPath)")
         print("  Registered:   \(events.isEmpty ? "no" : events.joined(separator: ", "))")
 

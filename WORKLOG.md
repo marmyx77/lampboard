@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **768**, instantaneous |
-| End-to-end tests | **108**, about a minute |
+| Domain tests | **772**, instantaneous |
+| End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -1943,3 +1943,14 @@ version.
 Released the same evening as **0.4.1**, and the notes say the one thing 0.4.0's
 could not: there is nothing to do after updating. The hooks on this Mac and on
 every node are brought up to date by the panel itself.
+
+### The version nobody had asked about
+
+Last, after the release: the installer now reads which Claude Code is installed
+before writing an `http` hook, and below 2.1.63 — the release whose changelog
+added the type — keeps every event on the script and says so, here and on every
+node (D49). A version it cannot read is taken as current, in those words, on
+`status`. Proved in a home of its own with a Claude Code laid out as its native
+installer does, pointing at a version from before the type: `install-hooks` writes
+ten script hooks and names both versions, and the first launch adds the token to
+the script without going native.

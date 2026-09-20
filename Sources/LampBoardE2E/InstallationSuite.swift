@@ -539,6 +539,79 @@ enum InstallationSuite {
                 )
             },
 
+            // A Claude Code from before the `http` type, laid out the way its
+            // native installer does it, in a home of its own: the installer has
+            // to keep every event on the script, say so, and a launch on that
+            // home has to leave the installation as it is rather than "repair"
+            // it into a shape that Claude Code cannot run (D49).
+            TestCase("on a Claude Code older than 2.1.63 every event stays on the script, and the launch agrees") { a in
+                let own = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("lampboard-e2e-old-claude-\(ProcessInfo.processInfo.processIdentifier)")
+                try? FileManager.default.removeItem(at: own)
+                let versions = own.appendingPathComponent(".local/share/claude/versions")
+                for directory in [own.appendingPathComponent(".claude"), own.appendingPathComponent(".local/bin"), versions] {
+                    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                }
+                defer { try? FileManager.default.removeItem(at: own) }
+                try? "#!/bin/sh\necho 2.1.50 (Claude Code)\n".write(
+                    to: versions.appendingPathComponent("2.1.50"), atomically: true, encoding: .utf8
+                )
+                try? FileManager.default.createSymbolicLink(
+                    at: own.appendingPathComponent(".local/bin/claude"),
+                    withDestinationURL: versions.appendingPathComponent("2.1.50")
+                )
+
+                let port: UInt16 = 9907
+                let install = Process()
+                install.executableURL = app.binaryPath
+                install.arguments = ["install-hooks", "--port", String(port)]
+                var environment = ProcessInfo.processInfo.environment
+                environment[AppConfig.homeOverrideVariable] = own.path
+                install.environment = environment
+                let pipe = Pipe()
+                install.standardOutput = pipe
+                install.standardError = pipe
+                guard (try? install.run()) != nil else { return a.fail("install-hooks did not start") }
+                let said = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                install.waitUntilExit()
+                a.expectEqual(install.terminationStatus, 0, "exit code — output: \(said)")
+                a.expect(said.contains("2.1.50") && said.contains("2.1.63"), "the command says why: \(said)")
+
+                let settingsURL = own.appendingPathComponent(".claude/settings.json")
+                guard let data = try? Data(contentsOf: settingsURL),
+                      let settings = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { return a.fail("settings.json unreadable") }
+                let script = own.appendingPathComponent(".lampboard/hook.sh")
+                a.expect(HookConfigMerger.nativePorts(in: settings).isEmpty, "a native hook was written")
+                a.expectEqual(
+                    HookConfigMerger.installedEvents(in: settings, scriptPath: script.path).count,
+                    HookConfigMerger.defaultEvents.count, "every event, on the script"
+                )
+                let text = (try? String(contentsOf: script, encoding: .utf8)) ?? ""
+                a.expect(HookScriptBuilder.posts(text, to: port), "the script posts to the port asked for")
+
+                // No token existed when the command ran, so the first launch
+                // creates one and repairs the script to carry it. What it must
+                // not do is take the repair as a reason to go native: the shape
+                // Claude Code there can run is the shape it keeps.
+                let owner = AppUnderTest(binaryURL: app.binaryPath, port: port, home: own)
+                defer { owner.stopKeepingHome() }
+                do { try owner.startReusingHome() } catch {
+                    return a.fail("the instance did not start: \(error)")
+                }
+                guard let token = owner.tokenValue,
+                      let after = try? Data(contentsOf: settingsURL),
+                      let repaired = try? JSONSerialization.jsonObject(with: after) as? [String: Any]
+                else { return a.fail("settings.json unreadable after the launch") }
+                a.expect(HookConfigMerger.nativePorts(in: repaired).isEmpty, "the launch went native on an old Claude Code")
+                a.expectEqual(
+                    HookConfigMerger.installedEvents(in: repaired, scriptPath: script.path).count,
+                    HookConfigMerger.defaultEvents.count, "every event still on the script"
+                )
+                let repairedScript = (try? String(contentsOf: script, encoding: .utf8)) ?? ""
+                a.expect(repairedScript.contains(token), "the script carries the token after the launch")
+            },
+
             TestCase("the sessions contract carries the slot field") { a in
                 guard let response = app.sessions(), let first = response.sessions.first else {
                     return a.fail("no session to inspect")

@@ -191,11 +191,16 @@ struct HookInstaller {
     ///   hook at all: the server still accepts an absent token, and a panel that
     ///   works beats one that refused to set itself up over a secret it only uses
     ///   to tell its own hooks apart.
+    /// - Parameter nativeHooks: whether Claude Code here understands `http`
+    ///   hooks. Read from the installed version by default (D49); `false` keeps
+    ///   every event on the script, which is what a Claude Code older than
+    ///   2.1.63 can run.
     func install(
         port: UInt16 = AppConfig.listenPort,
         includeToolEvents: Bool = false,
         includeMessageDelivery: Bool = false,
-        token: String? = TokenStore().read()
+        token: String? = TokenStore().read(),
+        nativeHooks: Bool = ClaudeCodeInstallation.supportsNativeHooks()
     ) throws -> URL? {
         try writeScript(port: port, token: token)
         if includeMessageDelivery { try writeRewakeScript() }
@@ -216,10 +221,14 @@ struct HookInstaller {
         // Claude Code posts natively; Codex keeps the script for everything,
         // because its hook system has no `http` type to offer. The script is
         // written either way: `SessionStart` and `SessionEnd` still run it, and so
-        // does every Codex event.
-        let endpoint = harness == .claudeCode
+        // does every Codex event. A Claude Code from before the `http` type keeps
+        // everything on the script too, and the command line says so.
+        let endpoint = harness == .claudeCode && nativeHooks
             ? HookConfigMerger.endpoint(port: port, token: token, harness: harness)
             : nil
+        if harness == .claudeCode && !nativeHooks {
+            Diagnostics.log("Claude Code here predates native hooks: every event on the script")
+        }
 
         let updated = HookConfigMerger.install(
             into: settings,

@@ -642,6 +642,8 @@ enum CommandLineInterface {
             case .success(let inspection):
                 print("\(host): python \(inspection.pythonVersion), curl \(inspection.hasCurl ? "present" : "MISSING"), "
                       + "hooks \(inspection.hooksInstalled ? "installed" : "not installed")")
+                print("  Claude Code: \(inspection.claudeVersion.map(String.init(describing:)) ?? "version not read, taken as current")")
+                if let note = NativeHookSupport.note(for: inspection.claudeVersion) { print("  \(note)") }
                 if let error = inspection.error { print("  settings.json unreadable: \(error)") }
                 if let problem = inspection.directoryProblem { print("  ~/.lampboard there \(problem)") }
                 // Read-only here: the panel rewrites stale hooks itself when it

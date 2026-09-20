@@ -488,6 +488,24 @@ enum HookScriptBuilderSuite {
                 return t.fail("the second inspection did not answer")
             }
             t.expect(bare["hookScript"] is NSNull || bare["hookScript"] == nil, "no script → null")
+
+            // Which Claude Code is there, read the way the native installer lays
+            // it out: the link's target is named after the version. The node's
+            // installer keeps everything on the script below 2.1.63 (D49).
+            let versions = home.appendingPathComponent(".local/share/claude/versions")
+            try? FileManager.default.createDirectory(at: versions, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(
+                at: home.appendingPathComponent(".local/bin"), withIntermediateDirectories: true
+            )
+            try? "#!/bin/sh\n".write(to: versions.appendingPathComponent("2.1.50"), atomically: true, encoding: .utf8)
+            try? FileManager.default.createSymbolicLink(
+                at: home.appendingPathComponent(".local/bin/claude"),
+                withDestinationURL: versions.appendingPathComponent("2.1.50")
+            )
+            guard let versioned = runPython(RemoteInstallScripts.inspect, home: home) else {
+                return t.fail("the third inspection did not answer")
+            }
+            t.expectEqual(versioned["claudeVersion"] as? String, "2.1.50", "the version the link names")
         },
 
         // The whole remote repair, rehearsed here with the real scripts against a

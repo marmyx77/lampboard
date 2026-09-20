@@ -2203,3 +2203,31 @@ repair through the real Python scripts against a home laid out like the node —
 inspect, judge, merge, apply, inspect again — and `lampboard remote check`, which
 is read-only, reports the verdict the panel will act on. The write happens at the
 panel's next connection.
+
+## D49 · Native hooks are a capability read from Claude Code, not assumed
+
+**Decided.** Before writing an `http` hook the installer reads which Claude Code
+is installed — the native installer's `~/.local/bin/claude` link is named after
+its version, and `claude --version`, run with a deadline from the places a binary
+lives, is the fallback — and below **2.1.63**, the release whose changelog added
+the type, every event goes on the script instead. Locally, in the launch repair,
+and on a node, where the inspection reports the version and the same rule decides.
+`install-hooks`, `status` and `remote check` say what was found and what it meant.
+
+**Why.** The migration to native hooks was measured on 2.1.268 and shipped in
+0.4.0 without asking what version anybody else had. On an older Claude Code the
+`http` entries are unknown to it, and the panel hears at best the three events
+that still run the script: a column gone quiet for every person pinned on an old
+release, with nothing anywhere to say why. "Claude Code updates itself" is true
+and is not a reason to write a configuration a copy cannot run.
+
+**Unknown fails open.** A version that cannot be read is taken as current. The
+people on an old release are few; the people whose `claude` sits somewhere the
+reader did not look would be everybody else, and a rule that failed closed would
+put all of them back on a process per event for the sake of a lookup. `status`
+says "not found, taken as current" in those words, so the assumption is visible.
+
+**Not measured.** What an older Claude Code does with an entry of a type it does
+not know — ignore it, or refuse the whole file — was not observed; no such binary
+was at hand. The rule does not depend on the answer: either way those events do
+not arrive, and either way the script does.

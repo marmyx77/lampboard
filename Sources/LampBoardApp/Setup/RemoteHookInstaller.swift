@@ -16,6 +16,9 @@ struct RemoteInspection {
     /// The script under the project's previous name, when that is what the node has.
     let legacyHookScript: String?
     let pythonVersion: String
+    /// Which Claude Code is there; `nil` when it could not be read, which the
+    /// installer takes as current (D49).
+    let claudeVersion: ReleaseVersion?
     let hasCurl: Bool
     /// Why `~/.lampboard` there cannot be trusted — a symlink, another user's —
     /// or `nil` when it is the user's own directory (or absent).
@@ -91,6 +94,7 @@ enum RemoteHookInstaller {
                 hookScript: object["hookScript"] as? String,
                 legacyHookScript: object["legacyHookScript"] as? String,
                 pythonVersion: (object["python"] as? String) ?? "?",
+                claudeVersion: ReleaseVersion(object["claudeVersion"] as? String),
                 hasCurl: (object["curl"] as? Bool) ?? false,
                 directoryProblem: object["directoryProblem"] as? String,
                 error: object["error"] as? String
@@ -165,12 +169,17 @@ enum RemoteHookInstaller {
         //
         // The token is the **local** one: what authorizes the post is the
         // server at this end, which is where the tunnel lands.
-        let endpoint = HookConfigMerger.endpoint(
-            port: inspection.port,
-            token: token,
-            harness: .claudeCode,
-            host: host
-        )
+        //
+        // Native only where the Claude Code over there can take it (D49): the
+        // node runs its own copy, and the inspection says which.
+        let endpoint = NativeHookSupport.isAvailable(in: inspection.claudeVersion)
+            ? HookConfigMerger.endpoint(
+                port: inspection.port,
+                token: token,
+                harness: .claudeCode,
+                host: host
+            )
+            : nil
         let merged = HookConfigMerger.install(
             into: settings,
             scriptPath: inspection.scriptPath,

@@ -1,14 +1,14 @@
 # Code map
 
-~42,425 lines of Swift across five targets. For each file: what it contains, why
+~42,720 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,577 lines · 94 files   pure logic, zero AppKit
-  LampBoardApp/    16,480 lines · 86 files   shell: AppKit, network, windows
-  LampBoardTests/  10,884 lines · 56 files   768 cases, instantaneous
-  LampBoardE2E/    3,115 lines · 12 files   108 cases, the real binary
+  LampBoardCore/  11,642 lines · 95 files   pure logic, zero AppKit
+  LampBoardApp/    16,573 lines · 87 files   shell: AppKit, network, windows
+  LampBoardTests/  10,948 lines · 57 files   772 cases, instantaneous
+  LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -815,6 +815,11 @@ shared installation (D48); its own domain case then caught the repair about to
 switch message delivery on for everybody, because `isInstalled` claims native
 hooks for any path asked about.
 
+### `NativeHookSupport.swift` · 45
+Whether a Claude Code takes `type: "http"` hooks: the release that added them
+(2.1.63, per the changelog), the boundary, the parsing of `claude --version`, and
+the direction an unreadable version falls — open, in those words (D49).
+
 ### `HookScriptBuilder.swift` · 172
 Generates `hook.sh`, and is the one place the listener's address is spelled:
 `target(port:)` is what the script posts to and what `HookConfigMerger.endpoint`
@@ -1097,6 +1102,13 @@ they had. The first version reinstalled at its own port with fresh defaults, and
 test instance on another port turned the whole shared installation towards a
 process that then exited.
 
+### `ClaudeCodeInstallation.swift` · 66
+Which Claude Code is installed here, read rather than assumed: the native
+installer's `~/.local/bin/claude` link is named after its version, and
+`claude --version` is run with a deadline from the places a binary lives when the
+link is not there. Feeds `NativeHookSupport`; `install-hooks` and `status` print
+what it found.
+
 ### `RemoteHookInstaller.swift` · 265
 The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers. `repairToken` brings a node's hooks up to the current token by the same rule the launch applies here (D48), previous-name registrations included, and only when they post to that user's tunnel port; the fleet calls it on every check.
 
@@ -1149,7 +1161,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 768 cases
+## `LampBoardTests/` — 772 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1206,7 +1218,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 108 cases
+## `LampBoardE2E/` — 109 cases
 
 | Suite | Covers |
 |---|---|
@@ -1214,7 +1226,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `LifecycleSuite` | the states walked over HTTP |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
-| `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, non-headless startup |
+| `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows

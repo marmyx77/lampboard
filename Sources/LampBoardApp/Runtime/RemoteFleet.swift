@@ -134,6 +134,8 @@ final class RemoteFleet: ObservableObject {
                 case .success(let inspection):
                     hooks = inspection.hooksInstalled ? .installed : .absent
                     var notes = ["python \(inspection.pythonVersion)"]
+                    notes.append(inspection.claudeVersion.map { "Claude Code \($0)" } ?? "Claude Code version not read")
+                    if let note = NativeHookSupport.note(for: inspection.claudeVersion) { notes.append(note) }
                     if !inspection.hasCurl { notes.append("curl missing: the hook script needs it") }
                     if let problem = inspection.directoryProblem { notes.append("~/.lampboard there \(problem)") }
                     if let error = inspection.error { notes.append("settings.json unreadable: \(error)") }

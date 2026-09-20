@@ -52,10 +52,31 @@ public enum RemoteInstallScripts {
     /// nothing about tokens and is not told one for the sake of a comparison.
     public static let inspect = directoryGuard + "\n" + """
 
-    import hashlib, json, platform, shutil, sys
+    import hashlib, json, platform, re, shutil, subprocess, sys
 
     home = os.path.expanduser("~")
     settings_path = os.path.join(home, "\(AppConfig.remoteClaudeSettingsRelativePath)")
+
+    # Which Claude Code is over there, the same two ways the Mac reads its own:
+    # the native installer's link names the version, else `claude --version`
+    # with a deadline. None when neither answers, which the Mac takes as current.
+    def claude_version():
+        try:
+            name = os.path.basename(os.path.realpath(os.path.join(home, ".local/bin/claude")))
+            if re.fullmatch(r"\\d+\\.\\d+\\.\\d+", name):
+                return name
+        except Exception:
+            pass
+        try:
+            env = dict(os.environ)
+            env["PATH"] = os.path.join(home, ".local/bin") + ":" + env.get("PATH", "")
+            words = subprocess.run(["claude", "--version"], capture_output=True, text=True,
+                                   timeout=3, env=env).stdout.split()
+            if words and re.fullmatch(r"\\d+\\.\\d+\\.\\d+", words[0]):
+                return words[0]
+        except Exception:
+            pass
+        return None
     def read_text(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -86,6 +107,7 @@ public enum RemoteInstallScripts {
         "settingsMode": mode,
         "hookScript": hook_script,
         "legacyHookScript": legacy_hook_script,
+        "claudeVersion": claude_version(),
         "python": platform.python_version(),
         "curl": shutil.which("curl") is not None,
         "directoryProblem": own_directory(os.path.join(home, "\(directoryName)")),

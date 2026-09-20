@@ -706,11 +706,14 @@ names neither the cask nor a reason a newcomer can act on. Measured here on
 Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
 from untrusted tap*.
 
-**Claude Code 2.1.63 or later.** Most of the hooks post natively, and the `http`
-hook type appeared in that release (its changelog, not a measurement here). The
-installer does not check the version: on an older Claude Code the native entries
-are not understood, and the panel hears at best the three events that still run
-the script. Claude Code updates itself, so this is a note for pinned installations.
+**Claude Code 2.1.63 or later for native hooks.** Most of the hooks post
+natively, and the `http` hook type appeared in that release (its changelog, not a
+measurement here). The installer reads which Claude Code is installed — the native
+installer's `~/.local/bin/claude` link names its version, `claude --version` is the
+fallback — and below that release keeps every event on the script and says so;
+`lampboard status` shows the version it found. A version it cannot read is taken
+as current, because Claude Code updates itself and degrading everybody for a
+failed read would be the wrong trade (D49). The same rule is applied to every node.
 
 **Without Homebrew**, the disk image lives at one address that never changes:
 
@@ -1322,8 +1325,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 768 domain tests, instantaneous
-swift run LampBoardE2E                # 108 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 772 domain tests, instantaneous
+swift run LampBoardE2E                # 109 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
