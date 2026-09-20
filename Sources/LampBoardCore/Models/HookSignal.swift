@@ -125,6 +125,10 @@ public struct HookSignal: Sendable, Equatable {
     /// every script written before this existed sends.
     public let harness: Harness
 
+    /// The repository and branch the session started in, when the hook script
+    /// could resolve them. Read there and not here: see `GitIdentity`.
+    public let git: GitIdentity?
+
     /// What a blocked session is asking for, when the harness says. Only Codex
     /// does today, and only on `PermissionRequest` — see `PendingAsk`.
     public let pendingAsk: PendingAsk?
@@ -153,6 +157,7 @@ public struct HookSignal: Sendable, Equatable {
         transcriptPath: String? = nil,
         host: String? = nil,
         harness: Harness = .claudeCode,
+        git: GitIdentity? = nil,
         pendingAsk: PendingAsk? = nil,
         approvalReviewer: ApprovalReviewer? = nil
     ) {
@@ -169,6 +174,7 @@ public struct HookSignal: Sendable, Equatable {
         self.transcriptPath = transcriptPath
         self.host = host
         self.harness = harness
+        self.git = git
         self.pendingAsk = pendingAsk
         self.approvalReviewer = approvalReviewer
     }
@@ -184,6 +190,14 @@ public struct HookSignal: Sendable, Equatable {
     /// A copy rather than a mutation: the decoder produces the signal from what
     /// arrived on the wire, and the shell adds what it had to read a file to
     /// learn. Nothing that already exists changes underneath a caller.
+    ///
+    /// **Every field has to be listed here, and forgetting one is silent.** It
+    /// happened: `git` was added to the signal, carried correctly from the header
+    /// to the decoder, and then dropped on this line — the identity reached the
+    /// server and never reached a row, with nothing failing anywhere. The suite
+    /// case "the reviewer is the only thing a copy changes" exists to catch the
+    /// next one, and it compares whole signals rather than named fields so that it
+    /// covers a field nobody has written yet.
     public func withApprovalReviewer(_ reviewer: ApprovalReviewer?) -> HookSignal {
         HookSignal(
             sessionId: sessionId, event: event, cwd: cwd,
@@ -191,7 +205,7 @@ public struct HookSignal: Sendable, Equatable {
             lastAssistantMessage: lastAssistantMessage, sessionSource: sessionSource,
             failureReason: failureReason,
             inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes,
-            transcriptPath: transcriptPath, host: host, harness: harness,
+            transcriptPath: transcriptPath, host: host, harness: harness, git: git,
             pendingAsk: pendingAsk, approvalReviewer: reviewer
         )
     }

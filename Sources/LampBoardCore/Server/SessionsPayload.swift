@@ -65,6 +65,10 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     /// how a session **is**, this says where to find what was **said**.
     public let transcriptPath: String?
 
+    /// The repository and branch the session started in, when the hook script
+    /// could resolve them. Carried so that a remote node's rows say it too.
+    public let git: GitIdentity?
+
     /// The machine the session runs on, as configured in the settings; `nil` for
     /// this one. A reader that raises windows needs it: there is nothing local to raise.
     public let host: String?
@@ -112,6 +116,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         muted: Bool = false,
         slot: Int? = nil,
         transcriptPath: String? = nil,
+        git: GitIdentity? = nil,
         host: String? = nil,
         entrypoint: String? = nil,
         origin: String = SessionOrigin.editor.rawValue,
@@ -138,6 +143,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.muted = muted
         self.slot = slot
         self.transcriptPath = transcriptPath
+        self.git = git
         self.host = host
         self.entrypoint = entrypoint
         self.origin = origin
@@ -211,6 +217,7 @@ public enum SessionsCodec {
             muted: muted,
             slot: slot,
             transcriptPath: session.transcriptPath,
+            git: session.git,
             host: session.workspace.host,
             entrypoint: session.entrypoint,
             origin: session.origin.rawValue,

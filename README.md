@@ -250,6 +250,49 @@ the one that sends the panel to the menu bar or brings it back. On the right, in
 the drag handles' column, the legend — what the six colours and the two rings
 mean, with a live count of each — and the menu.
 
+## How much of your allowance is left
+
+**Off by default.** Turned on, a strip appears at the foot of the column with
+three bars: the rolling five-hour window Claude Code calls the session limit, the
+week, and one model's own weekly cap — Fable 5.1 on the account this was written
+against. The same figures `/usage` shows. They belong to the account, not to a
+row, which is why they are drawn once, underneath, and in bars rather than rings:
+the ring beside each row already means how full *that conversation's* context
+window is, and a second ring meaning something else would read as the same
+measurement about a different subject.
+
+**One group of bars per account, and the machines on other machines are asked
+too.** You can be signed in differently in different places — measured across the
+two machines this was built on, an organization account on the laptop and a
+personal one on the build box, on two different plans with two different-sized
+allowances, with most of the work happening on the second. A single unlabelled bar
+there would not be incomplete, it would be wrong: it would look like your
+remaining room while the sessions spending a different allowance sat a few rows
+above. So each group is named, the name appears only when there is more than one
+account, and two machines signed into the same account draw one group. Each node
+is asked **on the node** — only the three percentages come back over the tunnel,
+never the credential.
+
+**This is the only thing lampboard sends anywhere apart from the update check,
+and the reason it has a switch.** Everything else here reads files that are
+already on your Mac. This asks `api.anthropic.com`, roughly every two and a half
+minutes, signed with the token Claude Code already keeps in your keychain. The
+panel says so before the first request leaves.
+
+It **borrows** that token and never renews it. The keychain blob also holds a
+refresh token, and there is deliberately no code here that reads it: refresh
+tokens are commonly rotated when spent, so minting a new one could invalidate
+Claude Code's own copy and sign you out of the tool this panel exists to watch.
+The consequence is visible and intended — a Mac with no Claude Code session in
+eight hours has an expired token, and the strip goes quiet until Claude Code
+refreshes it. That is the stretch in which nobody is spending any allowance.
+
+Claude Code keeps its own copy of these figures in `~/.claude.json`, free to read
+and needing no credentials, and it is deliberately not used. Measured on 20
+September 2026: that cache said the five-hour window was at 0% and the week at 6%
+while the account was really at 9% and 15% — fifteen hours out of date. A number
+nobody can tell is stale is worse than no number.
+
 ## In the menu bar
 
 The panel can live in one of two places, and a lamp can sit in the menu bar in
@@ -1257,8 +1300,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 719 domain tests, instantaneous
-swift run LampBoardE2E                # 99 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 754 domain tests, instantaneous
+swift run LampBoardE2E                # 105 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

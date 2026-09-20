@@ -1992,3 +1992,68 @@ window list answers questions the eye cannot: a process with a window at level
 worth writing down is that every honest-looking signal said the feature was fine.
 `isVisible` said yes. The frame said a number. The item existed. Only the
 photograph disagreed.
+
+## The free copy of the allowance that is fifteen hours old
+
+Claude Code caches the answer to `/usage` in `~/.claude.json`, under
+`cachedUsageUtilization`. It needs no credentials, no network and no keychain, and
+it holds exactly the fields the panel wants. It looks like the obvious way to draw
+the allowance strip, and it is a trap.
+
+Measured on 20 September 2026, on a machine that had been working all morning: the
+cache said the five-hour window was at 0% and the week at 6%. The account was at
+9% and 15%. The cache had been written fifteen hours earlier.
+
+It is not a bug in Claude Code. Read in the binary: it rewrites that cache at most
+every five minutes (`a2o = 300000`) and treats it as dead after an hour
+(`i2o = 3600000`), so it is always correct **for Claude Code**, which refetches
+when it finds it stale. A reader that only ever looks gets whatever was last
+written, with no way to tell the difference — the file carries `fetchedAtMs`, but
+nothing stops it being hours old and looking exactly like a fresh one.
+
+What makes this worth a trap entry rather than a note is the shape of the failure.
+The wrong number is not absurd. It is plausible, precise, and in the same range as
+the right one, so nobody checks it. A number nobody can tell is stale is worse than
+no number, and free is not the same as cheap.
+
+The panel asks the endpoint instead, and draws the age of the answer in the
+tooltip.
+
+## The transcripts carry the rate limit only once you have hit it
+
+Looking for the allowance without credentials, the next idea is the transcripts:
+they do carry a `quotaLimits` block, with `rateLimitType`, `resetsAt` and an
+`overageStatus`. It is there, it is local, and it is free.
+
+It only ever appears with `"status": "rejected"`. Counted here: 7 occurrences
+across 400 transcripts, every one of them a 429 that had already happened. There
+is no record of "you are at 36%" anywhere in the transcript stream — the successful
+turns say nothing about the allowance at all.
+
+So it answers a different question: *have you already hit the wall*, which the
+panel learns anyway from the turn failing. It cannot answer *how close are you*,
+which is the only question the strip exists for.
+
+## The hook script that breaks on legal JSON
+
+The hook script reads `cwd` out of the payload with `sed` and hands it to `git`.
+It worked by hand, on every real session, and on the node over the tunnel. The
+end-to-end case for it failed, and the reason took an afternoon.
+
+`JSONSerialization` escapes forward slashes: `"\/tmp\/project"`. That is **legal
+JSON** — the escape is optional, and the standard allows it. Claude Code is Node
+and `JSON.stringify` does not use it, so every real payload arrives with plain
+slashes and the script is right every time. The test harness builds its payloads
+with Foundation, which does use it, so the script received
+`\/tmp\/lampboard-e2e\/project-alpha` and `git -C` failed on every call — silently,
+because the script swallows git's errors and simply sends no header. The row just
+never showed a branch.
+
+Two things worth keeping from it. A shell script parsing JSON with `sed` is
+accepting a contract far narrower than JSON, and the narrowing is invisible until
+somebody else's encoder exercises the part that was left out. And this is the kind
+of defect that **only an end-to-end test finds**: every unit around it was correct,
+and the failure lived in the gap between a JSON producer and a text parser.
+
+The fix is one more `sed`, undoing the escape. The bite is free: the harness will
+keep escaping slashes for ever, so removing that line turns the case red on its own.

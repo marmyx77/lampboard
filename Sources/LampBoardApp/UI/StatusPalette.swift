@@ -64,6 +64,25 @@ enum StatusPalette {
         }
     }
 
+    /// How full an allowance bar is allowed to look before it starts to warn.
+    ///
+    /// The **same three hues the lamps use** — the ready green, the working yellow,
+    /// the failed red — and deliberately so: a person reading this panel has
+    /// already learned that grammar a foot above, and inventing a second one for
+    /// the same idea would be asking them to learn two.
+    ///
+    /// What keeps the lamps first is not a different palette but **volume**. These
+    /// are drawn at eighty-five percent on a bar four points high; a lamp is a
+    /// saturated disc of thirteen. The bar is the only long horizontal thing on
+    /// the panel, so it is legible without ever being the brightest.
+    static func allowanceColor(percent: Int) -> Color {
+        switch percent {
+        case ..<40: return Color(red: 0.20, green: 0.85, blue: 0.42).opacity(0.85)
+        case ..<75: return Color(red: 0.98, green: 0.75, blue: 0.16).opacity(0.85)
+        default: return Color(red: 0.85, green: 0.24, blue: 0.24).opacity(0.85)
+        }
+    }
+
     /// Opacity at rest: the idle state stays readable without catching the eye.
     static func opacity(for status: SessionStatus) -> Double {
         status == .idle ? 0.45 : 1.0
@@ -326,12 +345,22 @@ enum Layout {
         PanelMetrics.Sizes(
             row: rowHeight, subRow: subRowHeight, spacing: rowSpacing,
             blockInset: blockInset, tail: tailHeight, padding: panelPadding,
-            footer: footerHeight, issueStrip: issueStripHeight
+            footer: footerHeight, issueStrip: issueStripHeight,
+            allowanceLine: allowanceLine
         )
     }
 
     /// The "and N more" line under a project showing more than it can.
     static let tailHeight: CGFloat = 16
+
+    /// One line of the allowance strip: a name, the limit nearest its cap, a bar.
+    ///
+    /// Seventeen points, carrying the **same twelve-point rounded face the project
+    /// names use**. It was ten, then eight and a half, and both read as a footnote
+    /// to the column when this is the line that says how long the whole column has
+    /// left. The first version was also four lines per account, tall enough to push
+    /// the projects off the bottom of the panel.
+    static let allowanceLine: CGFloat = 17
 
     /// How tall one row draws. Delegates, because arithmetic that decides whether
     /// a row can be seen is not drawing and belongs where a test can call it.
@@ -344,8 +373,13 @@ enum Layout {
         )
     }
 
-    static func height(ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool) -> CGFloat {
-        PanelMetrics.height(ofBlocks: blocks, extras: extras, showsIssue: showsIssue, sizes: sizes)
+    static func height(
+        ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0
+    ) -> CGFloat {
+        PanelMetrics.height(
+            ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
+            allowanceLines: allowanceLines, sizes: sizes
+        )
     }
 
 }

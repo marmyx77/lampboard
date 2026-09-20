@@ -2012,3 +2012,115 @@ freshly opened tab, and it pays for that with a row that appears and then
 vanishes while somebody is looking at the session it belongs to, which reads as
 a fault. A row that has not appeared yet reads as a rule, and it is one that can
 be said in a sentence.
+
+## D45 · A figure about the account does not sit on a row
+
+The allowance — the five-hour window, the week, one model's own weekly cap — is a
+property of the account. Every other number in this panel belongs to a session:
+the colour, the context ring, the model letter, the slot.
+
+Putting the allowance on each row would state one fact six times, and six copies
+of one fact read as six facts: a column of rows each showing "36%" invites the
+reading that *this* conversation has spent 36% of something. It has not. So the
+allowance is drawn **once**, at the foot of the column, in **bars** rather than
+rings — because the ring is already spoken for here, and a second ring a few
+points below meaning something else would read as the same measurement about a
+different subject.
+
+**One line per account, and it shows the session limit.** Not all three limits —
+the first version drew four lines per account, eight for somebody signed into two,
+and buried the column it was meant to annotate: with seven projects open, three
+went off the bottom of the panel. And not "whichever is highest", which was the
+second version and was arbitrary: a weekly figure at 32% is not news, and showing
+it instead of the five-hour window meant the one number a person can act on kept
+disappearing behind one they cannot.
+
+The line is **the session window, its percentage, and how long until it resets**,
+in the same twelve-point rounded face the project names use. That is the pair of
+facts somebody acts on: whether to start another turn now, and when it becomes
+free again. The exception is a limit that is genuinely spent — above 90% — which
+becomes the binding one, because a session window resetting in forty minutes buys
+nothing if the week is gone. Everything else is in the tooltip, exactly as it is
+for a project row.
+
+Both of those were corrections made after looking at the running panel, and both
+had passed a review that checked the figures instead of the picture. A number that
+is right and unreadable has not been shown.
+
+**The bar carries the lamps' own three hues** — green below forty, yellow to
+seventy-five, red above. The first version was monochrome, on the reasoning that
+the state colours belong to the lamps and a second use of them would borrow a word
+already taken. That was over-careful: the grammar is already learned a foot up the
+panel, and inventing a second one for the same idea asks somebody to hold two.
+
+What keeps the lamps first is **volume, not palette**: five points of bar at
+eighty-five percent opacity against a saturated disc of thirteen. The bar is the
+only long horizontal thing here, so it reads without ever being the brightest.
+
+**The hover is a card, not a sentence.** It was `.help(…)` to begin with, which in
+this panel shows *nothing at all* — the window is never key, and `Tooltip` says so
+in as many words, which is what made the other two limits unreachable. It now uses
+the panel's own tooltip, drawn as `AllowanceCard`: the same monospaced labels, the
+same aligned grid and the same bars as a project's card, because the two appear in
+the same place a second apart and a second layout would read as a second
+application.
+
+## D46 · A borrowed credential is used, never renewed
+
+The allowance figures need Claude Code's OAuth token, which sits in the login
+keychain. Measured on 20 September 2026: the access token lives **eight hours**
+and Claude Code rotates it there; the refresh token beside it lasts about four
+weeks. Both are readable — the item carries no access-control list, verified with
+an ad-hoc signed binary carrying no team identifier, which read it with no consent
+dialog.
+
+So renewing the token ourselves would be easy, and it is forbidden. Refresh tokens
+are commonly rotated when spent: minting a new access token with Claude Code's
+refresh token could invalidate the copy Claude Code holds and **sign the person
+out of the tool this panel exists to watch**. A widget that logs you out of your
+editor is not a trade anybody would accept, and the failure would look like Claude
+Code's fault rather than ours.
+
+The rule is enforced by absence rather than by discipline. `ClaudeCredentials`
+exposes one function, and it returns the access token; there is no function in the
+codebase that reads the refresh token. A capability that does not exist is a
+stronger guarantee than a comment asking nobody to use one.
+
+The consequence is deliberate and visible: with no Claude Code session in eight
+hours the token expires, the answer is a 401, and the strip goes quiet with a
+sentence saying it is waiting for Claude Code to refresh its sign-in. That is
+exactly the stretch in which nobody is spending any allowance.
+
+## D47 · An allowance is never drawn without saying whose it is
+
+The allowance strip was built reading this machine's credentials and drawing one
+set of bars. The assumption underneath it — that a person has one Claude account —
+was never stated, and it is wrong.
+
+Measured on 20 September 2026, on the two machines this project is developed
+across: this Mac is signed in as `editorial@aworld.org`, an organization account on
+a **Team** plan. The node the tunnel reaches is signed in as `armellino@gmail.com`,
+a personal account on a **Max** plan. Two accounts, two allowances, two different
+*sizes* of allowance — and about nine tenths of the work happens on the second one.
+
+One unlabelled bar reading "36%" in that situation is not an incomplete feature, it
+is a **wrong** one. It invites the reading that this is your remaining room, while
+the sessions actually spending a different account's allowance sit a few points
+above it in the same column. The panel's whole claim is that a glance tells you the
+truth; a figure that quietly describes a tenth of your work breaks that claim more
+thoroughly than showing nothing would.
+
+So: one group of bars per account, each named, and the nodes are asked as well as
+this Mac. The name appears only when there is more than one account, because with a
+single one the address is a line of text telling the person what they already know.
+
+**Two machines on one account draw one group.** Matched on the account uuid, never
+on the address — the address can be absent, and the uuid is what the answer is
+keyed on. When neither side can prove its identity the groups stay separate:
+drawing one allowance twice is a smaller failure than hiding a second one, which is
+the failure this decision exists to undo.
+
+**The node is asked on the node.** The request is made over there and only the
+answer — three percentages — crosses the wire. Fetching the token back would put a
+credential in this app's memory, and in whatever ssh buffered, for the sake of
+decoration. The node already has the credential and a network.

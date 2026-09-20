@@ -30,6 +30,7 @@ struct Preferences {
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
+        static let usageEnabled = "usage.enabled"
         static let terminalSessions = "terminal.sessions"
         static let rowNames = "panel.rowNames"
         static let calmBlinkWorkspaces = "panel.calmBlink"
@@ -326,6 +327,19 @@ struct Preferences {
     var presenceEnabled: Bool {
         get { defaults.bool(forKey: Key.presenceEnabled) }
         nonmutating set { defaults.set(newValue, forKey: Key.presenceEnabled) }
+    }
+
+    /// `true` when the foot of the column shows how much of the account's
+    /// allowance is gone.
+    ///
+    /// **Off by default, and this is the one switch that must stay off.** Every
+    /// other thing this app does happens on the Mac; this one asks Anthropic, with
+    /// Claude Code's own sign-in, every couple of minutes. That is a promise about
+    /// the product — see the README — and a promise is not something to change on
+    /// somebody's behalf because the feature is useful.
+    var usageEnabled: Bool {
+        get { defaults.bool(forKey: Key.usageEnabled) }
+        nonmutating set { defaults.set(newValue, forKey: Key.usageEnabled) }
     }
 
     /// Whether sessions in folders no editor claims — `claude` in a terminal —

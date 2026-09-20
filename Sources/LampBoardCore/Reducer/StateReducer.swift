@@ -252,9 +252,17 @@ public enum StateReducer {
         // already established the principle elsewhere: it comes from the
         // executable holding the rollout open, which is a fact about this
         // machine, and not from what a payload calls itself.
-        guard !session.wasFound else { return state }
+        // The git identity is the exception among these, and it is set **before**
+        // the found-row guard on purpose. The other three are claims a hook makes
+        // about facts this machine read for itself, so a found row keeps its own.
+        // Nothing here reads git at all — it cannot, without asking macOS for
+        // folder access — so for a found row the hook is not a competing claim,
+        // it is the only one there will ever be.
+        var updated = session
+        if let git = signal.git { updated = updated.with(git: git) }
+        guard !session.wasFound else { return state.upserting(updated) }
         return state.upserting(
-            session
+            updated
                 .with(transcriptPath: signal.transcriptPath)
                 .with(entrypoint: signal.entrypoint)
                 .with(origin: origin)
@@ -474,7 +482,7 @@ public enum StateReducer {
             // sink it to the bottom of the column into the bargain.
             return signal.isContextCompaction ? nil : .idle
 
-        case .userPromptSubmit, .preToolUse, .postToolUse:
+        case .userPromptSubmit, .preToolUse, .postToolUse, .postToolUseFailure:
             return .working
 
         case .stop:
@@ -605,7 +613,12 @@ public enum StateReducer {
         // answered, and only that one.
         //
         // `PostToolUse` cannot fire unless the tool actually ran, which means the
-        // permission was granted. `PreToolUse` cannot say the same: it carries
+        // permission was granted. `PostToolUseFailure` carries the same proof and
+        // is needed beside it: Claude Code emits one **or** the other, so a tool
+        // that was permitted and then failed produces only the second, and reading
+        // just the first left the amber up in exactly that case. A tool the sandbox
+        // blocked produces neither, which is right — nothing ran.
+        // `PreToolUse` cannot say the same: it carries
         // `permissionDecision` in its own output schema, so it runs *inside* the
         // permission decision and therefore **before** the prompt. One arriving
         // afterwards is out of order and proves nothing — which is why the amber
@@ -616,7 +629,9 @@ public enum StateReducer {
         // subagents came and went, because nothing but the user's next prompt
         // could release it. The prompt is what blocks the turn; once a tool has
         // completed, the turn is not blocked any more.
-        if current == .awaiting, event == .postToolUse { return false }
+        if current == .awaiting, event == .postToolUse || event == .postToolUseFailure {
+            return false
+        }
 
         // A new user prompt, on the other hand, is a legitimate transition:
         // it means they read it and started again.

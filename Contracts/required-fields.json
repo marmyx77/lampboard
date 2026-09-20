@@ -94,7 +94,7 @@
       "recent ones and asserts the invariants below still hold.",
       "",
       "The load-bearing one is `humanOrigin`. A transcript record of type `user`",
-      "is USUALLY not a human message — it is a tool result. On this machine the",
+      "is USUALLY not a human message \u2014 it is a tool result. On this machine the",
       "ratio was 1683 tool results to 119 real prompts. Telling them apart by",
       "anything other than `origin.kind` means rendering tool output as if the",
       "user had typed it."
@@ -140,7 +140,7 @@
       "",
       "The extension currently refuses to apply a prompt to a session whose panel",
       "is already open, and says so to the user. That single refusal is what makes",
-      "the Codex-style 'act on the running agent' features unreachable — see",
+      "the Codex-style 'act on the running agent' features unreachable \u2014 see",
       "decision N7. If it ever goes away, the door opens.",
       "",
       "The checker reports these separately and never fails on them."
@@ -190,7 +190,7 @@
       "green-during-work lie returns with nothing to report it.",
       "",
       "This check exists because of tmux, which keeps the same kind of table of",
-      "what an undocumented dependency actually does — and has no test that any",
+      "what an undocumented dependency actually does \u2014 and has no test that any",
       "of it is still true.",
       "",
       "notWorkTypes mirrors Claude Code's own active-tasks view, which drops",
@@ -251,7 +251,7 @@
       "were renamed out from under us.",
       "",
       "The classification below distinguishes what was MEASURED from what was",
-      "only read in the binary — the distinction that matters, because reading",
+      "only read in the binary \u2014 the distinction that matters, because reading",
       "a name out of the enum and inferring its meaning is exactly how",
       "TaskCreated got recommended for a job it does not do."
     ],
@@ -297,7 +297,8 @@
       "Notification",
       "SubagentStart",
       "SubagentStop",
-      "PostToolUse"
+      "PostToolUse",
+      "PostToolUseFailure"
     ],
     "decodedButNotRegistered": {
       "_why": "Mapped to `working` if it ever arrives. Not registered: it would fire on every tool call and cannot release a pending question, because it carries permissionDecision in its own output and therefore runs before the prompt, not after the answer.",
@@ -306,7 +307,7 @@
       ]
     },
     "decisionHooks": {
-      "_why": "These do not observe, they answer. Their output schema carries a verdict — PermissionRequest returns decision.behavior allow|deny, Elicitation returns action accept|decline|cancel — so a hook registered here sits inside the approval path. Measured in the binary's output schema; NOT measured live, because a non-interactive `claude -p` never reaches an approval prompt. Registering one changes lampboard from something that watches into something that can decide, and that is a posture change, not a fix.",
+      "_why": "These do not observe, they answer. Their output schema carries a verdict \u2014 PermissionRequest returns decision.behavior allow|deny, Elicitation returns action accept|decline|cancel \u2014 so a hook registered here sits inside the approval path. Measured in the binary's output schema; NOT measured live, because a non-interactive `claude -p` never reaches an approval prompt. Registering one changes lampboard from something that watches into something that can decide, and that is a posture change, not a fix.",
       "events": [
         "PermissionRequest",
         "PermissionDenied",
@@ -358,7 +359,7 @@
       "Claude Code's own status line confirms both halves of the formula: it",
       "reports context_window_size equal to the window below, and",
       "total_input_tokens equal to input_tokens + cache_creation_input_tokens +",
-      "cache_read_input_tokens — the same sum read from the transcript.",
+      "cache_read_input_tokens \u2014 the same sum read from the transcript.",
       "",
       "WHY THIS IS A CONTRACT AND NOT A CONSTANT. A release can change a window",
       "silently, and the panel would keep dividing by the old one with complete",

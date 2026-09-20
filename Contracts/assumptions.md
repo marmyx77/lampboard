@@ -23,16 +23,16 @@ How to read a record:
 
 ---
 
-## hook.events · nine of the thirty-one, and the reasons for the other twenty-two
+## hook.events · ten of the thirty-one, and the reasons for the other twenty-one
 
 **We assume** `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`,
-`StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop`, `PostToolUse` are
-delivered to a registered command hook.
+`StopFailure`, `SessionEnd`, `SubagentStart`, `SubagentStop`, `PostToolUse`,
+`PostToolUseFailure` are delivered to a registered hook.
 
 **Depends at** [HookConfigMerger.swift:21](../Sources/LampBoardCore/Setup/HookConfigMerger.swift#L21) ·
 [StateReducer.swift](../Sources/LampBoardCore/Reducer/StateReducer.swift)
 
-**How verified** — `probe`. Seven of the nine recorded live; `Notification` and
+**How verified** — `probe`. Eight of the ten recorded live; `Notification` and
 `StopFailure` need conditions a probe can't force cheaply and stay on recorded
 shapes under unit test. The checker says so instead of passing silently.
 
@@ -62,7 +62,7 @@ them is the difference between **measured** and **read**:
   teammates/team task board, with nothing to do with background shells. A probe
   running a real backgrounded `sleep 6` produced neither of them.
 
-- **Not about turn state** — `PostToolUseFailure`, `PostToolBatch`,
+- **Not about turn state** — `PostToolBatch`,
   `UserPromptExpansion`, `PreCompact`, `PostCompact`, `Setup`, `ConfigChange`,
   `WorktreeCreate`, `WorktreeRemove`, `InstructionsLoaded`, `CwdChanged`,
   `FileChanged`, `DirectoryAdded`, `MessageDisplay`. Workspace and editor facts.
@@ -76,6 +76,27 @@ one specific way: it is the only registered event that can fire between a mid-tu
 `Notification` and the closing `Stop`, and therefore the only one that can prove a
 permission prompt was answered. Without it an amber row kept flashing for
 thirty-three measured minutes at somebody who had already replied.
+
+`PostToolUseFailure` **was in that last group, and the group was wrong.** It sat
+under "not about turn state" as a hypothesis read in the binary and never probed,
+which is exactly what that label is for. Probed on 20 September 2026 it turned out
+to be load-bearing: Claude Code emits `PostToolUse` **or** this one, never both. A
+permitted `Bash` exiting non-zero produced `PostToolUseFailure` and no
+`PostToolUse` — so the one registered event that can prove a permission was
+answered was silent in precisely the case where the tool was allowed and then
+failed, and the amber survived the answer that should have cleared it. It is
+registered, and the reducer treats the two identically.
+
+`PostToolBatch` was probed in the same pass and is deliberately **not** registered,
+which is a stronger statement than leaving it unexamined. It fires once per block
+of tool calls in one assistant message: five parallel `Read`s produced one, five
+sequential ones produced five, so the saving it offers exists only where there is
+parallelism — and since the hooks became native `http` posts an event no longer
+costs a process, which was the only reason to count them. Worse, it fires **even
+when every tool in the batch was blocked and none ran**, measured: two denied tools
+produced two `PreToolUse`, no `PostToolUse`, no `PostToolUseFailure`, and one
+`PostToolBatch`. So it cannot carry the proof this app needs from that position —
+it would release an amber that was never answered.
 
 `PreToolUse` stays apart: decoded, so it maps to `working` if it ever arrives, but
 not registered. It cannot do that job — it carries `permissionDecision` in its own

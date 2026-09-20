@@ -45,6 +45,117 @@ enum InstallationSuite {
                 }
             },
 
+            // The seam the domain tests cannot reach. `HookConfigMerger` is proved
+            // to build both forms, but nothing there notices if the installer stops
+            // handing it an endpoint: drop that one argument and every merger case
+            // stays green while the shipped binary quietly goes back to spawning a
+            // shell per tool call.
+            TestCase("the installed file really holds the native form") { a in
+                guard let hooks = app.claudeSettings()["hooks"] as? [String: Any] else {
+                    return a.fail("no hooks key in settings.json")
+                }
+
+                func firstHook(_ event: String) -> [String: Any]? {
+                    let groups = hooks[event] as? [[String: Any]] ?? []
+                    return (groups.first?["hooks"] as? [[String: Any]])?.first
+                }
+
+                // `PostToolUse` and not `Stop`: `Stop` keeps its script, because it
+                // is the only per-turn event that can carry the git identity, and a
+                // native hook can only send headers already written in the file.
+                guard let heartbeat = firstHook("PostToolUse") else {
+                    return a.fail("no hook on PostToolUse")
+                }
+                a.expectEqual(heartbeat["type"] as? String, "http", "the heartbeat posts natively")
+                a.expect(
+                    HookConfigMerger.isOurEndpoint(heartbeat["url"] as? String ?? ""),
+                    "url: \(String(describing: heartbeat["url"]))"
+                )
+                let headers = heartbeat["headers"] as? [String: Any] ?? [:]
+                a.expectNotNil(headers[AccessToken.headerName], "the token header")
+
+                // The two measured exceptions, checked here because getting either
+                // wrong is invisible until somebody's session says nothing or their
+                // terminal fills with connection errors.
+                for event in HookConfigMerger.commandOnlyEvents.sorted() {
+                    a.expectEqual(firstHook(event)?["type"] as? String, "command", event)
+                }
+            },
+
+            // The generated script is shell that Claude Code will run thousands of
+            // times a day. A syntax error in it fails silently — the hook exits
+            // non-zero, the panel simply never hears anything — so the shell's own
+            // parser is asked before shipping it.
+            TestCase("the generated script is shell bash will accept") { a in
+                let script = app.home.appendingPathComponent(".lampboard/hook.sh")
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = ["-n", script.path]
+                let errors = Pipe()
+                process.standardError = errors
+                guard (try? process.run()) != nil else { return a.fail("bash did not run") }
+                let complaint = String(
+                    decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self
+                )
+                process.waitUntilExit()
+                a.expectEqual(process.terminationStatus, 0, "bash -n said: \(complaint)")
+            },
+
+            // The whole chain for the git identity, through the real script: a
+            // session start in a real repository has to reach the column carrying
+            // the repository and the branch. The app itself never looks — it must
+            // not read under somebody's working directory — so if the script does
+            // not send it, nothing else will.
+            TestCase("a session start in a repository carries its branch to the row") { a in
+                // The workspace the other cases use, made into a repository: a
+                // folder no editor claims earns no row at all (D25), so a fresh
+                // directory here would fail for a reason that has nothing to do
+                // with git.
+                let repo = URL(fileURLWithPath: LifecycleSuite.workspace)
+                try? FileManager.default.createDirectory(at: repo, withIntermediateDirectories: true)
+                for arguments in [["init", "--initial-branch=trunk"], ["commit", "--allow-empty", "-m", "x"]] {
+                    let git = Process()
+                    git.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+                    git.arguments = ["-C", repo.path] + arguments
+                    var environment = ProcessInfo.processInfo.environment
+                    environment["GIT_AUTHOR_NAME"] = "t"
+                    environment["GIT_AUTHOR_EMAIL"] = "t@t"
+                    environment["GIT_COMMITTER_NAME"] = "t"
+                    environment["GIT_COMMITTER_EMAIL"] = "t@t"
+                    git.environment = environment
+                    git.standardOutput = FileHandle.nullDevice
+                    git.standardError = FileHandle.nullDevice
+                    try? git.run()
+                    git.waitUntilExit()
+                }
+
+                let id = "e2e-git-identity"
+                let rc = app.runHookScript(payload: [
+                    "session_id": id,
+                    "hook_event_name": "SessionStart",
+                    "cwd": repo.path,
+                ])
+                a.expectEqual(rc, 0, "the script did not run")
+                _ = app.runHookScript(payload: [
+                    "session_id": id, "hook_event_name": "UserPromptSubmit", "cwd": repo.path,
+                ])
+                // The identity rides the end of the turn as well as the start, and
+                // for a brand new session that is the only one that lands: its start
+                // carries no conversation, so it earns no row (D44) and is dropped.
+                _ = app.runHookScript(payload: [
+                    "session_id": id, "hook_event_name": "Stop", "cwd": repo.path,
+                    "last_assistant_message": "done",
+                ])
+
+                // The row arrives over a socket, so it is waited for like every
+                // other one here rather than read the instant the script returns.
+                a.expect(app.waitUntil { app.session(id: id) != nil }, "no row for the session")
+                guard let session = app.session(id: id) else { return }
+                a.expectEqual(session.git?.repo, repo.lastPathComponent, "repository")
+                a.expectEqual(session.git?.branch, "trunk", "branch")
+                a.expect(session.git?.isWorktree != true, "an ordinary checkout is not a worktree")
+            },
+
             TestCase("the two subagent events are among the registered ones") { a in
                 guard let hooks = app.claudeSettings()["hooks"] as? [String: Any] else {
                     return a.fail("no hooks key")

@@ -50,11 +50,14 @@ public enum HookPayloadDecoder {
     ///   - host: the `X-LampBoard-Host` header, present when the hook ran on another
     ///     machine. Anything that is not a plausible host name is dropped rather
     ///     than carried: the value ends up in a row label and in an ssh argument.
+    ///   - git: repository and branch, resolved by the script in the session's own
+    ///     directory and carried in three headers. Only a session start has them.
     public static func decode(
         _ data: Data,
         entrypoint: String? = nil,
         host: String? = nil,
-        harness: Harness = .claudeCode
+        harness: Harness = .claudeCode,
+        git: GitIdentity? = nil
     ) throws -> HookSignal {
         guard data.count <= AppConfig.maxRequestBodyBytes else {
             throw HookPayloadError.bodyTooLarge(data.count)
@@ -107,6 +110,7 @@ public enum HookPayloadDecoder {
                 : nil,
             host: host,
             harness: harness,
+            git: git,
             // Only from the event that actually carries it. Reading `tool_name`
             // off a `PostToolUse` would attach the tool that just *finished* to a
             // row that is blocked on something else entirely.

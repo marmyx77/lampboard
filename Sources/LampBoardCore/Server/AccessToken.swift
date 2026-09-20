@@ -18,10 +18,19 @@ import Foundation
 /// the sessions would be a false reassurance, and that is worse than no defense at
 /// all, because people stop thinking about it.
 ///
-/// The endpoint that *receives* the signals stays open, and that is a deliberate
-/// choice: the hook script runs as the user and could read the token, but a hook
-/// that fails authentication would block a Claude Code turn for the sake of a
-/// decorative widget. The risk is asymmetric and so is the treatment.
+/// The endpoint that *receives* the signals used to stay open, on the reasoning
+/// that a hook failing authentication would block a Claude Code turn for the sake
+/// of a decorative widget. That premise was never measured, and when it finally
+/// was it did not hold: a hook whose endpoint refuses it costs the turn nothing,
+/// and a `401` is swallowed without a word reaching the person at the keyboard.
+/// `POST /signal` now refuses a token that is present and wrong, while still
+/// accepting one that is absent — see `SignalServer.handleSignal` for why the two
+/// cases are treated differently, and for how long.
+///
+/// It remains true that this stops nobody running as your own user, sessions
+/// included: they can read the file. What it adds is that a forged signal now has
+/// to omit the header rather than guess it, which is the step that makes
+/// *requiring* it later a change of one line instead of a redesign.
 public enum AccessToken {
 
     /// Name of the header carrying the token.

@@ -105,6 +105,14 @@ public struct RowSummary: Sendable, Equatable {
             fields.append(Field("subagents", "\(row.activeSubagents) at work"))
         }
 
+        // Above the slot and below the harness: it says *where the work is*, which
+        // is the same kind of fact as the folder, and it belongs near it. Only
+        // drawn when the script could resolve it — a session outside a repository
+        // has no line here rather than a line saying so.
+        if let git = row.primary.git?.summary {
+            fields.append(Field("git", git, detail: detail(forWorktree: row.primary.git?.isWorktree == true)))
+        }
+
         if row.count > 1 {
             fields.append(Field("sessions", "\(row.count) in this project"))
         }
@@ -201,4 +209,14 @@ public struct RowSummary: Sendable, Equatable {
         if revealable { parts.append("⇧ folder") }
         return parts.joined(separator: " · ")
     }
+    /// Why a worktree is worth saying in words.
+    ///
+    /// It changes what the repository **name** means: for a linked worktree the
+    /// name is the main repository's, not the folder the session is sitting in, so
+    /// somebody comparing the row against their shell would otherwise find two
+    /// different names for what they think is one place.
+    private static func detail(forWorktree isWorktree: Bool) -> String? {
+        isWorktree ? "a linked worktree; the name is the main repository's" : nil
+    }
+
 }

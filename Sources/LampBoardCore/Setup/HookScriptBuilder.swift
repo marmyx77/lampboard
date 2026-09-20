@@ -36,7 +36,7 @@ public enum HookScriptBuilder {
         // a field the workspace resolver trusts. Codex says where it came from in
         // the rollout's `originator` instead, which is read where it belongs.
         let entrypoint = harness == .claudeCode
-            ? "     --header \"X-Claude-Entrypoint: ${CLAUDE_CODE_ENTRYPOINT:-}\" \\\n"
+            ? "     --header \"\(AppConfig.entrypointHeader): ${CLAUDE_CODE_ENTRYPOINT:-}\" \\\n"
             : ""
 
         // Codex answers its hooks synchronously and gives them one second before
@@ -58,12 +58,82 @@ public enum HookScriptBuilder {
 
         BODY=$(cat)
 
+        # The session's git identity, resolved **here** rather than by the app.
+        #
+        # This script runs in the user's own shell, in the session's working
+        # directory, under the terminal's own permissions. The app cannot do the
+        # same: macOS gates Desktop, Documents, Downloads and network volumes as
+        # separate grants, so reading `<cwd>/.git/HEAD` from the app would pop a
+        # folder-access prompt the first time a session appeared under any
+        # not-yet-granted category — once per category, forever.
+        #
+        # On a session start **and** at the end of each turn, and both are needed.
+        #
+        # A start alone is not enough: a brand new session has written no transcript
+        # yet, so its start earns no row at all (D44) and the identity would be
+        # thrown away with it. `Stop` lands on a row that certainly exists.
+        #
+        # `Stop` rather than `UserPromptSubmit` for the turn: that one sits between
+        # the person pressing enter and Claude starting, which is exactly where a
+        # hook must not add work. `Stop` fires when the session is idle by
+        # definition. The bonus is that a `git checkout` half way through a session
+        # reaches the row within one turn.
+        #
+        # It costs one `git` invocation per turn, off the critical path. Resolving
+        # per event would pay it on every tool call for a fact that changes a
+        # handful of times a day.
+        GIT_HEADERS=()
+        case "$BODY" in
+          *'"hook_event_name":"SessionStart"'*|*'"hook_event_name": "SessionStart"'*|\
+          *'"hook_event_name":"Stop"'*|*'"hook_event_name": "Stop"'*)
+            # `\\/` is JSON's optional escaping of a forward slash, and it is legal.
+            # Claude Code does not use it, Foundation does — so a payload that
+            # arrives from anything but Claude Code hands this a path full of
+            # backslashes and `git -C` fails on every one of them, silently, with
+            # the row simply never showing a branch. Undone here rather than
+            # assumed away.
+            CWD=$(printf '%s' "$BODY" \\
+                  | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' \\
+                  | sed 's|\\\\/|/|g')
+            if [ -n "$CWD" ] && command -v git >/dev/null 2>&1; then
+              # `symbolic-ref`, not `rev-parse --abbrev-ref`: the second prints the
+              # literal word HEAD both for a detached head and for a repository
+              # whose first commit does not exist yet, which would put the word
+              # "HEAD" on the row in place of a perfectly good branch name.
+              BRANCH=$(git -C "$CWD" symbolic-ref --short HEAD 2>/dev/null || true)
+              # `--path-format=absolute` is load-bearing, not tidiness. Without it,
+              # from a directory *below* the repository root, --git-dir comes back
+              # absolute and --git-common-dir relative — so the comparison below
+              # would call every subdirectory a worktree.
+              PATHS=$(git -C "$CWD" rev-parse --path-format=absolute \\
+                        --show-toplevel --git-dir --git-common-dir 2>/dev/null || true)
+              if [ -n "$PATHS" ]; then
+                TOP=$(printf '%s\\n' "$PATHS" | sed -n 1p)
+                GDIR=$(printf '%s\\n' "$PATHS" | sed -n 2p)
+                GCOMMON=$(printf '%s\\n' "$PATHS" | sed -n 3p)
+                if [ "$GDIR" != "$GCOMMON" ]; then
+                  # A linked worktree: named after the **main** repository, which is
+                  # the name the person thinks in. A submodule has the two equal, so
+                  # it stays unflagged.
+                  REPO=$(basename "$(dirname "$GCOMMON")")
+                  GIT_HEADERS+=(--header '\(AppConfig.worktreeHeader): true')
+                else
+                  REPO=$(basename "$TOP")
+                fi
+                [ -n "$REPO" ] && GIT_HEADERS+=(--header "\(AppConfig.repoHeader): $REPO")
+              fi
+              [ -n "$BRANCH" ] && GIT_HEADERS+=(--header "\(AppConfig.branchHeader): $BRANCH")
+            fi
+            ;;
+        esac
+
         curl --silent --show-error --output /dev/null \\
              --connect-timeout \(connect) --max-time \(total) \\
              --request POST \\
              --header 'Content-Type: application/json' \\
              --header '\(AppConfig.harnessHeader): \(harness.rawValue)' \\
-        \(entrypoint)\(origin)     --data-binary "$BODY" \\
+        \(entrypoint)\(origin)     "${GIT_HEADERS[@]+"${GIT_HEADERS[@]}"}" \\
+             --data-binary "$BODY" \\
              '\(target)' \\
              2>/dev/null || true
 

@@ -26,10 +26,13 @@ public enum PanelMetrics {
         public let padding: CGFloat
         public let footer: CGFloat
         public let issueStrip: CGFloat
+        /// One line of the allowance strip, drawn once per signed-in account.
+        public let allowanceLine: CGFloat
 
         public init(
             row: CGFloat, subRow: CGFloat, spacing: CGFloat, blockInset: CGFloat,
-            tail: CGFloat, padding: CGFloat, footer: CGFloat, issueStrip: CGFloat
+            tail: CGFloat, padding: CGFloat, footer: CGFloat, issueStrip: CGFloat,
+            allowanceLine: CGFloat = 0
         ) {
             self.row = row
             self.subRow = subRow
@@ -37,6 +40,7 @@ public enum PanelMetrics {
             self.blockInset = blockInset
             self.tail = tail
             self.padding = padding
+            self.allowanceLine = allowanceLine
             self.footer = footer
             self.issueStrip = issueStrip
         }
@@ -72,12 +76,25 @@ public enum PanelMetrics {
     /// it hid the rows under an opened project, and there are people with twenty
     /// sessions open, for whom a column that stops at twelve stops being the
     /// point.
+    /// - Parameter allowanceLines: how many accounts the allowance strip is
+    ///   drawing, zero when the switch is off. **It has to be counted here**, and
+    ///   forgetting it is not a cosmetic slip: the window is sized from this
+    ///   number, so a strip the calculation does not know about does not make the
+    ///   panel taller — it takes the room from the rows, and the projects at the
+    ///   bottom of the column simply go off the end. Reported in exactly those
+    ///   terms the first time the strip shipped.
     public static func height(
-        ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, sizes: Sizes
+        ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
+        allowanceLines: Int = 0, sizes: Sizes
     ) -> CGFloat {
         let all = blocks + Array(repeating: sizes.row, count: extras)
         let content = all.reduce(0, +) + CGFloat(max(all.count - 1, 0)) * sizes.spacing
+        let allowance = allowanceLines > 0
+            ? CGFloat(allowanceLines) * sizes.allowanceLine
+                + CGFloat(allowanceLines - 1) * 2
+                + 4
+            : 0
         return max(content, sizes.row)
-            + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0)
+            + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
     }
 }

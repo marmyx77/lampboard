@@ -16,7 +16,10 @@ final class PanelController {
     let panel: FloatingPanel
 
     private var compact: Bool
-    private var cancellables = Set<AnyCancellable>()
+    /// Not private: `PanelAllowance.swift` subscribes here too, for the same
+    /// reason it exists — the subject was taken out whole to keep this file under
+    /// the eight hundred lines the project refuses to cross.
+    var cancellables = Set<AnyCancellable>()
 
     /// The lamp in the menu bar. It exists whether or not the panel lives up
     /// there: two surfaces, one column, and the switch for each is its own.
@@ -70,10 +73,16 @@ final class PanelController {
         chats.reapStaleMailboxes()
 
         wireLamp()
+        // Whatever the switch was left on last time. Off is the default and costs
+        // nothing; on has to resume by itself, or the feature would look like it
+        // had forgotten between launches.
+        allowance.hosts = preferences.remoteHosts
+        allowance.apply(enabled: preferences.usageEnabled)
         rebuildContent()
         applyHome(showing: home == .floating)
         logPanelState()
         observeStore()
+        observeAllowance()
         observePanelMoves()
     }
 
@@ -229,6 +238,12 @@ final class PanelController {
     /// The options the current content was built with.
     private var renderedOptions: ColumnOptions?
 
+    /// The account's allowance. Created whatever the preference says, and asked
+    /// nothing until `apply(enabled:)` is told otherwise: an object that exists is
+    /// free, a timer that runs is not. Not private: the switch that drives it lives
+    /// in `PanelAllowance.swift`.
+    let allowance = AllowanceMonitor()
+
     func rebuildContent() {
         let root = PanelRootView(
             store: store,
@@ -238,7 +253,8 @@ final class PanelController {
             calmWorkspaces: preferences.calmBlinkWorkspaces,
             expandedRows: preferences.expandedRows,
             actions: makeActions(),
-            rowActions: makeRowActions()
+            rowActions: makeRowActions(),
+            allowance: allowance
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -255,6 +271,7 @@ final class PanelController {
             notificationsEnabled: preferences.notificationsEnabled,
             messageSendingEnabled: preferences.messageSendingEnabled,
             presenceEnabled: preferences.presenceEnabled,
+            usageEnabled: preferences.usageEnabled,
             showsTerminalSessions: preferences.showsTerminalSessions,
             mutedUntil: preferences.mutedUntil,
             hasHidden: !preferences.hiddenWorkspaces.isEmpty,
@@ -291,7 +308,10 @@ final class PanelController {
 
         let wanted = NSSize(
             width: Layout.width(compact: compact),
-            height: Layout.height(ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil)
+            height: Layout.height(
+                ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
+                allowanceLines: allowance.reports.count
+            )
         )
 
         // Clamped to what the display can show. Without this an opened project on

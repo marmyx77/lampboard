@@ -84,6 +84,44 @@ enum TransportSuite {
                 a.expectEqual(result.status, 405, "status")
             },
 
+            // The three cases below pin the asymmetry `/signal` was given: a wrong
+            // token is refused, an absent one is not. Every other case in this file
+            // sends no token at all — `sendHook` doesn't — so the middle one is the
+            // only place the grandfathering is stated on purpose rather than relied
+            // on by accident.
+
+            TestCase("/signal with the wrong token is refused") { a in
+                let result = app.raw(
+                    method: "POST",
+                    path: AppConfig.signalPath,
+                    token: .some(String(repeating: "b", count: AccessToken.byteCount * 2)),
+                    body: signalBody(id: "e2e-wrong-token")
+                )
+                a.expectEqual(result.status, 401, "status")
+            },
+
+            TestCase("/signal with no token is still accepted") { a in
+                // Not an oversight: hooks installed by an earlier version carry no
+                // token and stay registered until somebody reinstalls them, here and
+                // on every node the tunnel reaches. Requiring one is a later release.
+                let result = app.raw(
+                    method: "POST",
+                    path: AppConfig.signalPath,
+                    token: .some(nil),
+                    body: signalBody(id: "e2e-no-token")
+                )
+                a.expectEqual(result.status, 204, "status")
+            },
+
+            TestCase("/signal with the right token is accepted") { a in
+                let result = app.raw(
+                    method: "POST",
+                    path: AppConfig.signalPath,
+                    body: signalBody(id: "e2e-right-token")
+                )
+                a.expectEqual(result.status, 204, "status")
+            },
+
             TestCase("an unknown path answers 404") { a in
                 let result = app.raw(method: "GET", path: "/something-that-does-not-exist")
                 a.expectEqual(result.status, 404, "status")
@@ -120,6 +158,14 @@ enum TransportSuite {
     }
 
     // MARK: - Internal
+
+    /// A payload the decoder accepts, so that a case about the token fails for the
+    /// token and never for a missing field.
+    private static func signalBody(id: String) -> String {
+        """
+        {"session_id":"\(id)","hook_event_name":"Stop","cwd":"/tmp"}
+        """
+    }
 
     /// The addresses the process is really listening on, read from `lsof`.
     ///

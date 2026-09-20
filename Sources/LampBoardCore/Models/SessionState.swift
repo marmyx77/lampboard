@@ -82,6 +82,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// cannot open is a better outcome than one that opens the wrong file.
     public let transcriptPath: String?
 
+    /// The repository and branch this session started in, when the hook script
+    /// could resolve them (`GitIdentity`). A fact about the session: set once by
+    /// the session start that carries it, and never cleared by the signals that
+    /// do not — every later event comes from a hook that does no git work.
+    public let git: GitIdentity?
+
     /// How Claude Code was started for this session — `claude-vscode` by the
     /// extension, `cli` by hand in a terminal — read from the hook's header or
     /// the session file. `nil` until something has said.
@@ -132,6 +138,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         statusSince: Date,
         failureReason: StopFailureReason? = nil,
         harness: Harness = .claudeCode,
+        git: GitIdentity? = nil,
         pendingAsk: PendingAsk? = nil,
         activeAgentIds: Set<String> = [],
         transcriptPath: String? = nil,
@@ -159,6 +166,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         self.pendingAsk = pendingAsk
         self.activeAgentIds = activeAgentIds
         self.transcriptPath = transcriptPath
+        self.git = git
     }
 
     /// `true` when this row's folder is **evidence the panel found**, not
@@ -284,6 +292,17 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     public func with(harness newHarness: Harness) -> SessionState {
         guard newHarness != harness else { return self }
         return replacing(harness: newHarness)
+    }
+
+    /// Copy carrying the repository and branch, when a signal brought them.
+    ///
+    /// There is no way to **clear** it, unlike `pendingAsk`. Only a session start
+    /// carries the identity; every other event arrives without it, and a setter
+    /// that could take `nil` would let the next `Stop` erase a perfectly good
+    /// branch name — which is the shape of the bug this signature prevents.
+    public func with(git identity: GitIdentity) -> SessionState {
+        guard identity != git else { return self }
+        return replacing(git: identity)
     }
 
     /// Copy carrying — or dropping — the question the session is blocked on.
@@ -412,6 +431,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         statusSince: Date? = nil,
         failureReason: StopFailureReason?? = nil,
         harness: Harness? = nil,
+        git: GitIdentity? = nil,
         pendingAsk: PendingAsk?? = nil,
         activeAgentIds: Set<String>? = nil,
         transcriptPath: String?? = nil,
@@ -430,6 +450,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             statusSince: statusSince ?? self.statusSince,
             failureReason: failureReason ?? self.failureReason,
             harness: harness ?? self.harness,
+            git: git ?? self.git,
             pendingAsk: pendingAsk ?? self.pendingAsk,
             activeAgentIds: activeAgentIds ?? self.activeAgentIds,
             transcriptPath: transcriptPath ?? self.transcriptPath,

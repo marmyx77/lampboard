@@ -1,18 +1,18 @@
 # Code map
 
-~38,968 lines of Swift across five targets. For each file: what it contains, why
+~41,111 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  10,453 lines · 87 files   pure logic, zero AppKit
-  LampBoardApp/    15,465 lines · 81 files   shell: AppKit, network, windows
-  LampBoardTests/  9,974 lines · 54 files   719 cases, instantaneous
-  LampBoardE2E/    2,768 lines · 12 files   99 cases, the real binary
+  LampBoardCore/  11,336 lines · 93 files   pure logic, zero AppKit
+  LampBoardApp/    16,297 lines · 86 files   shell: AppKit, network, windows
+  LampBoardTests/  10,453 lines · 55 files   754 cases, instantaneous
+  LampBoardE2E/    2,925 lines · 12 files   105 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 769 lines. The limit the project sets itself is 800.
+No file exceeds 789 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 449
+### `AppConfig.swift` · 513
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -241,6 +241,24 @@ there is a decimal, `1.7h`, since `1h` covers everything from one hour to two, a
 on a session you are deciding whether to interrupt that is the difference that
 matters. At ten it stops: `10.5h` is three digits.
 
+### `GitIdentity.swift`
+What repository and branch a session is working in — one value, because the three
+facts only mean anything together: a branch with no repository names nothing, and
+the worktree flag is a statement *about* the repository name.
+
+**Resolved by the hook script, never here.** The app must not read under a
+session's working directory: macOS gates Desktop, Documents, Downloads and network
+volumes as separate grants, so a `<cwd>/.git/HEAD` read from the app pops a
+folder-access prompt the first time a session appears under any category not yet
+granted, and on a poll it recurs rather than asking once. The script runs in the
+user's own shell, under the terminal's grants, and ships three headers.
+
+Read at a session start **and** at the end of each turn. The start alone is not
+enough: a brand new session has written no transcript yet, so its start earns no
+row (D44) and the identity goes in the bin with it — only a resumed session would
+ever show a branch. `Stop` rather than `UserPromptSubmit` for the turn, because
+that one sits between the person pressing enter and Claude starting.
+
 ### `RowSession.swift`
 The conversations inside one row, told apart. A project can hold several sessions
 at once, and grouped they were identical in every field the panel draws: same
@@ -251,6 +269,60 @@ Ordered by **when it was first seen**, never by urgency: the column does not
 reorder itself (D23) and neither may the list inside a row, where the lines sit
 closer together and a misclick opens the wrong conversation. Ties go to the id,
 because sessions adopted in one pass share a timestamp.
+
+### `AccountLimits.swift`
+The account's allowance, parsed. Three bars: the five-hour window, the week, and
+one model's own weekly cap — on the account this was written against, Fable 5.1.
+
+Reads the `limits` array and **not** the named fields beside it. The same answer
+carries `five_hour`, `seven_day` and about ten keys called `amber_gauge`,
+`cedar_ember`, `juniper_tide`, `nimbus_quill`: unannounced buckets that will be
+renamed without anybody being told. `limits` is the same information already
+normalized, and it is what `/usage` itself draws.
+
+The label of the scoped bar is **read** from `scope.model.display_name`, never
+written here. A plan change has to move the label with it, or the panel would go
+on naming a model the account no longer has.
+
+Claude Code's free on-disk copy, in `~/.claude.json`, is deliberately not used:
+measured on 20 September 2026 it said 0% and 6% while the account was at 9% and
+15%, fifteen hours out of date. A number nobody can tell is stale is worse than no
+number.
+
+### `ClaudeAccount.swift`
+Which Claude account a machine is signed in as, read from `~/.claude.json` — an
+address and a uuid, neither of them secret.
+
+It exists because the allowance strip was built on the unexamined assumption that
+a person has one account. Measured on 20 September 2026 that assumption was wrong
+here: this Mac is an organization account on a Team plan, the node the tunnel
+reaches is a personal account on a Max plan, and most of the work happens on the
+second one. A single unlabelled bar in that situation is not incomplete, it is
+wrong (D47).
+
+The uuid, not the address, is what decides two machines are spending the same
+allowance. Without one on either side the answer is *no*: drawing a group twice is
+a smaller failure than hiding a second account's allowance.
+
+### `AllowanceReport.swift`
+One account's allowance and where it was read, plus the rule that collapses two
+readings of the same account into one. The local reading is kept, because its age
+is the one this app controls.
+
+### `RemoteAllowanceScript.swift`
+The Python that reads another machine's allowance, run there over ssh. **The
+request is made on the far side** and only the answer crosses the wire: pulling the
+token back would put a credential in this app's memory for the sake of three
+percentages, and the node already has both the credential and a network. On Linux
+the credential is a file at `~/.claude/.credentials.json`; the keychain branch is
+there for a node that is itself a Mac.
+
+### `ClaudeCredentials.swift`
+The access token inside the blob Claude Code keeps in the keychain, and nothing
+else. The blob also holds a refresh token; there is deliberately **no function
+here that reads it**. Spending it could rotate the pair and sign the person out of
+Claude Code, and an absent capability is a stronger guarantee than a comment
+asking nobody to use one.
 
 ### `UpdateSwap.swift`
 The script that finishes an update after the application has quit, as text.
@@ -327,7 +399,7 @@ The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
 ### `HookEventKind.swift`
-The nine events registered by default, plus one decoded and registered only with `install-hooks --with-tool-events` (`PreToolUse`), and the five
+The ten events registered by default, plus one decoded and registered only with `install-hooks --with-tool-events` (`PreToolUse`), and the five
 `Notification` subtypes. An unknown event is not an
 error: it is ignored, so the app doesn't break when Anthropic adds more.
 
@@ -694,7 +766,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 575
+### `StateReducer.swift` · 651
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -724,7 +796,7 @@ token protects and what it doesn't: read it before quoting it elsewhere.
 
 ## `Setup/`
 
-### `HookConfigMerger.swift` · 193
+### `HookConfigMerger.swift` · 324
 Adds and removes the hooks in `settings.json` **working on dictionaries**, not on
 files: the I/O lives in the shell, so this logic — which modifies an important
 user file — stays verifiable.
@@ -912,6 +984,8 @@ there, the hooks are registered — and it names the link that broke.
 | `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
+| `AccountLimitsReader.swift` | 207 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain. **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet |
+| `AllowanceMonitor.swift` | 96 | the timer behind that strip. No timer and no request while the switch is off: a feature that reaches the network is either off or on |
 | `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
@@ -930,7 +1004,7 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 319
+### `SignalServer.swift` · 366
 Seven routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
@@ -986,7 +1060,7 @@ Per agent, and `notPresent` is one of the answers: an agent that is not on this
 machine has failed at nothing, which is what keeps the exit code and the first-run
 offer honest.
 
-### `HookInstaller.swift` · 296
+### `HookInstaller.swift` · 336
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail. The backup is named after the file
 it copies, which it was not: both agents share this code and only one of them
@@ -1000,8 +1074,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 769 | holds everything together; row and panel actions |
+| `PanelController.swift` | 789 | holds everything together; row and panel actions |
 | `PanelActivation.swift` | 149 | where a click goes, which is a different question for every surface |
+| `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
+| `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
+| `AllowanceStrip.swift` | 176 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
 | `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
@@ -1017,7 +1094,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 317 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 364 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 348 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
@@ -1042,7 +1119,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 719 cases
+## `LampBoardTests/` — 754 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1099,7 +1176,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 99 cases
+## `LampBoardE2E/` — 105 cases
 
 | Suite | Covers |
 |---|---|

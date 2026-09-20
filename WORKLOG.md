@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **719**, instantaneous |
-| End-to-end tests | **99**, about a minute |
+| Domain tests | **754**, instantaneous |
+| End-to-end tests | **105**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 769 lines, `StateStore.swift` (limit the project sets itself: 800) |
+| Longest file | 789 lines, `StateStore.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -1231,7 +1231,7 @@ no deadline, and all of them on the main actor — `PanelController` is
 `@MainActor`, so the whole click runs on the thread that draws the panel.
 
 Measured before deciding anything: `lsof` 0.059s, `ps` 0.065s, AppleScript to
-System Events 0.672s, `open -b` 0.749s. A working click already costs between
+System Events 0.672s, `open -b` 0.754s. A working click already costs between
 0.7 and 1.5 seconds of main thread, which is the hitch you feel rather than a
 fault you report. The fault is the tail: `lsof` stats every open descriptor, so
 a network mount whose server has gone stops it indefinitely, and tmux, wezterm
@@ -1712,3 +1712,159 @@ never under two pixels a lamp at 16 px. The third one bit on the first run. The
 small sizes draw their lamps larger to survive, and the lift that had been chosen
 by eye put the foot into the edge — 1.14 refused, 1.10 accepted. A rule nobody has
 watched fail is a rule nobody has.
+
+## 20 September — what a competitor was worth, and five things only a measurement could say
+
+The day started with a link to somebody else's project: a traffic light for Claude
+Code sessions, Tauri and Rust, alive and carefully made. The question was whether
+there was anything in it worth taking.
+
+There was one thing, and it was not a feature. **Claude Code has a native `http`
+hook type.** Every event this panel watches was costing a `bash` and a `curl` —
+578 tool calls in thirteen hours on one session, and there are two dozen sessions
+open here on an ordinary afternoon. The other project used the native form and had
+built a loopback listener and a token to make it safe. We already had both, for
+other reasons, and were not using them.
+
+Everything else it offered was either something this project already had, or
+something it had decided against on purpose.
+
+### Five probes, and three of them changed the plan
+
+The migration looked like a rewrite of one function. It took five measurements
+before a line was written, and each one moved something.
+
+**A failed hook costs the turn nothing.** Three runs against a dead port: 7.2, 7.4
+and 8.4 seconds, against a baseline of 7.2, 8.5 and 7.9. The worry had been
+latency. The real cost was a **voice**: with every event registered natively, a
+session ending while the panel was off printed `SessionEnd hook failed: connect
+ECONNREFUSED` on the person's screen, every single time. Only that one event
+complains; `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `Stop` failed in the
+same runs and said nothing. So `SessionEnd` keeps its script, which pipes the
+answer to `/dev/null` and exits 0 whatever happens.
+
+**`SessionStart` cannot be an `http` hook at all.** Registered twice in one run,
+once each way, pointing at two paths of the same listener: only the command form
+ever arrived.
+
+**The entrypoint survives the change.** The header the script interpolates in a
+shell and the header Claude Code interpolates through `allowedEnvVars` produce the
+same value in every case — `claude-vscode`, `cli`, `sdk-cli`, and a planted
+sentinel. That one was nearly got wrong: the first measurement was contaminated,
+because the variable was already in the environment of the session running the
+test. Rerun with the two forms registered **on the same event** so they could only
+agree or disagree, and they agreed.
+
+**The terminals were never the risk.** A census of the fifteen hundred most recent
+transcripts turns up three entrypoints — `sdk-cli`, `claude-vscode`, `cli` — and no
+emulator has one of its own. The migration *reduces* the exposure: a native hook
+opens no shell, so it cannot be broken by `$SHELL`, by `PATH`, by a missing `curl`
+or by anybody's rc file.
+
+**And the tunnel is not a footnote.** Nine tenths of the work watched by this panel
+happens on the other machine, which had been treated as a secondary case in the
+plan. The whole chain was proved end to end — a session there, through the reverse
+tunnel, to the listener here — including with the tunnel down, where the hybrid
+shape stays as silent as it does locally.
+
+### The event nobody had probed
+
+`Contracts/assumptions.md` listed `PostToolUseFailure` among the events "not about
+turn state", and labelled that whole group a hypothesis: read in the binary, never
+measured. The label did its job.
+
+Probed, it turns out Claude Code emits `PostToolUse` **or** this one, never both. A
+permitted `Bash` that exits non-zero produces only the second. And `PostToolUse` is
+registered here for exactly one reason — it is the only event that can prove a
+permission prompt was answered, and clear the amber. So: grant a permission, watch
+the tool fail, and the row stayed amber. The same stuck amber that rule was written
+to end, surviving in the one case nobody had tried.
+
+`PostToolBatch` was measured in the same pass and is **deliberately not**
+registered, which is a stronger statement than leaving it alone. It fires once per
+block of tool calls in one message — five parallel `Read`s produced one, five
+sequential ones produced five — so its saving exists only where there is
+parallelism. Worse, it fires **even when every tool in the batch was blocked and
+none ran**, so it cannot carry the proof this panel needs from that position: it
+would clear an amber nobody had answered.
+
+### An allowance, and the assumption underneath it
+
+The panel gained a strip at the foot of the column: how much of the account's
+allowance is gone. It is off unless you turn it on, because it is the only thing
+here that leaves the Mac besides the update check.
+
+Three things were measured before building it. The figures come from
+`/api/oauth/usage`, signed with the token Claude Code keeps in the keychain — which
+carries **no access-control list**, verified with an ad-hoc signed binary that read
+it with no consent dialog. The access token lives eight hours and Claude Code
+rotates it there, so this app reads and never renews: the refresh token beside it
+could be spent, and spending it might sign the person out of the tool this panel
+exists to watch. There is no function in the codebase that reads it.
+
+And the free copy is a trap. Claude Code caches the same figures in
+`~/.claude.json`, needing no credentials at all. On the machine this was written,
+that cache said the five-hour window was at 0% and the week at 6% while the account
+was really at 9% and 15%. Fifteen hours out of date, with nothing on its face to
+say so.
+
+**Then the assumption underneath the whole feature turned out to be wrong**, and it
+was not found by a test. It was never written down anywhere, so there was nothing
+to test: *a person has one Claude account*. This Mac is signed in as an
+organization account on a Team plan; the machine most of the work happens on is a
+personal account on a Max plan. Two allowances, of two different sizes. One
+unlabelled bar in that situation is not incomplete, it is **wrong** — it reads as
+your remaining room while the sessions spending the other account's allowance sit a
+few points above it in the same column. So: one group per account, each named, the
+nodes asked as well as this Mac, and the request made **on** the node so that only
+three percentages cross the wire.
+
+### Two corrections that a review of the figures could not make
+
+The strip shipped in a state that was numerically correct and unusable: four lines
+per account, eight for two accounts, in eight-and-a-half point type on a panel two
+hundred and forty points wide. It buried the column it was meant to annotate —
+three of seven projects went off the bottom — and the panel's height arithmetic did
+not know the strip existed, so the room came out of the rows. It had passed a
+review that checked the numbers instead of looking at the picture.
+
+The second version showed "whichever limit is highest", which was arbitrary: a
+weekly figure at 32% is not news, and it kept hiding the one number a person can
+act on. The line now carries the **session window and its reset** — when the work
+stops and when it starts again — with another limit taking the line only when it is
+genuinely spent, above 90%, because a window resetting in forty minutes buys
+nothing if the week is gone.
+
+And the hover showed nothing at all, because it was written with `.help(…)` —
+which `Tooltip.swift` says, in as many words, does nothing in a window that is
+never key. It is now a card in the same grammar as a project's: aligned labels, the
+figures, and a bar per limit in the lamps' own three hues.
+
+### The row learns where it is
+
+Last, the smallest piece and the one with the most surprises in it. A session's row
+now says which repository and branch it is in, resolved by the hook script in the
+user's own shell — because this app must never read under somebody's working
+directory, where macOS gates Desktop, Documents, Downloads and network volumes as
+four separate grants.
+
+Two of the git incantations were taken from the other project, and both are worth
+the theft: `symbolic-ref --short HEAD` rather than `rev-parse --abbrev-ref`, which
+prints the literal word `HEAD` for a detached head *and* for a repository before its
+first commit; and `--path-format=absolute` on the git-dir comparison, without which
+**every subdirectory of a repository reads as a worktree**.
+
+Three defects surfaced getting it to the row, and all three were silent. The
+identity rode only `SessionStart`, which a brand new session throws away (D44), so
+only *resumed* sessions would ever have shown a branch. The signal's copy
+constructor rebuilds every field by hand and the new one fell through the gap —
+reaching the server and never reaching a row, with nothing failing anywhere. And
+the script broke on `\/`, JSON's optional escaping of a forward slash: legal,
+unused by Claude Code, used by Foundation, so it was right on every real session
+and wrong in the test that found it.
+
+The fix for the first of those is the one worth remembering. `Stop` keeps its
+script rather than posting natively, because a native hook can only send headers
+that were already written into `settings.json` — and a branch nobody has looked up
+yet cannot be one of them. One process per turn, which is a different order of cost
+from one per tool call, and that distinction is the whole point of the migration.

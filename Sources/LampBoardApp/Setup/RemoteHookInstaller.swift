@@ -91,11 +91,27 @@ enum RemoteHookInstaller {
             if let problem = inspection.directoryProblem {
                 return .failure(.remoteFailure("~/.lampboard there \(problem); nothing was changed"))
             }
+            // The far side posts natively too. It is not the secondary case it was
+            // taken for: most of the work this panel watches happens over the
+            // tunnel, so the node is where the saved process spawns are actually
+            // worth something. Proved end-to-end on 20 September 2026 — a session
+            // there, through the reverse tunnel, to the listener here — including
+            // with the tunnel down, where the hybrid shape stays silent.
+            //
+            // The token is the **local** one: what authorizes the post is the
+            // server at this end, which is where the tunnel lands.
+            let endpoint = HookConfigMerger.endpoint(
+                port: inspection.port,
+                token: TokenStore().read(),
+                harness: .claudeCode,
+                host: host
+            )
             let merged = HookConfigMerger.install(
                 into: settings,
                 scriptPath: inspection.scriptPath,
                 rewakeScriptPath: nil,
-                registerMessageDelivery: false
+                registerMessageDelivery: false,
+                endpoint: endpoint
             )
             return apply(on: host, payload: [
                 "scriptRelativePath": AppConfig.remoteHookScriptRelativePath,

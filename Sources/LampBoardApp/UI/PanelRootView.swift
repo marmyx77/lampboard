@@ -20,6 +20,9 @@ struct PanelActions {
     let toggleNotifications: () -> Void
     let toggleMessageSending: () -> Void
     let togglePresence: () -> Void
+    /// Shows the account's allowance at the foot of the column. The one switch
+    /// here that makes the app talk to a service instead of to this Mac.
+    let toggleUsage: () -> Void
     let toggleTerminalSessions: () -> Void
     let muteForAnHour: () -> Void
     let clearMute: () -> Void
@@ -48,6 +51,7 @@ struct PanelFlags {
     let notificationsEnabled: Bool
     let messageSendingEnabled: Bool
     let presenceEnabled: Bool
+    let usageEnabled: Bool
     let showsTerminalSessions: Bool
     let mutedUntil: Date?
     let hasHidden: Bool
@@ -73,6 +77,10 @@ struct PanelRootView: View {
     let expandedRows: Set<String>
     let actions: PanelActions
     let rowActions: RowActions
+    /// The account's allowance, when the switch is on. Its own observable rather
+    /// than a field on the store: it is the one figure here that belongs to the
+    /// account instead of to a session, and it comes from a different place.
+    @ObservedObject var allowance: AllowanceMonitor
 
 
     var body: some View {
@@ -88,6 +96,7 @@ struct PanelRootView: View {
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain
             )
+            AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
             issueStrip
             footer
         }
@@ -334,6 +343,9 @@ struct PanelRootView: View {
 
         Button(check(flags.presenceEnabled, "Suppress phone push notifications while I'm at the Mac"),
                action: actions.togglePresence)
+
+        Button(check(flags.usageEnabled, "Show how much of your allowance is left…"),
+               action: actions.toggleUsage)
 
         Divider()
 

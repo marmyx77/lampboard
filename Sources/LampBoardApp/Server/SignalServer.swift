@@ -292,20 +292,57 @@ final class SignalServer {
     }
 
     /// `POST /signal` — the hooks' entry point.
+    ///
+    /// A token that is **present and wrong** is refused; one that is **absent** is
+    /// let through. That asymmetry is the whole point, and it is deliberate.
+    ///
+    /// WHY THIS ENDPOINT IS NO LONGER WIDE OPEN
+    /// It used to accept anything, and `AccessToken` explained why: a hook failing
+    /// authentication would block a Claude Code turn for the sake of a decorative
+    /// widget. Measured instead of assumed, that premise turns out to be false. A
+    /// hook whose endpoint refuses it costs the turn nothing — three runs against a
+    /// dead port came in at 7.2, 7.4 and 8.4 seconds against a baseline of 7.2, 8.5
+    /// and 7.9 — and a `401` answer is swallowed in silence, printing nothing to the
+    /// person at the keyboard. The script has always ignored the response anyway: it
+    /// pipes it to `/dev/null` and exits 0 regardless.
+    ///
+    /// WHY AN ABSENT TOKEN IS STILL ACCEPTED
+    /// Hooks installed by an earlier version carry no token, and they stay in
+    /// `settings.json` until somebody reinstalls them — on this machine and on every
+    /// node the tunnel reaches. Demanding one today would turn the column grey on
+    /// upgrade, which is the failure this project treats as the worst kind: silent,
+    /// and looking exactly like nothing happening. Requiring it is a separate
+    /// release, once the installed base has turned over.
     private func handleSignal(_ request: HTTPRequest) -> Data {
         guard request.method == "POST" else {
             return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
         }
 
+        let presented = request.header(
+            AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName
+        )
+        if let presented, let token, !AccessToken.matches(presented, expected: token) {
+            // Same silence as the other routes: saying whether the token was
+            // missing or merely wrong is already half an oracle.
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+
         do {
             let signal = try HookPayloadDecoder.decode(
                 request.body,
-                entrypoint: request.header("X-Claude-Entrypoint"),
+                entrypoint: request.header(AppConfig.entrypointHeader),
                 host: request.header(
                     AppConfig.remoteHostHeader,
                     orLegacy: AppConfig.legacyRemoteHostHeader
                 ),
-                harness: Harness.named(request.header(AppConfig.harnessHeader))
+                harness: Harness.named(request.header(AppConfig.harnessHeader)),
+                // Resolved by the script, in the session's own directory, because
+                // this process must never read under somebody's working folder.
+                git: GitIdentity.from(
+                    repo: request.header(AppConfig.repoHeader),
+                    branch: request.header(AppConfig.branchHeader),
+                    worktree: request.header(AppConfig.worktreeHeader)
+                )
             )
             // Who will answer a Codex permission request is not on the wire: it
             // is in the session's rollout, which this event names. Resolved here,

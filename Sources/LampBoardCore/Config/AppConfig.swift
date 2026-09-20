@@ -161,6 +161,22 @@ public enum AppConfig {
     /// not by cost.
     public static let permissionWatchInterval: TimeInterval = 1.5
 
+    // MARK: - The account's allowance
+
+    /// Asking Anthropic how much of the allowance is gone. Short, and shorter than
+    /// the update check: nobody is waiting for this one, and a request still open
+    /// when the next one is due is a request that should have been abandoned.
+    public static let usageRequestTimeout: TimeInterval = 5
+
+    /// How often the allowance is asked, while the switch is on.
+    ///
+    /// Measured before being chosen: the five-hour figure moved from 9% to 12% in a
+    /// quarter of an hour of ordinary work, so a strip refreshed every few minutes
+    /// is telling the truth and one refreshed every half hour is not. Two and a
+    /// half minutes is about twenty-five requests an hour — nothing, against the
+    /// thousands of hook posts a working day already makes locally.
+    public static let usagePollInterval: TimeInterval = 150
+
     // MARK: - Updates
 
     /// Asking GitHub which release is the latest. Short: it happens because
@@ -297,6 +313,13 @@ public enum AppConfig {
             .appendingPathComponent("settings.json")
     }
 
+    /// Claude Code's own configuration, beside the home rather than inside
+    /// `.claude`. Read only for the signed-in account's address and uuid, which are
+    /// not secrets; the credential lives elsewhere.
+    public static var claudeConfigURL: URL {
+        homeDirectory.appendingPathComponent(".claude.json")
+    }
+
     /// Presence file read by Claude Code to suppress phone push notifications
     /// while you are sitting at the Mac (`CLAUDE_CLIENT_PRESENCE_FILE`).
     public static var presenceFileURL: URL {
@@ -409,6 +432,35 @@ public enum AppConfig {
     /// time either vendor added a field to match the other. Absent means Claude
     /// Code, which is what every script written before this existed sends.
     public static let harnessHeader = "X-LampBoard-Harness"
+
+    /// Header naming the surface a Claude Code session was started from.
+    ///
+    /// Not ours — it carries Claude Code's own `CLAUDE_CODE_ENTRYPOINT`, which the
+    /// workspace resolver trusts to tell a VS Code session from a terminal one. It
+    /// is named here because two senders now have to agree on it: the hook script,
+    /// which interpolates the variable in a shell, and the native `http` hook,
+    /// which interpolates it through `allowedEnvVars`. Measured on 20 September
+    /// 2026: the two produce the same value in every case — `claude-vscode`, `cli`,
+    /// `sdk-cli`, and a planted sentinel.
+    public static let entrypointHeader = "X-Claude-Entrypoint"
+
+    /// The session's git identity, resolved by the hook script rather than here.
+    ///
+    /// Three headers and not one field in the payload, because they are added by
+    /// the sender: the app must never read under a session's working directory.
+    /// macOS gates Desktop, Documents, Downloads and network volumes as separate
+    /// grants, so a `<cwd>/.git/HEAD` read from here pops a folder-access prompt
+    /// the first time a session appears under any category not yet granted. The
+    /// script runs in the user's own shell, under the terminal's grants, and ships
+    /// the answer.
+    public static let repoHeader = "X-LampBoard-Repo"
+    /// The branch checked out when the session started. Not followed afterwards: a
+    /// `git checkout` mid-session would need a hook on every turn, which is a
+    /// process per turn for a fact that changes a handful of times a day.
+    public static let branchHeader = "X-LampBoard-Branch"
+    /// Present only when the session is in a **linked worktree**, where the row is
+    /// named after the main repository rather than the worktree folder.
+    public static let worktreeHeader = "X-LampBoard-Worktree"
 
     /// Backoff for a tunnel that exits: the first retry after this many seconds…
     public static let remoteTunnelRetryMin: TimeInterval = 5

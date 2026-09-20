@@ -322,6 +322,7 @@ extension PanelController {
             toggleNotifications: { [weak self] in self?.toggleNotifications() },
             toggleMessageSending: { [weak self] in self?.toggleMessageSending() },
             togglePresence: { [weak self] in self?.togglePresence() },
+            toggleUsage: { [weak self] in self?.toggleUsage() },
             toggleTerminalSessions: { [weak self] in self?.toggleTerminalSessions() },
             muteForAnHour: { [weak self] in
                 self?.preferences.mutedUntil = Date().addingTimeInterval(3600)

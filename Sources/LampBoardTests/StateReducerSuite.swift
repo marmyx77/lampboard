@@ -15,7 +15,8 @@ enum StateReducerSuite {
         notification: NotificationKind? = nil,
         agentId: String? = nil,
         entrypoint: String? = "claude-vscode",
-        message: String? = nil
+        message: String? = nil,
+        git: GitIdentity? = nil
     ) -> HookSignal {
         HookSignal(
             sessionId: sessionId,
@@ -24,7 +25,8 @@ enum StateReducerSuite {
             notificationKind: notification,
             agentId: agentId,
             entrypoint: entrypoint,
-            lastAssistantMessage: message
+            lastAssistantMessage: message,
+            git: git
         )
     }
 
@@ -247,6 +249,32 @@ enum StateReducerSuite {
             t.expectEqual(status(state), .awaiting)
         },
 
+        // Measured on 20 September 2026 and it is why `PostToolUseFailure` is
+        // registered at all: Claude Code emits `PostToolUse` **or** this one, never
+        // both, so a tool that was permitted and then failed produced neither the
+        // proof nor the release. Granting a permission for a command that exits
+        // non-zero left the row amber — the same stuck amber the `PostToolUse`
+        // exception was written to end, surviving in the case nobody had tested.
+        TestCase("A permitted tool that fails still clears the amber") { t in
+            let state = apply([
+                signal(.notification, notification: .permissionPrompt),
+                signal(.postToolUseFailure),
+            ])
+            t.expectEqual(status(state), .working)
+        },
+
+        // The other half of the same measurement. A tool the sandbox **blocked**
+        // emits neither event, so nothing releases the amber — which is right:
+        // nothing ran, so nothing was granted. `PostToolBatch` would have fired
+        // there, which is exactly why it is not registered.
+        TestCase("A tool that never ran leaves the amber where it is") { t in
+            let state = apply([
+                signal(.notification, notification: .permissionPrompt),
+                signal(.preToolUse),
+            ])
+            t.expectEqual(status(state), .awaiting)
+        },
+
         TestCase("A new prompt restarts from yellow even after green") { t in
             t.expectEqual(status(apply([signal(.stop), signal(.userPromptSubmit)])), .working)
         },
@@ -368,6 +396,26 @@ enum StateReducerSuite {
 
             t.expect(before == snapshot, "the starting state changed")
             t.expectEqual(status(before), .working, "original state")
+        },
+
+        // MARK: - The session's git identity, through the reducer
+
+        TestCase("A signal carrying a repository puts it on the session") { t in
+            let state = apply([
+                signal(.userPromptSubmit),
+                signal(.stop, git: GitIdentity(repo: "app", branch: "main")),
+            ])
+            t.expectEqual(state.sessions[sessionId]?.git?.repo, "app", "repository")
+            t.expectEqual(state.sessions[sessionId]?.git?.branch, "main", "branch")
+            // A copy of a signal must lose nothing but the reviewer. This compares
+            // whole signals rather than named fields, so it also covers a field
+            // nobody has written yet — `git` was lost exactly here, silently.
+            let full = HookSignal(
+                sessionId: "s", event: .stop, cwd: "/tmp/x",
+                transcriptPath: nil, host: nil, harness: .claudeCode,
+                git: GitIdentity(repo: "app", branch: "main", isWorktree: true)
+            )
+            t.expectEqual(full.withApprovalReviewer(nil), full, "a copy dropped a field")
         },
     ])
 }

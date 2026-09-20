@@ -38,6 +38,11 @@ enum Tooltip {
         case text(String)
         /// A row: fields, the context bar, what each session of a group is doing.
         case card(RowSummary)
+        /// One account's allowance: every limit, its bar, and when it comes back.
+        /// Its own case rather than a `RowSummary` with the session parts left
+        /// blank — an allowance has no state and no last message, and filling those
+        /// in to reuse the view would put a status word on a thing with no status.
+        case allowance(AllowanceReport)
     }
 
     /// Shows something under the pointer once it has rested there.
@@ -60,6 +65,7 @@ enum Tooltip {
 
     static func show(_ text: String) { show(.text(text)) }
     static func show(_ summary: RowSummary) { show(.card(summary)) }
+    static func show(_ report: AllowanceReport) { show(.allowance(report)) }
 
     static func hide() {
         pending?.cancel()
@@ -116,6 +122,10 @@ enum Tooltip {
         case .card(let summary):
             return NSHostingView(rootView: AnyView(
                 chrome(TooltipCard(summary: summary, width: cardWidth))
+            ))
+        case .allowance(let report):
+            return NSHostingView(rootView: AnyView(
+                chrome(AllowanceCard(report: report, width: cardWidth, now: Date()))
             ))
         }
     }
@@ -235,6 +245,11 @@ extension View {
     /// A row's whole second layer, as a card.
     func tooltip(_ summary: RowSummary) -> some View {
         tooltip(.card(summary))
+    }
+
+    /// One account's allowance, as a card in the same grammar.
+    func tooltip(_ report: AllowanceReport) -> some View {
+        tooltip(.allowance(report))
     }
 
     private func tooltip(_ content: Tooltip.Content) -> some View {

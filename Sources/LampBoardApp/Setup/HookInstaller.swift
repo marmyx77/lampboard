@@ -126,10 +126,17 @@ struct HookInstaller {
     ///   carries messages from the chat window into a session. **Off unless the
     ///   user has turned sending on**: while it is off there is no listener and no
     ///   mailbox, so nothing on the machine can start a turn in their name.
+    /// - Parameter token: authorizes the posts. Read here rather than asked for,
+    ///   the same way `LocalClient` reads it. `nil` — an unreadable file, a home
+    ///   that isn't writable — installs a hook without the header instead of no
+    ///   hook at all: the server still accepts an absent token, and a panel that
+    ///   works beats one that refused to set itself up over a secret it only uses
+    ///   to tell its own hooks apart.
     func install(
         port: UInt16 = AppConfig.listenPort,
         includeToolEvents: Bool = false,
-        includeMessageDelivery: Bool = false
+        includeMessageDelivery: Bool = false,
+        token: String? = TokenStore().read()
     ) throws -> URL? {
         try writeScript(port: port)
         if includeMessageDelivery { try writeRewakeScript() }
@@ -151,12 +158,21 @@ struct HookInstaller {
             from: settings, scriptPaths: legacyScriptPaths
         )
 
+        // Claude Code posts natively; Codex keeps the script for everything,
+        // because its hook system has no `http` type to offer. The script is
+        // written either way: `SessionStart` and `SessionEnd` still run it, and so
+        // does every Codex event.
+        let endpoint = harness == .claudeCode
+            ? HookConfigMerger.endpoint(port: port, token: token, harness: harness)
+            : nil
+
         let updated = HookConfigMerger.install(
             into: migrated,
             scriptPath: scriptPath,
             rewakeScriptPath: rewakeScriptPath,
             registerMessageDelivery: includeMessageDelivery,
-            events: events
+            events: events,
+            endpoint: endpoint
         )
         try writeSettings(updated)
         return backup

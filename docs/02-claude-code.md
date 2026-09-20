@@ -55,7 +55,7 @@ re-read `settings.json`: they pick up the new configuration only the next time
 they start. After an `install-hooks`, the sessions in progress carry on with the
 old one — and if you have just added two events, those will never arrive for them.
 
-### The nine events lampboard registers
+### The ten events lampboard registers
 
 Claude Code exposes around thirty. These are the ones that move a traffic light:
 
@@ -67,6 +67,7 @@ Claude Code exposes around thirty. These are the ones that move a traffic light:
 | `Stop` | the turn closes normally | `ready` — or `waiting`, when `background_tasks` lists work still running |
 | `StopFailure` | the turn is interrupted by an error | `failed`, or `ready` when truncated |
 | `SessionEnd` | the session terminates | removes the row |
+| `PostToolUseFailure` | a tool **ran** and came back with an error | `working`, and it clears a pending amber — Claude Code sends this **or** `PostToolUse`, never both |
 | `SubagentStart` | a subagent starts | counter +1 |
 | `SubagentStop` | a subagent finishes | counter −1 |
 | `PostToolUse` | a tool call completes | `working`, and it **releases a pending question** |

@@ -52,6 +52,7 @@ let suites: [TestSuite] = [
     AccessTokenSuite.suite,
     SessionsPayloadSuite.suite,
     HTTPRequestParserSuite.suite,
+    AccountLimitsSuite.suite,
     HookConfigMergerSuite.suite,
     TranscriptDecoderSuite.suite,
     ConversationSuite.suite,
