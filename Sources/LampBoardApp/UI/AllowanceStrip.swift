@@ -153,7 +153,7 @@ struct AllowanceStrip: View {
         return remaining > 0 ? ShortSpan.label(seconds: remaining) : "now"
     }
 
-    /// `editorial@aworld.org` → `editorial`. A machine name carries no `@` and is
+    /// `design@example.com` → `design`. A machine name carries no `@` and is
     /// returned whole.
     private func shortName(_ label: String) -> String {
         label.split(separator: "@").first.map(String.init) ?? label

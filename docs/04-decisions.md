@@ -2098,9 +2098,8 @@ set of bars. The assumption underneath it — that a person has one Claude accou
 was never stated, and it is wrong.
 
 Measured on 20 September 2026, on the two machines this project is developed
-across: this Mac is signed in as `editorial@aworld.org`, an organization account on
-a **Team** plan. The node the tunnel reaches is signed in as `armellino@gmail.com`,
-a personal account on a **Max** plan. Two accounts, two allowances, two different
+across: this Mac is signed in as an **organization** account on a Team plan, and
+the node the tunnel reaches as a **personal** one on a Max plan. Two accounts, two allowances, two different
 *sizes* of allowance — and about nine tenths of the work happens on the second one.
 
 One unlabelled bar reading "36%" in that situation is not an incomplete feature, it

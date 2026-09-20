@@ -152,11 +152,11 @@ enum AccountLimitsSuite {
         // of them is the defect these cases exist to keep fixed.
         TestCase("The account is read from the configuration") { t in
             let account = ClaudeAccount.decode(Data(#"""
-            {"oauthAccount": {"emailAddress": "editorial@aworld.org",
+            {"oauthAccount": {"emailAddress": "design@example.com",
              "accountUuid": "99d4b700-e85a-4135-a4fd-c3b7ac021ec5",
              "organizationName": "AWorld"}}
             """#.utf8))
-            t.expectEqual(account?.email, "editorial@aworld.org", "address")
+            t.expectEqual(account?.email, "design@example.com", "address")
             t.expectEqual(account?.uuid, "99d4b700-e85a-4135-a4fd-c3b7ac021ec5", "uuid")
         },
 
@@ -177,9 +177,9 @@ enum AccountLimitsSuite {
 
         TestCase("With no address the machine is the label") { t in
             let unnamed = ClaudeAccount(email: nil, uuid: "u")
-            t.expectEqual(unnamed.label(fallback: "minisforum"), "minisforum", "fallback")
+            t.expectEqual(unnamed.label(fallback: "build-box"), "build-box", "fallback")
             t.expectEqual(
-                ClaudeAccount(email: "a@b.c", uuid: "u").label(fallback: "minisforum"),
+                ClaudeAccount(email: "a@b.c", uuid: "u").label(fallback: "build-box"),
                 "a@b.c", "the address wins"
             )
         },
@@ -189,7 +189,7 @@ enum AccountLimitsSuite {
         TestCase("One account on two machines draws one group") { t in
             let shared = ClaudeAccount(email: "a@b.c", uuid: "same")
             let merged = AllowanceReport.merged([
-                report(shared, "this Mac", 10), report(shared, "minisforum", 11),
+                report(shared, "this Mac", 10), report(shared, "build-box", 11),
             ])
             t.expectEqual(merged.count, 1, "groups")
             // The local one, whose age this app controls, not the remote reading.
@@ -198,11 +198,11 @@ enum AccountLimitsSuite {
 
         TestCase("Two accounts draw two groups") { t in
             let merged = AllowanceReport.merged([
-                report(ClaudeAccount(email: "editorial@aworld.org", uuid: "99d4"), "this Mac", 36),
-                report(ClaudeAccount(email: "armellino@gmail.com", uuid: "28fe"), "minisforum", 4),
+                report(ClaudeAccount(email: "design@example.com", uuid: "99d4"), "this Mac", 36),
+                report(ClaudeAccount(email: "sam@example.net", uuid: "28fe"), "build-box", 4),
             ])
             t.expectEqual(merged.count, 2, "groups")
-            t.expectEqual(merged.map(\.label), ["editorial@aworld.org", "armellino@gmail.com"], "labels")
+            t.expectEqual(merged.map(\.label), ["design@example.com", "sam@example.net"], "labels")
         },
 
         // Hiding a second allowance is the worse failure of the two, so an account
@@ -210,7 +210,7 @@ enum AccountLimitsSuite {
         TestCase("An account that cannot identify itself is never merged away") { t in
             let merged = AllowanceReport.merged([
                 report(ClaudeAccount(email: "a@b.c", uuid: nil), "this Mac", 10),
-                report(ClaudeAccount(email: "a@b.c", uuid: nil), "minisforum", 11),
+                report(ClaudeAccount(email: "a@b.c", uuid: nil), "build-box", 11),
                 report(nil, "third", 12),
             ])
             t.expectEqual(merged.count, 3, "nothing was collapsed on a guess")
