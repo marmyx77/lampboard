@@ -43,14 +43,27 @@ public enum RemoteInstallScripts {
 
     /// Reports what the machine has: its home, Claude Code's settings (`null` if
     /// unreadable, `{}` if absent) with the sha256 and mode of the file as read,
-    /// the Python version, whether `curl` exists — the hook script needs it — and
-    /// whether `~/.lampboard` can be trusted.
+    /// the text of our hook script there (`null` when absent), the Python
+    /// version, whether `curl` exists — the hook script needs it — and whether
+    /// `~/.lampboard` can be trusted.
+    ///
+    /// The script's text comes back so the token can be judged **here**, by the
+    /// same rule the local installer applies (`HookRepair`): the node knows
+    /// nothing about tokens and is not told one for the sake of a comparison.
     public static let inspect = directoryGuard + "\n" + """
 
     import hashlib, json, platform, shutil, sys
 
     home = os.path.expanduser("~")
     settings_path = os.path.join(home, "\(AppConfig.remoteClaudeSettingsRelativePath)")
+    def read_text(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return None
+    hook_script = read_text(os.path.join(home, "\(AppConfig.remoteHookScriptRelativePath)"))
+    legacy_hook_script = read_text(os.path.join(home, "\(AppConfig.legacyRemoteHookScriptRelativePath)"))
     settings, error, digest, mode = None, None, None, None
     try:
         with open(settings_path, "rb") as f:
@@ -71,6 +84,8 @@ public enum RemoteInstallScripts {
         "settings": settings,
         "settingsSha256": digest,
         "settingsMode": mode,
+        "hookScript": hook_script,
+        "legacyHookScript": legacy_hook_script,
         "python": platform.python_version(),
         "curl": shutil.which("curl") is not None,
         "directoryProblem": own_directory(os.path.join(home, "\(directoryName)")),

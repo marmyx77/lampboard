@@ -2175,7 +2175,31 @@ our entries in the user's file so as to recognise them: the recogniser stays
 structural, as the uninstaller's is, and the port is read off the hooks the same
 way.
 
-**What it does not reach.** The remote node. Its hooks and script are written over
-ssh from the settings window and only then; a node on 0.4.0 keeps a tokenless
-script until it is reinstalled from here. That is the one step left before the
-token can be required, and it is a click, not a release.
+**The node, and the previous name.** The first version reached neither. A node's
+hooks are written over ssh, and bringing them up to date was left to a person
+pressing "Install" on every node they own — which works for the one machine its
+author remembers and for nobody else's. Now every check the fleet runs — at
+launch, when a host is added, when a tunnel comes back up after failing — judges
+the node's hooks by this same rule (`HookRepair`, shared with the local installer)
+and rewrites them when they are stale, through the scripts that already make a
+dated backup and refuse to write over a file that changed. And "ours" includes the
+script path the project had before it was renamed: found on the node this panel
+watches on 20 September 2026, nine command hooks under `.clawd-light`, alive and
+posting through the tunnel with the old host header, that a rule knowing only the
+current name read as *nothing installed*. Every node set up before the rename is
+in that state, and so is every Mac that upgraded across it without reinstalling;
+the migration removes those registrations as it writes the current ones, and the
+event added since comes along.
+
+**A near miss, caught by a domain case.** The message listener was detected with
+`isInstalled`, which also claims the native hooks — so every native installation
+read as having delivery on, and the repair would have registered the mailbox for
+people who had never turned it on: the one feature that lets a process on the
+machine start a turn in the person's voice (D15). Detection is by exact command
+path now, and the case that found it stays as the regression.
+
+**Verified without touching the node.** A domain case rehearses the whole remote
+repair through the real Python scripts against a home laid out like the node —
+inspect, judge, merge, apply, inspect again — and `lampboard remote check`, which
+is read-only, reports the verdict the panel will act on. The write happens at the
+panel's next connection.

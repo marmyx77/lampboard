@@ -644,6 +644,22 @@ enum CommandLineInterface {
                       + "hooks \(inspection.hooksInstalled ? "installed" : "not installed")")
                 if let error = inspection.error { print("  settings.json unreadable: \(error)") }
                 if let problem = inspection.directoryProblem { print("  ~/.lampboard there \(problem)") }
+                // Read-only here: the panel rewrites stale hooks itself when it
+                // connects, and a person asking from a terminal is told what it
+                // will find rather than having the file changed under them.
+                if let token = TokenStore().read(), let verdict = inspection.repairVerdict(token: token) {
+                    switch verdict {
+                    case .current:
+                        print("  token: the hooks there carry this panel's token")
+                    case .stale:
+                        print("  token: the hooks there carry no token; the panel rewrites them when it "
+                              + "connects, or run `lampboard remote install \(host)`")
+                    case .addressedElsewhere:
+                        print("  token: the hooks there post to another port, so they are not this panel's to repair")
+                    case .nothingInstalled:
+                        break
+                    }
+                }
                 switch RemoteHookInstaller.tunnelStatus(on: host, port: inspection.port) {
                 case .success(let tunnel): print("  tunnel (127.0.0.1:\(inspection.port) there): \(tunnel.sentence)")
                 case .failure(let error): print("  tunnel: could not ask (\(error.short))")

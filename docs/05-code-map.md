@@ -1,14 +1,14 @@
 # Code map
 
-~41,786 lines of Swift across five targets. For each file: what it contains, why
+~42,425 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,425 lines · 93 files   pure logic, zero AppKit
-  LampBoardApp/    16,396 lines · 86 files   shell: AppKit, network, windows
-  LampBoardTests/  10,540 lines · 55 files   759 cases, instantaneous
-  LampBoardE2E/    3,056 lines · 12 files   107 cases, the real binary
+  LampBoardCore/  11,577 lines · 94 files   pure logic, zero AppKit
+  LampBoardApp/    16,480 lines · 86 files   shell: AppKit, network, windows
+  LampBoardTests/  10,884 lines · 56 files   768 cases, instantaneous
+  LampBoardE2E/    3,115 lines · 12 files   108 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 513
+### `AppConfig.swift` · 545
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -796,7 +796,7 @@ token protects and what it doesn't: read it before quoting it elsewhere.
 
 ## `Setup/`
 
-### `HookConfigMerger.swift` · 408
+### `HookConfigMerger.swift` · 440
 Adds and removes the hooks in `settings.json` **working on dictionaries**, not on
 files: the I/O lives in the shell, so this logic — which modifies an important
 user file — stays verifiable. Two questions the launch repair asks are answered
@@ -804,6 +804,16 @@ here and nowhere else: `lacksToken` (does one of our native hooks miss the curre
 token?) and `nativePorts` (which listener are they addressed to?). Both read
 through the same structural recogniser the uninstaller uses, so neither can claim
 a neighbour's hook.
+
+### `HookRepair.swift` · 98
+The one rule behind bringing an installation up to the current token, shared by
+the local installer at launch and the node's installer at every check: which
+events carry ours — under the current name **and** the previous one — which
+listener they are addressed to, whether both halves carry the token, and what
+shape to keep. Born from watching a test instance on another port rewrite a
+shared installation (D48); its own domain case then caught the repair about to
+switch message delivery on for everybody, because `isInstalled` claims native
+hooks for any path asked about.
 
 ### `HookScriptBuilder.swift` · 172
 Generates `hook.sh`, and is the one place the listener's address is spelled:
@@ -825,8 +835,8 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 > stands a second listener down. Every path out is `exit 0` except the deliberate
 > `exit 2` — a failing hook can interrupt a Claude Code turn.
 
-### `RemoteInstallScripts.swift` · 216
-The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved.
+### `RemoteInstallScripts.swift` · 232
+The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved. The inspection hands back the text of our script there under both names, so the token is judged here by `HookRepair` and the node is never told one; a domain case runs the real scripts against a home laid out like the node, inspect to apply and back.
 
 ## `System/`
 
@@ -990,7 +1000,7 @@ there, the hooks are registered — and it names the link that broke.
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
 | `RemoteTunnel.swift` | 283 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac |
-| `RemoteFleet.swift` | 191 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live |
+| `RemoteFleet.swift` | 209 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
@@ -1073,7 +1083,7 @@ Per agent, and `notPresent` is one of the answers: an agent that is not on this
 machine has failed at nothing, which is what keeps the exit code and the first-run
 offer honest.
 
-### `HookInstaller.swift` · 408
+### `HookInstaller.swift` · 392
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail. The backup is named after the file
 it copies, which it was not: both agents share this code and only one of them
@@ -1087,8 +1097,8 @@ they had. The first version reinstalled at its own port with fresh defaults, and
 test instance on another port turned the whole shared installation towards a
 process that then exited.
 
-### `RemoteHookInstaller.swift` · 181
-The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers.
+### `RemoteHookInstaller.swift` · 265
+The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers. `repairToken` brings a node's hooks up to the current token by the same rule the launch applies here (D48), previous-name registrations included, and only when they post to that user's tunnel port; the fleet calls it on every check.
 
 ## `UI/`
 
@@ -1139,7 +1149,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 759 cases
+## `LampBoardTests/` — 768 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1196,7 +1206,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 107 cases
+## `LampBoardE2E/` — 108 cases
 
 | Suite | Covers |
 |---|---|
@@ -1205,7 +1215,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, non-headless startup |
-| `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own |
+| `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows
 how to run the commands and the hook script, and waits with `waitUntil` because

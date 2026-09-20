@@ -639,6 +639,15 @@ name should be. Clicking the row raises the **Remote-SSH** window of that
 folder here, if one is open (`… — folder [SSH: host]`); otherwise the menu says
 where the session is. The chat window cannot open a remote transcript.
 
+**The hooks over there are kept current by the panel, not by you.** Every time it
+connects to a node it reads what is registered there and, when the hooks carry no
+token or were written under the project's previous name, rewrites them — dated
+backup, refused if the file changed in between, and only when they post to that
+user's own tunnel port, by the same rule that governs this Mac's file (D48).
+Measured on the node this panel watches: nine command hooks under the old name,
+alive and posting through the tunnel, that a repair knowing only the current name
+read as *nothing installed*.
+
 The machine needs ssh key login (no password prompt is possible), `python3` and
 `curl`. The tunnel is restarted with backoff when the machine sleeps or the VPN
 drops; the Settings window shows its state and the outcome of every operation.
@@ -696,6 +705,12 @@ cask from a third-party tap is refused until the tap is trusted, and the refusal
 names neither the cask nor a reason a newcomer can act on. Measured here on
 Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
 from untrusted tap*.
+
+**Claude Code 2.1.63 or later.** Most of the hooks post natively, and the `http`
+hook type appeared in that release (its changelog, not a measurement here). The
+installer does not check the version: on an older Claude Code the native entries
+are not understood, and the panel hears at best the three events that still run
+the script. Claude Code updates itself, so this is a note for pinned installations.
 
 **Without Homebrew**, the disk image lives at one address that never changes:
 
@@ -1167,9 +1182,9 @@ nothing, and nothing but `SessionEnd` ever says so on screen. So the route now
 refuses a token that is present and wrong, and still accepts one that is absent —
 for one more release, because hooks written by 0.4.0 carry none. Both halves of an
 installation carry it now, the native headers and the script, and every launch
-brings an installation addressed to it up to the current token (D48). What still
-stands before requiring it is the remote node, whose script is rewritten only by
-reinstalling there.
+brings an installation addressed to it up to the current token (D48). A node's
+hooks are brought up to date the same way, over ssh, every time the panel connects
+to it — including the ones written under the project's previous name.
 
 **What a still-open endpoint is not allowed to do.** Because that route still
 accepts a request with no token, everything arriving on it is treated as untrusted. The `transcript_path`
@@ -1307,8 +1322,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 759 domain tests, instantaneous
-swift run LampBoardE2E                # 107 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 768 domain tests, instantaneous
+swift run LampBoardE2E                # 108 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

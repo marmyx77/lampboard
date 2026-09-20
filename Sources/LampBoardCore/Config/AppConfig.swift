@@ -469,6 +469,13 @@ public enum AppConfig {
 
     /// Where the hook script goes on a remote machine, relative to its home.
     public static let remoteHookScriptRelativePath = ".lampboard/hook.sh"
+    /// Where it went under the project's previous name. Still registered on every
+    /// node that was set up before the rename and never reinstalled — found on the
+    /// node this panel watches, 20 September 2026: nine command hooks pointing at
+    /// it, the script alive and posting through the tunnel with the old header.
+    /// An installation the repair does not recognise is one it leaves to die the
+    /// day the token is required, so this is recognised and migrated (D48).
+    public static let legacyRemoteHookScriptRelativePath = ".clawd-light/hook.sh"
     /// The far end of the tunnel on a remote machine: a loopback port **derived
     /// from the user's uid**, so two accounts on one machine never share it.
     ///

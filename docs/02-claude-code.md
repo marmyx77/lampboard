@@ -50,6 +50,15 @@ The intermediate level (the array of "matcher groups") exists because some event
 support a `matcher` filter. lampboard doesn't use it: it registers a group with
 no matcher, which applies to everything.
 
+Since 0.4 that is the shape of three entries only — `SessionStart`, `SessionEnd`
+and `Stop`, for reasons `HookConfigMerger.commandOnlyEvents` gives in full. The
+other seven are `"type": "http"` entries posting to the panel's loopback port,
+with the token and the harness in `headers` and `CLAUDE_CODE_ENTRYPOINT` in
+`allowedEnvVars`. The `http` type appeared in Claude Code **2.1.63**, per its
+changelog; the reference says a non-2xx answer and a refused connection are both
+"non-blocking error, execution continues", which is what makes refusing a wrong
+token on `/signal` safe (D7).
+
 **Mind the lifecycle.** Claude Code sessions that are **already open** do not
 re-read `settings.json`: they pick up the new configuration only the next time
 they start. After an `install-hooks`, the sessions in progress carry on with the

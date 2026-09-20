@@ -192,6 +192,65 @@ enum TokenLifecycleSuite {
                     "message delivery was dropped by the repair"
                 )
             },
+
+            // The other stale installation in the world: the one written under
+            // the project's previous name, command hooks only, never reinstalled.
+            // The menu called it "not installed" and the repair did not see it.
+            // One launch has to bring it forward: current path, native form, the
+            // token, and the event added since — with the old registrations gone.
+            TestCase("a launch brings an installation under the previous name to the current one") { a in
+                let own = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("lampboard-e2e-rename-\(ProcessInfo.processInfo.processIdentifier)")
+                try? FileManager.default.removeItem(at: own)
+                let legacyDirectory = own.appendingPathComponent(".clawd-light")
+                for directory in [own.appendingPathComponent(".claude"), legacyDirectory] {
+                    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                }
+                defer { try? FileManager.default.removeItem(at: own) }
+
+                let addressed: UInt16 = port &+ 7
+                let legacyScript = legacyDirectory.appendingPathComponent("hook.sh")
+                let settingsURL = own.appendingPathComponent(".claude/settings.json")
+                let stale = HookConfigMerger.install(
+                    into: [:], scriptPath: legacyScript.path, rewakeScriptPath: nil,
+                    registerMessageDelivery: false,
+                    events: HookConfigMerger.defaultEvents.filter { $0 != "PostToolUseFailure" }
+                )
+                guard (try? JSONSerialization.data(withJSONObject: stale, options: [.sortedKeys]).write(to: settingsURL)) != nil,
+                      (try? HookScriptBuilder.script(port: addressed, token: nil).write(
+                          to: legacyScript, atomically: true, encoding: .utf8
+                      )) != nil
+                else { return a.fail("could not lay out the previous name's installation") }
+
+                let owner = AppUnderTest(binaryURL: binaryURL, port: addressed, home: own)
+                defer { owner.stopKeepingHome() }
+                do { try owner.startReusingHome() } catch {
+                    return a.fail("the instance did not start: \(error)")
+                }
+                guard let token = owner.tokenValue else { return a.fail("no token after the launch") }
+
+                guard let data = try? Data(contentsOf: settingsURL),
+                      let repaired = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { return a.fail("settings.json unreadable after the launch") }
+                let current = own.appendingPathComponent(".lampboard/hook.sh")
+                a.expect(
+                    !HookConfigMerger.hasCommandHook(at: legacyScript.path, in: repaired),
+                    "the previous name's registrations are still there"
+                )
+                a.expectEqual(HookConfigMerger.nativePorts(in: repaired), [addressed], "native, and addressed as before")
+                a.expect(
+                    !HookConfigMerger.lacksToken(in: repaired, scriptPath: current.path, token: token),
+                    "a native hook lacks the token"
+                )
+                a.expect(
+                    HookConfigMerger.installedEvents(in: repaired, scriptPath: current.path)
+                        .contains("PostToolUseFailure"),
+                    "the event added since the previous name is not registered"
+                )
+                let script = (try? String(contentsOf: current, encoding: .utf8)) ?? ""
+                a.expect(script.contains(token), "the current script lacks the token")
+                a.expect(HookScriptBuilder.posts(script, to: addressed), "the current script changed listener")
+            },
         ])
     }
 

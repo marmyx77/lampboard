@@ -67,9 +67,9 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (759 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (768 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
-| End-to-end suite (107 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
+| End-to-end suite (108 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
 | Links between documents | every relative link and anchor resolves | filesystem | `bite.sh` breaks a link, then deletes a guarded document | CI, `test.sh` | ” |
 | Figures outside the code map | README and docs state the same numbers | filesystem | `bite.sh` drifts one, then rewords the sentence away | CI, `test.sh` | ” |

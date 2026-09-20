@@ -11,6 +11,10 @@ struct RemoteInspection {
     /// sha256 of the settings bytes as read; `nil` when the file did not exist.
     /// Sent back with the write, so nothing is written over a file that changed.
     let settingsSha256: String?
+    /// Our hook script there, as read; `nil` when it is not there.
+    let hookScript: String?
+    /// The script under the project's previous name, when that is what the node has.
+    let legacyHookScript: String?
     let pythonVersion: String
     let hasCurl: Bool
     /// Why `~/.lampboard` there cannot be trusted — a symlink, another user's —
@@ -19,14 +23,36 @@ struct RemoteInspection {
     let error: String?
 
     var scriptPath: String { home + "/" + AppConfig.remoteHookScriptRelativePath }
+    var legacyScriptPath: String { home + "/" + AppConfig.legacyRemoteHookScriptRelativePath }
 
     /// The loopback port the tunnel binds there for this user.
     var port: UInt16 { AppConfig.remotePort(forUID: uid) }
 
-    /// `true` when the lampboard hook is registered there.
+    /// `true` when the lampboard hook is registered there — under either name.
+    /// A node set up before the rename has working hooks, and telling its owner
+    /// they are "not installed" would send them to reinstall what the repair is
+    /// about to bring up to date on its own.
     var hooksInstalled: Bool {
         guard let settings else { return false }
         return HookConfigMerger.isInstalled(in: settings, scriptPath: scriptPath)
+            || HookConfigMerger.hasCommandHook(at: legacyScriptPath, in: settings)
+    }
+
+    /// Whether the hooks there carry `token`, judged by the rule the local
+    /// installer applies to its own file. `nil` when the settings could not be
+    /// read, which is not a verdict.
+    func repairVerdict(token: String) -> HookRepair.Verdict? {
+        guard let settings else { return nil }
+        // No message listener on a node, ever: the mailbox is local (D15).
+        return HookRepair.verdict(
+            settings: settings,
+            scriptPath: scriptPath,
+            legacyScriptPaths: [legacyScriptPath],
+            rewakeScriptPath: nil,
+            scriptText: hookScript ?? legacyHookScript,
+            token: token,
+            port: port
+        )
     }
 }
 
@@ -62,6 +88,8 @@ enum RemoteHookInstaller {
                 uid: uid,
                 settings: object["settings"] as? [String: Any],
                 settingsSha256: object["settingsSha256"] as? String,
+                hookScript: object["hookScript"] as? String,
+                legacyHookScript: object["legacyHookScript"] as? String,
                 pythonVersion: (object["python"] as? String) ?? "?",
                 hasCurl: (object["curl"] as? Bool) ?? false,
                 directoryProblem: object["directoryProblem"] as? String,
@@ -80,51 +108,89 @@ enum RemoteHookInstaller {
     /// Registers the hooks there. Returns a one-line description of what was done.
     static func install(on host: String) -> Result<String, RemoteCommandError> {
         inspect(host).flatMap { inspection in
-            guard let settings = inspection.settings else {
-                return .failure(.remoteFailure(
-                    "settings.json there cannot be parsed (\(inspection.error ?? "unknown error")); nothing was changed"
-                ))
-            }
-            guard inspection.hasCurl else {
-                return .failure(.remoteFailure("curl is missing there, and the hook script needs it"))
-            }
-            if let problem = inspection.directoryProblem {
-                return .failure(.remoteFailure("~/.lampboard there \(problem); nothing was changed"))
-            }
-            // The far side posts natively too. It is not the secondary case it was
-            // taken for: most of the work this panel watches happens over the
-            // tunnel, so the node is where the saved process spawns are actually
-            // worth something. Proved end-to-end on 20 September 2026 — a session
-            // there, through the reverse tunnel, to the listener here — including
-            // with the tunnel down, where the hybrid shape stays silent.
-            //
-            // The token is the **local** one: what authorizes the post is the
-            // server at this end, which is where the tunnel lands.
-            let endpoint = HookConfigMerger.endpoint(
-                port: inspection.port,
-                token: TokenStore().read(),
-                harness: .claudeCode,
-                host: host
+            install(
+                on: host, inspection: inspection,
+                events: HookConfigMerger.defaultEvents, token: TokenStore().read()
             )
-            let merged = HookConfigMerger.install(
-                into: settings,
-                scriptPath: inspection.scriptPath,
-                rewakeScriptPath: nil,
-                registerMessageDelivery: false,
-                endpoint: endpoint
-            )
-            return apply(on: host, payload: [
-                "scriptRelativePath": AppConfig.remoteHookScriptRelativePath,
-                "settingsRelativePath": AppConfig.remoteClaudeSettingsRelativePath,
-                "settings": merged,
-                "expectedSha256": inspection.settingsSha256 ?? NSNull(),
-                "hookScript": HookScriptBuilder.script(
-                    port: inspection.port, host: host, token: TokenStore().read()
-                ),
-            ]).map { result in
-                let backup = (result["backup"] as? String).map { " (backup: \($0))" } ?? ""
-                return "hooks installed on \(host), posting to 127.0.0.1:\(inspection.port) there\(backup)"
-            }
+        }
+    }
+
+    /// Brings the hooks there up to `token` when they lack it, and only when they
+    /// are addressed to that user's tunnel port — the rule is `HookRepair`'s, the
+    /// same one the launch applies to this Mac's own file.
+    ///
+    /// Run from the fleet's check, which is to say at every launch and whenever a
+    /// node that was asleep comes back: hooks written there by an earlier version
+    /// carry no token, and a person pressing "Install" on every node they own is
+    /// not a migration, it is a chore that gets done on the machine its author
+    /// remembers and on nobody else's. The shape found there is the shape kept.
+    ///
+    /// - Returns: `nil` when there is nothing to do — no hooks, hooks that are
+    ///   current, hooks addressed to another listener, no settings to read, or
+    ///   no token here to carry. Otherwise what the write said.
+    static func repairToken(
+        on host: String, inspection: RemoteInspection, token: String?
+    ) -> Result<String, RemoteCommandError>? {
+        guard let token, case .stale(let shape)? = inspection.repairVerdict(token: token) else {
+            return nil
+        }
+        let events = shape.includeToolEvents
+            ? HookConfigMerger.defaultEvents + HookConfigMerger.toolEvents
+            : HookConfigMerger.defaultEvents
+        return install(on: host, inspection: inspection, events: events, token: token)
+            .map { _ in "hooks there rewritten: current script, current token" }
+    }
+
+    /// Writes the hooks there, given what the node just said about itself.
+    private static func install(
+        on host: String, inspection: RemoteInspection, events: [String], token: String?
+    ) -> Result<String, RemoteCommandError> {
+        guard let settings = inspection.settings else {
+            return .failure(.remoteFailure(
+                "settings.json there cannot be parsed (\(inspection.error ?? "unknown error")); nothing was changed"
+            ))
+        }
+        guard inspection.hasCurl else {
+            return .failure(.remoteFailure("curl is missing there, and the hook script needs it"))
+        }
+        if let problem = inspection.directoryProblem {
+            return .failure(.remoteFailure("~/.lampboard there \(problem); nothing was changed"))
+        }
+        // The far side posts natively too. It is not the secondary case it was
+        // taken for: most of the work this panel watches happens over the
+        // tunnel, so the node is where the saved process spawns are actually
+        // worth something. Proved end-to-end on 20 September 2026 — a session
+        // there, through the reverse tunnel, to the listener here — including
+        // with the tunnel down, where the hybrid shape stays silent.
+        //
+        // The token is the **local** one: what authorizes the post is the
+        // server at this end, which is where the tunnel lands.
+        let endpoint = HookConfigMerger.endpoint(
+            port: inspection.port,
+            token: token,
+            harness: .claudeCode,
+            host: host
+        )
+        let merged = HookConfigMerger.install(
+            into: settings,
+            scriptPath: inspection.scriptPath,
+            rewakeScriptPath: nil,
+            registerMessageDelivery: false,
+            events: events,
+            endpoint: endpoint,
+            legacyScriptPaths: [inspection.legacyScriptPath]
+        )
+        return apply(on: host, payload: [
+            "scriptRelativePath": AppConfig.remoteHookScriptRelativePath,
+            "settingsRelativePath": AppConfig.remoteClaudeSettingsRelativePath,
+            "settings": merged,
+            "expectedSha256": inspection.settingsSha256 ?? NSNull(),
+            "hookScript": HookScriptBuilder.script(
+                port: inspection.port, host: host, token: token
+            ),
+        ]).map { result in
+            let backup = (result["backup"] as? String).map { " (backup: \($0))" } ?? ""
+            return "hooks installed on \(host), posting to 127.0.0.1:\(inspection.port) there\(backup)"
         }
     }
 

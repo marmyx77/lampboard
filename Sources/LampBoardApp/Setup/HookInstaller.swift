@@ -121,22 +121,17 @@ struct HookInstaller {
     ///
     /// Called at launch, and it is what turns "require a token in a later release"
     /// from a hope about other people's habits into something this app finishes by
-    /// itself. It touches only entries the structural recogniser claims as ours,
-    /// and it writes nothing when there is nothing to change.
+    /// itself. The rule is `HookRepair`'s, shared with the node's installer: only
+    /// an installation **addressed to this instance** is touched, and what it gets
+    /// is a repair, not a fresh installation — the events it had stay registered,
+    /// message delivery stays as it was.
     ///
-    /// Two things can be stale, and both are checked: the header on a native hook,
-    /// which `HookConfigMerger.lacksToken` reads out of the settings, and the
-    /// script, whose token lives inside its own text — a file this process can
-    /// simply read.
-    ///
-    /// **Only an installation addressed to this instance is touched**, and what it
-    /// gets is a repair, not a fresh installation. The first version reinstalled at
-    /// its own port with a fresh installation's defaults, and the end-to-end run
-    /// showed what that means: a second instance started on another port for one
-    /// case found a stale script, rewrote every hook to post to itself, and exited
-    /// — leaving the next cases posting into the void. The same code would have
-    /// dropped `PreToolUse` and message delivery from anybody who had them. So the
-    /// port is read off the hooks, and the shape they had is the shape they keep.
+    /// The first version reinstalled at its own port with a fresh installation's
+    /// defaults, and the end-to-end run showed what that means: a second instance
+    /// started on another port for one case found a stale script, rewrote every
+    /// hook to post to itself, and exited — leaving the next cases posting into
+    /// the void. The same code would have dropped `PreToolUse` and message
+    /// delivery from anybody who had them (D48).
     ///
     /// - Parameter token: the value this launch has settled on. Passed in rather
     ///   than read, because the launch may just have regenerated it and a read
@@ -145,25 +140,29 @@ struct HookInstaller {
     @discardableResult
     func repairToken(port: UInt16 = AppConfig.listenPort, token: String?) -> Bool {
         guard let token, let settings = try? readSettings() else { return false }
-        let events = HookConfigMerger.installedEvents(in: settings, scriptPath: scriptPath)
-        guard !events.isEmpty else { return false }
-
-        let scriptText = try? String(contentsOf: scriptURL, encoding: .utf8)
-        guard isAddressed(to: port, settings: settings, scriptText: scriptText) else { return false }
-
-        let headerStale = HookConfigMerger.lacksToken(
-            in: settings, scriptPath: scriptPath, token: token
+        // The current script, or failing that the one the previous name wrote:
+        // an installation from before the rename has only the second, and its
+        // target is what says which listener it belongs to.
+        let scriptText = (try? String(contentsOf: scriptURL, encoding: .utf8))
+            ?? legacyScriptPaths.lazy
+                .compactMap { try? String(contentsOfFile: $0, encoding: .utf8) }
+                .first
+        let verdict = HookRepair.verdict(
+            settings: settings,
+            scriptPath: scriptPath,
+            legacyScriptPaths: legacyScriptPaths,
+            rewakeScriptPath: rewakeScriptPath,
+            scriptText: scriptText,
+            token: token,
+            port: port
         )
-        let scriptStale = !(scriptText?.contains(token) ?? false)
-        guard headerStale || scriptStale else { return false }
+        guard case .stale(let shape) = verdict else { return false }
 
         do {
             try install(
                 port: port,
-                includeToolEvents: HookConfigMerger.toolEvents.allSatisfy(events.contains),
-                includeMessageDelivery: HookConfigMerger.isInstalled(
-                    in: settings, scriptPath: rewakeScriptPath
-                ),
+                includeToolEvents: shape.includeToolEvents,
+                includeMessageDelivery: shape.includeMessageDelivery,
                 token: token
             )
             Diagnostics.log("hooks rewritten to carry the current token (\(harness.rawValue))")
@@ -175,18 +174,6 @@ struct HookInstaller {
             Diagnostics.log("could not rewrite the hooks: \(error.localizedDescription)")
             return false
         }
-    }
-
-    /// `true` when the installed hooks post to `port` — to this instance, then.
-    ///
-    /// The native registrations say so in their URL. When there are none — Codex
-    /// keeps everything on the script — the script's own target is the record, and
-    /// an installation with neither is nobody's to repair.
-    private func isAddressed(to port: UInt16, settings: [String: Any], scriptText: String?) -> Bool {
-        let native = HookConfigMerger.nativePorts(in: settings)
-        if !native.isEmpty { return native == [port] }
-        guard let scriptText else { return false }
-        return HookScriptBuilder.posts(scriptText, to: port)
     }
 
     // MARK: - Operations
@@ -220,15 +207,11 @@ struct HookInstaller {
             ? harness.defaultHookEvents + HookConfigMerger.toolEvents
             : harness.defaultHookEvents
 
-        // Strip the registrations left by the name this project had before, then
-        // install. Two steps and not one because the entries name a path, and the
+        // The registrations left by the name this project had before go too: the
         // old path is still in `settings.json` on any machine that ran the
-        // previous release: leaving it there means a `curl` at a missing script
-        // on every turn, silently, since a hook that fails is not an error.
+        // previous release, and leaving it there means a `curl` at a missing
+        // script on every turn, silently, since a hook that fails is not an error.
         // Removal is by exact path, so this cannot touch anyone else's hooks.
-        let migrated = HookConfigMerger.uninstall(
-            from: settings, scriptPaths: legacyScriptPaths
-        )
 
         // Claude Code posts natively; Codex keeps the script for everything,
         // because its hook system has no `http` type to offer. The script is
@@ -239,12 +222,13 @@ struct HookInstaller {
             : nil
 
         let updated = HookConfigMerger.install(
-            into: migrated,
+            into: settings,
             scriptPath: scriptPath,
             rewakeScriptPath: rewakeScriptPath,
             registerMessageDelivery: includeMessageDelivery,
             events: events,
-            endpoint: endpoint
+            endpoint: endpoint,
+            legacyScriptPaths: legacyScriptPaths
         )
         try writeSettings(updated)
         return backup

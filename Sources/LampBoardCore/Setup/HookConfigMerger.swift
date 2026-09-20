@@ -244,19 +244,26 @@ public enum HookConfigMerger {
     ///   is registered as a native `http` hook instead of a script. `nil` keeps
     ///   the whole set on the script, which is what Codex needs — it has a hook
     ///   system of its own and no `http` type in it.
+    /// - Parameter legacyScriptPaths: where the script lived under the project's
+    ///   previous name. Registrations naming those paths are removed too, or a
+    ///   machine set up before the rename keeps a `curl` at a stale script on
+    ///   every turn, silently, since a hook that fails is not an error. Removal is
+    ///   by exact path, so this cannot touch anyone else's hooks.
     public static func install(
         into settings: [String: Any],
         scriptPath: String,
         rewakeScriptPath: String? = nil,
         registerMessageDelivery: Bool = true,
         events: [String] = defaultEvents,
-        endpoint: Endpoint? = nil
+        endpoint: Endpoint? = nil,
+        legacyScriptPaths: [String] = []
     ) -> [String: Any] {
         // Clean up any previous installation first, so that changing the event
         // list — or switching message delivery off — doesn't leave orphaned
         // registrations behind.
         var result = uninstall(
-            from: settings, scriptPaths: [scriptPath, rewakeScriptPath].compactMap { $0 }
+            from: settings,
+            scriptPaths: [scriptPath, rewakeScriptPath].compactMap { $0 } + legacyScriptPaths
         )
         var hooks = (result["hooks"] as? [String: Any]) ?? [:]
 
@@ -320,9 +327,34 @@ public enum HookConfigMerger {
         return result
     }
 
-    /// `true` when at least one hook already points at `scriptPath`.
+    /// `true` when at least one of our registrations is in the file: a command
+    /// running `scriptPath`, **or** a native hook posting at our endpoint.
+    ///
+    /// The second half is what makes this the wrong question for "is *this
+    /// particular* script registered?" — asked about the message listener's path
+    /// on a file holding only native hooks, it answers yes, because those hooks
+    /// are ours whatever path is asked about. The launch repair asked exactly
+    /// that, and would have switched message delivery **on** for everybody who
+    /// had never turned it on; a domain case caught it before it shipped. For one
+    /// script, ask `hasCommandHook`.
     public static func isInstalled(in settings: [String: Any], scriptPath: String) -> Bool {
         installedEvents(in: settings, scriptPath: scriptPath).isEmpty == false
+    }
+
+    /// `true` when some hook runs exactly this command. Nothing else counts: not a
+    /// native hook, not another script of ours.
+    public static func hasCommandHook(at path: String, in settings: [String: Any]) -> Bool {
+        guard let hooks = settings["hooks"] as? [String: Any] else { return false }
+        for (_, value) in hooks {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                for entry in (group["hooks"] as? [[String: Any]]) ?? []
+                where entry["command"] as? String == path {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     /// Events carrying one of our registrations, in alphabetical order.

@@ -143,6 +143,18 @@ final class RemoteFleet: ObservableObject {
                     case .success(let tunnel): notes.append(tunnel.sentence)
                     case .failure(let error): notes.append("tunnel not checked: \(error.short)")
                     }
+                    // Hooks written there by an earlier version carry no token.
+                    // The check runs at every launch, so this is where the node
+                    // stops depending on somebody remembering a button (D48).
+                    if let repair = RemoteHookInstaller.repairToken(
+                        on: host, inspection: inspection, token: TokenStore().read()
+                    ) {
+                        switch repair {
+                        case .success(let text): notes.append(text)
+                        case .failure(let error):
+                            notes.append("hooks there carry no token and could not be rewritten: \(error.short)")
+                        }
+                    }
                     outcome = .success("\(host): " + notes.joined(separator: "; "))
                 case .failure(let error):
                     hooks = .failed(error.short)
@@ -178,6 +190,12 @@ final class RemoteFleet: ObservableObject {
         guard tunnels[host] == nil else { return }
         let tunnel = RemoteTunnel(host: host, localPort: localPort) { [weak self] state in
             self?.modify(host) { $0.tunnel = state }
+            // A node asleep at launch answered the check with a failure, and its
+            // hooks were never looked at. The tunnel coming up is the moment it
+            // can be asked again — and repaired, if it needs to be.
+            if case .up = state, let hooks = self?.status[host]?.hooks, case .failed = hooks {
+                self?.run(.check, on: host)
+            }
         }
         tunnels[host] = tunnel
         tunnel.start()

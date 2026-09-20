@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **759**, instantaneous |
-| End-to-end tests | **107**, about a minute |
+| Domain tests | **768**, instantaneous |
+| End-to-end tests | **108**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -1905,3 +1905,37 @@ the two token cases fail, and the transcript cases stay green.
 What remains before the token can be required is the node: its script is rewritten
 only by reinstalling from the settings window, and a node on 0.4.0 keeps a
 tokenless one until then.
+
+### The node, and the name before this one
+
+"This product is not used by me alone." The remote half of the repair, as first
+left, was exactly that: a button to press on every node, which the author
+remembers and nobody else is told about. The fleet now judges a node's hooks by
+the same rule at every check — launch, a host added, a tunnel coming back — and
+rewrites them when stale, through the scripts that already make a dated backup
+and refuse to write over a file that changed.
+
+Looking at the real node before wiring it showed the bigger gap. Its nine hooks
+are `command` entries under `.clawd-light/hook.sh`, the project's previous name:
+alive, posting through the tunnel with the old host header, no token — and read
+as *not installed* by everything that knew only the current path. Every node set
+up before the rename is in that state, and so is every Mac that upgraded across
+it without reinstalling. The rule knows the previous name now, the migration
+removes those registrations as it writes the current ones, and the event added
+since, `PostToolUseFailure`, comes along.
+
+Two things were verified without touching the node. A domain case rehearses the
+whole repair through the real Python scripts against a home laid out like it —
+inspect, judge, merge, apply, inspect again — and `lampboard remote check
+minisforum`, which is read-only, now says *hooks installed; carry no token; the
+panel rewrites them when it connects*. The write itself happens at the next
+launch.
+
+The domain case for the rule also caught a defect already committed that
+afternoon: the message listener was detected with `isInstalled`, which claims
+native hooks too, so the repair would have switched message delivery on for
+everybody who had never asked. By command path now, with the case kept.
+
+One fact for the record, from the changelog rather than a measurement: the `http`
+hook type appeared in Claude Code 2.1.63, and the installer does not check the
+version.
