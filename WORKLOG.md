@@ -1939,3 +1939,7 @@ everybody who had never asked. By command path now, with the case kept.
 One fact for the record, from the changelog rather than a measurement: the `http`
 hook type appeared in Claude Code 2.1.63, and the installer does not check the
 version.
+
+Released the same evening as **0.4.1**, and the notes say the one thing 0.4.0's
+could not: there is nothing to do after updating. The hooks on this Mac and on
+every node are brought up to date by the panel itself.
