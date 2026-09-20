@@ -1944,6 +1944,10 @@ Released the same evening as **0.4.1**, and the notes say the one thing 0.4.0's
 could not: there is nothing to do after updating. The hooks on this Mac and on
 every node are brought up to date by the panel itself.
 
+And **0.4.2** an hour later, carrying the version guard below. Two point
+releases in an evening rather than a fix waiting in `main` for the next one: a
+fix that is not shipped is a fix nobody has.
+
 ### The version nobody had asked about
 
 Last, after the release: the installer now reads which Claude Code is installed
