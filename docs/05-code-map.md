@@ -1,14 +1,14 @@
 # Code map
 
-~41,111 lines of Swift across five targets. For each file: what it contains, why
+~41,786 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,336 lines · 93 files   pure logic, zero AppKit
-  LampBoardApp/    16,297 lines · 86 files   shell: AppKit, network, windows
-  LampBoardTests/  10,453 lines · 55 files   754 cases, instantaneous
-  LampBoardE2E/    2,925 lines · 12 files   105 cases, the real binary
+  LampBoardCore/  11,425 lines · 93 files   pure logic, zero AppKit
+  LampBoardApp/    16,396 lines · 86 files   shell: AppKit, network, windows
+  LampBoardTests/  10,540 lines · 55 files   759 cases, instantaneous
+  LampBoardE2E/    3,056 lines · 12 files   107 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -367,8 +367,8 @@ activity is worse than a row that says nothing.
 ### `TranscriptPathPolicy.swift`
 Which transcript paths the app will open: only those under `~/.claude`, after
 `..` has been resolved and with the trailing separator that stops a sibling
-directory from passing as a child. `POST /signal` carries no token by design,
-and the path it names is opened for reading — measured before this rule existed,
+directory from passing as a child. `POST /signal` still accepts a request with
+no token (D7), and the path it names is opened for reading — measured before this rule existed,
 a forged signal naming `/etc/passwd` produced a row holding it within a second.
 
 ### `PanelIssue.swift` · `PermissionWait.swift`
@@ -796,13 +796,21 @@ token protects and what it doesn't: read it before quoting it elsewhere.
 
 ## `Setup/`
 
-### `HookConfigMerger.swift` · 324
+### `HookConfigMerger.swift` · 408
 Adds and removes the hooks in `settings.json` **working on dictionaries**, not on
 files: the I/O lives in the shell, so this logic — which modifies an important
-user file — stays verifiable.
+user file — stays verifiable. Two questions the launch repair asks are answered
+here and nowhere else: `lacksToken` (does one of our native hooks miss the current
+token?) and `nativePorts` (which listener are they addressed to?). Both read
+through the same structural recogniser the uninstaller uses, so neither can claim
+a neighbour's hook.
 
-### `HookScriptBuilder.swift`
-Generates `hook.sh`. See [02 Claude Code](02-claude-code.md#the-hook-script).
+### `HookScriptBuilder.swift` · 172
+Generates `hook.sh`, and is the one place the listener's address is spelled:
+`target(port:)` is what the script posts to and what `HookConfigMerger.endpoint`
+writes into a native hook, so the two halves cannot name different listeners.
+`posts(_:to:)` reads it back off an installed script. See
+[02 Claude Code](02-claude-code.md#the-hook-script).
 
 ### `RewakeScriptBuilder.swift` · 126
 Generates `rewake.sh`, the second `Stop` hook that carries a message into a
@@ -897,9 +905,14 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 322
+### `main.swift` · `AppDelegate.swift` · 333
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
+
+The launch settles the token **once**, then repairs the hooks with it, then starts
+the server with it — in that order. Each step reading the store for itself is how
+the launch that regenerates a burned token would have written the old one into
+every hook (D48).
 
 `AppDelegate` wires everything up. `--headless` skips `startInterface()`, and
 that is why the E2E suite didn't see the notification crash: it never went
@@ -1048,7 +1061,7 @@ The names a Remote-SSH window may carry for a host — the configured one, what 
 
 ## `Setup/`
 
-### `HookSetup.swift` · 165
+### `HookSetup.swift` · 179
 Both agents' hooks, asked and answered together, because the answer used to
 depend on how you asked. The command line installed Claude Code and then Codex;
 the first-run offer, the context menu and the state that menu showed each
@@ -1060,12 +1073,19 @@ Per agent, and `notPresent` is one of the answers: an agent that is not on this
 machine has failed at nothing, which is what keeps the exit code and the first-run
 offer honest.
 
-### `HookInstaller.swift` · 336
+### `HookInstaller.swift` · 408
 Atomic writes and a dated backup. `availableBackupURL` appends a counter: two
 installations in the same second used to fail. The backup is named after the file
 it copies, which it was not: both agents share this code and only one of them
 writes a `settings.json`, so Codex's backups were called after a file that was
 never there.
+
+`repairToken` is the launch repair (D48): both halves of an installation are
+rewritten when either lacks the current token — **only** when the hooks are
+addressed to this instance's port, and keeping the events and the message listener
+they had. The first version reinstalled at its own port with fresh defaults, and a
+test instance on another port turned the whole shared installation towards a
+process that then exited.
 
 ### `RemoteHookInstaller.swift` · 181
 The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers.
@@ -1119,7 +1139,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 754 cases
+## `LampBoardTests/` — 759 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1176,7 +1196,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 105 cases
+## `LampBoardE2E/` — 107 cases
 
 | Suite | Covers |
 |---|---|
@@ -1184,8 +1204,8 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `LifecycleSuite` | the states walked over HTTP |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
-| `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, non-headless startup |
-| `TokenLifecycleSuite` | reuse, regeneration, corrupted token |
+| `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, non-headless startup |
+| `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own |
 
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows
 how to run the commands and the hook script, and waits with `waitUntil` because

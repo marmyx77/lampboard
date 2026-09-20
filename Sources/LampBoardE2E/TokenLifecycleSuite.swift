@@ -102,6 +102,96 @@ enum TokenLifecycleSuite {
                     "status with the new token"
                 )
             },
+
+            // The repair that makes requiring a token possible, in a home of its
+            // own: the shared one has an instance running, and a case that
+            // restarted it would take every later case down with it.
+            //
+            // Two launches. The first is an instance on **another** port, and it
+            // has to leave the hooks exactly as it found them: the first version
+            // of the repair reinstalled at its own port, and a case in the
+            // installation suite that starts the bare binary on 9903 turned the
+            // whole shared installation towards a process that then exited. The
+            // second is the instance the hooks are addressed to, and it has to
+            // bring both halves up to the token while keeping the shape they had:
+            // `PreToolUse` and the message listener stay registered.
+            TestCase("a launch repairs the hooks addressed to it, and only those") { a in
+                let own = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("lampboard-e2e-repair-\(ProcessInfo.processInfo.processIdentifier)")
+                try? FileManager.default.removeItem(at: own)
+                for sub in [".claude", ".lampboard"] {
+                    try? FileManager.default.createDirectory(
+                        at: own.appendingPathComponent(sub), withIntermediateDirectories: true
+                    )
+                }
+                defer { try? FileManager.default.removeItem(at: own) }
+
+                // What 0.4.0 wrote: both halves without a token, every optional
+                // registration on.
+                let scriptURL = own.appendingPathComponent(".lampboard/hook.sh")
+                let rewakeURL = own.appendingPathComponent(".lampboard/rewake.sh")
+                let settingsURL = own.appendingPathComponent(".claude/settings.json")
+                let addressed: UInt16 = port &+ 5
+                let stale = HookConfigMerger.install(
+                    into: [:],
+                    scriptPath: scriptURL.path,
+                    rewakeScriptPath: rewakeURL.path,
+                    registerMessageDelivery: true,
+                    events: HookConfigMerger.defaultEvents + HookConfigMerger.toolEvents,
+                    endpoint: HookConfigMerger.endpoint(port: addressed, token: nil)
+                )
+                guard let staleBytes = try? JSONSerialization.data(withJSONObject: stale, options: [.sortedKeys]),
+                      (try? staleBytes.write(to: settingsURL)) != nil,
+                      (try? HookScriptBuilder.script(port: addressed, token: nil).write(
+                          to: scriptURL, atomically: true, encoding: .utf8
+                      )) != nil
+                else { return a.fail("could not lay out the stale installation") }
+                let staleScript = try? String(contentsOf: scriptURL, encoding: .utf8)
+
+                let stranger = AppUnderTest(binaryURL: binaryURL, port: port &+ 6, home: own)
+                do { try stranger.startReusingHome() } catch {
+                    return a.fail("the instance on another port did not start: \(error)")
+                }
+                stranger.stopKeepingHome()
+                a.expectEqual(
+                    try? Data(contentsOf: settingsURL), staleBytes,
+                    "an instance on another port rewrote settings.json"
+                )
+                a.expectEqual(
+                    try? String(contentsOf: scriptURL, encoding: .utf8), staleScript,
+                    "an instance on another port rewrote the script"
+                )
+
+                let owner = AppUnderTest(binaryURL: binaryURL, port: addressed, home: own)
+                defer { owner.stopKeepingHome() }
+                do { try owner.startReusingHome() } catch {
+                    return a.fail("the addressed instance did not start: \(error)")
+                }
+                guard let token = owner.tokenValue else { return a.fail("no token after the launch") }
+
+                guard let data = try? Data(contentsOf: settingsURL),
+                      let repaired = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { return a.fail("settings.json unreadable after the repair") }
+                a.expect(
+                    !HookConfigMerger.lacksToken(in: repaired, scriptPath: scriptURL.path, token: token),
+                    "a native hook still lacks the token"
+                )
+                let script = (try? String(contentsOf: scriptURL, encoding: .utf8)) ?? ""
+                a.expect(script.contains(token), "the script still lacks the token")
+                a.expect(HookScriptBuilder.posts(script, to: addressed), "the script changed listener")
+                a.expectEqual(
+                    HookConfigMerger.nativePorts(in: repaired), [addressed], "the hooks changed listener"
+                )
+
+                let events = HookConfigMerger.installedEvents(in: repaired, scriptPath: scriptURL.path)
+                for event in HookConfigMerger.toolEvents {
+                    a.expect(events.contains(event), "\(event) was dropped by the repair")
+                }
+                a.expect(
+                    HookConfigMerger.isInstalled(in: repaired, scriptPath: rewakeURL.path),
+                    "message delivery was dropped by the repair"
+                )
+            },
         ])
     }
 

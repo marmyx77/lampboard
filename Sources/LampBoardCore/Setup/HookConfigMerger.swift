@@ -136,7 +136,7 @@ public enum HookConfigMerger {
         }
 
         return Endpoint(
-            url: "http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)",
+            url: HookScriptBuilder.target(port: port),
             headers: headers,
             allowedEnvVars: allowed
         )
@@ -159,6 +159,67 @@ public enum HookConfigMerger {
             return false
         }
         return parsed.path == AppConfig.signalPath
+    }
+
+    /// `true` when one of our **native** registrations does not carry `token`.
+    ///
+    /// This is the question behind requiring a token on `POST /signal`. Hooks
+    /// written by an earlier version carry none, and they sit in somebody's
+    /// `settings.json` until a person happens to reinstall them — so "require it a
+    /// release later" is not a plan, it is a hope about other people's habits.
+    ///
+    /// Asked at launch it becomes a fact the app can act on: it knows the token,
+    /// it knows which entries are its own, and rewriting them costs one file write
+    /// nobody sees. What it must never do is touch an entry that is not ours,
+    /// which is why this reads through the same structural recogniser the
+    /// uninstaller uses rather than guessing at names.
+    ///
+    /// Only the `http` form is judged. A command hook carries the token inside the
+    /// script, whose text is not visible from here; the caller checks that
+    /// separately and rewrites both together.
+    public static func lacksToken(
+        in settings: [String: Any], scriptPath: String, token: String
+    ) -> Bool {
+        guard let hooks = settings["hooks"] as? [String: Any] else { return false }
+        let doomed: Set<String> = [scriptPath]
+        for (_, value) in hooks {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                for entry in (group["hooks"] as? [[String: Any]]) ?? [] {
+                    guard isOurs(entry, doomed: doomed),
+                          entry["type"] as? String == "http" else { continue }
+                    let headers = entry["headers"] as? [String: Any]
+                    if headers?[AccessToken.headerName] as? String != token { return true }
+                }
+            }
+        }
+        return false
+    }
+
+    /// The ports our **native** registrations post to. Empty when everything is
+    /// on the script, as it is for Codex.
+    ///
+    /// This is how an instance tells whether an installation is addressed to it.
+    /// The launch repair used to skip that question and reinstall at its own port,
+    /// and the first thing that did was turn a whole installation towards a second
+    /// instance started on another port for a test — which then exited, leaving
+    /// every hook posting into the void. An instance may bring hooks up to date;
+    /// it may not take them over.
+    public static func nativePorts(in settings: [String: Any]) -> Set<UInt16> {
+        guard let hooks = settings["hooks"] as? [String: Any] else { return [] }
+        var ports: Set<UInt16> = []
+        for (_, value) in hooks {
+            guard let groups = value as? [[String: Any]] else { continue }
+            for group in groups {
+                for entry in (group["hooks"] as? [[String: Any]]) ?? [] {
+                    guard let url = entry["url"] as? String, isOurEndpoint(url),
+                          let port = URLComponents(string: url)?.port,
+                          let narrowed = UInt16(exactly: port) else { continue }
+                    ports.insert(narrowed)
+                }
+            }
+        }
+        return ports
     }
 
     /// Hook timeout, in seconds. Twice curl's `--max-time`.

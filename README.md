@@ -1156,16 +1156,23 @@ while the code relied on `NWParameters.acceptLocalOnly`, which looks like it say
 there is `requiredLocalEndpoint`, and an end-to-end test queries `lsof` against
 the live process to verify the fact instead of the intention.
 
-**`GET /sessions` wants a token, `POST /signal` doesn't.** The read endpoint
-exposes the names and paths of the open projects, which on a development machine
-are information: without a token any local process could read them, including the
-Claude Code sessions themselves. The one that *receives* the signals stays open,
-and that is a choice: the hook script could read the token, but a hook that fails
-authentication would block a Claude Code turn for the sake of a decorative widget.
-The risk is asymmetric and so is the treatment.
+**`GET /sessions` wants a token, `POST /signal` refuses a wrong one.** The read
+endpoint exposes the names and paths of the open projects, which on a development
+machine are information: without a token any local process could read them,
+including the Claude Code sessions themselves. The one that *receives* the signals
+used to stay open, on the reasoning that a hook failing authentication would block
+a Claude Code turn for the sake of a decorative widget. Measured on 20 September
+2026, that premise did not hold: a hook whose endpoint is gone costs the turn
+nothing, and nothing but `SessionEnd` ever says so on screen. So the route now
+refuses a token that is present and wrong, and still accepts one that is absent —
+for one more release, because hooks written by 0.4.0 carry none. Both halves of an
+installation carry it now, the native headers and the script, and every launch
+brings an installation addressed to it up to the current token (D48). What still
+stands before requiring it is the remote node, whose script is rewritten only by
+reinstalling there.
 
-**What an open endpoint is not allowed to do.** Because that route takes no
-token, everything arriving on it is treated as untrusted. The `transcript_path`
+**What a still-open endpoint is not allowed to do.** Because that route still
+accepts a request with no token, everything arriving on it is treated as untrusted. The `transcript_path`
 it carries is opened for reading, so it is accepted only under `~/.claude`, where
 Claude Code actually writes transcripts — `..` resolved first, and a sibling
 directory whose name merely starts the same refused. Before that rule a forged
@@ -1300,8 +1307,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 754 domain tests, instantaneous
-swift run LampBoardE2E                # 105 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 759 domain tests, instantaneous
+swift run LampBoardE2E                # 107 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

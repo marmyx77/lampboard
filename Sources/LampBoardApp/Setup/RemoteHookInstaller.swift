@@ -118,7 +118,9 @@ enum RemoteHookInstaller {
                 "settingsRelativePath": AppConfig.remoteClaudeSettingsRelativePath,
                 "settings": merged,
                 "expectedSha256": inspection.settingsSha256 ?? NSNull(),
-                "hookScript": HookScriptBuilder.script(port: inspection.port, host: host),
+                "hookScript": HookScriptBuilder.script(
+                    port: inspection.port, host: host, token: TokenStore().read()
+                ),
             ]).map { result in
                 let backup = (result["backup"] as? String).map { " (backup: \($0))" } ?? ""
                 return "hooks installed on \(host), posting to 127.0.0.1:\(inspection.port) there\(backup)"

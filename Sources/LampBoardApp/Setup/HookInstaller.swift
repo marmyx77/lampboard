@@ -117,6 +117,78 @@ struct HookInstaller {
         return HookConfigMerger.installedEvents(in: settings, scriptPath: scriptPath)
     }
 
+    /// Rewrites our own registrations when they do not carry the current token.
+    ///
+    /// Called at launch, and it is what turns "require a token in a later release"
+    /// from a hope about other people's habits into something this app finishes by
+    /// itself. It touches only entries the structural recogniser claims as ours,
+    /// and it writes nothing when there is nothing to change.
+    ///
+    /// Two things can be stale, and both are checked: the header on a native hook,
+    /// which `HookConfigMerger.lacksToken` reads out of the settings, and the
+    /// script, whose token lives inside its own text — a file this process can
+    /// simply read.
+    ///
+    /// **Only an installation addressed to this instance is touched**, and what it
+    /// gets is a repair, not a fresh installation. The first version reinstalled at
+    /// its own port with a fresh installation's defaults, and the end-to-end run
+    /// showed what that means: a second instance started on another port for one
+    /// case found a stale script, rewrote every hook to post to itself, and exited
+    /// — leaving the next cases posting into the void. The same code would have
+    /// dropped `PreToolUse` and message delivery from anybody who had them. So the
+    /// port is read off the hooks, and the shape they had is the shape they keep.
+    ///
+    /// - Parameter token: the value this launch has settled on. Passed in rather
+    ///   than read, because the launch may just have regenerated it and a read
+    ///   here would see the burned one.
+    /// - Returns: `true` when something was rewritten.
+    @discardableResult
+    func repairToken(port: UInt16 = AppConfig.listenPort, token: String?) -> Bool {
+        guard let token, let settings = try? readSettings() else { return false }
+        let events = HookConfigMerger.installedEvents(in: settings, scriptPath: scriptPath)
+        guard !events.isEmpty else { return false }
+
+        let scriptText = try? String(contentsOf: scriptURL, encoding: .utf8)
+        guard isAddressed(to: port, settings: settings, scriptText: scriptText) else { return false }
+
+        let headerStale = HookConfigMerger.lacksToken(
+            in: settings, scriptPath: scriptPath, token: token
+        )
+        let scriptStale = !(scriptText?.contains(token) ?? false)
+        guard headerStale || scriptStale else { return false }
+
+        do {
+            try install(
+                port: port,
+                includeToolEvents: HookConfigMerger.toolEvents.allSatisfy(events.contains),
+                includeMessageDelivery: HookConfigMerger.isInstalled(
+                    in: settings, scriptPath: rewakeScriptPath
+                ),
+                token: token
+            )
+            Diagnostics.log("hooks rewritten to carry the current token (\(harness.rawValue))")
+            return true
+        } catch {
+            // Never fatal. A panel that refused to start because it could not
+            // rewrite a header would be trading the whole feature for the last
+            // step of a migration.
+            Diagnostics.log("could not rewrite the hooks: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    /// `true` when the installed hooks post to `port` — to this instance, then.
+    ///
+    /// The native registrations say so in their URL. When there are none — Codex
+    /// keeps everything on the script — the script's own target is the record, and
+    /// an installation with neither is nobody's to repair.
+    private func isAddressed(to port: UInt16, settings: [String: Any], scriptText: String?) -> Bool {
+        let native = HookConfigMerger.nativePorts(in: settings)
+        if !native.isEmpty { return native == [port] }
+        guard let scriptText else { return false }
+        return HookScriptBuilder.posts(scriptText, to: port)
+    }
+
     // MARK: - Operations
 
     /// Writes the hook script and registers it in `settings.json`.
@@ -138,7 +210,7 @@ struct HookInstaller {
         includeMessageDelivery: Bool = false,
         token: String? = TokenStore().read()
     ) throws -> URL? {
-        try writeScript(port: port)
+        try writeScript(port: port, token: token)
         if includeMessageDelivery { try writeRewakeScript() }
 
         let settings = try readSettings()
@@ -196,13 +268,13 @@ struct HookInstaller {
 
     // MARK: - I/O
 
-    private func writeScript(port: UInt16) throws {
+    private func writeScript(port: UInt16, token: String?) throws {
         do {
             try fileManager.createDirectory(
                 at: scriptURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try Data(HookScriptBuilder.script(port: port, harness: harness).utf8)
+            try Data(HookScriptBuilder.script(port: port, harness: harness, token: token).utf8)
                 .write(to: scriptURL, options: .atomic)
             try fileManager.setAttributes(
                 [.posixPermissions: 0o755], ofItemAtPath: scriptURL.path

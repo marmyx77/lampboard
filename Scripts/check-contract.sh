@@ -94,13 +94,28 @@ if [ ! -f "$SETTINGS" ]; then
 else
     MISSING="$(python3 - "$SETTINGS" "$SCRIPT_PATH" "$SPEC" <<'PY'
 import json, sys
+from urllib.parse import urlsplit
 settings, script, spec = sys.argv[1], sys.argv[2], sys.argv[3]
 wanted = set(json.load(open(spec))["events"])
 hooks = json.load(open(settings)).get("hooks", {})
+
+# Both forms an installation takes, the same way `HookConfigMerger.isOurs` sees
+# them: a command running our script, or an `http` hook posting at our loopback
+# signal path. Recognising the script alone was right until 0.4.0 moved most
+# events to the native form — after which this check went red on every machine
+# running the current release and told people to reinstall, which would have
+# changed nothing.
+def ours(entry):
+    if entry.get("command") == script:
+        return True
+    url = urlsplit(entry.get("url", ""))
+    return (url.scheme == "http" and url.hostname in ("127.0.0.1", "localhost")
+            and url.path == "/signal")
+
 registered = {
     event for event, groups in hooks.items()
     if isinstance(groups, list) and any(
-        entry.get("command") == script
+        ours(entry)
         for group in groups if isinstance(group, dict)
         for entry in group.get("hooks", []) if isinstance(entry, dict)
     )

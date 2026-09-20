@@ -100,6 +100,20 @@ enum HookSetup {
         state(fileManager: fileManager).contains { $0.outcome == .notInstalled }
     }
 
+    /// Brings every installed harness's hooks up to `token`, and writes nothing
+    /// where there is nothing to change.
+    ///
+    /// Run at launch, after the token is settled and before the server starts
+    /// answering. It is what makes requiring a token on `POST /signal` a decision
+    /// this app can carry out rather than one that waits on other people
+    /// reinstalling. Each installer decides for itself whether the hooks it finds
+    /// are addressed to this instance — see `HookInstaller.repairToken`.
+    static func repairTokens(port: UInt16 = AppConfig.listenPort, token: String?) {
+        for (_, installer) in installers() {
+            installer.repairToken(port: port, token: token)
+        }
+    }
+
     /// - Parameter includeMessageDelivery: Claude Code only, and refused for
     ///   Codex rather than silently ignored: it rides a second `Stop` hook that
     ///   answers a mailbox, and Codex has no way back into a session to answer

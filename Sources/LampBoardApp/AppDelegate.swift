@@ -45,7 +45,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Accessory: no Dock icon, no menu bar.
         NSApp.setActivationPolicy(.accessory)
 
-        startServer()
+        // The token is settled once, here, and both of the next two lines are
+        // handed the same value. The repair ran before the server once, each
+        // reading the store for itself — and on the launch that regenerates a
+        // burned token, the repair read the old one, wrote it into every hook,
+        // and the server then minted a new one nothing matched.
+        let token = TokenStore().loadOrCreate()
+
+        // Before the server answers anything: hooks written by an earlier version
+        // carry no token, and this is where they stop being somebody's problem to
+        // remember. Writes nothing when there is nothing to change.
+        HookSetup.repairTokens(port: port, token: token)
+
+        startServer(token: token)
 
         if !headless {
             startInterface()
@@ -159,8 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Server
 
-    private func startServer() {
-        let token = TokenStore().loadOrCreate()
+    private func startServer(token: String?) {
         if token == nil {
             Diagnostics.log("token unavailable: GET /sessions will stay closed")
         }

@@ -9,6 +9,23 @@ import Foundation
 /// waiting for its hooks — so the timeouts below are a promise to both.
 public enum HookScriptBuilder {
 
+    /// Where the script for `port` posts. The same string `HookConfigMerger`
+    /// writes into a native hook, so the two halves of an installation can never
+    /// name different listeners.
+    public static func target(port: UInt16) -> String {
+        "http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)"
+    }
+
+    /// `true` when `script` posts to the listener on `port`.
+    ///
+    /// Read off the installed file rather than remembered, for the same reason
+    /// `HookConfigMerger.isOurEndpoint` is structural: the script is the one
+    /// record of where it posts, and an instance about to rewrite it has to know
+    /// whether it is the listener the script was written for.
+    public static func posts(_ script: String, to port: UInt16) -> Bool {
+        script.contains("'\(target(port: port))'")
+    }
+
     /// - Parameters:
     ///   - port: where to post. Locally the app's port; on another machine the
     ///     per-user loopback port the tunnel binds there (`AppConfig.remotePort`).
@@ -20,13 +37,24 @@ public enum HookScriptBuilder {
     ///   - harness: which agent this copy serves. One script is installed per
     ///     harness and each declares itself in a header, because the sender is
     ///     the only party that knows for certain — see `AppConfig.harnessHeader`.
+    /// - Parameter token: authorizes the post, exactly as the native hooks' header
+    ///   does. The script carried none for most of this project's life, which was
+    ///   harmless while `POST /signal` accepted anything — and became the thing
+    ///   standing between here and requiring one: `SessionStart`, `SessionEnd` and
+    ///   `Stop` all run this script, and `Stop` is what turns a row green. Absent
+    ///   still writes a working script, because a machine whose token could not be
+    ///   read should get a panel that works rather than none.
     public static func script(
         port: UInt16 = AppConfig.listenPort,
         host: String? = nil,
-        harness: Harness = .claudeCode
+        harness: Harness = .claudeCode,
+        token: String? = nil
     ) -> String {
         let origin = host.map { "     --header '\(AppConfig.remoteHostHeader): \($0)' \\\n" } ?? ""
-        let target = "http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)"
+        // Single-quoted, and the value is hexadecimal by construction
+        // (`AccessToken.generate`), so there is nothing in it a shell could read.
+        let auth = token.map { "     --header '\(AccessToken.headerName): \($0)' \\\n" } ?? ""
+        let target = target(port: port)
         let where_ = host.map {
             " It runs on \($0) and posts through the ssh tunnel lampboard keeps open."
         } ?? ""
@@ -132,7 +160,7 @@ public enum HookScriptBuilder {
              --request POST \\
              --header 'Content-Type: application/json' \\
              --header '\(AppConfig.harnessHeader): \(harness.rawValue)' \\
-        \(entrypoint)\(origin)     "${GIT_HEADERS[@]+"${GIT_HEADERS[@]}"}" \\
+        \(entrypoint)\(origin)\(auth)     "${GIT_HEADERS[@]+"${GIT_HEADERS[@]}"}" \\
              --data-binary "$BODY" \\
              '\(target)' \\
              2>/dev/null || true

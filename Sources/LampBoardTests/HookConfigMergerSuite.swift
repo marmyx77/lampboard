@@ -217,6 +217,93 @@ enum HookConfigMergerSuite {
             t.expectEqual(endpoint.headers[AppConfig.remoteHostHeader], "minisforum", "host header")
         },
 
+        TestCase("A native hook without the token is seen as stale") { t in
+            var installed = HookConfigMerger.install(
+                into: [:], scriptPath: scriptPath,
+                endpoint: HookConfigMerger.endpoint(port: 9877, token: nil)
+            )
+            t.expect(
+                HookConfigMerger.lacksToken(in: installed, scriptPath: scriptPath, token: "abc"),
+                "a hook with no token should read as stale"
+            )
+            installed = HookConfigMerger.install(
+                into: [:], scriptPath: scriptPath,
+                endpoint: HookConfigMerger.endpoint(port: 9877, token: "abc")
+            )
+            t.expect(
+                !HookConfigMerger.lacksToken(in: installed, scriptPath: scriptPath, token: "abc"),
+                "a hook with the right token is not stale"
+            )
+            t.expect(
+                HookConfigMerger.lacksToken(in: installed, scriptPath: scriptPath, token: "other"),
+                "a hook with somebody else's token is stale"
+            )
+        },
+
+        // The repair must never look at anybody else's hooks, or a neighbour's
+        // registration would be enough to make this app rewrite the file for ever.
+        TestCase("Somebody else's hook is never judged stale") { t in
+            let theirs: [String: Any] = ["hooks": ["Stop": [
+                ["hooks": [["type": "http", "url": "http://127.0.0.1:4317/hook"]]] as [String: Any]
+            ]]]
+            t.expect(
+                !HookConfigMerger.lacksToken(in: theirs, scriptPath: scriptPath, token: "abc"),
+                "a neighbour's endpoint was judged"
+            )
+            t.expect(
+                !HookConfigMerger.lacksToken(in: [:], scriptPath: scriptPath, token: "abc"),
+                "an empty configuration has nothing to repair"
+            )
+        },
+
+        TestCase("The script carries the token, and works without one") { t in
+            let withToken = HookScriptBuilder.script(token: "sekret")
+            t.expect(withToken.contains("X-LampBoard-Token: sekret"), "the header is missing")
+            // A machine whose token could not be read gets a working script rather
+            // than none: the server still accepts an absent token.
+            let without = HookScriptBuilder.script(token: nil)
+            t.expect(!without.contains("X-LampBoard-Token"), "a header appeared from nowhere")
+            t.expect(without.contains("--data-binary"), "the script still posts")
+        },
+
+        // The question the launch repair asks before it touches anything: whose
+        // installation is this? Read off the hooks, never assumed.
+        TestCase("The ports our native hooks post to are read back, and nobody else's") { t in
+            let native = HookConfigMerger.install(
+                into: [:], scriptPath: scriptPath,
+                endpoint: HookConfigMerger.endpoint(port: 9899, token: "abc")
+            )
+            t.expectEqual(HookConfigMerger.nativePorts(in: native), [9899], "one listener")
+
+            let onScript = HookConfigMerger.install(into: [:], scriptPath: scriptPath)
+            t.expect(
+                HookConfigMerger.nativePorts(in: onScript).isEmpty,
+                "a script-only installation names no port in the settings"
+            )
+
+            let theirs: [String: Any] = ["hooks": ["Stop": [
+                ["hooks": [["type": "http", "url": "http://127.0.0.1:4317/hook"]]] as [String: Any]
+            ]]]
+            t.expect(
+                HookConfigMerger.nativePorts(in: theirs).isEmpty,
+                "a neighbour's endpoint was counted as ours"
+            )
+            t.expect(HookConfigMerger.nativePorts(in: [:]).isEmpty, "nothing installed")
+        },
+
+        TestCase("The script says which listener it is addressed to") { t in
+            let script = HookScriptBuilder.script(port: 9899)
+            t.expect(HookScriptBuilder.posts(script, to: 9899), "its own port")
+            t.expect(!HookScriptBuilder.posts(script, to: 9903), "another instance's port")
+            // Both halves of an installation are built from the same string, so
+            // they cannot name different listeners.
+            t.expectEqual(
+                HookConfigMerger.endpoint(port: 9899, token: nil).url,
+                HookScriptBuilder.target(port: 9899),
+                "the native URL and the script's target"
+            )
+        },
+
         // MARK: - Recognising our own registrations
 
         TestCase("Our endpoint is recognised, other people's URLs are not") { t in

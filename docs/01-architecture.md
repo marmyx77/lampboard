@@ -118,11 +118,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-754 cases, instantaneous. They verify Core.
+759 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
-105 cases. They launch **the production binary** against a fake home and talk to
+107 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.

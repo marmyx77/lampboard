@@ -163,6 +163,20 @@ that one can open the `0600` file, and no on-disk secret can prevent it.
 Presenting it as a defense against the code running inside the sessions would be
 a false reassurance — worse than no defense, because people stop thinking about it.
 
+**Revisited, 20 September 2026.** The premise above was never measured, and when
+it was it did not hold. Three turns against a dead port took 7.2, 7.4 and 8.4
+seconds against a baseline of 7.2, 8.5 and 7.9, and `UserPromptSubmit`, `PostToolUse`
+and `Stop` failed without a word reaching the screen. The one event that does report
+a failed hook is `SessionEnd`, and it stays on the script, which swallows the answer
+and exits 0 — so a `401` costs the turn nothing and tells nobody. The route now
+**refuses a token that is present and wrong**, and still accepts one that is
+absent. What stays asymmetric is *when*, not whether: hooks written by 0.4.0 carry
+no token, and refusing them the day the rule landed would have turned every row
+dark on every machine that had not reinstalled. D48 is what makes requiring it a
+decision the app carries out rather than a hope about other people's habits. What
+the token does not protect against is unchanged: a process running as your user
+can read the file.
+
 ---
 
 ## D8 · The features that ask for permissions start off
@@ -2123,3 +2137,45 @@ the failure this decision exists to undo.
 answer — three percentages — crosses the wire. Fetching the token back would put a
 credential in this app's memory, and in whatever ssh buffered, for the sake of
 decoration. The node already has the credential and a network.
+
+## D48 · A launch repairs the hooks addressed to it, and nothing else
+
+**Decided.** At every launch, once the token is settled and before the server
+answers, the app reads its own registrations — the native headers in
+`settings.json` and the text of the script — and rewrites both when either lacks
+the current token. Only an installation **addressed to this instance** is touched:
+the port in the native URLs, or in the script's target when there are none, has to
+be this instance's own. And it is a repair, not an installation: the events that
+were registered stay registered, and message delivery stays as it was.
+
+**Why.** Requiring a token on `POST /signal` cannot wait on people reinstalling.
+Hooks written by 0.4.0 carry none; they sit in `settings.json` until somebody
+happens to run the installer again, and "require it a release later" is a hope
+about other people's habits. The app knows the token, knows which entries are its
+own, and one file write nobody sees finishes the migration. The script matters as
+much as the headers: `SessionStart`, `SessionEnd` and `Stop` run it, and `Stop` is
+what turns a row green.
+
+**What the first version got wrong, and how it was found.** It reinstalled at its
+own port with a fresh installation's defaults. The end-to-end run has a case that
+starts the bare binary on another port against the shared home; under a deliberate
+mutation that left the script without a token, that instance judged the script
+stale, rewrote every hook to post to *itself*, and exited — and the two cases after
+it that run the script posted into the void. It read as a test problem for an
+afternoon. It was the repair taking over an installation that was not its to take.
+The same code would have dropped `PreToolUse` and the message listener from anybody
+who had them and, run before the token store, it read a burned token on the very
+launch that regenerated it. Three defects, one rule missing: *whose installation is
+this?*
+
+**Discarded.** Repairing whatever is found, at the launching instance's port: that
+is the takeover above. Requiring the token without a repair: every row dark on
+every machine that had not reinstalled, with nothing on screen to say why. Marking
+our entries in the user's file so as to recognise them: the recogniser stays
+structural, as the uninstaller's is, and the port is read off the hooks the same
+way.
+
+**What it does not reach.** The remote node. Its hooks and script are written over
+ssh from the settings window and only then; a node on 0.4.0 keeps a tokenless
+script until it is reinstalled from here. That is the one step left before the
+token can be required, and it is a click, not a release.

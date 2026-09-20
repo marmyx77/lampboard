@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **754**, instantaneous |
-| End-to-end tests | **105**, about a minute |
+| Domain tests | **759**, instantaneous |
+| End-to-end tests | **107**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -1868,3 +1868,40 @@ script rather than posting natively, because a native hook can only send headers
 that were already written into `settings.json` — and a branch nobody has looked up
 yet cannot be one of them. One process per turn, which is a different order of cost
 from one per tool call, and that distinction is the whole point of the migration.
+
+### The token rides the script, and the launch finishes the migration
+
+`POST /signal` had refused a wrong token since the morning and accepted an absent
+one, with the plan to require it in the next release. That plan had a hole: the
+script carried no token. `SessionStart`, `SessionEnd` and `Stop` run the script,
+and `Stop` is what turns a row green — so the day the token became mandatory, every
+row on every machine would have stayed amber, and the node would have gone dark.
+
+Two changes close it. The script carries the header now, from the same value the
+native hooks do. And every launch repairs an installation written without it:
+after the token is settled and before the server answers, both halves are read and
+rewritten if either lacks the current value (D48).
+
+The first version of that repair took the afternoon, and not for the reason it
+seemed. Under a deliberate mutation — the installer handing the script no token —
+two unrelated end-to-end cases went red along with the one written to catch it,
+and the obvious reading was that the new case had polluted the shared home. It had
+not. A case in the installation suite starts the bare binary on port 9903 against
+the same home; its launch ran the repair, judged the tokenless script stale, and
+reinstalled **at its own port**. Every hook then posted to a process that had
+already exited. Read back through the code instead of the test output, the repair
+had three defects: it imposed the launching instance's port; it imposed a fresh
+installation's flags, dropping `PreToolUse` and message delivery from anybody who
+had them; and it ran before the token store, so on the launch that regenerates a
+burned token it would have written the old one into every hook.
+
+The rule now is that an instance repairs only the hooks **addressed to it**, and
+keeps their shape. A new end-to-end case lays out a 0.4.0 installation in a home
+of its own, starts an instance on another port and checks that not a byte moved,
+then starts the addressed one and checks both halves carry the token with
+`PreToolUse` and the listener still registered. Under the same mutation exactly
+the two token cases fail, and the transcript cases stay green.
+
+What remains before the token can be required is the node: its script is rewritten
+only by reinstalling from the settings window, and a node on 0.4.0 keeps a
+tokenless one until then.

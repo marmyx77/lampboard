@@ -156,6 +156,39 @@ enum InstallationSuite {
                 a.expect(session.git?.isWorktree != true, "an ordinary checkout is not a worktree")
             },
 
+            // The seam that matters for requiring a token on `POST /signal` later.
+            // Both halves of an installation have to carry it: the header on a
+            // native hook, and the script — which runs `SessionStart`, `SessionEnd`
+            // and `Stop`, and `Stop` is what turns a row green. Read-only: it
+            // judges what `install-hooks` wrote at the top of this suite, and
+            // reinstalling here would change what every later case runs against.
+            //
+            // Seen failing on 20 September 2026 with the installer handing the
+            // script no token, which is the one defect it exists to catch.
+            TestCase("both halves of the installation carry the token") { a in
+                guard let token = app.tokenValue else { return a.fail("no token read") }
+
+                guard let hooks = app.claudeSettings()["hooks"] as? [String: Any] else {
+                    return a.fail("no hooks key in settings.json")
+                }
+                a.expect(
+                    !HookConfigMerger.lacksToken(
+                        in: ["hooks": hooks],
+                        scriptPath: app.home.appendingPathComponent(".lampboard/hook.sh").path,
+                        token: token
+                    ),
+                    "a native hook does not carry the current token"
+                )
+
+                let script = app.home.appendingPathComponent(".lampboard/hook.sh")
+                let text = (try? String(contentsOf: script, encoding: .utf8)) ?? ""
+                a.expect(text.contains(token), "the script does not carry the token")
+                a.expect(
+                    text.contains(AccessToken.headerName),
+                    "the script does not name the header"
+                )
+            },
+
             TestCase("the two subagent events are among the registered ones") { a in
                 guard let hooks = app.claudeSettings()["hooks"] as? [String: Any] else {
                     return a.fail("no hooks key")
@@ -305,6 +338,14 @@ enum InstallationSuite {
                 // A startup crash in a configuration no test walks through is the
                 // easiest defect to ship, and this case exists so it can't be
                 // shipped again.
+                //
+                // It is also a second instance, on another port, against the home
+                // every other case shares — and its launch runs the token repair.
+                // The first version of that repair reinstalled the hooks at its own
+                // port, so this case quietly turned the whole installation towards
+                // 9903 and the transcript cases below posted into the void. The
+                // repair now leaves hooks addressed elsewhere alone; the token
+                // lifecycle suite proves that in a home of its own.
                 let process = Process()
                 process.executableURL = app.binaryPath
                 process.arguments = ["--port", "9903", "--skip-setup-prompt"]
