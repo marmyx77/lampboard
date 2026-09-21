@@ -949,6 +949,17 @@ back, and nothing else.
 is and says one of three things: you are on it, there is a newer one, or the
 question could not be answered.
 
+**How it asks matters.** It sends one request to the address that never changes,
+`…/releases/latest/download/LampBoard.dmg`, without following the redirect GitHub
+answers with: the redirect names the newest release, and reading it costs no API
+call. The first version asked the REST API instead, and the API answers anonymous
+callers **sixty times an hour per public address**. An office shares one address,
+so it shares those sixty among every panel in it and every other tool that asks
+GitHub without a token — which is how, on 21 September 2026, the colleagues behind
+one router read "GitHub is rate-limiting anonymous requests" while a person on
+another network was offered the update. The API is asked only when the redirect
+could not be read at all, never when it was read and refused (D50).
+
 If there is a newer one you get a button, and nothing happens until you press it.
 That is not timidity: macOS grants Accessibility and Automation to a **signing
 identity**, so a replacement signed with the same certificate inherits the
@@ -1325,7 +1336,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 772 domain tests, instantaneous
+swift run LampBoardTests              # 776 domain tests, instantaneous
 swift run LampBoardE2E                # 109 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

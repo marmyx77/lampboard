@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **772**, instantaneous |
+| Domain tests | **776**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -1958,3 +1958,28 @@ node (D49). A version it cannot read is taken as current, in those words, on
 installer does, pointing at a version from before the type: `install-hooks` writes
 ten script hooks and names both versions, and the first launch adds the token to
 the script without going native.
+
+## 21 September — sixty requests an hour, per office
+
+The morning after two releases, a screenshot from a colleague: *Could not check
+for updates. GitHub is rate-limiting anonymous requests: try again later.* On the
+machine this was built on, the same button offered the update. Both true.
+
+The check asked GitHub's REST API, and the API gives anonymous callers sixty
+requests an hour **per public address** — its own headers say `limit: 60`. The
+colleagues sit behind one office router, so they share those sixty with each
+other and with every tool on that network that asks GitHub without a token:
+Homebrew, editor extensions, other updaters. Nobody was asking too often. The
+sentence named a limit and blamed the person reading it; the cause was where they
+were sitting.
+
+The address that never changes answers with a redirect, and the redirect names
+the newest release: `…/releases/download/v0.4.2/LampBoard.dmg`. Reading it is one
+`HEAD` with redirects not followed, no API, no quota. The target is refused unless
+it sits under this project's download prefix, as the API's asset was, and a
+version that cannot be read is no offer. The API stays as the fallback for a
+network that swallows redirects, and is never consulted when the redirect was
+read and refused (D50). Verified here before wiring it: the 302, its `Location`,
+and no rate-limit header anywhere on it.
+
+Released as 0.4.3 the same morning.

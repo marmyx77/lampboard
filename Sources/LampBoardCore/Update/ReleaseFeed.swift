@@ -26,13 +26,55 @@ public enum UpdateDecision: Equatable, Sendable {
 ///   something can be published without being offered to anybody.
 public enum ReleaseFeed {
 
-    /// Where the check asks. Public so the app and the tests name the same URL.
+    /// Where the check asks **first**: the address that never changes, which
+    /// GitHub answers with a redirect to the newest release's own file. The
+    /// version is in that redirect, and reading it costs no API call.
+    ///
+    /// It used to ask the REST API alone, and the API answers anonymous callers
+    /// **sixty times an hour per public address**. An office shares one address,
+    /// and so shares those sixty among every panel in it and every other tool
+    /// that asks GitHub without a token — Homebrew, editor extensions, other
+    /// updaters. Measured on 21 September 2026: the colleagues behind one router
+    /// saw "GitHub is rate-limiting anonymous requests" while a person on
+    /// another network saw the update; the API's own headers said `limit: 60`.
+    /// The download address carries no such limit, and it is the same address
+    /// the site's button and the fleet managers already use (D50).
+    public static let latestDownloadURL = URL(
+        string: "https://github.com/marmyx77/lampboard/releases/latest/download/LampBoard.dmg"
+    )!
+
+    /// Where the check asks when the redirect could not be read. Public so the
+    /// app and the tests name the same URL.
     public static let latestReleaseURL = URL(
         string: "https://api.github.com/repos/marmyx77/lampboard/releases/latest"
     )!
 
     /// The only prefix a downloadable asset may have.
     public static let downloadPrefix = "https://github.com/marmyx77/lampboard/releases/download/"
+
+    /// Reads the redirect the stable address answered with.
+    ///
+    /// The same two refusals as the API parser, for the same reason: the target
+    /// is pinned to this project's releases, and a version that cannot be read
+    /// is no offer rather than an offer of 0.0.0. A draft or a pre-release never
+    /// arrives here at all — GitHub's `latest` skips both by definition.
+    ///
+    /// - Parameter location: the `Location` header, or `nil` when the answer was
+    ///   not a redirect.
+    public static func decide(redirect location: String?, current: ReleaseVersion) -> UpdateDecision {
+        guard let location, !location.isEmpty else {
+            return .unreadable("GitHub did not say where the latest release is")
+        }
+        guard location.hasPrefix(downloadPrefix), let url = URL(string: location) else {
+            return .unreadable("the latest release points outside this project's releases")
+        }
+        let tag = location.dropFirst(downloadPrefix.count).split(separator: "/").first.map(String.init)
+        guard let version = ReleaseVersion(tag) else {
+            return .unreadable("the latest release carries no version this app understands")
+        }
+        guard version > current else { return .upToDate(current: current) }
+        return .available(version: version, downloadURL: url)
+    }
 
     /// Compares the published release with the running one.
     public static func decide(payload: Data, current: ReleaseVersion) -> UpdateDecision {

@@ -1,13 +1,13 @@
 # Code map
 
-~42,720 lines of Swift across five targets. For each file: what it contains, why
+~42,858 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,642 lines · 95 files   pure logic, zero AppKit
-  LampBoardApp/    16,573 lines · 87 files   shell: AppKit, network, windows
-  LampBoardTests/  10,948 lines · 57 files   772 cases, instantaneous
+  LampBoardCore/  11,684 lines · 95 files   pure logic, zero AppKit
+  LampBoardApp/    16,626 lines · 87 files   shell: AppKit, network, windows
+  LampBoardTests/  10,991 lines · 57 files   776 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -344,7 +344,10 @@ last act. `LampBoardE2E` runs this exact text against two fake bundles and check
 all three endings.
 
 ### `ReleaseVersion.swift` · `ReleaseFeed.swift`
-The update check as a parser that says no. Versions compare as three integers,
+The update check as a parser that says no. It reads the **redirect** the stable
+download address answers with — the version is in it, and reading it costs no API
+call and none of the sixty an hour an office shares (D50) — and keeps the API's
+JSON as the fallback for a network that swallows redirects. Versions compare as three integers,
 because `"0.10.0"` sorts before `"0.9.0"` and the tenth release would silently
 stop being offered. The download URL is **pinned** to this project's own
 releases: an answer arriving over HTTPS is still only an answer, and a field that
@@ -1014,7 +1017,7 @@ there, the hooks are registered — and it names the link that broke.
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 207 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain. **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet |
 | `AllowanceMonitor.swift` | 96 | the timer behind that strip. No timer and no request while the switch is off: a feature that reaches the network is either off or on |
-| `UpdateChecker.swift` | 56 | asks GitHub for the latest release and compares it with this build |
+| `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
 
@@ -1161,7 +1164,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 772 cases
+## `LampBoardTests/` — 776 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

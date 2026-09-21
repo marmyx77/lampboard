@@ -155,5 +155,48 @@ enum UpdateFeedSuite {
                 }
             }
         },
+
+        // MARK: - The redirect, which is asked first
+
+        // The address that never changes answers with a redirect to the newest
+        // release's own file, and the version is in it. No API call, so none of
+        // the sixty an hour an office shares (D50).
+        TestCase("A redirect to a newer release is the offer, and the target is the download") { t in
+            let target = ReleaseFeed.downloadPrefix + "v0.4.2/LampBoard.dmg"
+            guard case .available(let version, let url) = ReleaseFeed.decide(
+                redirect: target, current: current
+            ) else { return t.fail("not offered") }
+            t.expectEqual(version.description, "0.4.2", "the version in the path")
+            t.expectEqual(url.absoluteString, target, "the file GitHub pointed at")
+        },
+
+        TestCase("A redirect to the same or an older release is not an update") { t in
+            for tag in ["v0.1.0", "v0.0.9"] {
+                guard case .upToDate = ReleaseFeed.decide(
+                    redirect: ReleaseFeed.downloadPrefix + "\(tag)/LampBoard.dmg", current: current
+                ) else { return t.fail("“\(tag)” offered as an update") }
+            }
+        },
+
+        TestCase("A redirect anywhere else is refused, not followed") { t in
+            for hostile in [
+                "https://evil.example/releases/download/v9.9.9/LampBoard.dmg",
+                "http://github.com/marmyx77/lampboard/releases/download/v9.9.9/LampBoard.dmg",
+                "https://github.com/someone-else/lampboard/releases/download/v9.9.9/LampBoard.dmg",
+                "https://github.com.evil.example/marmyx77/lampboard/releases/download/v9.9.9/LampBoard.dmg",
+            ] {
+                guard case .unreadable(let reason) = ReleaseFeed.decide(redirect: hostile, current: current)
+                else { return t.fail("followed a redirect to \(hostile)") }
+                t.expect(reason.contains("outside"), "named as a refusal, so the API is not asked instead")
+            }
+        },
+
+        TestCase("No redirect, or one with no version in it, is unreadable and never zero") { t in
+            for location in [nil, "", ReleaseFeed.downloadPrefix, ReleaseFeed.downloadPrefix + "nightly/LampBoard.dmg"] {
+                guard case .unreadable = ReleaseFeed.decide(redirect: location, current: current) else {
+                    return t.fail("“\(location ?? "nil")” became an update")
+                }
+            }
+        },
     ])
 }

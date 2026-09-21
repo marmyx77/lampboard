@@ -2231,3 +2231,36 @@ says "not found, taken as current" in those words, so the assumption is visible.
 not know — ignore it, or refuse the whole file — was not observed; no such binary
 was at hand. The rule does not depend on the answer: either way those events do
 not arrive, and either way the script does.
+
+## D50 · The update check follows a redirect, not the API
+
+**Decided.** The check sends a `HEAD` to the address that never changes,
+`…/releases/latest/download/LampBoard.dmg`, with redirects **not** followed, and
+reads the newest release's version out of the `Location` GitHub answers with. The
+target has to sit under this project's own download prefix or the answer is
+refused; a version that cannot be read is no offer. The REST API is asked only
+when no redirect came back at all — never when one came back and was refused.
+
+**Why.** The API answers anonymous callers sixty times an hour **per public
+address**, and its own headers say so: `x-ratelimit-limit: 60`. An office sits
+behind one address, so every panel in it and every other tool asking GitHub
+without a token — Homebrew, editor extensions, other updaters — spends the same
+sixty. On 21 September 2026 the colleagues behind one router read "GitHub is
+rate-limiting anonymous requests: try again later" while the person on another
+network was offered the update, and the sentence was true, useless, and pointed at
+the wrong cause: nobody was asking too often, everybody was asking from the same
+place. The download address carries no such quota — it is what the site's button
+and every fleet manager already poll — and the version it redirects to is the same
+fact the API would have stated.
+
+**What stays.** The pinning: a redirect anywhere but under
+`github.com/marmyx77/lampboard/releases/download/` is refused, as an API asset
+pointing elsewhere was. Drafts and pre-releases need no rule here, because
+GitHub's `latest` skips both by definition. And the API parser stays, as the
+fallback, because a corporate proxy that swallows redirects is a thing that
+exists.
+
+**Discarded.** A token in the app to raise the quota: a secret shipped to every
+Mac is not a secret. Asking the site instead of GitHub: the site is stamped from
+GitHub and would only add a hop to the same fact, and D42 already says the
+published address is the one that never changes.
