@@ -12,7 +12,7 @@ Sources/
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 789 lines. The limit the project sets itself is 800.
+No file exceeds 790 lines. The limit the project sets itself is 800.
 
 ---
 
