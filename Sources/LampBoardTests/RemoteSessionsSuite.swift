@@ -320,12 +320,45 @@ enum RemoteSessionsSuite {
         // It is a promise made to another machine: the shape it prints is what the
         // decoder above parses, and the two must not drift apart.
         TestCase("The probe emits the fields the decoder reads") { t in
-            for field in ["sessionId", "cwd", "entrypoint", "name", "kind", "activityEpoch", "pid"] {
+            for field in ["sessionId", "cwd", "entrypoint", "name", "kind", "activityEpoch", "pid",
+                          "sessions", "windows", "workspaceFolders", "ideName", "alive", "mtimeEpoch"] {
                 t.expect(
                     RemoteProbeScript.script.contains("\"\(field)\""),
                     "the probe must emit \(field)"
                 )
             }
+            t.expect(RemoteProbeScript.script.contains("~/.claude/ide/*.lock"), "it reads the node's lock files")
+        },
+
+        // The node's editor windows come back with its sessions, judged alive
+        // over there, and are kept by the same rule this Mac applies to its own
+        // lock files. An older probe's bare array still decodes (D51).
+        TestCase("The decoder reads the node's windows, and still reads a bare array") { t in
+            let now = Date(timeIntervalSince1970: 1_790_000_000)
+            let answer = """
+            {"sessions": [{"pid": 7, "sessionId": "aaaaaaaa-2222", "cwd": "/home/dev/simululator", "activityEpoch": 1}],
+             "windows": [
+               {"workspaceFolders": ["/home/dev/simululator"], "ideName": "Visual Studio Code", "pid": 40, "alive": true, "mtimeEpoch": 1},
+               {"workspaceFolders": ["/home/dev/gone"], "ideName": "Visual Studio Code", "pid": 41, "alive": false, "mtimeEpoch": 1},
+               {"workspaceFolders": ["relative/path"], "ideName": "Visual Studio Code", "pid": 42, "alive": true, "mtimeEpoch": 1},
+               {"workspaceFolders": ["/home/dev/young"], "ideName": "Visual Studio Code", "pid": 0, "alive": false, "mtimeEpoch": 1789999990}
+             ]}
+            """
+            guard let report = try? RemoteSessionsDecoder.report(from: Data(answer.utf8), host: host, at: now) else {
+                return t.fail("the object shape did not decode")
+            }
+            t.expectEqual(report.sessions.count, 1, "the sessions")
+            t.expectEqual(
+                report.windows.flatMap(\.workspaceFolders).sorted(), ["/home/dev/simululator", "/home/dev/young"],
+                "alive by pid, or young by lock age; a dead editor and a relative folder are dropped"
+            )
+
+            let bare = try? RemoteSessionsDecoder.report(
+                from: Data(#"[{"pid": 7, "sessionId": "aaaaaaaa-2222", "cwd": "/home/dev/a", "activityEpoch": 1}]"#.utf8),
+                host: host, at: now
+            )
+            t.expectEqual(bare?.sessions.count, 1, "an older probe's array")
+            t.expect(bare?.windows.isEmpty == true, "and no windows from it")
         },
 
         // The same encoding rule as TranscriptLocator, expressed once more because

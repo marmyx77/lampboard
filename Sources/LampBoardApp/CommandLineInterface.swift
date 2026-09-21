@@ -666,6 +666,19 @@ enum CommandLineInterface {
                 case .success(let tunnel): print("  tunnel (127.0.0.1:\(inspection.port) there): \(tunnel.sentence)")
                 case .failure(let error): print("  tunnel: could not ask (\(error.short))")
                 }
+                // What the probe sees over there, because that is what a remote
+                // row is homed on: a session whose folder is not among these
+                // windows gets its own folder as a name, and its click has
+                // nothing to raise (D51).
+                if let report = RemoteSessionReader(host: host).read() {
+                    let folders = report.windows.flatMap(\.workspaceFolders).sorted()
+                    print("  editor windows there: " + (folders.isEmpty ? "none" : folders.joined(separator: ", ")))
+                    let shown = report.sessions.filter(\.deservesTrafficLight)
+                    print("  sessions there: \(shown.count) in the column"
+                          + (report.sessions.count == shown.count ? "" : " (\(report.sessions.count - shown.count) not interactive)"))
+                } else {
+                    print("  probe: no answer")
+                }
                 return 0
             case .failure(let error):
                 print("\(host): \(error.short)")

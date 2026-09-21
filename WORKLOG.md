@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **776**, instantaneous |
+| Domain tests | **783**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 789 lines, `StateStore.swift` (limit the project sets itself: 800) |
+| Longest file | 790 lines, `StateStore.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -1983,3 +1983,20 @@ read and refused (D50). Verified here before wiring it: the 302, its `Location`,
 and no rate-limit header anywhere on it.
 
 Released as 0.4.3 the same morning.
+
+### A row named after the last `cd`
+
+A remote row called "esperimento" that the click could not raise, beside one
+called "AWevents" that raised fine. The session file on the node said the first
+had started in `simululator`; its hooks said `simululator/esperimento`, because a
+hook's `cwd` follows every `cd` Claude makes, and the window over there was
+titled `simululator [SSH: minisforum]`. Locally this never showed: the resolver
+folds a `cwd` into the editor window that contains it, read from the lock files.
+Remotely there was nothing to fold it into, and the row took the last hook's word.
+
+The node writes the same lock files — the Remote-SSH extension runs there — so
+the probe now reads them, judged alive there, and a remote row is resolved against
+them with the very function the local one uses. Before the probe has answered the
+session file's own folder stands in; a row that spoke first is moved when the
+answer comes, colour and history untouched (D51). `remote check` prints the
+windows the probe sees, which is the list a wrongly named row can be read against.

@@ -30,12 +30,19 @@ struct RemoteSessionReader {
     /// that are perfectly alive — the same mistake as reading a file's timestamp
     /// and calling it a heartbeat.
     func readLiveSessions() -> [LiveSession]? {
+        read()?.sessions
+    }
+
+    /// The host's live sessions **and** the editor windows open there, or `nil`
+    /// if the host could not be asked. The windows are what a remote row's folder
+    /// is resolved against (D51).
+    func read() -> RemoteSessionsDecoder.Report? {
         guard let output = run() else { return nil }
-        guard let sessions = try? RemoteSessionsDecoder.decode(output, host: host) else {
+        guard let report = try? RemoteSessionsDecoder.report(from: output, host: host, at: Date()) else {
             Diagnostics.log("remote \(host): unparsable answer, \(output.count) bytes")
             return nil
         }
-        return sessions
+        return report
     }
 
     // MARK: - Internal

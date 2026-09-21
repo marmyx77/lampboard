@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-776 cases, instantaneous. They verify Core.
+783 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 

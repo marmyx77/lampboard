@@ -96,6 +96,10 @@ final class StateStore: ObservableObject {
     /// A host that fails to answer keeps its previous entry. Silence is not death
     /// — the same rule that stopped this app pruning live local sessions.
     private var remoteSessions: [String: [LiveSession]] = [:]
+    /// The editor windows open on each host, as its last probe reported them.
+    /// A remote row's folder is resolved against these, the way a local row's is
+    /// resolved against this Mac's lock files (D51).
+    private var remoteWindows: [String: [IDEWindow]] = [:]
 
     /// Which sessions have ever held a conversation. See `ConversationIndex` for
     /// why a live process is not enough to earn a row.
@@ -284,6 +288,7 @@ final class StateStore: ObservableObject {
         // stop being confirmed and go on the next pass rather than lingering.
         for gone in remoteSessions.keys where !hosts.contains(gone) {
             remoteSessions.removeValue(forKey: gone)
+            remoteWindows.removeValue(forKey: gone)
             remoteAnsweredAt.removeValue(forKey: gone)
         }
 
@@ -302,7 +307,7 @@ final class StateStore: ObservableObject {
         let startedAt = clock()
         Task.detached(priority: .utility) { [weak self] in
             let answers = hosts.map { host in
-                (host: host, sessions: RemoteSessionReader(host: host).readLiveSessions())
+                (host: host, report: RemoteSessionReader(host: host).read())
             }
             await MainActor.run { [weak self] in
                 self?.absorbRemoteAnswers(answers, askedAt: startedAt)
@@ -312,15 +317,17 @@ final class StateStore: ObservableObject {
 
     /// Records what the hosts said, then realigns the column.
     private func absorbRemoteAnswers(
-        _ answers: [(host: String, sessions: [LiveSession]?)], askedAt: Date
+        _ answers: [(host: String, report: RemoteSessionsDecoder.Report?)], askedAt: Date
     ) {
         isProbing = false
-        for (host, sessions) in answers {
-            guard let sessions else {
+        for (host, report) in answers {
+            guard let report else {
                 // No answer. Keep what we had and say so once.
                 Diagnostics.log("remote \(host): no answer, keeping \(remoteSessions[host]?.count ?? 0) known rows")
                 continue
             }
+            let sessions = report.sessions
+            remoteWindows[host] = report.windows
             // The whole answer, unfiltered: it is a confirmation set now, not a
             // list of rows to create, and a session that spoke through the tunnel
             // must be confirmable whatever its file says about its kind.
@@ -341,6 +348,22 @@ final class StateStore: ObservableObject {
                     now: askedAt
                 )
             }
+
+            // Rows that spoke before this host had ever answered were homed on
+            // their hook's `cwd`, which follows every `cd`. Now that the windows
+            // over there are known, each goes where it belongs — and a row found
+            // rather than announced keeps its folder, as it does locally.
+            for row in state.sessions.values
+            where row.workspace.host == host && !row.wasFound {
+                let better = RemoteWorkspaceResolver.resolve(
+                    cwd: row.workspace.path, sessionId: row.id, host: host,
+                    windows: report.windows, sessions: sessions, at: askedAt
+                )
+                if better != row.workspace {
+                    Diagnostics.log("remote \(host): \(row.id.prefix(8)) rehomed \(row.workspace.name) → \(better.name)")
+                    apply(.rehome(sessionId: row.id, workspace: better), now: askedAt)
+                }
+            }
         }
 
         // An answer that is days old is not an answer. Dropping it puts the host
@@ -350,6 +373,7 @@ final class StateStore: ObservableObject {
         for (host, askedAt) in remoteAnsweredAt where askedAt < staleBefore {
             Diagnostics.log("remote \(host): last answer is stale, forgetting it")
             remoteSessions.removeValue(forKey: host)
+            remoteWindows.removeValue(forKey: host)
             remoteAnsweredAt.removeValue(forKey: host)
         }
         poll()
@@ -376,9 +400,15 @@ final class StateStore: ObservableObject {
         var workspace: Workspace?
         if let host = signal.host, remoteHosts.contains(host) {
             // Through the tunnel. No lock on this machine can claim a folder that
-            // lives on another one, so the session's own folder is the workspace,
-            // and the host travels with it — that is what the click will raise.
-            workspace = Workspace(path: signal.cwd, host: host)
+            // lives on another one — but the node's own locks can, and the probe
+            // brings them here. The window over there whose folder contains the
+            // cwd is the workspace, and the host travels with it: that is what
+            // the click will raise. Before the probe has answered, the session's
+            // own folder stands in (D51).
+            workspace = RemoteWorkspaceResolver.resolve(
+                cwd: signal.cwd, sessionId: signal.sessionId, host: host,
+                windows: remoteWindows[host] ?? [], sessions: remoteSessions[host] ?? [], at: now
+            )
         } else {
             if let host = signal.host {
                 // A host this app was never told about is a header anyone on

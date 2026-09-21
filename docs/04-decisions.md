@@ -2264,3 +2264,33 @@ exists.
 Mac is not a secret. Asking the site instead of GitHub: the site is stamped from
 GitHub and would only add a hop to the same fact, and D42 already says the
 published address is the one that never changes.
+
+## D51 · A remote row is homed on the node's window, not on the hook's `cwd`
+
+**Decided.** The probe that reads a node's live sessions also reads its editor
+lock files — `~/.claude/ide/*.lock`, written there by the Remote-SSH extension,
+judged alive there because the pid means nothing anywhere else — and a remote
+row's folder is the window whose folder contains the session's `cwd`, resolved by
+the same function that resolves a local row against this Mac's locks. Failing a
+window, the folder the session's own file names, written once at start; failing
+that, the `cwd`, which is what every remote row had before. A row that spoke
+before its host had ever answered is **moved** when the answer comes, colour and
+history untouched.
+
+**Why.** A hook's `cwd` follows every `cd` the session makes. Found on 21
+September 2026: a session started in `simululator` whose Claude had stepped into
+`simululator/esperimento` reported the second in every hook, the row was called
+"esperimento", the window was called `simululator [SSH: minisforum]`, and the
+click found nothing to raise. The session beside it worked because it had never
+left its root. Locally this never showed, because the local resolver has always
+folded a `cwd` into the window that contains it; remotely there was nothing to
+fold it into, and the row took whatever the last hook said.
+
+**Why the node's locks and not a guess.** The name the click needs is the one in
+the window's title, and the window's folder is the one fact the extension writes
+down. Trimming the `cwd` to some ancestor would be a guess about how deep a
+project is; the lock file is the answer. It is also the same evidence, read the
+same way, as on this Mac (D37: a workspace is a machine and a path).
+
+**Visible.** `lampboard remote check <host>` prints the editor windows the probe
+sees over there, so a row named after a subfolder can be read against the list.

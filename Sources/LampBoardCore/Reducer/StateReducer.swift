@@ -60,6 +60,11 @@ public enum ReducerAction: Sendable, Equatable {
     /// for one poll would blank the ring on a session that was still working.
     /// A read that fails is not an observation, so it cannot be spelled here.
     case observed(sessionId: String, context: ContextReading)
+    /// Moves a row to the folder it turns out to belong to, colour and history
+    /// untouched. Used when a node's probe answers after the row already exists:
+    /// the first hooks named a `cwd` nobody could resolve, and now the window
+    /// that contains it is known (D51).
+    case rehome(sessionId: String, workspace: Workspace)
 
     /// Inserts a session discovered from the filesystem, without overwriting one
     /// already known: what the hooks know is always more precise than a deduction.
@@ -111,6 +116,7 @@ extension ReducerAction {
         case .reconcile(let alive, let harness, _):
             return "reconcile \(harness.rawValue) keeping \(alive.count)"
         case .observed: return "observed"
+        case .rehome: return "rehome"
         case .adopt: return "adopt"
         case .dismiss: return "dismiss"
         case .derive: return "derive"
@@ -174,6 +180,10 @@ public enum StateReducer {
         case .observed(let sessionId, let context):
             guard let session = state.sessions[sessionId] else { return state }
             return state.upserting(session.with(context: context))
+
+        case .rehome(let sessionId, let workspace):
+            guard let session = state.sessions[sessionId], session.workspace != workspace else { return state }
+            return state.upserting(session.with(workspace: workspace))
 
         case .adopt(let session):
             guard state.sessions[session.id] == nil else { return state }

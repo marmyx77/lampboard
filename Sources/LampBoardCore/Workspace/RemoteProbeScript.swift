@@ -126,6 +126,28 @@ public enum RemoteProbeScript {
             "contextTail": tail,
         })
 
-    json.dump(out, sys.stdout)
+    # The editor windows open on this machine, from the same lock files the Mac
+    # reads for its own: the Remote-SSH extension runs here and writes them here.
+    # Judged alive here too, because the pid means nothing anywhere else.
+    windows = []
+    for path in glob.glob(os.path.expanduser("~/.claude/ide/*.lock")):
+        try:
+            lock = json.load(open(path))
+            folders = [f for f in (lock.get("workspaceFolders") or []) if isinstance(f, str) and f.startswith("/")]
+            pid = int(lock.get("pid") or 0)
+            mtime = int(os.path.getmtime(path))
+        except Exception:
+            continue
+        if not folders:
+            continue
+        windows.append({
+            "workspaceFolders": folders,
+            "ideName": lock.get("ideName") or "",
+            "pid": pid,
+            "alive": bool(pid) and alive(pid, None),
+            "mtimeEpoch": mtime,
+        })
+
+    json.dump({"sessions": out, "windows": windows}, sys.stdout)
     """
 }

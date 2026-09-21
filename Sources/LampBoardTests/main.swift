@@ -56,6 +56,7 @@ let suites: [TestSuite] = [
     HookConfigMergerSuite.suite,
     HookRepairSuite.suite,
     NativeHookSupportSuite.suite,
+    RemoteWorkspaceResolverSuite.suite,
     TranscriptDecoderSuite.suite,
     ConversationSuite.suite,
     TranscriptLocatorSuite.suite,

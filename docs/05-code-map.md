@@ -1,13 +1,13 @@
 # Code map
 
-~42,858 lines of Swift across five targets. For each file: what it contains, why
+~43,186 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,684 lines · 95 files   pure logic, zero AppKit
-  LampBoardApp/    16,626 lines · 87 files   shell: AppKit, network, windows
-  LampBoardTests/  10,991 lines · 57 files   776 cases, instantaneous
+  LampBoardCore/  11,814 lines · 96 files   pure logic, zero AppKit
+  LampBoardApp/    16,676 lines · 87 files   shell: AppKit, network, windows
+  LampBoardTests/  11,139 lines · 58 files   783 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -878,7 +878,7 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 131
+### `RemoteProbeScript.swift` · 153
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
@@ -889,7 +889,13 @@ the session file, which is the frozen one.
 > changed. Deciding here from shipped files would answer both about the wrong
 > machine.
 
-### `RemoteSessionsDecoder.swift` · 64
+### `RemoteWorkspaceResolver.swift` · 58
+Which folder a row on another machine belongs to: the node's editor window that
+contains the hook's `cwd`, resolved by the same function as a local row; failing
+that the session file's folder, written once; failing that the `cwd` itself. Born
+from a row called "esperimento" whose window was called `simululator` (D51).
+
+### `RemoteSessionsDecoder.swift` · 128
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -1164,7 +1170,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 776 cases
+## `LampBoardTests/` — 783 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

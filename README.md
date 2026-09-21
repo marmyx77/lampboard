@@ -633,7 +633,11 @@ lampboard remote check node       # python, curl, hooks, and whether the tunnel 
 
 A remote session gets its row when it **speaks** — its first hook arrives through
 the tunnel — marked with an `R` before its name, and loses it when the machine's
-probe says the process is gone. The card says which machine, in words: the name
+probe says the process is gone. Its folder is the **editor window open on that
+machine** whose folder contains the session's `cwd`, read from the node's own lock
+files exactly as a local row is read from this Mac's: a hook's `cwd` follows every
+`cd` the session makes, and a row named after a subfolder is a row whose click
+finds no window (D51). The card says which machine, in words: the name
 of the host was on every row of that node and left `AWeve…isforum` where a project
 name should be. Clicking the row raises the **Remote-SSH** window of that
 folder here, if one is open (`… — folder [SSH: host]`); otherwise the menu says
@@ -1336,7 +1340,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 776 domain tests, instantaneous
+swift run LampBoardTests              # 783 domain tests, instantaneous
 swift run LampBoardE2E                # 109 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
