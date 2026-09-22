@@ -2000,3 +2000,24 @@ them with the very function the local one uses. Before the probe has answered th
 session file's own folder stands in; a row that spoke first is moved when the
 answer comes, colour and history untouched (D51). `remote check` prints the
 windows the probe sees, which is the list a wrongly named row can be read against.
+
+## 22 September — the dialog every few hours
+
+"LampBoard wants to access the key 'Claude Code-credentials'", with a password
+field, every few hours. For the allowance strip, which is the one thing that
+reads a credential it did not create.
+
+`security dump-keychain -a` said what was happening. The item's decrypt entry
+trusts two programs: `/usr/bin/security`, because Claude Code writes the item
+through it, and `~/Development/clawd-light/dist/LampBoard.app`, the build for
+which *Always Allow* had once been pressed. *Always* is stored by path, so it
+did nothing for the copy in `/Applications`; *Allow* covers the running process
+only; and a person who updated four times in a day was asked four times. The
+reader also carried a note claiming the item had no access list at all, measured
+two days earlier — wrong, or measured through `security` without noticing.
+
+The reader now runs `security find-generic-password` and parses what it prints.
+The tool is trusted for as long as Claude Code keeps writing through it, whatever
+this app is called or where it lives, and a read through it asks nobody anything
+(D52). Nothing else changes: the token is borrowed and never renewed, only the
+access token leaves the parser, and a 401 still means silence.

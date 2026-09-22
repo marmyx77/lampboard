@@ -2084,9 +2084,10 @@ application.
 The allowance figures need Claude Code's OAuth token, which sits in the login
 keychain. Measured on 20 September 2026: the access token lives **eight hours**
 and Claude Code rotates it there; the refresh token beside it lasts about four
-weeks. Both are readable — the item carries no access-control list, verified with
-an ad-hoc signed binary carrying no team identifier, which read it with no consent
-dialog.
+weeks. Both are readable through `/usr/bin/security`, the tool Claude Code writes
+the item with, which the item's access list trusts. (This entry used to say the
+item carried no access-control list and that an ad-hoc binary read it without a
+dialog. The dump says otherwise, and D52 records what that cost.)
 
 So renewing the token ourselves would be easy, and it is forbidden. Refresh tokens
 are commonly rotated when spent: minting a new access token with Claude Code's
@@ -2294,3 +2295,34 @@ same way, as on this Mac (D37: a workspace is a machine and a path).
 
 **Visible.** `lampboard remote check <host>` prints the editor windows the probe
 sees over there, so a row named after a subfolder can be read against the list.
+
+## D52 · The credential is read through the tool that writes it
+
+**Decided.** The allowance reader gets Claude Code's access token by running
+`/usr/bin/security find-generic-password` and parsing what it prints, not by
+calling the Security framework from this process.
+
+**Why.** The first version called `SecItemCopyMatching`, and macOS put up
+"LampBoard wants to access the key 'Claude Code-credentials'" — with a password
+field — at every launch. *Allow* covers the running process only. *Always Allow*
+adds the application **at its path** to the item's access list: pressed on the
+build in `dist/`, it did nothing for the copy in `/Applications`, and a person who
+updated four times in one day saw the dialog four times, each time for the same
+feature. Read on 22 September 2026 with `security dump-keychain -a`: the item's
+decrypt entry trusts exactly two programs — `/usr/bin/security`, because Claude
+Code writes the item through it, and whichever copy of this app somebody had once
+pressed *Always* for — plus a partition entry for Apple's tools. The tool is
+trusted for as long as Claude Code keeps writing through it, whatever this app is
+called, wherever it lives, whichever version it is; a read through it asks nobody
+anything, and needs nobody to press *Always*.
+
+**What it does not change.** The token is still borrowed and never renewed (D46);
+the parser still reads the access token and nothing else out of the blob; the
+strip still goes quiet on a 401 rather than minting anything. One process spawn
+per read, every two and a half minutes while the switch is on, is the price, and it
+is the same tool Claude Code itself spawns for the same purpose.
+
+**Corrects D46.** That entry said the item carried no access-control list and that
+an ad-hoc binary read it with no consent dialog. Either the measurement went
+through `security` without anybody noticing, or it was wrong. It was believed for
+two days and cost a dialog per launch to everybody who turned the strip on.

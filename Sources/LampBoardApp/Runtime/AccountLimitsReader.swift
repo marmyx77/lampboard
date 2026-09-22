@@ -1,6 +1,5 @@
 import LampBoardCore
 import Foundation
-import Security
 
 /// Asks Anthropic how much of the account's allowance is gone. Nothing else.
 ///
@@ -27,7 +26,8 @@ import Security
 /// NOTHING IS CACHED IN MEMORY
 /// The keychain is read on every attempt, not once at launch. Anything held would
 /// be a token going stale in our hands while the fresh one sits on disk a
-/// centimetre away.
+/// centimetre away. The read goes through `/usr/bin/security`, the tool Claude
+/// Code writes the item with, which is what keeps macOS from asking (D52).
 enum AccountLimitsReader {
 
     /// What an attempt produced.
@@ -179,29 +179,38 @@ enum AccountLimitsReader {
 
     // MARK: - The borrowed credential
 
-    /// Reads Claude Code's current access token out of the login keychain.
+    /// Reads Claude Code's current access token out of the login keychain —
+    /// **through `/usr/bin/security`**, the tool Claude Code writes it with.
     ///
     /// Returns `nil` for every failure, with no distinction between them: none of
     /// them is actionable by the person reading the panel, and a strip that
     /// explained keychain status codes would be answering a question nobody asked.
     ///
-    /// Measured before relying on it: the item carries no access-control list, so a
-    /// binary that is not Claude Code reads it with no consent dialog — verified
-    /// with an ad-hoc signed executable carrying no team identifier. That is a fact
-    /// about how Claude Code stores it, not a promise it will keep, so a `nil` here
-    /// is an ordinary outcome and the strip simply stays empty.
+    /// Why the tool and not the framework. The first version called
+    /// `SecItemCopyMatching` from this process, and macOS put up "LampBoard wants
+    /// to access the key" — at every launch, because *Allow* covers the running
+    /// process only, and *Always Allow* adds the app **at its path** to the
+    /// item's access list: pressed on the build in `dist/`, it did nothing for the
+    /// copy in `/Applications`, and a person who updated four times in a day saw
+    /// the dialog four times. Read on 22 September 2026 with `security
+    /// dump-keychain -a`: the item's decrypt entry trusts exactly two programs,
+    /// `/usr/bin/security` — Claude Code's own writer — and whichever copy of this
+    /// app somebody had once pressed *Always* for. The tool is trusted for as long
+    /// as Claude Code keeps writing through it, whatever this app is called or
+    /// where it lives, and a read through it asks nobody anything (D52).
+    ///
+    /// The earlier note here — that the item carried no access-control list and
+    /// an ad-hoc binary read it without a dialog — was wrong, or was measured
+    /// through this same tool without noticing. Replaced by what the dump says.
     static func accessToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: NSUserName(),
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-
-        return ClaudeCredentials.accessToken(in: data)
+        guard let result = try? Command.run(
+            "/usr/bin/security",
+            ["find-generic-password", "-s", keychainService, "-a", NSUserName(), "-w"],
+            deadline: AppConfig.focusProbeTimeout,
+            capturingStandardError: false
+        ), result.status == 0 else { return nil }
+        // `-w` prints the secret and a newline; the secret is the JSON blob the
+        // parser reads, and only its access token leaves that parser.
+        return ClaudeCredentials.accessToken(in: Data(result.output.trimmed.utf8))
     }
 }

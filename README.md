@@ -277,7 +277,11 @@ never the credential.
 and the reason it has a switch.** Everything else here reads files that are
 already on your Mac. This asks `api.anthropic.com`, roughly every two and a half
 minutes, signed with the token Claude Code already keeps in your keychain. The
-panel says so before the first request leaves.
+panel says so before the first request leaves. The token is read through
+`/usr/bin/security`, the tool Claude Code writes it with and the one the keychain
+item trusts, so macOS asks nothing — the first version read it through the
+Security framework, and every launch of a new copy brought up the keychain dialog
+(D52).
 
 It **borrows** that token and never renews it. The keychain blob also holds a
 refresh token, and there is deliberately no code here that reads it: refresh
@@ -1223,6 +1227,7 @@ lampboard uninstall-hooks          remove the registrations (the script stays on
 lampboard status                   configuration and detected sessions
 lampboard selftest                 check the whole chain and report what's missing
 lampboard sessions                 the column as the running app sees it
+lampboard usage                    ask Anthropic how much of the allowance is gone, here and on every node
 lampboard terminal on|off|status   rows for claude started in a terminal
 lampboard rename <folder> [name]   the panel's word for a row; no name restores it
 lampboard remote [list|add|install|check|uninstall|remove] [host]   another machine's sessions (see above)

@@ -1,12 +1,12 @@
 # Code map
 
-~43,186 lines of Swift across five targets. For each file: what it contains, why
+~43,264 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  11,814 lines · 96 files   pure logic, zero AppKit
-  LampBoardApp/    16,676 lines · 87 files   shell: AppKit, network, windows
+  LampBoardApp/    16,754 lines · 88 files   shell: AppKit, network, windows
   LampBoardTests/  11,139 lines · 58 files   783 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -963,6 +963,11 @@ and reports. It is the longest single command because reporting honestly means
 naming the difference between "none" and "could not be read" every time it comes
 up.
 
+### `CommandLineUsage.swift` · 59
+`lampboard usage`: what the allowance strip would draw, asked once and printed for
+this Mac and every node, with the reason when there is nothing. The quickest way
+to watch the credential being read without a dialog (D52).
+
 ### `CommandLineInstall.swift` · 158
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
@@ -1021,7 +1026,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
-| `AccountLimitsReader.swift` | 207 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain. **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet |
+| `AccountLimitsReader.swift` | 207 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain. **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
 | `AllowanceMonitor.swift` | 96 | the timer behind that strip. No timer and no request while the switch is off: a feature that reaches the network is either off or on |
 | `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |

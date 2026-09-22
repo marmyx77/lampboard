@@ -21,6 +21,9 @@ enum CommandLineInterface {
         /// Reads a slot's conversation in a window of its own.
         case chat(slot: Int?, port: UInt16)
         case sessions(port: UInt16)
+        /// What the allowance strip would draw, asked once and printed. The one
+        /// command that leaves the Mac, and it says so in the help text.
+        case usage
         /// The remote machines: list them, add or forget one, and install or
         /// remove the hooks over there. `verb` is the sub-command as typed.
         case remote(verb: String, host: String?)
@@ -72,6 +75,8 @@ enum CommandLineInterface {
             )
         case "sessions":
             return .sessions(port: port)
+        case "usage":
+            return .usage
         case "remote":
             return .remote(
                 verb: args.count > 1 ? args[1] : "list",
@@ -144,6 +149,9 @@ enum CommandLineInterface {
 
         case .sessions(let port):
             return runSessions(port: port)
+
+        case .usage:
+            return runUsage()
 
         case .remote(let verb, let host):
             return runRemote(verb: verb, host: host)
@@ -487,6 +495,8 @@ enum CommandLineInterface {
                                               (with no argument it lists the open workspaces,
                                                with --dry-run it diagnoses without activating anything)
           lampboard sessions                print the column as the running app sees it
+          lampboard usage                   ask Anthropic how much of the allowance is gone,
+                                              on this Mac and on every node, and print it
           lampboard next                    raise the window of the next waiting session
           lampboard open <n>                raise the project bound to slot n
                                               (with no argument, lists what the slots address)
