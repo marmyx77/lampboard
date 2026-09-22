@@ -2021,3 +2021,15 @@ The tool is trusted for as long as Claude Code keeps writing through it, whateve
 this app is called or where it lives, and a read through it asks nobody anything
 (D52). Nothing else changes: the token is borrowed and never renewed, only the
 access token leaves the parser, and a 401 still means silence.
+
+### A line missing from the strip, with nothing to read
+
+The same afternoon, on the fixed build: the strip drew the node's line and not
+this Mac's. The reading itself was proved four ways — the debug binary, the
+released binary from a terminal, the released binary with the panel's own
+environment and no terminal, the released binary under `launchd` — and a fresh
+panel on a scratch home drew the local line at once. Whatever the running panel
+had got into, it had left no trace: the strip names a reason only when there is
+nothing at all to draw, and the reader logged nothing. Now every refresh logs how
+many accounts were drawn and where, and a missing local line logs why. The state
+itself was not caught; the next time it happens the log will say.

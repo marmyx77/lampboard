@@ -69,7 +69,13 @@ enum AccountLimitsReader {
         var quiet: String?
         switch await local {
         case .report(let report): reports.append(report)
-        case .quiet(let reason): quiet = reason
+        case .quiet(let reason):
+            quiet = reason
+            // Said in the log, because the strip says it only when there is
+            // nothing at all to draw: with a node answering, a Mac that cannot
+            // read its own token is a line that is simply missing, and the
+            // afternoon spent on exactly that had nothing to read.
+            Diagnostics.log("allowance local: \(reason)")
         }
         reports.append(contentsOf: await remote)
 

@@ -91,6 +91,10 @@ final class AllowanceMonitor: ObservableObject {
             guard self.timer != nil else { return }
             self.reports = result.reports
             self.quiet = result.quiet
+            Diagnostics.log(
+                "allowance: \(result.reports.count) account(s) drawn"
+                    + (result.reports.isEmpty ? "" : " (" + result.reports.map(\.machine).joined(separator: ", ") + ")")
+            )
         }
     }
 }
