@@ -137,6 +137,19 @@ enum ClaudeDesktopSuite {
                      "a Codex row was found, not announced")
             t.expect(session(harness: .claudeCode, entrypoint: ClaudeDesktop.entrypoint).wasFound,
                      "and so was a Claude Desktop one")
+            // The application's other name, the one its hooks carry since 2.1.281:
+            // a row born of those hooks is the same surface and gets the same
+            // treatment, or its click goes looking for an editor window.
+            t.expect(session(harness: .claudeCode, entrypoint: ClaudeDesktop.hookEntrypoint).wasFound,
+                     "under the name the hooks use too")
+            t.expect(ClaudeDesktop.isEntrypoint("claude-desktop") && ClaudeDesktop.isEntrypoint("local-agent"),
+                     "both spellings are the application")
+            t.expect(!ClaudeDesktop.isEntrypoint("claude-vscode") && !ClaudeDesktop.isEntrypoint(nil),
+                     "and nothing else is")
+            t.expect(
+                !DeepLinkPolicy.opensNewConversation(harness: .claudeCode, entrypoint: "claude-desktop"),
+                "no editor tab to open for a desktop conversation, whichever name it came in under"
+            )
 
             // The other side of the rule, which must keep working: a Claude Code
             // session that announces itself really does move when its folder is

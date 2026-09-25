@@ -112,7 +112,7 @@ extension StateStore {
             // A probe that could not answer removes nothing. Every row it would
             // have confirmed stays, which is why the sweep is handed what the
             // store already holds rather than an empty set.
-            return Set(state.sessions.values.filter { $0.entrypoint == ClaudeDesktop.entrypoint }.map(\.id))
+            return Set(state.sessions.values.filter { ClaudeDesktop.isEntrypoint($0.entrypoint) }.map(\.id))
         }
 
         for item in evidence {

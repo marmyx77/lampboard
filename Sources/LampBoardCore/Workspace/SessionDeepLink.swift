@@ -93,6 +93,6 @@ public enum DeepLinkPolicy {
     /// to prove it deserves it.
     public static func opensNewConversation(harness: Harness, entrypoint: String?) -> Bool {
         guard harness == .claudeCode else { return false }
-        return entrypoint != ClaudeDesktop.entrypoint
+        return !ClaudeDesktop.isEntrypoint(entrypoint)
     }
 }

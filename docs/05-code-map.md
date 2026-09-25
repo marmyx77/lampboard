@@ -1,13 +1,13 @@
 # Code map
 
-~43,274 lines of Swift across five targets. For each file: what it contains, why
+~43,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,814 lines · 96 files   pure logic, zero AppKit
+  LampBoardCore/  11,827 lines · 96 files   pure logic, zero AppKit
   LampBoardApp/    16,764 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,139 lines · 58 files   783 cases, instantaneous
+  LampBoardTests/  11,152 lines · 58 files   783 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -544,6 +544,11 @@ The Claude Desktop application, and the one kind of session it runs that this
 machine can see anything of.
 
 ### `ClaudeDesktop.swift`
+The application under both names it goes by — `local-agent` in a local session
+file, `claude-desktop` in the hooks and session files of 2.1.281 — asked through
+`isEntrypoint`, never compared with `==`: the second spelling, met on a node, sent
+the click looking for an editor window.
+
 Where the application keeps a whole Claude Code home per conversation, how a
 session home names its index, and `DesktopSessionIndex` — the folder, the title,
 the model, the transcript's id and the moment of the last activity.

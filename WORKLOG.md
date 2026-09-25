@@ -2033,3 +2033,18 @@ had got into, it had left no trace: the strip names a reason only when there is
 nothing at all to draw, and the reader logged nothing. Now every refresh logs how
 many accounts were drawn and where, and a missing local line logs why. The state
 itself was not caught; the next time it happens the log will say.
+
+## 25 September — the application's other name
+
+Sessions opened from the Claude application reached the column, and the click on
+one did nothing. The row said `entrypoint: claude-desktop`, on a node: the
+application had opened the session on the minisforum over ssh, and Claude Code
+2.1.281 there wrote `claude-desktop` into the session file and into every hook.
+The panel knew the application by one name only, `local-agent`, read off a local
+session file when the surface was built. The comparison failed, the row went
+down the editor path, and a remote row with no Remote-SSH window raises nothing.
+
+Both spellings are the application now (`ClaudeDesktop.isEntrypoint`), in the
+four places the name was compared: the click, the deep-link rule, the desktop
+sweep, and "found rather than announced". A desktop row on a node raises the
+application here, which is where the conversation is.

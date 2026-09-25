@@ -24,6 +24,19 @@ public enum ClaudeDesktop {
     /// click to raise the application rather than an editor window.
     public static let entrypoint = "local-agent"
 
+    /// The other name the same surface goes by. Claude Code 2.1.281, started by
+    /// the application, writes `claude-desktop` into `CLAUDE_CODE_ENTRYPOINT` and
+    /// into the session file — measured on 25 September 2026, on a session the
+    /// application had opened on a node over ssh. The panel knew only the first
+    /// spelling, so the click on that row went looking for an editor window and
+    /// found none. Both are the application; ask `isEntrypoint`, never `==`.
+    public static let hookEntrypoint = "claude-desktop"
+
+    /// `true` when `entrypoint` names this application, under either spelling.
+    public static func isEntrypoint(_ entrypoint: String?) -> Bool {
+        entrypoint == self.entrypoint || entrypoint == hookEntrypoint
+    }
+
     public static let bundleIdentifier = "com.anthropic.claudefordesktop"
 
     /// Where the application keeps a whole Claude Code home per session.

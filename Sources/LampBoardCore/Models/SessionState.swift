@@ -195,7 +195,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// A row that names a Codex session and calls itself `claude-vscode` gets an
     /// editor window opened for a conversation that is not in one.
     public var wasFound: Bool {
-        harness == .codex || entrypoint == ClaudeDesktop.entrypoint
+        harness == .codex || ClaudeDesktop.isEntrypoint(entrypoint)
     }
 
     /// The state the traffic light actually shows.

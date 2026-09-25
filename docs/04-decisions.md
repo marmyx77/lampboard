@@ -1586,6 +1586,20 @@ it is not a record of anything.
 other row already obeys when it stops hearing news, and two numbers that must
 agree are the drift a gate exists to catch.
 
+**Revisited, 25 September 2026.** The application has a second name. Claude Code
+2.1.281, started by it, writes `claude-desktop` into `CLAUDE_CODE_ENTRYPOINT` and
+into the session file, where the surface had only ever been seen as `local-agent`.
+Met on a session the application had opened on a node over ssh: the row arrived
+through the hooks under the new name, the click compared it with the old one and
+went down the editor path, and a remote row with no Remote-SSH window raises
+nothing. Both spellings are the application now, asked through
+`ClaudeDesktop.isEntrypoint` in the four places the name was compared — the click,
+the deep-link rule, the desktop sweep, and "found rather than announced". A
+desktop row on a node raises the application here, which is where the
+conversation is. The name a surface goes by is read, not remembered.
+
+---
+
 ## D37 · A workspace is a machine and a path, everywhere or nowhere
 
 **Decided.** The key a row is grouped, ordered, named, hidden and muted by is the

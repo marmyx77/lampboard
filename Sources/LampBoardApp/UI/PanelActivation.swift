@@ -40,7 +40,7 @@ extension PanelController {
         // reported as raised, not as "only activated" — that phrasing exists for
         // a click that fell short of what it could have done, and this one did
         // not.
-        if session.entrypoint == ClaudeDesktop.entrypoint {
+        if ClaudeDesktop.isEntrypoint(session.entrypoint) {
             guard let url = NSWorkspace.shared.urlForApplication(
                 withBundleIdentifier: ClaudeDesktop.bundleIdentifier
             ) else {
