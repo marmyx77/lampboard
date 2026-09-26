@@ -63,6 +63,7 @@ enum AccountLimitsReader {
     /// whose age this app controls is the one kept.
     static func readAll(hosts: [String]) async -> Gathering {
         async let local = read()
+        async let hosted = hostedReports()
         async let remote = remoteReports(hosts: hosts)
 
         var reports: [AllowanceReport] = []
@@ -77,6 +78,7 @@ enum AccountLimitsReader {
             // afternoon spent on exactly that had nothing to read.
             Diagnostics.log("allowance local: \(reason)")
         }
+        reports.append(contentsOf: await hosted)
         reports.append(contentsOf: await remote)
 
         return Gathering(
@@ -93,13 +95,13 @@ enum AccountLimitsReader {
     /// a network.
     private static func remoteReports(hosts: [String]) async -> [AllowanceReport] {
         guard !hosts.isEmpty else { return [] }
-        return await withTaskGroup(of: AllowanceReport?.self) { group in
+        return await withTaskGroup(of: [AllowanceReport].self) { group in
             for host in hosts {
-                group.addTask { remoteReport(host: host) }
+                group.addTask { remoteReports(host: host) }
             }
             var found: [AllowanceReport] = []
-            for await report in group {
-                if let report { found.append(report) }
+            for await reports in group {
+                found.append(contentsOf: reports)
             }
             // The order a task group finishes in is the order the network answered,
             // which would reshuffle the strip on every poll. Sorted so a group of
@@ -108,31 +110,18 @@ enum AccountLimitsReader {
         }
     }
 
-    private static func remoteReport(host: String) -> AllowanceReport? {
+    /// A node's own sign-in and the accounts the Claude application runs there.
+    private static func remoteReports(host: String) -> [AllowanceReport] {
         let answer = RemoteCommand.runPythonForObject(
             on: host, script: RemoteAllowanceScript.script
         )
-        guard case .success(let object) = answer else { return nil }
+        guard case .success(let object) = answer else { return [] }
         // An error the node reported is an ordinary absence — signed out, token
         // aged out — and is logged rather than drawn.
-        guard let payload = object["limits"] else {
-            if let reason = object["error"] as? String {
-                Diagnostics.log("allowance \(host): \(reason)")
-            }
-            return nil
+        if let reason = object["error"] as? String {
+            Diagnostics.log("allowance \(host): \(reason)")
         }
-        guard let data = try? JSONSerialization.data(withJSONObject: payload),
-              let limits = AccountLimits.decode(data), !limits.limits.isEmpty
-        else { return nil }
-
-        var account: ClaudeAccount?
-        if let named = object["account"] as? [String: Any] {
-            account = ClaudeAccount(
-                email: (named["email"] as? String)?.trimmed.nilIfEmpty,
-                uuid: (named["uuid"] as? String)?.trimmed.nilIfEmpty
-            )
-        }
-        return AllowanceReport(account: account, machine: host, limits: limits)
+        return RemoteAllowanceScript.reports(in: object, host: host)
     }
 
     /// The name this Mac goes by when the account cannot say who it is.
@@ -147,32 +136,76 @@ enum AccountLimitsReader {
         // are the point, the address is what disambiguates them.
         let account = localAccount()
 
-        var request = URLRequest(url: endpoint)
+        switch await ask(endpoint, token: token) {
+        case .answer(let data):
+            guard let limits = AccountLimits.decode(data) else {
+                return .quiet("the allowance answer could not be read")
+            }
+            return .report(
+                AllowanceReport(account: account, machine: localMachine, limits: limits)
+            )
+        case .refused:
+            // The expected ending, not a fault: the borrowed token has aged
+            // out and only Claude Code can replace it. Worded so that nobody
+            // goes looking for a broken setting.
+            return .quiet("waiting for Claude Code to refresh its sign-in")
+        case .status(let status):
+            return .quiet("the allowance service answered \(status)")
+        case .unreachable:
+            return .quiet("the allowance could not be reached")
+        }
+    }
+
+    /// The accounts the Claude application runs Claude Code as on this Mac.
+    ///
+    /// Read out of the environment of the running processes, the only place the
+    /// application puts them (`HostedCredentials`). No application session running
+    /// means nothing found, and nothing is said: the strip has nothing to report
+    /// about an account nobody is spending.
+    static func hostedReports() async -> [AllowanceReport] {
+        guard let listing = try? Command.run(
+            "/bin/ps", ["-Eww", "-axo", "command="],
+            deadline: AppConfig.focusProbeTimeout,
+            capturingStandardError: false
+        ), listing.status == 0 else { return [] }
+
+        var reports: [AllowanceReport] = []
+        for token in HostedCredentials.tokens(inProcessListing: listing.output) {
+            guard case .answer(let data) = await ask(endpoint, token: token),
+                  let limits = AccountLimits.decode(data), !limits.limits.isEmpty
+            else { continue }
+            var account: ClaudeAccount?
+            if let profile = URL(string: HostedCredentials.profileEndpoint),
+               case .answer(let named) = await ask(profile, token: token) {
+                account = HostedCredentials.account(fromProfile: named)
+            }
+            reports.append(AllowanceReport(account: account, machine: localMachine, limits: limits))
+        }
+        return reports
+    }
+
+    private enum Answer {
+        case answer(Data)
+        case refused
+        case status(Int)
+        case unreachable
+    }
+
+    /// One signed GET. The token goes in the header and nowhere else.
+    private static func ask(_ url: URL, token: String) async -> Answer {
+        var request = URLRequest(url: url)
         request.timeoutInterval = AppConfig.usageRequestTimeout
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            switch status {
-            case 200:
-                guard let limits = AccountLimits.decode(data) else {
-                    return .quiet("the allowance answer could not be read")
-                }
-                return .report(
-                    AllowanceReport(account: account, machine: localMachine, limits: limits)
-                )
-            case 401, 403:
-                // The expected ending, not a fault: the borrowed token has aged
-                // out and only Claude Code can replace it. Worded so that nobody
-                // goes looking for a broken setting.
-                return .quiet("waiting for Claude Code to refresh its sign-in")
-            default:
-                return .quiet("the allowance service answered \(status)")
+            switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+            case 200: return .answer(data)
+            case 401, 403: return .refused
+            case let status: return .status(status)
             }
         } catch {
-            return .quiet("the allowance could not be reached")
+            return .unreachable
         }
     }
 

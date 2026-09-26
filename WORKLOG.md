@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **783**, instantaneous |
+| Domain tests | **793**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2048,3 +2048,24 @@ Both spellings are the application now (`ClaudeDesktop.isEntrypoint`), in the
 four places the name was compared: the click, the deep-link rule, the desktop
 sweep, and "found rather than announced". A desktop row on a node raises the
 application here, which is where the conversation is.
+
+## 26 September — the account the application spends
+
+The Claude application had started running Claude Code sessions on the node for
+the work shared with colleagues, under a Team account. The strip showed no line for
+it. The application signs Claude Code in as its own account and hands the token
+over in the environment of the process — `ps` on the node showed
+`CLAUDE_CODE_OAUTH_TOKEN` on every `~/.claude/remote/ccd-cli/2.1.281` — and nowhere
+the strip looked: the node's credentials file held another account, the keychain
+here a third place with neither.
+
+The strip now reads those processes, on this Mac and on each node (D53), and asks
+usage and identity for each account found. The node's script also stopped putting
+tokens on curl's command line.
+
+Verified: the token taken from the running session answered 200 on both
+endpoints, with the Team account's address; `lampboard usage` built from this tree
+draws the organization account read here and the Team account read on the node,
+with the node's own account — the same as this Mac's — collapsed into the first
+line. Ten domain cases, one of which runs the node's script with an empty home and
+demands a well-formed answer with the hosted list in it.

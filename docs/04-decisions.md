@@ -2340,3 +2340,38 @@ is the same tool Claude Code itself spawns for the same purpose.
 an ad-hoc binary read it with no consent dialog. Either the measurement went
 through `security` without anybody noticing, or it was wrong. It was believed for
 two days and cost a dialog per launch to everybody who turned the strip on.
+
+## D53 · The application's accounts are read from the processes that spend them
+
+**Decided.** Besides the keychain on this Mac and the credentials file on each
+node, the allowance strip reads the accounts the Claude application runs Claude
+Code as. It finds them in the environment of the running Claude Code processes —
+`CLAUDE_CODE_OAUTH_TOKEN`, on processes carrying `CLAUDE_CODE_ENTRYPOINT` — on this
+Mac through `ps -Eww`, and on each node, on the node, through `/proc/<pid>/environ`.
+For each account it asks the usage endpoint and the profile endpoint, which names
+the account, and draws one line like any other.
+
+**Why.** The application signs the Claude Code it starts in as **its own**
+account, and hands the credential over in the environment and nowhere else.
+Measured on 26 September 2026: the application's sessions ran over ssh on the node
+as a Team account, the node's credentials file held a different one, and the
+strip drew that one and nothing of the account actually being spent that morning.
+The processes are the only place that account exists outside the application's
+own encrypted store — and reading that store would mean decrypting another
+application's secrets with a key whose keychain entry trusts only that
+application, which is the dialog of D52 again and a line this panel does not
+cross.
+
+**The boundaries.** Only processes of the same user, which is all the operating
+system shows anyway; only Claude Code's, so that a token some other program
+happens to carry is never asked about; each account once; at most four. The token
+is borrowed exactly as in D46: read at each poll, used for two GETs, never kept,
+never renewed — and there is no refresh token in that environment to be tempted
+by. On a node the request is made there and only the answer crosses the tunnel,
+as for the node's own account. No application session running means nothing
+found and nothing said.
+
+**Also.** The node's script now hands every token to curl on its standard input
+(`--header @-`) instead of its command line: an argument is readable by every user
+of a machine, an input is not. That was true of the node's own token before this
+change as well.

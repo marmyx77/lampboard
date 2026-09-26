@@ -1,13 +1,13 @@
 # Code map
 
-~43,300 lines of Swift across five targets. For each file: what it contains, why
+~43,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,827 lines · 96 files   pure logic, zero AppKit
-  LampBoardApp/    16,764 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,152 lines · 58 files   783 cases, instantaneous
+  LampBoardCore/  11,999 lines · 97 files   pure logic, zero AppKit
+  LampBoardApp/    16,797 lines · 88 files   shell: AppKit, network, windows
+  LampBoardTests/  11,306 lines · 59 files   793 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -315,7 +315,18 @@ request is made on the far side** and only the answer crosses the wire: pulling 
 token back would put a credential in this app's memory for the sake of three
 percentages, and the node already has both the credential and a network. On Linux
 the credential is a file at `~/.claude/.credentials.json`; the keychain branch is
-there for a node that is itself a Mac.
+there for a node that is itself a Mac. It also reads, on the node, the accounts
+the Claude application runs Claude Code as there (`hosted`), and turns a node's
+answer into reports.
+
+### `HostedCredentials.swift`
+The accounts Claude Code is spending without having signed in itself. The Claude
+application hands its own account to the Claude Code it starts — on this Mac or
+on a node over ssh — as `CLAUDE_CODE_OAUTH_TOKEN` in the environment, and puts it
+nowhere else: not in the keychain, not in the credentials file. The running
+processes are the only place it can be read. Only Claude Code's processes are
+looked at (they carry `CLAUDE_CODE_ENTRYPOINT`), each account once, at most four;
+the token is borrowed exactly like the keychain one (D53).
 
 ### `ClaudeCredentials.swift`
 The access token inside the blob Claude Code keeps in the keychain, and nothing
@@ -1031,7 +1042,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
-| `AccountLimitsReader.swift` | 207 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain. **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
+| `AccountLimitsReader.swift` | 255 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
 | `AllowanceMonitor.swift` | 96 | the timer behind that strip. No timer and no request while the switch is off: a feature that reaches the network is either off or on |
 | `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
@@ -1180,7 +1191,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 783 cases
+## `LampBoardTests/` — 793 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

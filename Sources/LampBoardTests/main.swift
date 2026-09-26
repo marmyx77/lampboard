@@ -53,6 +53,7 @@ let suites: [TestSuite] = [
     SessionsPayloadSuite.suite,
     HTTPRequestParserSuite.suite,
     AccountLimitsSuite.suite,
+    HostedCredentialsSuite.suite,
     HookConfigMergerSuite.suite,
     HookRepairSuite.suite,
     NativeHookSupportSuite.suite,
