@@ -1,13 +1,13 @@
 # Code map
 
-~43,700 lines of Swift across five targets. For each file: what it contains, why
+~44,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  11,999 lines · 97 files   pure logic, zero AppKit
-  LampBoardApp/    16,797 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,306 lines · 59 files   793 cases, instantaneous
+  LampBoardCore/  12,183 lines · 98 files   pure logic, zero AppKit
+  LampBoardApp/    16,933 lines · 88 files   shell: AppKit, network, windows
+  LampBoardTests/  11,459 lines · 60 files   805 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -318,6 +318,12 @@ the credential is a file at `~/.claude/.credentials.json`; the keychain branch i
 there for a node that is itself a Mac. It also reads, on the node, the accounts
 the Claude application runs Claude Code as there (`hosted`), and turns a node's
 answer into reports.
+
+### `AllowanceThrottle.swift`
+What the strip does when Anthropic answers 429: the wait before the next ask
+doubles from the ordinary interval up to twenty minutes, and the last reading of
+each account stays on screen with its own age for up to half an hour instead of
+the strip going empty (D54).
 
 ### `HostedCredentials.swift`
 The accounts Claude Code is spending without having signed in itself. The Claude
@@ -1042,8 +1048,8 @@ there, the hooks are registered — and it names the link that broke.
 | `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
-| `AccountLimitsReader.swift` | 255 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
-| `AllowanceMonitor.swift` | 96 | the timer behind that strip. No timer and no request while the switch is off: a feature that reaches the network is either off or on |
+| `AccountLimitsReader.swift` | 340 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
+| `AllowanceMonitor.swift` | 128 | the timer behind that strip. On a 429 it keeps the last readings and waits longer before asking again (D54). No timer and no request while the switch is off: a feature that reaches the network is either off or on |
 | `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
@@ -1191,7 +1197,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 793 cases
+## `LampBoardTests/` — 805 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

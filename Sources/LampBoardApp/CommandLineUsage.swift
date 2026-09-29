@@ -22,13 +22,23 @@ extension CommandLineInterface {
 
         // The reader is async and the command line is not: wait for it, with the
         // deadline the reader already enforces on every request it makes.
+        //
+        // Waited for by **turning the main run loop**, not by parking the thread
+        // on a semaphore. The node is asked through `Process`, and learning that
+        // a process has exited goes through the main run loop: with the thread
+        // blocked, an ssh that finished in one second was reported as timed out
+        // after fifteen, whenever the answer was large enough for the exit to
+        // arrive after the wait began. Measured on 29 September 2026; the panel
+        // never saw it, because its main run loop is always turning.
         let finished = DispatchSemaphore(value: 0)
         let box = GatheringBox()
         Task.detached {
             box.gathering = await AccountLimitsReader.readAll(hosts: hosts)
             finished.signal()
         }
-        finished.wait()
+        while finished.wait(timeout: .now()) == .timedOut {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
         guard let gathering = box.gathering else { return 1 }
 
         if gathering.reports.isEmpty {

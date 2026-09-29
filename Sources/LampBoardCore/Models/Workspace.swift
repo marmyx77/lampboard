@@ -81,9 +81,10 @@ public struct Workspace: Sendable, Equatable, Hashable {
 public enum PathNormalizer {
     /// Strips trailing slashes and collapses doubled ones, without touching the filesystem.
     ///
-    /// Deliberately does not resolve symlinks: `cwd` and `workspaceFolders` come from
-    /// the same source (Claude Code) and are already consistent with each other.
-    /// Resolving links would mean I/O on every signal in exchange for no real case covered.
+    /// Deliberately does not resolve symlinks: it runs on every signal and must not
+    /// touch the disk. The one real case — a window opened through a link, hosting a
+    /// session whose `cwd` the kernel reports resolved — is settled once per window
+    /// read instead, in `IDEWindow.resolvedFolders`.
     public static func normalize(_ path: String) -> String {
         guard !path.isEmpty else { return path }
         let collapsed = path.replacingOccurrences(

@@ -38,7 +38,9 @@ struct IDEWindowReader {
         // pure rule decide from that.
         let alive = Set(windows.map(\.pid).filter { $0 > 0 && kill(pid_t($0), 0) == 0 })
         let now = Date()
-        return windows.filter { $0.isUsable(at: now, alivePids: alive) }
+        // Resolved here, where the disk may be touched, and only for the windows
+        // that survived: one `realpath` per open folder per read.
+        return windows.filter { $0.isUsable(at: now, alivePids: alive) }.map { $0.resolvingLinks() }
     }
 
     private func readWindow(at url: URL) -> IDEWindow? {

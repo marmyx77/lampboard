@@ -91,6 +91,17 @@ enum RemoteCommand {
         process.standardOutput = output
         process.standardError = errors
 
+        // The exit is learnt from a termination handler set before the launch,
+        // never from `waitUntilExit()` on the reading thread. That call waits on
+        // a run loop the global queue's threads do not turn, and when ssh had
+        // already exited by the time it was reached it could wait for good:
+        // measured on 29 September 2026, an ssh that finished in one second, with
+        // both pipes at end-of-file, was reported as timed out after fifteen —
+        // every other time, and more often the larger the answer. The allowance
+        // strip lost the node's line that way, silently.
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
+
         do {
             try process.run()
         } catch {
@@ -107,7 +118,7 @@ enum RemoteCommand {
         DispatchQueue.global().async {
             stdout = output.fileHandleForReading.readDataToEndOfFile()
             stderr = errors.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
+            exited.wait()
             done.leave()
         }
         if done.wait(timeout: deadline) == .timedOut {

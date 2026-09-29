@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **793**, instantaneous |
+| Domain tests | **805**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2069,3 +2069,31 @@ draws the organization account read here and the Team account read on the node,
 with the node's own account — the same as this Mac's — collapsed into the first
 line. Ten domain cases, one of which runs the node's script with an empty home and
 demands a well-formed answer with the hosted list in it.
+
+## 29 September — 429, a hang, and a link
+
+**The strip went empty and said 429.** The node was now signed in on its command
+line as the same account the application's sessions used there, so each round
+asked for it twice, on top of what Claude Code and the application ask on their
+own. Each account is now asked once a round, until one of its tokens answers, and
+a 429 keeps the last readings on screen and doubles the wait (D54). Measured while
+fixing it: the limit is per token — the node's own token was refused while the
+application's, same account, was answered.
+
+**A node answer that arrived and was thrown away.** `lampboard usage` kept losing
+the node's line after fifteen seconds. Instrumented: ssh had exited within a
+second, both pipes at end-of-file, and the reader was still waiting in
+`waitUntilExit()` on a global-queue thread. Replaced by a termination handler set
+before launch, here and in `Command.run`; the command now returns in one to two
+seconds. Debugging it cost this Mac's token a 429 of its own, which is exactly the
+case the carried-over readings exist for.
+
+**A row that raised nothing for five days.** A session in `callduo` shown as a
+terminal row: its editor window had opened `livetranscribe`, a link to `callduo`,
+and the kernel reports the resolved folder as the session's `cwd`. Windows are now
+resolved on disk when read, and a session under either spelling is the window's
+(D55). The same row also said "waiting on background work", and that part was
+true: a shell loop waiting for a file that never came, started on 23 September.
+
+Verified: 805 domain cases, among them a real symbolic link on disk resolved to its
+window, and the node's script executed with its own account in the skip list.

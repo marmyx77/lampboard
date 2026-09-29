@@ -30,6 +30,12 @@ final class AllowanceMonitor: ObservableObject {
     private var timer: Timer?
     private var inFlight = false
 
+    /// Refusals in a row, and the moment before which nobody asks again. The
+    /// timer keeps its ordinary beat; a tick that falls inside the wait is simply
+    /// skipped (`AllowanceThrottle`).
+    private var refusals = 0
+    private var quietUntil = Date.distantPast
+
     /// The machines to ask besides this one.
     ///
     /// Set from the preferences, because the account a node is signed in as is not
@@ -69,12 +75,15 @@ final class AllowanceMonitor: ObservableObject {
         // would be the panel still showing what it promised to stop asking.
         reports = []
         quiet = nil
+        refusals = 0
+        quietUntil = .distantPast
     }
 
     private func refresh() {
         // A request still open when the next tick arrives is a slow network, not a
         // reason to open a second one.
         guard !inFlight else { return }
+        guard Date() >= quietUntil else { return }
         inFlight = true
         let hosts = self.hosts
         Task { @MainActor [weak self] in
@@ -89,8 +98,27 @@ final class AllowanceMonitor: ObservableObject {
             // arriving after `stop()` it would put a figure back on a strip the
             // person has just turned off.
             guard self.timer != nil else { return }
-            self.reports = result.reports
-            self.quiet = result.quiet
+            let now = Date()
+            if result.throttled {
+                // Asked too often, by everything that asks for these accounts.
+                // What was read before stays, with its age, and the next ask
+                // waits twice as long as the last one did.
+                self.refusals += 1
+                let wait = AllowanceThrottle.interval(
+                    afterRefusals: self.refusals, base: AppConfig.usagePollInterval
+                ) - AppConfig.usagePollInterval
+                self.quietUntil = now.addingTimeInterval(max(0, wait))
+                self.reports = AllowanceThrottle.carriedOver(
+                    previous: self.reports, fresh: result.reports, now: now
+                )
+                self.quiet = self.reports.isEmpty ? result.quiet : nil
+                Diagnostics.log("allowance: answered 429, \(self.refusals) in a row; next ask in \(Int(wait + AppConfig.usagePollInterval))s")
+            } else {
+                self.refusals = 0
+                self.quietUntil = .distantPast
+                self.reports = result.reports
+                self.quiet = result.quiet
+            }
             Diagnostics.log(
                 "allowance: \(result.reports.count) account(s) drawn"
                     + (result.reports.isEmpty ? "" : " (" + result.reports.map(\.machine).joined(separator: ", ") + ")")

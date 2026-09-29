@@ -104,6 +104,13 @@ public enum Command {
         let buffer = Buffer()
         let finished = DispatchSemaphore(value: 0)
 
+        // The exit is learnt from a handler set before the launch. The pipe's
+        // end-of-file was once thought to make `waitUntilExit()` safe here; the
+        // same pattern in the ssh runner hung for fifteen seconds on a process
+        // that had exited, pipes closed (29 September 2026, see `RemoteCommand`).
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
+
         // Started before the process, so that a tool which floods its output
         // immediately never finds nobody at the other end of the pipe.
         DispatchQueue.global(qos: .userInitiated).async {
@@ -129,9 +136,11 @@ public enum Command {
             throw Failure.timedOut(tool: tool, seconds: Int(deadline.rounded()))
         }
 
-        // The pipe reached end-of-file, which only happens once the process has
-        // let go of it: this wait cannot hang.
-        process.waitUntilExit()
+        // The pipe reached end-of-file, so the process has let go of it and is
+        // exiting or has exited; the handler says which, within the grace.
+        if exited.wait(timeout: .now() + graceAfterTerminate) == .timedOut {
+            throw Failure.timedOut(tool: tool, seconds: Int(deadline.rounded()))
+        }
 
         return Result(
             status: process.terminationStatus,

@@ -51,6 +51,49 @@ enum WorkspaceResolverSuite {
             t.expectEqual(result?.name, "web")
         },
 
+        // A folder opened through a link: the window says the link, the kernel
+        // hands the session the folder it points at. The row keeps the window's
+        // name, which is what its title says and what the click looks for.
+        TestCase("A session under the folder a window's link points at is that window's") { t in
+            let linked = IDEWindow(
+                workspaceFolders: ["/Users/dev/Development/livetranscribe"],
+                ideName: "Visual Studio Code", pid: 5501, lockModifiedAt: now,
+                resolvedFolders: ["/Users/dev/Development/callduo"]
+            )
+            let result = WorkspaceResolver.resolve(
+                cwd: "/Users/dev/Development/callduo/engine", in: [linked], at: now
+            )
+            t.expectEqual(result, Workspace(path: "/Users/dev/Development/livetranscribe"))
+        },
+
+        // The same, on a real disk: the link is followed when the window is read.
+        TestCase("A window read from disk follows the link its folder is") { t in
+            let root = URL(fileURLWithPath: CanonicalPath.of(NSTemporaryDirectory()))
+                .appendingPathComponent("lampboard-link-\(UUID().uuidString)")
+            let real = root.appendingPathComponent("callduo")
+            let link = root.appendingPathComponent("livetranscribe")
+            defer { try? FileManager.default.removeItem(at: root) }
+            do {
+                try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+                try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+            } catch {
+                return t.fail("could not build the fixture: \(error)")
+            }
+            let read = window([link.path]).resolvingLinks()
+            t.expectEqual(read.resolvedFolders, [real.path], "resolved")
+            t.expectEqual(
+                WorkspaceResolver.resolve(cwd: real.path, in: [read], at: now),
+                Workspace(path: link.path)
+            )
+        },
+
+        TestCase("A window nobody resolved matches exactly as before") { t in
+            t.expectNil(WorkspaceResolver.resolve(
+                cwd: "/Users/dev/Development/callduo",
+                in: [window(["/Users/dev/Development/livetranscribe"])], at: now
+            ))
+        },
+
         TestCase("No match returns nil") { t in
             let result = WorkspaceResolver.resolve(
                 cwd: "/Users/dev/elsewhere",

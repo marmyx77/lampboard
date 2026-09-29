@@ -1,3 +1,4 @@
+import CryptoKit
 import LampBoardCore
 import Foundation
 
@@ -36,6 +37,8 @@ enum AccountLimitsReader {
         /// Nothing to draw, and a sentence for the tooltip saying why. Never an
         /// error dialog: this is decoration, and decoration does not interrupt.
         case quiet(String)
+        /// Anthropic answered 429: asked too often, by everything that asks.
+        case throttled
     }
 
     /// Where the figures come from. The same address `/usage` asks.
@@ -53,6 +56,9 @@ enum AccountLimitsReader {
         /// about allowances that started listing hosts would have become a status
         /// board, and the panel has one of those already.
         let quiet: String?
+        /// Some ask was answered 429. The monitor then keeps the last readings and
+        /// waits longer before the next ask (`AllowanceThrottle`).
+        let throttled: Bool
     }
 
     /// This Mac's allowance and every configured node's, gathered.
@@ -62,14 +68,22 @@ enum AccountLimitsReader {
     /// first so that, when the same account is signed in on two machines, the copy
     /// whose age this app controls is the one kept.
     static func readAll(hosts: [String]) async -> Gathering {
-        async let local = read()
-        async let hosted = hostedReports()
-        async let remote = remoteReports(hosts: hosts)
+        // Every account is asked once a round, which is what stopped one account
+        // being asked twice a poll and answered 429 (`AllowanceThrottle`). So
+        // this Mac is asked first and the nodes are told which accounts it
+        // already has — only those it **has**: a Mac whose token aged out must not
+        // silence the node that is signed in to the same account and working.
+        let localUUID = localAccount()?.uuid
+        let local = await read()
 
         var reports: [AllowanceReport] = []
         var quiet: String?
-        switch await local {
-        case .report(let report): reports.append(report)
+        var throttled = false
+        var have: [String] = []
+        switch local {
+        case .report(let report):
+            reports.append(report)
+            have += [localUUID].compactMap { $0 }
         case .quiet(let reason):
             quiet = reason
             // Said in the log, because the strip says it only when there is
@@ -77,13 +91,26 @@ enum AccountLimitsReader {
             // read its own token is a line that is simply missing, and the
             // afternoon spent on exactly that had nothing to read.
             Diagnostics.log("allowance local: \(reason)")
+        case .throttled:
+            // Not skipped anywhere: the limit is kept per token, and another
+            // token of the same account — the application's, a node's — may
+            // still be answered.
+            throttled = true
+            quiet = "Anthropic asked to slow down (429)"
+            Diagnostics.log("allowance local: answered 429")
         }
-        reports.append(contentsOf: await hosted)
-        reports.append(contentsOf: await remote)
+        let hosted = await hostedReports(skipping: have)
+        have += hosted.0.compactMap(\.account?.uuid)
+        let (fromHosted, hostedThrottled) = hosted
+        let (fromNodes, nodesThrottled) = await remoteReports(hosts: hosts, skipping: have)
+        reports.append(contentsOf: fromHosted)
+        reports.append(contentsOf: fromNodes)
+        throttled = throttled || hostedThrottled || nodesThrottled
 
         return Gathering(
             reports: AllowanceReport.merged(reports),
-            quiet: reports.isEmpty ? quiet : nil
+            quiet: reports.isEmpty ? quiet : nil,
+            throttled: throttled
         )
     }
 
@@ -93,35 +120,39 @@ enum AccountLimitsReader {
     /// Pulling the token back would put a credential in this app's memory for the
     /// sake of three percentages, and the node already has both the credential and
     /// a network.
-    private static func remoteReports(hosts: [String]) async -> [AllowanceReport] {
-        guard !hosts.isEmpty else { return [] }
-        return await withTaskGroup(of: [AllowanceReport].self) { group in
+    private static func remoteReports(
+        hosts: [String], skipping: [String]
+    ) async -> ([AllowanceReport], Bool) {
+        guard !hosts.isEmpty else { return ([], false) }
+        return await withTaskGroup(of: ([AllowanceReport], Bool).self) { group in
             for host in hosts {
-                group.addTask { remoteReports(host: host) }
+                group.addTask { remoteReports(host: host, skipping: skipping) }
             }
             var found: [AllowanceReport] = []
-            for await reports in group {
+            var throttled = false
+            for await (reports, refused) in group {
                 found.append(contentsOf: reports)
+                throttled = throttled || refused
             }
             // The order a task group finishes in is the order the network answered,
             // which would reshuffle the strip on every poll. Sorted so a group of
             // bars stays where the eye left it.
-            return found.sorted { $0.label < $1.label }
+            return (found.sorted { $0.label < $1.label }, throttled)
         }
     }
 
     /// A node's own sign-in and the accounts the Claude application runs there.
-    private static func remoteReports(host: String) -> [AllowanceReport] {
+    private static func remoteReports(host: String, skipping: [String]) -> ([AllowanceReport], Bool) {
         let answer = RemoteCommand.runPythonForObject(
-            on: host, script: RemoteAllowanceScript.script
+            on: host, script: RemoteAllowanceScript.script(skipping: skipping)
         )
-        guard case .success(let object) = answer else { return [] }
+        guard case .success(let object) = answer else { return ([], false) }
         // An error the node reported is an ordinary absence — signed out, token
         // aged out — and is logged rather than drawn.
         if let reason = object["error"] as? String {
             Diagnostics.log("allowance \(host): \(reason)")
         }
-        return RemoteAllowanceScript.reports(in: object, host: host)
+        return (RemoteAllowanceScript.reports(in: object, host: host), object["throttled"] as? Bool == true)
     }
 
     /// The name this Mac goes by when the account cannot say who it is.
@@ -149,6 +180,8 @@ enum AccountLimitsReader {
             // out and only Claude Code can replace it. Worded so that nobody
             // goes looking for a broken setting.
             return .quiet("waiting for Claude Code to refresh its sign-in")
+        case .throttled:
+            return .throttled
         case .status(let status):
             return .quiet("the allowance service answered \(status)")
         case .unreachable:
@@ -162,31 +195,82 @@ enum AccountLimitsReader {
     /// application puts them (`HostedCredentials`). No application session running
     /// means nothing found, and nothing is said: the strip has nothing to report
     /// about an account nobody is spending.
-    static func hostedReports() async -> [AllowanceReport] {
+    static func hostedReports(skipping: [String]) async -> ([AllowanceReport], Bool) {
         guard let listing = try? Command.run(
             "/bin/ps", ["-Eww", "-axo", "command="],
             deadline: AppConfig.focusProbeTimeout,
             capturingStandardError: false
-        ), listing.status == 0 else { return [] }
+        ), listing.status == 0 else { return ([], false) }
 
         var reports: [AllowanceReport] = []
+        var asked = Set(skipping)
+        var throttled = false
         for token in HostedCredentials.tokens(inProcessListing: listing.output) {
-            guard case .answer(let data) = await ask(endpoint, token: token),
-                  let limits = AccountLimits.decode(data), !limits.limits.isEmpty
-            else { continue }
-            var account: ClaudeAccount?
-            if let profile = URL(string: HostedCredentials.profileEndpoint),
-               case .answer(let named) = await ask(profile, token: token) {
-                account = HostedCredentials.account(fromProfile: named)
+            // Who the token belongs to, asked once per token and remembered by a
+            // hash of it: the figures of an account already asked this round are
+            // not asked for again.
+            var account = hostedAccounts.account(for: token)
+            if account == nil, let profile = URL(string: HostedCredentials.profileEndpoint) {
+                switch await ask(profile, token: token) {
+                case .answer(let named):
+                    account = HostedCredentials.account(fromProfile: named)
+                    if let account { hostedAccounts.remember(account, for: token) }
+                case .throttled: throttled = true
+                default: break
+                }
             }
-            reports.append(AllowanceReport(account: account, machine: localMachine, limits: limits))
+            // Only an answer counts: a refused token leaves its account to the
+            // next token of it (see `RemoteAllowanceScript.script(skipping:)`).
+            if let uuid = account?.uuid, asked.contains(uuid) { continue }
+            switch await ask(endpoint, token: token) {
+            case .answer(let data):
+                guard let limits = AccountLimits.decode(data), !limits.limits.isEmpty else { continue }
+                if let uuid = account?.uuid { asked.insert(uuid) }
+                reports.append(AllowanceReport(account: account, machine: localMachine, limits: limits))
+            case .throttled:
+                throttled = true
+            default:
+                continue
+            }
         }
-        return reports
+        return (reports, throttled)
+    }
+
+    /// The accounts of the application's tokens, keyed by a hash of each token so
+    /// that no credential is kept in memory between rounds.
+    private static let hostedAccounts = HostedAccounts()
+
+    private final class HostedAccounts: @unchecked Sendable {
+        private let lock = NSLock()
+        private var byHash: [String: ClaudeAccount] = [:]
+
+        private static func key(_ token: String) -> String {
+            SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined()
+        }
+
+        func account(for token: String) -> ClaudeAccount? {
+            lock.lock(); defer { lock.unlock() }
+            return byHash[Self.key(token)]
+        }
+
+        func remember(_ account: ClaudeAccount, for token: String) {
+            lock.lock(); defer { lock.unlock() }
+            // Tokens are renewed by the application every few hours; a handful of
+            // stale entries is harmless, an unbounded list is not.
+            if byHash.count >= HostedCredentials.maximumAccounts * 4 { byHash.removeAll() }
+            byHash[Self.key(token)] = account
+        }
+
+        var uuids: [String] {
+            lock.lock(); defer { lock.unlock() }
+            return Array(Set(byHash.values.compactMap(\.uuid)))
+        }
     }
 
     private enum Answer {
         case answer(Data)
         case refused
+        case throttled
         case status(Int)
         case unreachable
     }
@@ -202,6 +286,7 @@ enum AccountLimitsReader {
             switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
             case 200: return .answer(data)
             case 401, 403: return .refused
+            case 429: return .throttled
             case let status: return .status(status)
             }
         } catch {

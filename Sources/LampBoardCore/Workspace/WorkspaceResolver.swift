@@ -46,9 +46,14 @@ public enum WorkspaceResolver {
         let candidates = windows
             .filter { !onlySupported || $0.isSupported }
             .flatMap { window in
-                window.workspaceFolders
-                    .filter { PathNormalizer.isDescendant(normalizedCwd, of: $0) }
-                    .map { (window: window, folder: $0) }
+                // Either spelling of the folder hosts the session, and the row
+                // takes the window's: see `IDEWindow.resolvedFolders`.
+                zip(window.workspaceFolders, window.resolvedFolders)
+                    .filter { folder, resolved in
+                        PathNormalizer.isDescendant(normalizedCwd, of: folder)
+                            || PathNormalizer.isDescendant(normalizedCwd, of: resolved)
+                    }
+                    .map { (window: window, folder: $0.0) }
             }
 
         // The longest path is the most specific match.

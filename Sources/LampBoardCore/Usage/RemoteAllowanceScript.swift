@@ -24,7 +24,8 @@ public enum RemoteAllowanceScript {
     public static let endpoint = "https://api.anthropic.com/api/oauth/usage"
 
     /// Answers with `{"account": {...}, "limits": {...}, "hosted": [...]}`, or
-    /// `{"error": "…", "hosted": [...]}` when the machine's own sign-in is absent.
+    /// `{"error": "…", "hosted": [...]}` when the machine's own sign-in is absent,
+    /// plus `"throttled": true` whenever any ask was answered 429.
     ///
     /// Never exits non-zero for an ordinary absence — a node that is signed out, or
     /// whose token has aged out, is not a fault to report to anybody. It says so in
@@ -37,17 +38,36 @@ public enum RemoteAllowanceScript {
     /// read even when the machine itself is signed out, which is exactly the node
     /// the application alone works on.
     ///
+    /// ONE ANSWER PER ACCOUNT
+    /// `skipping` names the accounts the caller already has figures for this
+    /// round, and no account is asked about once an answer for it is in hand: the
+    /// node's own sign-in is skipped when it is one of them, and so is a hosted
+    /// token whose account has already answered. A token that was **refused** does
+    /// not count as an answer, and the next token of the same account is tried —
+    /// measured on 29 September 2026, the limit is kept per token: the node's own
+    /// token, which its Claude Code sessions ask with too, was answered 429 while
+    /// the application's token for the same account was answered 200. That needs the account of a token before its figures, so
+    /// the answer of the profile endpoint is remembered on the node, keyed by a
+    /// hash of the token — never the token — in `~/.cache/lampboard/accounts.json`.
+    /// A skipped account is not an absence: the caller already has its figures.
+    ///
     /// The token reaches curl on its standard input, never on its command line: an
     /// argument is readable by every user of the machine, an input is not.
-    public static var script: String {
-        """
-        import json, os, re, subprocess, sys
+    public static func script(skipping uuids: [String]) -> String {
+        // Only the characters a uuid has: this list is pasted into the program.
+        let safe = uuids.map { $0.filter { $0.isLetter || $0.isNumber || $0 == "-" } }.filter { !$0.isEmpty }
+        let skipping = "[" + safe.map { "\"\($0)\"" }.joined(separator: ", ") + "]"
+        return """
+        import hashlib, json, os, re, subprocess, sys
 
         home = os.path.expanduser("~")
+        asked = set(\(skipping))
+        throttled = False
 
         def ask(token, url):
             # curl rather than urllib: it is already required for the hook script,
             # so a node that can run the hooks can run this.
+            global throttled
             try:
                 answer = subprocess.run(
                     ["curl", "--silent", "--show-error", "--max-time", "8",
@@ -59,6 +79,8 @@ public enum RemoteAllowanceScript {
             except Exception as error:
                 return None, "could not ask: %s" % error
             body, _, status = answer.rpartition("\\n")
+            if status.strip() == "429":
+                throttled = True
             if status.strip() != "200":
                 return None, "answered %s" % status.strip()
             try:
@@ -107,18 +129,50 @@ public enum RemoteAllowanceScript {
                         keep(match.group(1))
             return found
 
+        cache_path = os.path.join(home, ".cache", "lampboard", "accounts.json")
+
+        def load_cache():
+            try:
+                with open(cache_path) as handle:
+                    return json.load(handle)
+            except Exception:
+                return {}
+
+        def save_cache(entries):
+            # Only the tokens still running are remembered, so the file never grows.
+            try:
+                os.makedirs(os.path.dirname(cache_path), mode=0o700, exist_ok=True)
+                temporary = cache_path + ".tmp"
+                with open(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as handle:
+                    json.dump(entries, handle)
+                os.replace(temporary, cache_path)
+            except Exception:
+                pass
+
         def hosted():
             reports = []
+            known = load_cache()
+            current = {}
             for token in hosted_tokens():
+                key = hashlib.sha256(token.encode()).hexdigest()[:32]
+                named = known.get(key)
+                if not named:
+                    profile, _ = ask(token, "\(HostedCredentials.profileEndpoint)")
+                    account = (profile or {}).get("account") or {}
+                    named = {"email": account.get("email"), "uuid": account.get("uuid")}
+                if named.get("uuid") or named.get("email"):
+                    current[key] = named
+                uuid = named.get("uuid")
+                if uuid and uuid in asked:
+                    continue
                 limits, _ = ask(token, "\(endpoint)")
                 if limits is None:
                     continue
-                profile, _ = ask(token, "\(HostedCredentials.profileEndpoint)")
-                named = (profile or {}).get("account") or {}
-                reports.append({
-                    "account": {"email": named.get("email"), "uuid": named.get("uuid")},
-                    "limits": limits,
-                })
+                if uuid:
+                    asked.add(uuid)
+                reports.append({"account": named, "limits": limits})
+            if current != known:
+                save_cache(current)
             return reports
 
         # The identity. Free to read and never secret: the token is needed for the
@@ -156,10 +210,16 @@ public enum RemoteAllowanceScript {
                 pass
 
         result = {"account": account}
+        own = (account or {}).get("uuid")
         if not token:
             result["error"] = "not signed in"
+        elif own and own in asked:
+            # Already asked by the caller this round: its figures are in hand.
+            result["skipped"] = True
         else:
             limits, error = ask(token, "\(endpoint)")
+            if own and limits is not None:
+                asked.add(own)
             if limits is None:
                 # An aged-out token is the expected ending, not a fault: only
                 # Claude Code over there can replace it, and it will.
@@ -167,9 +227,14 @@ public enum RemoteAllowanceScript {
             else:
                 result["limits"] = limits
         result["hosted"] = hosted()
+        if throttled:
+            result["throttled"] = True
         sys.stdout.write(json.dumps(result))
         """
     }
+
+    /// The script with nothing to skip.
+    public static var script: String { script(skipping: []) }
 
     /// Every account a node's answer describes: its own sign-in first, then the
     /// hosted ones. What cannot be read is left out, never guessed.

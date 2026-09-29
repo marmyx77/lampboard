@@ -17,11 +17,48 @@ public struct IDEWindow: Sendable, Equatable {
     /// Modification date of the lock, used to discard orphaned files.
     public let lockModifiedAt: Date
 
-    public init(workspaceFolders: [String], ideName: String, pid: Int, lockModifiedAt: Date) {
+    /// The same folders as the filesystem spells them, one for one with
+    /// `workspaceFolders`: links followed, capitals settled.
+    ///
+    /// Needed because the two sides of the match do not come from one source. The
+    /// window's folders are what the editor was asked to open, and a folder opened
+    /// through a link keeps the link's name; the session's `cwd` is the process's
+    /// working directory, which the kernel hands back resolved. Measured on 29
+    /// September 2026: a window on `~/Development/livetranscribe`, a link to
+    /// `~/Development/callduo`, hosted a session reporting `callduo`; nothing
+    /// matched, the row fell back to being a terminal session, and its click
+    /// raised nothing for five days. The match now accepts either spelling, and
+    /// the row keeps the **window's** one — it is the name in the title the click
+    /// looks for.
+    ///
+    /// Equal to `workspaceFolders` until somebody who may touch the disk fills it
+    /// in (`resolvingLinks()`): the pure parser does not.
+    public let resolvedFolders: [String]
+
+    public init(
+        workspaceFolders: [String],
+        ideName: String,
+        pid: Int,
+        lockModifiedAt: Date,
+        resolvedFolders: [String]? = nil
+    ) {
         self.workspaceFolders = workspaceFolders.map(PathNormalizer.normalize)
+        let resolved = resolvedFolders?.map(PathNormalizer.normalize) ?? []
+        self.resolvedFolders = resolved.count == self.workspaceFolders.count ? resolved : self.workspaceFolders
         self.ideName = ideName
         self.pid = pid
         self.lockModifiedAt = lockModifiedAt
+    }
+
+    /// This window with its folders resolved on disk. Touches the filesystem.
+    public func resolvingLinks() -> IDEWindow {
+        IDEWindow(
+            workspaceFolders: workspaceFolders,
+            ideName: ideName,
+            pid: pid,
+            lockModifiedAt: lockModifiedAt,
+            resolvedFolders: workspaceFolders.map(CanonicalPath.of)
+        )
     }
 
     /// The editor that wrote this lock, if we know it.

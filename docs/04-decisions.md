@@ -2375,3 +2375,54 @@ found and nothing said.
 (`--header @-`) instead of its command line: an argument is readable by every user
 of a machine, an input is not. That was true of the node's own token before this
 change as well.
+
+## D54 · One answer per account, and a 429 keeps what was read
+
+**Decided.** Every account is asked about once a round, and only until one of its
+tokens answers: this Mac is asked first, then the application's sessions here,
+then each node is told which accounts are already in hand and skips them — its own
+sign-in and any hosted token of an account that has answered. A token that is
+**refused** does not count, and the next token of the same account is tried. The
+account a hosted token belongs to is asked once and remembered, on the Mac in
+memory and on a node in `~/.cache/lampboard/accounts.json`, both keyed by a hash of
+the token and never by the token.
+
+When anything is answered 429 the strip keeps the last reading of each account on
+screen, with its own age, for up to half an hour, and the next ask waits twice as
+long as the last, up to twenty minutes. The first ordinary answer restores the
+ordinary interval.
+
+**Why.** Measured on 29 September 2026: the node was signed in on its command line
+as the same account the application's sessions ran as there, so each round asked
+for it twice, and the usage endpoint — asked as well by Claude Code itself and by
+the application — answered 429. The strip then went empty and said so, throwing
+away a reading two minutes old to show nothing. The same morning showed that the
+limit is kept **per token**: the node's own token, which its Claude Code sessions
+ask with, was refused while the application's token for the same account was
+answered — hence "until one answers" rather than "once".
+
+**Also.** The ssh runner learnt that ssh had exited from `waitUntilExit()` on a
+global-queue thread, after reading both pipes to end-of-file. It hung there for the
+full fifteen-second deadline on a process that had finished in one second, about
+every other time and more often the larger the answer — so the node's allowance
+line, and potentially its sessions, went missing without a word. The exit is now
+learnt from a termination handler set before the launch, in the ssh runner and in
+`Command.run` alike.
+
+## D55 · A window opened through a link hosts the sessions under its target
+
+**Decided.** When the local editor windows are read, each folder is also resolved
+on disk (`realpath`), and a session whose `cwd` falls under either spelling belongs
+to that window. The row keeps the window's spelling.
+
+**Why.** The window's folders are what the editor was asked to open, and a folder
+opened through a symbolic link keeps the link's name; the session's `cwd` is the
+process's working directory, which the kernel hands back resolved. Measured on 29
+September 2026: a window on `~/Development/livetranscribe`, a link to
+`~/Development/callduo`, hosted a session reporting `callduo`. Nothing matched, the
+session fell back to being a terminal row, and clicking it raised nothing for five
+days. The window's spelling is kept because it is the name in the title the click
+looks for.
+
+**Cost.** One `realpath` per open folder per window read, done where the windows
+are read and not on every signal; the pure resolver compares strings as before.

@@ -16,9 +16,9 @@ enum HostedCredentialsSuite {
     }
 
     private static let listing = [
-        line("/Applications/Claude.app/Contents/MacOS/Claude", ["HOME=/Users/x"]),
-        line("/Users/x/Library/Application Support/Claude/claude-code/2.1.281/claude --output-format stream-json",
-             ["CLAUDE_CODE_ENTRYPOINT=claude-desktop", "CLAUDE_CODE_OAUTH_TOKEN=\(team)", "HOME=/Users/x"]),
+        line("/Applications/Claude.app/Contents/MacOS/Claude", ["HOME=/Users/dev"]),
+        line("/Users/dev/Library/Application Support/Claude/claude-code/2.1.281/claude --output-format stream-json",
+             ["CLAUDE_CODE_ENTRYPOINT=claude-desktop", "CLAUDE_CODE_OAUTH_TOKEN=\(team)", "HOME=/Users/dev"]),
         // A server the session started: same token, inherited.
         line("node server.js", ["CLAUDE_CODE_ENTRYPOINT=claude-desktop", "CLAUDE_CODE_OAUTH_TOKEN=\(team)"]),
         line("/usr/local/bin/claude", ["CLAUDE_CODE_OAUTH_TOKEN=\(other)", "CLAUDE_CODE_ENTRYPOINT=cli"]),
@@ -31,27 +31,6 @@ enum HostedCredentialsSuite {
     private static let limits = """
     {"limits": [{"kind": "session", "percent": 10, "resets_at": null, "scope": null}]}
     """
-
-    /// Runs the node's script on this Mac with an empty home, the way the ssh
-    /// wrapper feeds it: on standard input.
-    private static func runScript(home: URL) -> [String: Any]? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["python3", "-"]
-        var environment = ProcessInfo.processInfo.environment
-        environment["HOME"] = home.path
-        process.environment = environment
-        let input = Pipe(), output = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return nil }
-        input.fileHandleForWriting.write(Data(RemoteAllowanceScript.script.utf8))
-        try? input.fileHandleForWriting.close()
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-    }
 
     static let suite = TestSuite("Accounts handed to Claude Code in the environment", [
 
@@ -135,7 +114,7 @@ enum HostedCredentialsSuite {
             try? FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: home) }
 
-            guard let answer = runScript(home: home) else {
+            guard let answer = PythonRunner.object(RemoteAllowanceScript.script, home: home) else {
                 return t.fail("the script printed no JSON")
             }
             t.expectEqual(answer["error"] as? String, "not signed in", "error")
