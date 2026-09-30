@@ -149,19 +149,26 @@ public enum RemoteAllowanceScript {
             except Exception:
                 pass
 
+        known = load_cache()
+        current = {}
+
+        def whose(token):
+            # Asked of the token, never read from ~/.claude.json: that file names
+            # the last sign-in, which need not be the one that wrote the token.
+            key = hashlib.sha256(token.encode()).hexdigest()[:32]
+            named = known.get(key)
+            if not named:
+                profile, _ = ask(token, "\(HostedCredentials.profileEndpoint)")
+                account = (profile or {}).get("account") or {}
+                named = {"email": account.get("email"), "uuid": account.get("uuid")}
+            if named.get("uuid") or named.get("email"):
+                current[key] = named
+            return named
+
         def hosted():
             reports = []
-            known = load_cache()
-            current = {}
             for token in hosted_tokens():
-                key = hashlib.sha256(token.encode()).hexdigest()[:32]
-                named = known.get(key)
-                if not named:
-                    profile, _ = ask(token, "\(HostedCredentials.profileEndpoint)")
-                    account = (profile or {}).get("account") or {}
-                    named = {"email": account.get("email"), "uuid": account.get("uuid")}
-                if named.get("uuid") or named.get("email"):
-                    current[key] = named
+                named = whose(token)
                 uuid = named.get("uuid")
                 if uuid and uuid in asked:
                     continue
@@ -171,24 +178,7 @@ public enum RemoteAllowanceScript {
                 if uuid:
                     asked.add(uuid)
                 reports.append({"account": named, "limits": limits})
-            if current != known:
-                save_cache(current)
             return reports
-
-        # The identity. Free to read and never secret: the token is needed for the
-        # figures, never for the name.
-        account = None
-        try:
-            with open(os.path.join(home, ".claude.json")) as handle:
-                config = json.load(handle)
-            oauth = config.get("oauthAccount") or {}
-            cached = (config.get("cachedUsageUtilization") or {}).get("accountUuid")
-            account = {
-                "email": oauth.get("emailAddress"),
-                "uuid": oauth.get("accountUuid") or cached,
-            }
-        except Exception:
-            pass
 
         # The credential. A file on Linux; on a Mac node, the login keychain.
         token = None
@@ -209,6 +199,7 @@ public enum RemoteAllowanceScript {
             except Exception:
                 pass
 
+        account = whose(token) if token else None
         result = {"account": account}
         own = (account or {}).get("uuid")
         if not token:
@@ -227,6 +218,8 @@ public enum RemoteAllowanceScript {
             else:
                 result["limits"] = limits
         result["hosted"] = hosted()
+        if current != known:
+            save_cache(current)
         if throttled:
             result["throttled"] = True
         sys.stdout.write(json.dumps(result))

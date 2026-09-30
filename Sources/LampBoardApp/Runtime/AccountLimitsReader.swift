@@ -73,7 +73,6 @@ enum AccountLimitsReader {
         // this Mac is asked first and the nodes are told which accounts it
         // already has — only those it **has**: a Mac whose token aged out must not
         // silence the node that is signed in to the same account and working.
-        let localUUID = localAccount()?.uuid
         let local = await read()
 
         var reports: [AllowanceReport] = []
@@ -83,7 +82,7 @@ enum AccountLimitsReader {
         switch local {
         case .report(let report):
             reports.append(report)
-            have += [localUUID].compactMap { $0 }
+            have += [report.account?.uuid].compactMap { $0 }
         case .quiet(let reason):
             quiet = reason
             // Said in the log, because the strip says it only when there is
@@ -162,10 +161,10 @@ enum AccountLimitsReader {
         guard let token = accessToken() else {
             return .quiet("Claude Code is not signed in on this Mac")
         }
-        // Read before the request, and never fatal. A machine that cannot say which
-        // account it is still draws its bars, labelled by the machine — the figures
-        // are the point, the address is what disambiguates them.
-        let account = localAccount()
+        // Asked of the token, never read from `~/.claude.json` (D56), and never
+        // fatal: a token that cannot say whose it is still draws its bars,
+        // labelled by the machine.
+        let account = await account(of: token)
 
         switch await ask(endpoint, token: token) {
         case .answer(let data):
@@ -209,16 +208,7 @@ enum AccountLimitsReader {
             // Who the token belongs to, asked once per token and remembered by a
             // hash of it: the figures of an account already asked this round are
             // not asked for again.
-            var account = hostedAccounts.account(for: token)
-            if account == nil, let profile = URL(string: HostedCredentials.profileEndpoint) {
-                switch await ask(profile, token: token) {
-                case .answer(let named):
-                    account = HostedCredentials.account(fromProfile: named)
-                    if let account { hostedAccounts.remember(account, for: token) }
-                case .throttled: throttled = true
-                default: break
-                }
-            }
+            let account = await account(of: token)
             // Only an answer counts: a refused token leaves its account to the
             // next token of it (see `RemoteAllowanceScript.script(skipping:)`).
             if let uuid = account?.uuid, asked.contains(uuid) { continue }
@@ -238,9 +228,9 @@ enum AccountLimitsReader {
 
     /// The accounts of the application's tokens, keyed by a hash of each token so
     /// that no credential is kept in memory between rounds.
-    private static let hostedAccounts = HostedAccounts()
+    private static let tokenAccounts = TokenAccounts()
 
-    private final class HostedAccounts: @unchecked Sendable {
+    private final class TokenAccounts: @unchecked Sendable {
         private let lock = NSLock()
         private var byHash: [String: ClaudeAccount] = [:]
 
@@ -294,11 +284,25 @@ enum AccountLimitsReader {
         }
     }
 
-    /// Which account this Mac is signed in as. Free to read: it lives in
-    /// `~/.claude.json`, which is not a secret.
-    static func localAccount() -> ClaudeAccount? {
-        guard let data = try? Data(contentsOf: AppConfig.claudeConfigURL) else { return nil }
-        return ClaudeAccount.decode(data)
+    /// Whose a token is: asked of the profile endpoint with the token itself,
+    /// once per token, and remembered by a hash of it.
+    ///
+    /// NOT `~/.claude.json`. That file names the account of the last sign-in any
+    /// Claude Code on this Mac went through, and the keychain holds the token of
+    /// whichever sign-in wrote it — two things that can disagree. Measured on 30
+    /// September 2026: the file said the organization account, the keychain's
+    /// token was the personal one. The strip drew the personal account's figures
+    /// under the organization's address, and told the node it already had the
+    /// organization's account, so the node skipped the only tokens that really
+    /// were it. The token cannot be wrong about itself (D56).
+    static func account(of token: String) async -> ClaudeAccount? {
+        if let known = tokenAccounts.account(for: token) { return known }
+        guard let profile = URL(string: HostedCredentials.profileEndpoint),
+              case .answer(let named) = await ask(profile, token: token),
+              let account = HostedCredentials.account(fromProfile: named)
+        else { return nil }
+        tokenAccounts.remember(account, for: token)
+        return account
     }
 
     // MARK: - The borrowed credential

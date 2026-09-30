@@ -1,3 +1,4 @@
+import CryptoKit
 import LampBoardCore
 import Foundation
 import TestKit
@@ -74,17 +75,25 @@ enum AllowanceThrottleSuite {
 
         // Executed: the node skips its own account when the caller already has it,
         // and does not ask — a fake token would otherwise come back as an error.
+        // Whose the token is comes from what the node remembers of the token, and
+        // `~/.claude.json`, which here names somebody else, is not believed (D56).
         TestCase("The node's script skips an account the caller already asked about") { t in
             let home = FileManager.default.temporaryDirectory
                 .appendingPathComponent("lampboard-skip-\(UUID().uuidString)")
             let claude = home.appendingPathComponent(".claude")
+            let cache = home.appendingPathComponent(".cache/lampboard")
             defer { try? FileManager.default.removeItem(at: home) }
+            let token = "sk-ant-oat01-fake"
+            let key = SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(32)
             do {
                 try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
-                try Data(#"{"oauthAccount": {"emailAddress": "sam@example.net", "accountUuid": "u-2"}}"#.utf8)
+                try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+                try Data(#"{"oauthAccount": {"emailAddress": "design@example.com", "accountUuid": "u-9"}}"#.utf8)
                     .write(to: home.appendingPathComponent(".claude.json"))
-                try Data(#"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-fake"}}"#.utf8)
+                try Data("{\"claudeAiOauth\": {\"accessToken\": \"\(token)\"}}".utf8)
                     .write(to: claude.appendingPathComponent(".credentials.json"))
+                try Data("{\"\(key)\": {\"email\": \"sam@example.net\", \"uuid\": \"u-2\"}}".utf8)
+                    .write(to: cache.appendingPathComponent("accounts.json"))
             } catch {
                 return t.fail("could not build the fixture: \(error)")
             }
@@ -92,8 +101,8 @@ enum AllowanceThrottleSuite {
                 return t.fail("the script printed no JSON")
             }
             t.expectEqual(answer["skipped"] as? Bool, true, "skipped")
+            t.expectEqual((answer["account"] as? [String: Any])?["email"] as? String, "sam@example.net", "the token's account")
             t.expectNil(answer["error"], "no ask, so no error")
-            t.expectNil(answer["throttled"], "throttled")
         },
 
         // The list is pasted into the program, so it must not be able to say

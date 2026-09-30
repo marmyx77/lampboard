@@ -2097,3 +2097,24 @@ true: a shell loop waiting for a file that never came, started on 23 September.
 
 Verified: 805 domain cases, among them a real symbolic link on disk resolved to its
 window, and the node's script executed with its own account in the skip list.
+
+## 30 September — the right figures under the wrong name
+
+"The usage of the organization account is completely wrong." It was the personal
+account's usage: this Mac's `~/.claude.json` named the organization account while
+the keychain's token was the personal one, and the strip took the name from the
+file and the figures from the token. The node's line, really the personal account,
+showed the same numbers; and because the Mac told the node it already had the
+organization account, the node skipped the application's tokens, the only ones
+that were. Identity is now asked of each token and remembered by its hash (D56).
+
+Verified with one real round: the personal account read here, the organization
+account read on the node from the application's sessions, each with its own
+figures. The node's script test now seeds the remembered identity and a
+`~/.claude.json` naming somebody else, and demands the former.
+
+Also found: Xcode was installed on this Mac and `xcode-select` now points at it
+(Swift 6.4), which fails the build on warnings the Command Line Tools' compiler
+(now 6.3.3) does not raise. This fix was built and gated with
+`DEVELOPER_DIR=/Library/Developer/CommandLineTools`; moving to the new compiler is
+its own piece of work.

@@ -2426,3 +2426,24 @@ looks for.
 
 **Cost.** One `realpath` per open folder per window read, done where the windows
 are read and not on every signal; the pure resolver compares strings as before.
+
+## D56 · Whose a token is, is asked of the token
+
+**Decided.** The account a line is labelled with — and the account the nodes are
+told is already in hand — comes from the profile endpoint, asked with the very
+token the figures were asked with, once per token and remembered by a hash of it
+(in memory on the Mac, in `~/.cache/lampboard/accounts.json` on a node).
+`~/.claude.json` is no longer read for it, on either side.
+
+**Why.** That file names the account of the last sign-in any Claude Code on the
+machine went through; the keychain holds the token of whichever sign-in wrote it.
+Measured on 30 September 2026: the Mac's file said the organization account, the
+keychain's token was the personal one. The strip drew the personal account's
+figures under the organization's address — identical to the node's line, which was
+really the personal account — and told the node it already had the organization's
+account, so the node skipped the only tokens that were it: the Claude
+application's. A label that can be wrong about which allowance it shows is worse
+than no label, and the token cannot be wrong about itself.
+
+**Cost.** One profile request per token, which the application and Claude Code
+renew every few hours; nothing per poll.
