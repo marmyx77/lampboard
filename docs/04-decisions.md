@@ -2447,3 +2447,20 @@ than no label, and the token cannot be wrong about itself.
 
 **Cost.** One profile request per token, which the application and Claude Code
 renew every few hours; nothing per poll.
+
+## D57 · The application's worktree rows are named after their project
+
+**Decided.** A row whose session the Claude application runs inside a linked
+worktree reads as the main repository and the worktree, without the worktree's
+numeric tail: `Exit · vigilant-ramanujan`. A name given to the row still wins.
+Editor rows are left alone.
+
+**Why.** The application can give each conversation its own worktree, created
+under `.claude/worktrees/` with a generated name on a `claude/` branch of the same
+name. Named after its folder like every row, the conversation on the `Exit`
+repository read `vigilant-ramanujan-790712` (30 September 2026): a name nobody
+chose, saying nothing about the project, and one more of them for every
+conversation. The repository name was already known — the card said "a linked
+worktree; the name is the main repository's" — it just was not the row's name.
+Editor rows keep the folder because their name is the title of the window they
+raise, and a row that disagreed with its window would read as a different place.

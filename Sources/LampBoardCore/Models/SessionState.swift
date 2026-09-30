@@ -367,7 +367,15 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// the key the window is found by. For a terminal row, the conversation title
     /// once there is one: the folder of a session started in the home directory
     /// is a username, and says nothing about which of three terminals it is.
+    ///
+    /// A conversation the Claude application runs in a worktree of its own is
+    /// named after the project and the worktree (`DesktopWorktree`), not after
+    /// the generated folder alone.
     public var displayName: String {
+        if ClaudeDesktop.isEntrypoint(entrypoint),
+           let named = DesktopWorktree.label(folder: workspace.name, git: git) {
+            return named
+        }
         guard origin == .terminal, let title else { return workspace.name }
         return title
     }

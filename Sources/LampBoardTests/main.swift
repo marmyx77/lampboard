@@ -13,6 +13,7 @@ let suites: [TestSuite] = [
     PathNormalizerSuite.suite,
     PanelPlacementSuite.suite,
     ClaudeDesktopSuite.suite,
+    DesktopWorktreeSuite.suite,
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,
     CodexAdmissionSuite.suite,

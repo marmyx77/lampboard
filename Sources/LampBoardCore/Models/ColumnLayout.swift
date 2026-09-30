@@ -115,7 +115,16 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// node. Where it is has one mark on the row and a sentence in the tooltip;
     /// what it is called gets the whole line back.
     public var displayName: String {
-        alias ?? (sessions.count == 1 ? primary.displayName : workspace.name)
+        alias ?? (sessions.count == 1 ? primary.displayName : folderName)
+    }
+
+    /// The folder's name for a row of several conversations — the project and
+    /// the worktree when the Claude application made the folder for them.
+    private var folderName: String {
+        guard ClaudeDesktop.isEntrypoint(primary.entrypoint),
+              let named = DesktopWorktree.label(folder: workspace.name, git: primary.git)
+        else { return workspace.name }
+        return named
     }
 
     /// How full the context is of the session a click would open.

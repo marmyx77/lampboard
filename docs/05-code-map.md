@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  12,176 lines · 98 files   pure logic, zero AppKit
+  LampBoardCore/  12,236 lines · 99 files   pure logic, zero AppKit
   LampBoardApp/    16,937 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,468 lines · 60 files   805 cases, instantaneous
+  LampBoardTests/  11,542 lines · 61 files   812 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -581,6 +581,14 @@ to read.
 `resolvedFolderKinds[].kind == "local"` is the application's own answer to
 whether the work is happening on this Mac, and the only thing separating a
 session that is readable from a cloud one that leaves nothing here at all.
+
+### `DesktopWorktree.swift`
+The name of a row the Claude application runs in a worktree of its own. The
+application can give each conversation a linked worktree under
+`.claude/worktrees/` with a generated name; such a row reads `Exit ·
+vigilant-ramanujan` — the main repository, then the worktree without its numeric
+tail — instead of the generated folder alone. Only the application's rows: an
+editor row's name is its window's title (D57).
 
 ### `DesktopConversation.swift`
 The two judgements a Claude Desktop row rests on, kept away from the disk so they
@@ -1197,7 +1205,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 805 cases
+## `LampBoardTests/` — 812 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

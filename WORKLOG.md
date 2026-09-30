@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **805**, instantaneous |
+| Domain tests | **812**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2118,3 +2118,12 @@ Also found: Xcode was installed on this Mac and `xcode-select` now points at it
 (now 6.3.3) does not raise. This fix was built and gated with
 `DEVELOPER_DIR=/Library/Developer/CommandLineTools`; moving to the new compiler is
 its own piece of work.
+
+## 30 September — a row called `vigilant-ramanujan-790712`
+
+A conversation from the Claude application, on the node, in the `Exit` repository:
+the application had given it its own worktree, `.claude/worktrees/
+vigilant-ramanujan-790712` on branch `claude/vigilant-ramanujan-790712`, still at
+`main`'s commit. The row carried the generated name. Rows of the application's
+worktrees now read `Exit · vigilant-ramanujan` (D57); seven domain cases, among
+them an editor's worktree row that must keep its folder's name.
