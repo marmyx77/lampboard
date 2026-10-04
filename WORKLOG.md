@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **965**, instantaneous |
+| Domain tests | **982**, instantaneous |
 | End-to-end tests | **134**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2367,3 +2367,9 @@ only showing them, and D73 says so before any code does: every act is a click, e
 capability that can start a turn is off until switched on, and the one door not yet
 tried — deciding a permission from a mod — is the first thing measured. D9, which
 still said only amber is ever notified, now says what 0.5 changed.
+
+The first piece of the new panel is the queue's logic, without a pixel yet (D74):
+what waits for you, as cards in the order that costs the least waiting —
+permissions, questions, stuck turns, failures, answers, LampMaster last — armed
+600 ms after they appear, and worked with `J`, `K`, `O` and `E`. The keys that will
+answer a permission are there already and say they cannot yet.

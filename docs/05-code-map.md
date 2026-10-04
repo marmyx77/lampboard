@@ -1,13 +1,13 @@
 # Code map
 
-~53,800 lines of Swift across five targets. For each file: what it contains, why
+~54,200 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,169 lines · 127 files  pure logic, zero AppKit
+  LampBoardCore/  16,372 lines · 128 files  pure logic, zero AppKit
   LampBoardApp/    19,875 lines · 109 files   shell: AppKit, network, windows
-  LampBoardTests/  13,443 lines · 78 files   965 cases, instantaneous
+  LampBoardTests/  13,639 lines · 79 files   982 cases, instantaneous
   LampBoardE2E/    3,949 lines · 17 files   134 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1031,6 +1031,22 @@ required field is ever inferred or filled in with a default.
 `ignoredEvent` is not a fault — the hook script forwards everything and the
 filter lives here.
 
+## `Queue/`
+
+### `WaitingQueue.swift` · 203
+"Waiting for you" (UX §3, D74): the cards drawn from the rows — a permission, a
+question, a turn stuck on one tool, a failed turn, answers to read (one card each up
+to two, then one card for all), LampMaster's first open suggestion last with the
+count of the rest — in that order, then by age, read from the state the row shows.
+A card is armed 600 ms after the queue first shows it as it is (`Arming`): an ask's
+words are in its id, so a second permission is a new card. The keys: `J` `K` move and stop at the ends, `O` opens, `E` marks read what
+there is to read; `A` `S` `D`, `R` and the digits answer *unavailable* until the
+panel has a hand in the session (D73). A card that leaves without the panel acting
+on it, if it was an ask, was resolved elsewhere.
+
+> **Touching here** changes what interrupts somebody first. A permission must never
+> be something `E` reads away: that is a question left unanswered.
+
 ## `Reducer/`
 
 ### `StateReducer.swift` · 680
@@ -1531,7 +1547,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 965 cases
+## `LampBoardTests/` — 982 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1574,6 +1590,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `WaitingQueueSuite` | the order of urgency then age, the state the row shows when a subagent is alive, a second ask as a new card armed anew, armed from when the queue shows it, a new answer re-arming the group, an amber row with nothing said, stuck only after fifteen minutes, two ready answers alone and three as one, one LampMaster card counting the rest, a watched command that failed and not one that succeeded, armed at 600 ms, the keys and the ones not yet live, the selection kept on its card, resolved elsewhere |
 | `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
 | `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |

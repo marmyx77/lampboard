@@ -2874,3 +2874,29 @@ session of his without his yes.
 is switched on. A session with its own panel open in an editor is still not typed
 into through the editor (N7).
 
+## D74 · What waits for you is a queue, and a card waits 600 ms before it can be answered
+
+**Decided.** Above the rows, the panel will show what needs you as cards in one
+queue: permissions, then questions, then turns stuck on one tool, failed turns,
+answers to read, and LampMaster's suggestion last — always last and only one, with
+a count of the others. Within a kind, the older first. Answers to read stand one
+card each up to two; three or more are one card, since a pile of green is one thing
+to do. A watched command that succeeded is not something to read. Each card's
+buttons are armed 600 ms after it appears. The queue is worked from the keyboard:
+`J` and `K`, `O` to open, `E` to mark read what there is to read — never a permission
+or a question, which `E` would leave unanswered.
+
+**Why.** The column answers "which session", and with two dozen of them the answer
+is a scan. The queue answers "what next", in the order that costs the least waiting:
+what stops work before what can wait. The delay is for the one accident a queue
+invites — a card that appears under the pointer the instant before a click meant for
+something else. The keys that answer a permission, a question or a reply exist from
+the start and do nothing until the panel can act in a session (D73), so the layout
+the hands learn does not change under them later.
+
+A code review moved two things: the queue reads the state the row **shows**, since
+a parent with a subagent alive is blue whatever it said last; and a card is armed
+from when the queue first shows it as it is, with an ask's words in its id, since a
+second permission in the same turn otherwise inherited the first one's armed
+buttons. Only an ask that leaves unanswered by the panel says "resolved elsewhere".
+

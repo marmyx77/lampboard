@@ -20,6 +20,7 @@ let suites: [TestSuite] = [
     LampMasterAdviceSuite.suite,
     LampMasterRoundSuite.suite,
     LampMasterQuickSuite.suite,
+    WaitingQueueSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,
