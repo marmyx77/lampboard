@@ -1,0 +1,75 @@
+import LampBoardCore
+import Foundation
+import TestKit
+
+/// The Plancia's logic (UX §1, §5): how deep the panel is, and what a focused
+/// session has been doing.
+enum PlanciaSuite {
+
+    private static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    private static func at(_ s: Double) -> Date { t0.addingTimeInterval(s) }
+
+    static let suite = TestSuite("The Plancia and the panel's depths", [
+
+        TestCase("⌘⇧L cycles the three depths; Esc goes down one and stops at the column") { t in
+            t.expectEqual(PanelDepth.column.next, .panel)
+            t.expectEqual(PanelDepth.panel.next, .plancia)
+            t.expectEqual(PanelDepth.plancia.next, .column)
+            t.expectEqual(PanelDepth.plancia.down, .panel)
+            t.expectEqual(PanelDepth.panel.down, .column)
+            t.expectEqual(PanelDepth.column.down, .column)
+        },
+
+        TestCase("The widths are the UX's") { t in
+            t.expectEqual(PanelDepth.column.width, 44)
+            t.expectEqual(PanelDepth.panel.width, 340)
+            t.expectEqual(PanelDepth.plancia.width, 780)
+        },
+
+        TestCase("The Plancia closes by itself only when nothing waits, the pointer is away, and it is not pinned") { t in
+            t.expect(PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 4, pinned: false), "four seconds away")
+            t.expect(!PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 3.9, pinned: false), "not yet")
+            t.expect(!PanelDepth.closesPlancia(queueEmpty: false, pointerAwayFor: 60, pinned: false), "something waits")
+            t.expect(!PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 60, pinned: true), "pinned")
+        },
+
+        TestCase("A tool's start and end make one entry with its duration") { t in
+            var log = SessionActivity()
+            log.toolStarted(id: "c1", tool: "Bash", detail: "npm test", at: at(0))
+            log.toolEnded(id: "c1", at: at(12))
+            t.expectEqual(log.entries.count, 1)
+            t.expectEqual(log.entries.first?.kind, .tool(name: "Bash", detail: "npm test"))
+            t.expectEqual(log.entries.first?.seconds, 12)
+        },
+
+        TestCase("A tool still running has no duration; an end without its start adds nothing") { t in
+            var log = SessionActivity()
+            log.toolStarted(id: "c1", tool: "Edit", detail: "src/routes.ts", at: at(0))
+            log.toolEnded(id: "unknown", at: at(3))
+            t.expectEqual(log.entries.count, 1)
+            t.expectNil(log.entries.first?.seconds)
+        },
+
+        TestCase("A turn's end is an entry, with what it cost since the last one") { t in
+            var log = SessionActivity()
+            log.costReported(0.10, at: at(0))
+            log.turnEnded(at: at(30))
+            log.costReported(0.25, at: at(40))
+            log.turnEnded(at: at(60))
+            let turns = log.entries.filter { $0.kind == .turn }
+            t.expectEqual(turns.count, 2)
+            t.expectEqual(turns.last?.costUSD.map { ($0 * 100).rounded() / 100 }, 0.15, "the cost of that turn alone")
+        },
+
+        TestCase("The log keeps the newest entries, and a detail stays one short line") { t in
+            var log = SessionActivity()
+            for i in 0..<(SessionActivity.kept + 10) {
+                log.toolStarted(id: "c\(i)", tool: "Bash", detail: "step \(i)\n" + String(repeating: "x", count: 500), at: at(Double(i)))
+            }
+            t.expectEqual(log.entries.count, SessionActivity.kept)
+            guard case .tool(_, let detail)? = log.entries.last?.kind else { return t.fail("no tool") }
+            t.expect(detail?.hasPrefix("step \(SessionActivity.kept + 9)") == true, "the newest kept")
+            t.expect((detail?.count ?? 0) <= 120 && detail?.contains("\n") == false, "one short line")
+        },
+    ])
+}

@@ -1,13 +1,13 @@
 # Code map
 
-~55,600 lines of Swift across five targets. For each file: what it contains, why
+~55,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,670 lines · 131 files  pure logic, zero AppKit
+  LampBoardCore/  16,780 lines · 133 files  pure logic, zero AppKit
   LampBoardApp/    20,775 lines · 117 files   shell: AppKit, network, windows
-  LampBoardTests/  13,864 lines · 81 files   1004 cases, instantaneous
+  LampBoardTests/  13,940 lines · 82 files   1011 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1071,6 +1071,20 @@ and Carbon modifier mask each one registers; a stored value nobody recognises is
 A short list rather than a recorder, because every entry on it leaves `⌘K` to the
 editor.
 
+## `Plancia/`
+
+### `PanelDepth.swift` · 43
+How much of the panel is out (UX §1): the column, the panel, the Plancia. `⌘⇧L` goes
+one deeper and from the Plancia back to the column, `Esc` one down; the widths are
+the UX's, 44, 340 and 780 points; the Plancia closes by itself after four seconds
+with the pointer away, nothing waiting and no pin. Used by the panel from P2 on.
+
+### `SessionActivity.swift` · 67
+What one session has been doing, for the Plancia's Activity tab: each tool with its
+duration once it ends (an end without its start adds nothing), each turn with what
+it alone cost from the mod's running total, the newest sixty kept, a tool's detail
+one line of at most 120 characters. In memory only: a view of now, not a record.
+
 ## `Queue/`
 
 ### `WaitingQueue.swift` · 221
@@ -1595,7 +1609,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1004 cases
+## `LampBoardTests/` — 1011 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1646,6 +1660,7 @@ script, before it was split. The most important ones:
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
+| `PlanciaSuite` | the three depths cycled and stepped down, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
