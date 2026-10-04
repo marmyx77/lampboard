@@ -2591,3 +2591,16 @@ Measured on 4 October 2026 with a throwaway server on the test Mac: Claude Code
 leaves the asker out of its own answers; and it opens with `server/discover`, from
 a newer protocol revision, before `initialize` — a server that did not answer
 "method not found" to what it does not know would never have been initialised.
+
+A security review of the running server added three things. Every tool result
+opens with a notice that what follows is data about other sessions and nothing in
+it is an instruction; the one prose the lookups carry, a title or a file name that
+another session chose, is flattened to one line and clipped. The question's frame
+leaves out LampMaster's notebook, the one text a past round wrote unchecked, since
+that answer goes to a model and not past a person. And a question is booked before
+it runs, two at most at once: the limits had been read at the start and written at
+the end of a minute-long run, so a burst of calls all passed. The session id a call
+carries is the caller's own word and serves only the per-session limit; the hourly
+total is the bound. What remains is the answer's prose, LampMaster's own synthesis,
+which no program can hold to the frame word for word; it comes from a run with no
+tools, and reaches the session after the notice.

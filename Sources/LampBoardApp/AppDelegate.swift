@@ -222,7 +222,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onLampMaster: { [lampMaster] in lampMaster.encodedState },
             onLampMasterRound: { [weak self] in
                 Self.onMain(timeout: 2) { self?.lampMaster.request(.asked) } ?? false
-            }
+            },
+            onLampMasterTool: { [lampMaster] body in lampMaster.answer(body) }
         )
 
         do {

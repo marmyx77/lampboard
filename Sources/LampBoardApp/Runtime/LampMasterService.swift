@@ -28,11 +28,13 @@ final class LampMasterService: ObservableObject {
     /// due reads the transcripts.
     static let tick: TimeInterval = 5 * 60
 
-    private let preferences: Preferences
-    private let rows: @MainActor () -> [SessionState]
-    private let files: LampMasterFiles
-    private let cards: LampMasterCards
+    let preferences: Preferences
+    let rows: @MainActor () -> [SessionState]
+    let files: LampMasterFiles
+    let cards: LampMasterCards
     private let box = LampMasterBox()
+    /// Questions from sessions being answered now (`LampMasterQuestions`).
+    var questionsRunning = 0
     private var timer: Timer?
 
     init(
@@ -121,7 +123,7 @@ final class LampMasterService: ObservableObject {
         let decision = LampMasterSchedule.decide(
             trigger: trigger, enabled: preferences.lampMasterEnabled, interval: preferences.lampMasterInterval,
             lastRun: last?.at, lastDigest: last?.digest, digest: digest, sessionCount: frame.sessions.count,
-            tokensToday: LampMasterLedger.tokens(on: now, in: rounds), now: now
+            tokensToday: tokensToday(rounds: rounds, now: now), now: now
         )
         switch decision {
         case .wait:
@@ -144,7 +146,7 @@ final class LampMasterService: ObservableObject {
         files.prepare()
         let (run, output) = await Task.detached {
             LampMasterRunner.run(message: LampMasterPrompt.message(frame: text), model: model, system: system,
-                                 directory: directory, timeout: timeout)
+                                 schema: LampMasterPrompt.schema, directory: directory, timeout: timeout)
         }.value
 
         var verdict = LampMasterValidator.Verdict(shown: [], rejected: [])
@@ -179,13 +181,20 @@ final class LampMasterService: ObservableObject {
         return now.timeIntervalSince(latest.at) >= LampMasterSchedule.clamp(interval)
     }
 
-    private func publish(running: Bool) {
+    /// The day's spending: the rounds and the questions sessions asked share one
+    /// ceiling, because they share one allowance.
+    func tokensToday(rounds: [LampMasterRound], now: Date) -> Int {
+        LampMasterLedger.tokens(on: now, in: rounds)
+            + files.asks().filter { Calendar.current.isDate($0.at, inSameDayAs: now) }.reduce(0) { $0 + ($1.tokens ?? 0) }
+    }
+
+    func publish(running: Bool) {
         let shown = files.suggestions()
         let rounds = files.rounds()
         let now = Date()
         let next = Snapshot(
             enabled: preferences.lampMasterEnabled, running: running,
-            tokensToday: LampMasterLedger.tokens(on: now, in: rounds),
+            tokensToday: tokensToday(rounds: rounds, now: now),
             roundsToday: rounds.filter { Calendar.current.isDate($0.at, inSameDayAs: now) }.count,
             lastRound: rounds.last, open: LampMasterLedger.open(shown)
         )
@@ -219,92 +228,5 @@ final class LampMasterService: ObservableObject {
     static var language: String {
         let code = Locale.preferredLanguages.first.map { Locale(identifier: $0).language.languageCode?.identifier ?? "en" } ?? "en"
         return Locale(identifier: "en").localizedString(forLanguageCode: code) ?? "English"
-    }
-}
-
-/// Runs the round's `claude`.
-enum LampMasterRunner {
-
-    /// Where `claude` is. A GUI application's `PATH` is four system folders,
-    /// none of them where anybody installs it, so the usual places come first.
-    /// Under `LAMPBOARD_HOME` only the fake home's own is looked at: a test that
-    /// forgot its fake `claude` must fail, not spend the real one.
-    static func executable() -> String? {
-        let own = AppConfig.homeDirectory.appendingPathComponent(".local/bin/claude").path
-        let candidates = AppConfig.isUsingHomeOverride ? [own] : [own, "/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
-            + (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map { "\($0)/claude" }
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
-    }
-
-    /// The `claude` of the round in flight, if any.
-    static let running = RunningProcess()
-
-    /// The run, and what `claude` printed, kept with the frame.
-    static func run(
-        message: String, model: String, system: String, directory: URL, timeout: TimeInterval
-    ) -> (LampMasterRun, String) {
-        guard let tool = executable() else { return (.failed(.notLaunched), "") }
-        let started = Date()
-        do {
-            let result = try Command.run(
-                tool, LampMasterCommand.arguments(model: model, system: system), deadline: timeout,
-                capturingStandardError: false, input: Data(message.utf8), directory: directory,
-                launched: { running.hold($0) }
-            )
-            running.release()
-            let run = LampMasterRun.read(Data(result.output.utf8))
-            let seconds = run.seconds ?? Date().timeIntervalSince(started)
-            return (LampMasterRun(advice: run.advice, failure: run.failure, inputTokens: run.inputTokens,
-                                  outputTokens: run.outputTokens, costUSD: run.costUSD, seconds: seconds), result.output)
-        } catch Command.Failure.timedOut {
-            running.release()
-            return (.failed(.timedOut, seconds: Date().timeIntervalSince(started)), "")
-        } catch {
-            running.release()
-            return (.failed(.notLaunched), "")
-        }
-    }
-}
-
-/// The process id of a running tool, held only while it runs: a pid kept
-/// after its process ended could name somebody else's by the time it is used.
-final class RunningProcess: @unchecked Sendable {
-    private let lock = NSLock()
-    private var pid: pid_t?
-
-    func hold(_ pid: pid_t) {
-        lock.lock(); defer { lock.unlock() }
-        self.pid = pid
-    }
-
-    func release() {
-        lock.lock(); defer { lock.unlock() }
-        pid = nil
-    }
-
-    /// `SIGTERM`, the way `Command` asks first.
-    func stop() {
-        lock.lock(); defer { lock.unlock() }
-        if let pid { kill(pid, SIGTERM) }
-        pid = nil
-    }
-}
-
-/// LampMaster's state for the server's queue, the way `SnapshotBox` holds the
-/// rows: deposited when it changes, collected when asked, nobody waiting.
-final class LampMasterBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored = Data("{}".utf8)
-
-    func replace(with data: Data) {
-        lock.lock()
-        defer { lock.unlock() }
-        stored = data
-    }
-
-    func current() -> Data {
-        lock.lock()
-        defer { lock.unlock() }
-        return stored
     }
 }

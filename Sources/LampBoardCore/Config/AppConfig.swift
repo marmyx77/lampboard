@@ -42,6 +42,10 @@ public enum AppConfig {
     /// the token, like `/sessions`: what it returns quotes conversations.
     public static let lampMasterPath = "/lampmaster"
 
+    /// What the `lampmaster` MCP server forwards a session's tool call to.
+    /// Behind the token: the lookups read every session's card.
+    public static let lampMasterToolPath = "/lampmaster/tool"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without

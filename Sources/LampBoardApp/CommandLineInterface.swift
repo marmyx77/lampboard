@@ -13,6 +13,9 @@ enum CommandLineInterface {
         case status
         case codexProbe
         case selfTest(port: UInt16)
+        /// The `lampmaster` MCP server: Claude Code starts it, it talks JSON-RPC
+        /// on standard input and output and asks the running panel.
+        case mcp(port: UInt16)
         case focus(workspaceName: String, dryRun: Bool)
         case next(port: UInt16)
         /// `nil` lists the assignments instead of opening one.
@@ -47,6 +50,8 @@ enum CommandLineInterface {
             return .status
         case "codex-probe":
             return .codexProbe
+        case "mcp":
+            return .mcp(port: port)
         case "selftest", "doctor":
             return .selfTest(port: port)
         case "focus":
@@ -123,6 +128,9 @@ enum CommandLineInterface {
 
         case .selfTest(let port):
             return SelfTest.run(port: port)
+
+        case .mcp(let port):
+            return LampMasterBridge.run(port: port)
 
         case .focus(let workspaceName, let dryRun):
             return runFocus(workspaceName: workspaceName, dryRun: dryRun)

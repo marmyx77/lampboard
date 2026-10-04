@@ -9,6 +9,7 @@ import Foundation
 ///   rounds.jsonl       one line a round, skips included
 ///   suggestions.jsonl  what reached the panel, with its outcome
 ///   notebook.md        LampMaster's own notes between rounds
+///   asks.jsonl         the questions sessions asked, the last day of them
 ///   frames/            the last 200 frames and answers: the test bench
 /// ```
 ///
@@ -31,6 +32,7 @@ struct LampMasterFiles {
     var roundsURL: URL { directory.appendingPathComponent("rounds.jsonl") }
     var suggestionsURL: URL { directory.appendingPathComponent("suggestions.jsonl") }
     var notebookURL: URL { directory.appendingPathComponent("notebook.md") }
+    var asksURL: URL { directory.appendingPathComponent("asks.jsonl") }
     var framesURL: URL { directory.appendingPathComponent("frames", isDirectory: true) }
 
     func prepare() {
@@ -76,6 +78,27 @@ struct LampMasterFiles {
     func save(_ shown: [LampMasterShown]) {
         prepare()
         write(shown.compactMap(LampMasterLedger.line).map { $0 + "\n" }.joined(), to: suggestionsURL)
+    }
+
+    // MARK: - Questions
+
+    func asks() -> [LampMasterAskLimits.Asked] {
+        LampMasterLedger.records(read(asksURL), as: LampMasterAskLimits.Asked.self)
+    }
+
+    /// Kept a day: enough for the hour's limits, the reuse, and the day's
+    /// ceiling, and the answers quote conversations.
+    func record(_ asked: LampMasterAskLimits.Asked, now: Date) {
+        prepare()
+        let kept = asks().filter { now.timeIntervalSince($0.at) < 24 * 60 * 60 } + [asked]
+        write(kept.compactMap(LampMasterLedger.line).map { $0 + "\n" }.joined(), to: asksURL)
+    }
+
+    /// A booked question, completed with its answer and its cost.
+    func replace(_ booked: LampMasterAskLimits.Asked, with done: LampMasterAskLimits.Asked) {
+        var all = asks()
+        if let index = all.lastIndex(of: booked) { all[index] = done } else { all.append(done) }
+        write(all.compactMap(LampMasterLedger.line).map { $0 + "\n" }.joined(), to: asksURL)
     }
 
     // MARK: - Notebook

@@ -55,6 +55,7 @@ final class SignalServer {
     private let onChatInSlot: (Int) -> String?
     private let onLampMaster: () -> Data
     private let onLampMasterRound: () -> Bool
+    private let onLampMasterTool: (Data) -> Data
     private let token: String?
 
     private var listener: NWListener?
@@ -70,7 +71,8 @@ final class SignalServer {
         onNewInSlot: @escaping (Int) -> String? = { _ in nil },
         onChatInSlot: @escaping (Int) -> String? = { _ in nil },
         onLampMaster: @escaping () -> Data = { Data("{}".utf8) },
-        onLampMasterRound: @escaping () -> Bool = { false }
+        onLampMasterRound: @escaping () -> Bool = { false },
+        onLampMasterTool: @escaping (Data) -> Data = { _ in Data("{}".utf8) }
     ) {
         self.port = port
         self.token = token
@@ -83,6 +85,7 @@ final class SignalServer {
         self.onChatInSlot = onChatInSlot
         self.onLampMaster = onLampMaster
         self.onLampMasterRound = onLampMasterRound
+        self.onLampMasterTool = onLampMasterTool
     }
 
     // MARK: - Lifecycle
@@ -186,6 +189,9 @@ final class SignalServer {
         case AppConfig.lampMasterPath:
             return handleLampMaster(request)
 
+        case AppConfig.lampMasterToolPath:
+            return handleLampMasterTool(request)
+
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")
@@ -261,6 +267,28 @@ final class SignalServer {
             return HTTPRequestParser.response(status: 409, reason: "Conflict", body: "a round is already running")
         }
         return HTTPRequestParser.response(status: 202, reason: "Accepted", body: "round requested")
+    }
+
+    /// `POST /lampmaster/tool` — a session's tool call, forwarded by the
+    /// `lampmaster` MCP server. Unlike a round, the caller waits for the answer:
+    /// it is the tool's result. The wait is bounded inside `onLampMasterTool`,
+    /// and the queue is concurrent, so the hooks are never held behind it.
+    private func handleLampMasterTool(_ request: HTTPRequest) -> Data {
+        guard request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        guard let token else {
+            return HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+        }
+        guard AccessToken.matches(
+            request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName),
+            expected: token
+        ) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        return HTTPRequestParser.response(
+            status: 200, reason: "OK", body: onLampMasterTool(request.body), contentType: "application/json"
+        )
     }
 
     /// `POST /next` — raises the window of the next waiting session.

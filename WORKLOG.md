@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **884**, instantaneous |
-| End-to-end tests | **116**, about a minute |
+| Domain tests | **885**, instantaneous |
+| End-to-end tests | **118**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2173,4 +2173,12 @@ lookups that run no model and never hand one session another's words, and the
 question that does run one, with its sources screened and its limits. Measured
 first with a throwaway server: Claude Code tells it the calling session's id, and
 opens with a method of a newer protocol revision before `initialize`.
+
+`lampboard mcp` then joined the two: the process Claude Code starts, forwarding each
+call to the running panel with the token, as the hooks do. A security review found
+the question's limits could be outrun — every question arriving during a
+minute-long answer read the same history — and that titles and file names, chosen
+by other sessions, reached the asking model untouched. Questions are now booked
+before they run, two at most at once; names are flattened and clipped, and every
+result opens with a notice that it is data, not instructions.
 

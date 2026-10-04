@@ -31,6 +31,15 @@ enum LampMasterE2ESuite {
             + #""action":{"kind":"none"},"confidence":0.9,"key":"invented"}"#
     )
 
+    static let editorId = "f00dcafe-0000-4000-8000-0000000000ed"
+
+    static let askReply = envelope("").replacingOccurrences(
+        of: #""structured_output":{"notebook":"watching the docs build","suggestions":[]}"#,
+        with: #""structured_output":{"answer":"The docs build waits for a yes before staging.","#
+            + #""sources":[{"session":"e2e1a2b3","quote":"Shall I publish it to staging?"},"#
+            + #"{"session":"e2e1a2b3","quote":"I published it to production already"}],"#
+            + #""askSession":{"id":"e2e1a2b3","question":"Publish the docs to staging?"},"confidence":0.8}"#)
+
     /// One instance with LampMaster's preferences, its fake `claude`, and a
     /// closed conversation from a minute ago.
     final class Bench {
@@ -90,6 +99,52 @@ enum LampMasterE2ESuite {
                 .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
             try? text.write(to: folder.appendingPathComponent("\(LampMasterE2ESuite.sessionId).jsonl"),
                             atomically: true, encoding: .utf8)
+        }
+
+        /// A session that wrote a file a minute ago: what `overlaps` finds.
+        func writeEditor() {
+            let folder = app.home.appendingPathComponent(".claude/projects/-home-dev-docs-site")
+            let stamp = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-60))
+            let records: [[String: Any]] = [
+                ["type": "assistant", "timestamp": stamp, "cwd": "/home/dev/docs-site", "entrypoint": "cli",
+                 "message": ["role": "assistant", "model": "claude-sonnet-5-5", "content": [
+                     ["type": "tool_use", "id": "w1", "name": "Edit", "input": ["file_path": "/home/dev/docs-site/src/build.ts"]]]]],
+                ["type": "user", "timestamp": stamp, "cwd": "/home/dev/docs-site", "entrypoint": "cli",
+                 "message": ["role": "user", "content": [["type": "tool_result", "tool_use_id": "w1", "content": "ok"]]]],
+            ]
+            let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+                .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
+            try? text.write(to: folder.appendingPathComponent("\(LampMasterE2ESuite.editorId).jsonl"),
+                            atomically: true, encoding: .utf8)
+        }
+
+        /// `lampboard mcp` as Claude Code starts it: the session's id in the
+        /// environment, JSON-RPC in on standard input. Returns the answers by id.
+        func mcp(as session: String, _ lines: [String]) -> [Int: [String: Any]] {
+            let process = Process()
+            process.executableURL = app.binaryPath
+            process.arguments = ["mcp", "--port", String(app.port)]
+            var environment = ProcessInfo.processInfo.environment
+            environment[AppConfig.homeOverrideVariable] = app.home.path
+            environment["CLAUDE_CODE_SESSION_ID"] = session
+            process.environment = environment
+            process.currentDirectoryURL = app.home
+            let input = Pipe(), output = Pipe()
+            process.standardInput = input
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            guard (try? process.run()) != nil else { return [:] }
+            input.fileHandleForWriting.write(Data(lines.map { $0 + "\n" }.joined().utf8))
+            try? input.fileHandleForWriting.close()
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            var answers: [Int: [String: Any]] = [:]
+            for line in String(decoding: data, as: UTF8.self).split(separator: "\n") {
+                guard let object = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                      let id = object["id"] as? Int else { continue }
+                answers[id] = object
+            }
+            return answers
         }
 
         func ask() -> Int { app.raw(method: "POST", path: AppConfig.lampMasterPath).status }
@@ -214,10 +269,58 @@ enum LampMasterE2ESuite {
                 }
             },
 
+            TestCase("a session asks through lampboard mcp: the lookups answer from the cards, without the asker") { t in
+                bench(t) { bench in
+                    bench.writeEditor()
+                    let call = { (id: Int, tool: String, args: String) in
+                        #"{"jsonrpc":"2.0","id":\#(id),"method":"tools/call","params":{"name":"\#(tool)","arguments":\#(args)}}"#
+                    }
+                    let lines = [
+                        #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}"#,
+                        #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+                        #"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#,
+                        call(3, "overlaps", #"{"files":["src/build.ts"]}"#),
+                        call(4, "who_knows", #"{"topic":"docs site build"}"#),
+                    ]
+                    let text = { (answer: [String: Any]?) in
+                        ((answer?["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
+                    }
+                    let answers = bench.mcp(as: "0000aaaa-asker", lines)
+                    t.expectEqual(((answers[1]?["result"] as? [String: Any])?["serverInfo"] as? [String: Any])?["name"] as? String, "lampmaster")
+                    t.expectEqual(((answers[2]?["result"] as? [String: Any])?["tools"] as? [[String: Any]])?.count, 4, "four tools")
+                    t.expect(text(answers[3]).contains("f00dcafe") && text(answers[3]).contains("build.ts"), "overlaps: \(text(answers[3]))")
+                    t.expect(text(answers[4]).contains("e2e1a2b3"), "who_knows: \(text(answers[4]))")
+                    t.expect(!text(answers[4]).contains(answer), "never the other session's words")
+                    let own = bench.mcp(as: editorId, [call(5, "overlaps", #"{"files":["src/build.ts"]}"#)])
+                    t.expect(text(own[5]).contains("No other session"), "the asker is not its own overlap: \(text(own[5]))")
+                    t.expect(text(answers[3]).hasPrefix(LampMasterMCP.dataNotice), "every result opens with the notice")
+                    t.expectEqual(bench.calls(), 0, "no model ran for a lookup")
+                }
+            },
+
+            TestCase("ask_lampmaster runs claude once, keeps only real sources, and answers a repeat for free") { t in
+                bench(reply: askReply, t) { bench in
+                    let question = #"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"ask_lampmaster","arguments":{"question":"Is anything waiting on the docs build?"}}}"#
+                    let first = bench.mcp(as: "0000aaaa-asker", [question])
+                    let text = ((first[7]?["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
+                    t.expect(text.hasPrefix(LampMasterMCP.dataNotice + "\nThe docs build waits for a yes"), text)
+                    t.expect(!bench.read("stdin.txt").contains("watching the docs build"), "no notebook in a question's frame")
+                    t.expect(text.contains("Shall I publish it to staging?"), "the real source stays")
+                    t.expect(!text.contains("production already"), "the invented one goes")
+                    t.expect(text.contains("only the user"), "the referral says who sends it")
+                    t.expect(bench.read("stdin.txt").contains("<question>"), "the question went on stdin")
+                    let again = bench.mcp(as: "0000aaaa-asker", [question])
+                    t.expectNotNil(again[7], "answered again")
+                    t.expectEqual(bench.calls(), 1, "the repeat cost nothing")
+                }
+            },
+
             TestCase("the state and the round are behind the token") { t in
                 bench(t) { bench in
                     t.expectEqual(bench.app.raw(method: "GET", path: AppConfig.lampMasterPath, token: .some(nil)).status, 401)
                     t.expectEqual(bench.app.raw(method: "POST", path: AppConfig.lampMasterPath, token: .some("wrong")).status, 401)
+                    t.expectEqual(bench.app.raw(method: "POST", path: AppConfig.lampMasterToolPath, token: .some(nil),
+                                                body: #"{"tool":"who_knows","arguments":{"topic":"docs"}}"#).status, 401, "the lookups too")
                     t.expectEqual(bench.calls(), 0, "claude never called")
                 }
             },

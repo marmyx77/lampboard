@@ -78,6 +78,13 @@ enum LocalClient {
         slotRequest(path: AppConfig.chatPath, slot: slot, port: port)
     }
 
+    /// A session's tool call, forwarded for the `lampmaster` MCP server. The
+    /// wait is a question's: up to a minute and a half for a model to answer.
+    static func lampMasterTool(_ body: Data, port: UInt16) -> Result<Data, ClientError> {
+        request(method: "POST", path: AppConfig.lampMasterToolPath, port: port, body: body,
+                timeout: LampMasterAsk.timeout + 20)
+    }
+
     private static func slotRequest(
         path: String, slot: Int, port: UInt16
     ) -> Result<String, ClientError> {
@@ -97,7 +104,8 @@ enum LocalClient {
         method: String,
         path: String,
         port: UInt16,
-        body: Data? = nil
+        body: Data? = nil,
+        timeout: TimeInterval = 3
     ) -> Result<Data, ClientError> {
         guard let token = TokenStore().read() else {
             return .failure(.noToken)
@@ -109,7 +117,7 @@ enum LocalClient {
         request.httpMethod = method
         request.setValue(token, forHTTPHeaderField: AccessToken.headerName)
         request.httpBody = body
-        request.timeoutInterval = 3
+        request.timeoutInterval = timeout
 
         // A synchronous request: we are in a terminal command that has to print and
         // exit, and an explicit wait is more honest than a semaphore wrapped around
@@ -148,7 +156,7 @@ enum LocalClient {
             }
         }.resume()
 
-        _ = semaphore.wait(timeout: .now() + 5)
+        _ = semaphore.wait(timeout: .now() + timeout + 2)
         return outcome
     }
 }

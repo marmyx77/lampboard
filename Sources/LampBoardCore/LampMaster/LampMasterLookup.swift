@@ -33,7 +33,8 @@ public enum LampMasterLookup {
                 write.at >= since && files.contains { matches(write.path, $0, cwd: cwd) }
             }
             guard let latest = touched.max(by: { $0.at < $1.at }) else { continue }
-            let names = Set(touched.map { ($0.path as NSString).lastPathComponent }).sorted().joined(separator: ", ")
+            let names = Set(touched.map { clean(($0.path as NSString).lastPathComponent, to: titleLength) })
+                .sorted().joined(separator: ", ")
             lines.append("\(describe(session, now: now)) wrote \(names), last \(ago(latest.at, now: now))")
         }
 
@@ -135,8 +136,19 @@ public enum LampMasterLookup {
     static func describe(_ session: LampMasterSession, now: Date) -> String {
         let card = session.card
         let project = card.cwd.map { ($0 as NSString).lastPathComponent } ?? "?"
-        let title = card.title.map { " · \u{201C}" + String($0.prefix(titleLength)) + "\u{201D}" } ?? ""
-        return "\(session.shortId) · \(project)\(title) · \(session.liveness.rawValue)"
+        let title = card.title.map { " · \u{201C}" + clean($0, to: titleLength) + "\u{201D}" } ?? ""
+        return "\(clean(session.shortId, to: 8)) · \(clean(project, to: titleLength))\(title) · \(session.liveness.rawValue)"
+    }
+
+    /// A name another session chose — a title, a file name — made fit to show:
+    /// one line, no control characters, clipped. A title can be written to read
+    /// like an order; on one short line, quoted, after the notice, it reads as
+    /// what it is.
+    static func clean(_ text: String, to length: Int) -> String {
+        let flat = String(text.unicodeScalars.map {
+            CharacterSet.controlCharacters.contains($0) || CharacterSet.newlines.contains($0) ? " " : Character($0)
+        })
+        return String(flat.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(length))
     }
 
     static func ago(_ date: Date?, now: Date) -> String {

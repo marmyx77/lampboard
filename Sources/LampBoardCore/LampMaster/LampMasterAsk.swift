@@ -51,6 +51,16 @@ public struct LampMasterAnswer: Decodable, Sendable, Equatable {
 
 public enum LampMasterAsk {
 
+    /// Sonnet: a session waits for the answer, and on 4 October Sonnet read the
+    /// same frame in 9.2 s where Opus took 16.9.
+    public static let model = "sonnet"
+    /// A session is waiting: the answer is worth less after a minute and a half.
+    public static let timeout: TimeInterval = 90
+    /// Questions answered at once. The hourly limits are counted when a
+    /// question is booked; this bounds what runs while they are being counted,
+    /// and the server threads waiting on them.
+    public static let concurrent = 2
+
     /// A quote longer than this is cut: a source is a pointer, not a transcript.
     public static let quoteLength = 160
 
@@ -91,6 +101,11 @@ public enum LampMasterAsk {
       "confidence":{"type":"number","minimum":0,"maximum":1}}}
     """
 
+    /// The answer's prose is LampMaster's own synthesis and cannot be checked
+    /// against the frame word for word; what bounds it is that the run has no
+    /// tools, the frame holds no notebook (the one text a past round wrote
+    /// unchecked), and the asking session reads it after the data notice.
+    ///
     /// Keeps the sources whose session is in the frame and whose quote is in
     /// it word for word, and the referral only if its session is there.
     ///
@@ -112,7 +127,9 @@ public enum LampMasterAsk {
 
     /// The text the asking session receives.
     public static func render(_ answer: LampMasterAnswer) -> String {
-        var text = answer.answer
+        var text = String(answer.answer.unicodeScalars.filter {
+            !CharacterSet.controlCharacters.contains($0) || $0 == "\n"
+        }.map(Character.init).prefix(1_200))
         if !answer.sources.isEmpty {
             text += "\n\nSources:"
             for source in answer.sources {
@@ -145,12 +162,15 @@ public enum LampMasterAskLimits {
         public let session: String?
         public let question: String
         public let answer: String?
+        /// What the question cost: it counts in the day's ceiling with the rounds.
+        public let tokens: Int?
 
-        public init(at: Date, session: String?, question: String, answer: String?) {
+        public init(at: Date, session: String?, question: String, answer: String?, tokens: Int? = nil) {
             self.at = at
             self.session = session
             self.question = question
             self.answer = answer
+            self.tokens = tokens
         }
     }
 
