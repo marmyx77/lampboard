@@ -2057,3 +2057,13 @@ and the failure lived in the gap between a JSON producer and a text parser.
 
 The fix is one more `sed`, undoing the escape. The bite is free: the harness will
 keep escaping slashes for ever, so removing that line turns the case red on its own.
+
+## A project's settings can set `LAMPBOARD_HOME`, not `HOME`
+
+A session's environment is partly the project's: `.claude/settings.json` can set
+variables for it. Measured with Claude Code 2.1.289: a project setting both saw the
+mod read its `LAMPBOARD_HOME` and the real `HOME`. Anything the mod trusts must come
+from `HOME`; and a test that runs a real session against a fake home sets `HOME` for
+that session (with a `.claude.json` saying onboarding is done, and `claude` on the
+fake home's `~/.local/bin` for the app to install the mod with), not `LAMPBOARD_HOME`.
+

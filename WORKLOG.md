@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1020**, instantaneous |
-| End-to-end tests | **135**, about a minute |
+| Domain tests | **1024**, instantaneous |
+| End-to-end tests | **139**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2434,3 +2434,16 @@ held; at sixty-five the engine went ahead on its own; answering `ask` in an
 interactive session brought the ordinary dialog back. So the panel gets 55 seconds,
 asks are only the ones the engine would have put to the dialog, and anything the
 panel does not answer goes back to that dialog.
+
+And the door: the mod asks the panel through `/check`, the panel answers through
+`/check/answer`, and a throwaway interactive session on the test Mac had one `touch`
+blocked and one let through by exactly those answers. The switch is off by default;
+the buttons in the queue come next.
+
+A security review then showed how a cloned repository could have answered for the
+panel: its settings can set `LAMPBOARD_HOME`, and the mod followed it. Measured: a
+project can set `LAMPBOARD_HOME` and cannot set `HOME`. So the mod follows `HOME`
+alone, and never sends the token for a permission: it proves it holds it, with an
+HMAC built by hand from the one hash function its runtime offers, and trusts only
+an answer signed back. On the test Mac, a hostile project's listener that always
+said allow heard nothing, and the panel's deny held.

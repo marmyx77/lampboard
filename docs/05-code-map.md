@@ -1,14 +1,14 @@
 # Code map
 
-~56,500 lines of Swift across five targets. For each file: what it contains, why
+~57,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,900 lines · 134 files  pure logic, zero AppKit
-  LampBoardApp/    21,236 lines · 121 files   shell: AppKit, network, windows
-  LampBoardTests/  14,055 lines · 83 files   1020 cases, instantaneous
-  LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
+  LampBoardCore/  17,028 lines · 134 files  pure logic, zero AppKit
+  LampBoardApp/    21,458 lines · 122 files   shell: AppKit, network, windows
+  LampBoardTests/  14,090 lines · 83 files   1024 cases, instantaneous
+  LampBoardE2E/    4,093 lines · 18 files   139 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -1078,12 +1078,15 @@ editor.
 
 ## `Permission/`
 
-### `PermissionGate.swift` · 84
+### `PermissionGate.swift` · 117
 Allow and Deny from the panel (D73, D80), as rules: the ask a session's mod posts —
 session, call, tool, and one masked line, read with the mod's own validators and
 refused rather than guessed when malformed; the verdict, one of `allow`, `deny`,
 `ask`; the book of asks waiting, one per call and eight at most, each answered once,
-each sent back to its session's dialog at 55 seconds.
+each sent back to its session's dialog at 55 seconds; the proof an ask must carry
+(HMAC-SHA256 of a nonce with the token) and the signature its answer goes back
+with, so neither side ever sends the token where something else could listen;
+answers addressed by session and call.
 
 > **Touching here** changes who decides what a session may run. A refused or
 > expired ask must always end as `ask`: the dialog the session would have had.
@@ -1296,7 +1299,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 412
+### `main.swift` · `AppDelegate.swift` · 418
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1401,8 +1404,9 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 93 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 510 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 518 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
+| `PermissionDesk.swift` | 132 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check` |
 | `PlanciaModel.swift` | 49 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it, the pin |
 | `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
@@ -1454,8 +1458,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 509
-Eleven routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 570
+Thirteen routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC of the token rather than the token, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80). A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1631,7 +1635,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1020 cases
+## `LampBoardTests/` — 1024 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1682,7 +1686,7 @@ script, before it was split. The most important ones:
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
-| `PermissionGateSuite` | an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
+| `PermissionGateSuite` | HMAC-SHA256 against RFC 4231; an ask genuine only with its token's proof for its call; the signed answer; answers by session and call; an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
 | `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the mod's reports read into it; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
@@ -1707,7 +1711,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 135 cases
+## `LampBoardE2E/` — 139 cases
 
 | Suite | Covers |
 |---|---|
@@ -1718,6 +1722,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
+| `PermissionE2ESuite` | an ask without the token's proof answered `ask`, unsigned; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
 | `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
@@ -1737,12 +1742,16 @@ in this repository because the repository is its marketplace
 `lampboard@lampboard`).
 
 ### `mod/hooks/register.js`
-Four hooks, `session.start`, `session.measure`, `tool.call` and `session.end`, each
-passing the event on first and then posting to `/mod` on `127.0.0.1` with the token;
+Five hooks, `session.start`, `session.measure`, `tool.call`, `tool.check` and
+`session.end`, each passing the event on first and then posting to `/mod` on
+`127.0.0.1` with the token — `tool.check` only for a real call the engine would
+put to its dialog, asking `/check` with a nonce and its HMAC made with the token (never the token itself),
+and returning the panel's `allow` or `deny` only when the answer is signed back,
+the engine's own `ask` otherwise (D80);
 and `/lampmaster <question>`, registered at the start, which posts the typed
 question to `/lampmaster/tool` and prints the answer to the person only (D71). It reads
-the home (`LAMPBOARD_HOME`, else `HOME`, absolute only), the token and the port, and
-nothing else; it sends nothing until that port answers `/health` as LampBoard, since
+the home (`HOME`, absolute only — never `LAMPBOARD_HOME`, which a project's settings
+can set, D80), the token and the port, and nothing else; it sends nothing until that port answers `/health` as LampBoard, since
 a project's settings can set environment variables for its sessions and a cloned
 repository could point the mod at a port of its choosing:
 no conversation, no file of the project, no command. When the panel is not there,

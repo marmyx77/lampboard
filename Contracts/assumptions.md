@@ -895,7 +895,12 @@ that `session.start` carries `surface` and `isInteractive`, `session.end` carrie
 own arguments beside them (`command`, `file_path`, `path`) and wraps the run;
 that a command registered with `$.command.register` in `session.start` runs as
 `/lampmaster` through `command.run`, with what was typed after it in `args`, and
-prints the `text` its hook returns; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
+prints the `text` its hook returns; that `tool.check` passes the engine's verdict
+through `next(e)` with `decision` `allow`, `ask` or `deny`, carries `tool_use_id` on a real call
+and the tool's arguments in `input`, waits about a minute for the hook, and shows the ordinary
+dialog when the hook answers `ask`; that a project's settings can set `LAMPBOARD_HOME`
+for a session and cannot set `HOME`; that the runtime offers `crypto.subtle.digest`
+and `crypto.randomUUID`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
 `$.session.id`, `$.session.model` and `$.session.cwd` exist.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·

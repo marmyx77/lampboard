@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Allow and Deny from the panel (D73): a permission a session's companion mod
@@ -50,6 +51,39 @@ public enum PermissionGate {
         return Request(sessionId: session, callId: call, tool: tool, line: line, receivedAt: now)
     }
 
+    // MARK: - Proof
+    //
+    // A project's settings can point the mod's LAMPBOARD_HOME at a folder of its
+    // own, with a key and a port of its choosing, and a listener there could
+    // answer "allow" (a security review finding). So the mod finds the panel's
+    // permission key from HOME, sends it nowhere, and proves it holds it; and
+    // the panel proves the same in its answer. The key is not the token, which
+    // every hook and report carries to whatever answers on the port (a second
+    // review finding). A listener without the key can neither be asked nor answer.
+
+    /// HMAC-SHA256 in lowercase hex: what the mod computes by hand from
+    /// `crypto.subtle.digest`, the one primitive its runtime offers.
+    public static func mac(key: String, message: String) -> String {
+        let code = HMAC<SHA256>.authenticationCode(for: Data(message.utf8), using: SymmetricKey(data: Data(key.utf8)))
+        return code.map { String(format: "%02x", $0) }.joined()
+    }
+
+    public static func askMessage(nonce: String, session: String, call: String) -> String {
+        "ask:\(nonce):\(session):\(call)"
+    }
+
+    /// Whether an ask's proof was made with this key for this call.
+    public static func isGenuine(key: String, nonce: String, proof: String, session: String, call: String) -> Bool {
+        guard (16...64).contains(nonce.count), proof.count == 64 else { return false }
+        let expected = mac(key: key, message: askMessage(nonce: nonce, session: session, call: call))
+        return expected.utf8.count == proof.utf8.count && zip(expected.utf8, proof.utf8).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0
+    }
+
+    /// The answer as the mod checks it: the verdict and its signature.
+    public static func signed(_ verdict: Verdict, key: String, nonce: String) -> String {
+        verdict.rawValue + " " + mac(key: key, message: "answer:\(nonce):\(verdict.rawValue)")
+    }
+
     /// The asks waiting for the panel.
     public struct Book: Sendable, Equatable {
         public private(set) var pending: [Request] = []
@@ -59,7 +93,7 @@ public enum PermissionGate {
         /// `false` when the call is already waiting or the book is full: the
         /// ask then goes to its dialog.
         public mutating func add(_ request: Request) -> Bool {
-            guard pending.count < PermissionGate.pendingMax, !pending.contains(where: { $0.callId == request.callId })
+            guard pending.count < PermissionGate.pendingMax, !pending.contains(where: { $0.callId == request.callId && $0.sessionId == request.sessionId })
             else { return false }
             pending.append(request)
             return true
@@ -67,8 +101,8 @@ public enum PermissionGate {
 
         /// The verdict, once: a second answer, or one for a call nobody asked
         /// about, changes nothing.
-        public mutating func answer(_ callId: String, _ verdict: Verdict) -> Verdict? {
-            guard let index = pending.firstIndex(where: { $0.callId == callId }) else { return nil }
+        public mutating func answer(session: String, call callId: String, _ verdict: Verdict) -> Verdict? {
+            guard let index = pending.firstIndex(where: { $0.callId == callId && $0.sessionId == session }) else { return nil }
             pending.remove(at: index)
             return verdict
         }

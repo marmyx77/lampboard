@@ -54,6 +54,12 @@ public enum AppConfig {
     /// token: the one route besides `/signal` that may create a row.
     public static let watchPath = "/watch"
 
+    /// Where the companion mod puts a permission to the panel and waits for its
+    /// answer (D80), and where the panel's answer goes. Behind the token, both:
+    /// they decide what a session may run.
+    public static let checkPath = "/check"
+    public static let checkAnswerPath = "/check/answer"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without
@@ -285,6 +291,14 @@ public enum AppConfig {
     /// Mode `0600`: its contents authorize reading workspace names.
     public static var tokenURL: URL {
         supportDirectory.appendingPathComponent("token")
+    }
+
+    /// The key that proves a permission ask and signs its answer (D80), mode
+    /// `0600`. Unlike the token it is sent nowhere: the token rides on every
+    /// hook and every report, so whoever answers on the port while the panel is
+    /// away learns it, and must not learn with it the power to say allow.
+    public static var checkKeyURL: URL {
+        supportDirectory.appendingPathComponent("check-key")
     }
 
     /// The port the server listens on, for the companion mod: the hooks carry

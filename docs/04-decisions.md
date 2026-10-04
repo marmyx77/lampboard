@@ -3055,3 +3055,42 @@ ordinary "Do you want to proceed?" dialog. A mod can also overturn the engine's
 verdict either way, which is why it asks only where the engine would have asked:
 the panel answers what the person would have been asked, and nothing else.
 
+**The door, built and tried.** The mod, 1.4.0, adds `tool.check`: for a real call
+the engine would put to its dialog, it asks `POST /check` behind the token, and
+returns the panel's `allow` or `deny`, the engine's `ask` for anything else. The
+panel holds the asking connection on its server's concurrent queue; `GET /check`
+lists what waits and `POST /check/answer` answers, behind the token too, the door
+the queue's keys and a future `lampboard answer` share. Off — the default — every
+ask is `ask` at once. On the test Mac, an interactive throwaway session with the
+real mod asked to `touch` two files: the one denied through `/check/answer` was
+"blocked by your LampBoard plugin hook", the one allowed was created.
+
+**What a security review changed.** A project's settings can set environment
+variables for its sessions, and the mod found the panel from `LAMPBOARD_HOME`
+when it was set: a cloned repository could point it at a folder of its own, with a
+token and a port of its choosing, and a dev server there answering `allow` would
+have allowed every call — whatever the switch said, since the switch is the
+panel's. Measured on the test Mac: with a project's settings setting both, the mod
+read the attacker's `LAMPBOARD_HOME` and the **real** `HOME`. So the mod now finds
+the panel from `HOME` alone, for its reports as well as its asks, and a test runs
+its sessions with `HOME` set to its fake home. And the token is never sent for an
+ask: the mod sends a nonce and an HMAC-SHA256 of it made with the token —
+computed by hand from `crypto.subtle.digest`, the one primitive its runtime offers
+— and accepts only an answer the panel signed the same way, so a listener without
+the token, on a port the panel left, can neither be asked nor answer. Tried again
+on the test Mac with the mod installed by LampBoard into a fake home and a hostile
+project pointing `LAMPBOARD_HOME` at a listener that always says `allow`: the ask
+reached the real panel, its `deny` held, and the listener heard nothing. Asks are
+addressed by session and call, and one booked after its connection gave up is
+released at once.
+
+**What a second review changed.** The token was still the wrong secret to prove
+with: every hook and every report carries it to whatever answers on the port, and
+while the panel is away another account on the Mac could listen there, learn it,
+and sign `allow` with it. So the proof and the signature use a key of their own,
+`~/.lampboard/check-key` (`0600`, written at launch like the token), which the mod
+reads and sends to nobody. The token proves nothing at `/check`, and the E2E
+suite asks with it to see so. A call id already waiting under one session no
+longer stops the same id from another; and a connection that gave up withdraws
+only its own booking, never another's for the same call.
+

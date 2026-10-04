@@ -50,9 +50,9 @@ enum PermissionGateSuite {
             var book = PermissionGate.Book()
             guard let one = request(ask()) else { return t.fail("not read") }
             _ = book.add(one)
-            t.expectEqual(book.answer("toolu_01AbC", .allow), .allow)
-            t.expectNil(book.answer("toolu_01AbC", .deny), "already answered")
-            t.expectNil(book.answer("toolu_unknown", .allow), "never asked")
+            t.expectEqual(book.answer(session: session, call: "toolu_01AbC", .allow), .allow)
+            t.expectNil(book.answer(session: session, call: "toolu_01AbC", .deny), "already answered")
+            t.expectNil(book.answer(session: session, call: "toolu_unknown", .allow), "never asked")
         },
 
         TestCase("One ask per call, and no more than eight waiting") { t in
@@ -66,6 +66,41 @@ enum PermissionGateSuite {
             }
             guard let over = request(ask("toolu_over")) else { return t.fail("not read") }
             t.expect(!book.add(over), "the ninth goes to the dialog at once")
+        },
+
+        TestCase("The proof is HMAC-SHA256, as RFC 4231 computes it") { t in
+            t.expectEqual(PermissionGate.mac(key: "Jefe", message: "what do ya want for nothing?"),
+                          "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843")
+        },
+
+        TestCase("An ask is the mod's only if its proof is the key's; the answer is signed back") { t in
+            let key = String(repeating: "a1", count: 32)
+            let nonce = "0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D"
+            let proof = PermissionGate.mac(key: key, message: PermissionGate.askMessage(nonce: nonce, session: session, call: "toolu_01AbC"))
+            t.expect(PermissionGate.isGenuine(key: key, nonce: nonce, proof: proof, session: session, call: "toolu_01AbC"), "the key's own proof")
+            t.expect(!PermissionGate.isGenuine(key: key, nonce: nonce, proof: proof, session: session, call: "toolu_other"),
+                     "the proof is for one call")
+            t.expect(!PermissionGate.isGenuine(key: String(repeating: "b2", count: 32), nonce: nonce, proof: proof, session: session, call: "toolu_01AbC"),
+                     "another key")
+            t.expectEqual(PermissionGate.signed(.deny, key: key, nonce: nonce),
+                          "deny " + PermissionGate.mac(key: key, message: "answer:\(nonce):deny"))
+        },
+
+        TestCase("Answers are addressed by session and call, not by call alone") { t in
+            var book = PermissionGate.Book()
+            guard let one = request(ask()) else { return t.fail("not read") }
+            _ = book.add(one)
+            t.expectNil(book.answer(session: "e5f6a7b8-0000-4000-8000-000000000002", call: "toolu_01AbC", .allow), "another session")
+            t.expectEqual(book.answer(session: session, call: "toolu_01AbC", .allow), .allow)
+        },
+
+        TestCase("The same call id from another session is another ask") { t in
+            var book = PermissionGate.Book()
+            let other = #"{"v":1,"session":"e5f6a7b8-0000-4000-8000-000000000002","id":"toolu_01AbC","tool":"Bash"}"#
+            guard let one = request(ask()), let two = request(other) else { return t.fail("not read") }
+            t.expect(book.add(one), "the first session's")
+            t.expect(book.add(two), "the second's, though the id is the same")
+            t.expectEqual(book.pending.count, 2)
         },
 
         TestCase("The verdict the mod receives is one of three words") { t in

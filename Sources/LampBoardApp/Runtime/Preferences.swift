@@ -30,6 +30,7 @@ struct Preferences {
         static let notifyFinished = "notify.finished"
         static let menuBarCounter = "menubar.counter"
         static let barShortcut = "bar.shortcut"
+        static let permissionsFromPanel = "permissions.panel"
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
@@ -328,6 +329,13 @@ struct Preferences {
     var barShortcut: BarShortcut {
         get { BarShortcut.stored(defaults.string(forKey: Key.barShortcut)) }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Key.barShortcut) }
+    }
+
+    /// The panel answers permissions a session would put to its dialog (D73,
+    /// D80). Off by default: it is a capability, not a convenience.
+    var permissionsFromPanel: Bool {
+        get { defaults.bool(forKey: Key.permissionsFromPanel) }
+        nonmutating set { defaults.set(newValue, forKey: Key.permissionsFromPanel) }
     }
 
     /// Projects that generate no notifications, by path.

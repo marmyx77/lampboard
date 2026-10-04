@@ -58,13 +58,18 @@ final class SignalServer {
     private let onLampMasterTool: (Data) -> Data
     private let onMod: (ModReport) -> Void
     private let onWatch: (WatchReport) -> Void
+    private let onCheck: (Data, String?, String?, String) -> String
+    private let onChecks: () -> Data
+    private let onCheckAnswer: (Data) -> Bool
     private let token: String?
+    private let checkKey: String?
 
     private var listener: NWListener?
 
     init(
         port: UInt16 = AppConfig.listenPort,
         token: String? = nil,
+        checkKey: String? = nil,
         onSignal: @escaping (HookSignal) -> Void,
         onError: @escaping (String) -> Void,
         onQuery: @escaping () -> [SessionSnapshot] = { [] },
@@ -76,10 +81,14 @@ final class SignalServer {
         onLampMasterRound: @escaping () -> Bool = { false },
         onLampMasterTool: @escaping (Data) -> Data = { _ in Data("{}".utf8) },
         onMod: @escaping (ModReport) -> Void = { _ in },
-        onWatch: @escaping (WatchReport) -> Void = { _ in }
+        onWatch: @escaping (WatchReport) -> Void = { _ in },
+        onCheck: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
+        onChecks: @escaping () -> Data = { Data("[]".utf8) },
+        onCheckAnswer: @escaping (Data) -> Bool = { _ in false }
     ) {
         self.port = port
         self.token = token
+        self.checkKey = checkKey
         self.onSignal = onSignal
         self.onError = onError
         self.onQuery = onQuery
@@ -92,6 +101,9 @@ final class SignalServer {
         self.onLampMasterTool = onLampMasterTool
         self.onMod = onMod
         self.onWatch = onWatch
+        self.onCheck = onCheck
+        self.onChecks = onChecks
+        self.onCheckAnswer = onCheckAnswer
     }
 
     // MARK: - Lifecycle
@@ -211,6 +223,12 @@ final class SignalServer {
 
         case AppConfig.watchPath:
             return handleWatch(request)
+
+        case AppConfig.checkPath:
+            return handleCheck(request)
+
+        case AppConfig.checkAnswerPath:
+            return handleCheckAnswer(request)
 
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
@@ -332,6 +350,54 @@ final class SignalServer {
         } catch {
             return HTTPRequestParser.response(status: 400, reason: "Bad Request", body: "\(error)")
         }
+    }
+
+    /// `POST /check` — a permission the companion mod puts to the panel (D80).
+    /// The caller waits for the answer, up to the 55 seconds the panel has; the
+    /// queue is concurrent, so nothing else is held behind it. Whatever goes
+    /// wrong is `ask`: the dialog the session would have shown anyway.
+    ///
+    /// Not the token in a header but a proof made with it: the mod never sends
+    /// the token where something else might be listening, and signs nothing it
+    /// cannot check back (`PermissionGate`).
+    private func handleCheck(_ request: HTTPRequest) -> Data {
+        // GET lists what waits, for whoever holds the token: what the panel shows.
+        if request.method == "GET" {
+            guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+                return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+            }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: onChecks(), contentType: "application/json")
+        }
+        guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        // Proven with the permission key, not the token: the token travels on
+        // every hook and every report, the key on nothing (D80).
+        guard let checkKey else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+        let verdict = onCheck(request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey)
+        return HTTPRequestParser.response(status: 200, reason: "OK", body: verdict)
+    }
+
+    /// `POST /check/answer` — `{"id","verdict"}`: the panel's answer to an ask
+    /// waiting. 404 when no ask with that id is waiting: answered once only.
+    private func handleCheckAnswer(_ request: HTTPRequest) -> Data {
+        if let refusal = tokenRefusal(request) { return refusal }
+        return onCheckAnswer(request.body)
+            ? HTTPRequestParser.response(status: 204, reason: "No Content")
+            : HTTPRequestParser.response(status: 404, reason: "Not Found", body: "no such ask waiting")
+    }
+
+    /// POST and the token, or the response that says which is missing.
+    private func tokenRefusal(_ request: HTTPRequest) -> Data? {
+        guard request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        guard let token else {
+            return HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+        }
+        guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        return nil
     }
 
     /// `POST /watch` — a command run under `lampboard watch` (D70). Behind the

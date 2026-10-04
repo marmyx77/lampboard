@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.3.0"
+    public static let version = "1.4.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,7 +44,7 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, and asks LampMaster with /lampmaster. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
@@ -66,30 +66,54 @@ public enum ModFiles {
 // stuck session is on; the panel masks what looks like a secret — writes
 // nothing, runs nothing, and
 // talks to one address: 127.0.0.1, on the port the panel wrote, with the token
-// the panel wrote, both under ~/.lampboard (or $LAMPBOARD_HOME/.lampboard).
+// the panel wrote, both under ~/.lampboard.
 // When the panel is not there it does nothing, silently: a session must never
-// wait on, or hear about, a dashboard.
+// wait on, or hear about, a dashboard. The panel is found from HOME, never from
+// LAMPBOARD_HOME, which a project's settings could point anywhere.
 //
 // One exception, asked for by the person: `/lampmaster <question>` sends the
 // question they typed, and the session's folder, to the same address, and
 // prints LampMaster's answer (D71).
+//
+// And one decision, when the person has switched it on in LampBoard: a call
+// Claude Code would put to its permission dialog is put to the panel first,
+// and the panel's allow or deny stands; unanswered in 55 seconds, or with the
+// switch off, the dialog comes as it always did (D80). For that one the mod
+// reads a second file the panel wrote, its permission key, sends it to nobody,
+// and proves it holds it; the panel's answer counts only signed with it.
 //
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
 
 const VERSION = 1
 
+// A permission decides what a session may run, so the panel that answers one
+// is found from HOME and never from LAMPBOARD_HOME. A project's settings can set
+// LAMPBOARD_HOME — to a folder of its own, with a key and a port of its
+// choosing (a security review finding) — and cannot set HOME: measured on the
+// test Mac, with a project's settings setting both, the mod read the attacker's
+// LAMPBOARD_HOME and the real HOME.
+async function realHome($) {
+  try {
+    const home = await $.env.get('HOME')
+    return home && home.startsWith('/') && home !== '/' ? home : null
+  } catch (_) {
+    return null
+  }
+}
+
 // A project's own settings can set environment variables for its sessions, so
 // a cloned repository could point LAMPBOARD_HOME at itself and ship a port of
-// its choosing. Hence: absolute homes only, no privileged ports, and the
+// its choosing — and receive every session's reports. So the panel is found
+// from HOME alone, which a project's settings cannot set (measured on the test
+// Mac); a test runs its sessions with HOME set to its fake home. And the
 // address must answer as LampBoard before it is sent anything.
 let confirmed = null
 
 async function panel($) {
   try {
-    const override = await $.env.get('LAMPBOARD_HOME')
-    const home = override && override.trim() ? override.trim() : await $.env.get('HOME')
-    if (!home || !home.startsWith('/')) return null
+    const home = await realHome($)
+    if (!home) return null
     const dir = `${home}/.lampboard`
     const token = (await $.fs.read(`${dir}/token`)).trim()
     const port = parseInt((await $.fs.read(`${dir}/port`)).trim(), 10)
@@ -140,6 +164,25 @@ function detailOf(e) {
 
 async function model($) {
   try { return await $.session.model() } catch (_) { return undefined }
+}
+
+// HMAC-SHA256 by hand: the runtime offers `crypto.subtle.digest` and not the
+// keyed functions (measured, 2.1.289). The panel checks and signs with the same.
+const hex = (bytes) => Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+async function sha256(bytes) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+}
+async function hmac(key, message) {
+  const encoder = new TextEncoder()
+  let k = encoder.encode(key)
+  if (k.length > 64) k = await sha256(k)
+  const pad = (byte) => Uint8Array.from({ length: 64 }, (_, i) => (k[i] || 0) ^ byte)
+  const m = encoder.encode(message)
+  const inner = new Uint8Array(64 + m.length)
+  inner.set(pad(0x36)); inner.set(m, 64)
+  const outer = new Uint8Array(96)
+  outer.set(pad(0x5c)); outer.set(await sha256(inner), 64)
+  return hex(await sha256(outer))
 }
 
 // `/lampmaster <question>` (D71): the person's question to LampMaster, through
@@ -224,6 +267,43 @@ export function register(on) {
     if (!question) return { text: USAGE }
     // Claude Code prints the plugin's name before the text: no label of our own.
     return { text: await ask($, question) }
+  })
+
+  // Only what the engine would ask the person about, and only a real call: the
+  // engine's allow and deny are never overturned, and a query is no question.
+  // LampBoard answers `ask` at once while its switch is off.
+  on('tool.check', async ($, e, next) => {
+    const verdict = await next(e)
+    if (!verdict || verdict.decision !== 'ask' || !e.tool_use_id) return verdict
+    try {
+      const home = await realHome($)
+      if (!home) return verdict
+      // Not the token: every hook and report carries that to whatever answers
+      // on the port, which while the panel is away could be anyone's listener.
+      const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+      const port = parseInt((await $.fs.read(`${home}/.lampboard/port`)).trim(), 10)
+      if (!/^[0-9a-f]{16,128}$/.test(key) || !(port >= 1024 && port < 65536)) return verdict
+      const session = await $.session.id()
+      const nonce = crypto.randomUUID()
+      const reply = await $.http.fetch(`http://127.0.0.1:${port}/check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-LampBoard-Nonce': nonce,
+          'X-LampBoard-Proof': await hmac(key, `ask:${nonce}:${session}:${e.tool_use_id}`),
+        },
+        body: JSON.stringify({ v: VERSION, session, id: e.tool_use_id, tool: e.tool, detail: detailOf(e.input || {}) }),
+      })
+      // Only an answer signed with the key counts: a listener without it, on
+      // a port the panel left, cannot say allow.
+      const [decision, signature] = reply.ok ? reply.text.trim().split(' ') : []
+      if (!signature || signature !== (await hmac(key, `answer:${nonce}:${decision}`))) return verdict
+      if (decision === 'allow') return { decision: 'allow', reason: 'Allowed from LampBoard.' }
+      if (decision === 'deny') return { decision: 'deny', reason: 'Denied from LampBoard.' }
+    } catch (_) {
+      // The panel is closed or restarting: the dialog, as without it.
+    }
+    return verdict
   })
 
   // `session.end` has 1.5 s in all: one short post, and no model lookup.

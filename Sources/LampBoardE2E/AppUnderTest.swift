@@ -208,6 +208,13 @@ final class AppUnderTest {
         home.appendingPathComponent(".lampboard/token")
     }
 
+    /// The permission key the instance wrote (D80): read from its home, since
+    /// the instance sends it nowhere.
+    var checkKeyValue: String? {
+        (try? String(contentsOf: home.appendingPathComponent(".lampboard/check-key"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Runs one of the binary's terminal commands, against the same fake home.
     @discardableResult
     func runCommand(_ arguments: [String]) -> (status: Int32, output: String) {

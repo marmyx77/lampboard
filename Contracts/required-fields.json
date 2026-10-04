@@ -414,7 +414,8 @@
       "session.measure",
       "session.end",
       "tool.call",
-      "command.run"
+      "command.run",
+      "tool.check"
     ],
     "calls": [
       "$.env.get",

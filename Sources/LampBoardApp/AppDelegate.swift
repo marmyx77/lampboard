@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var mod = ModReceiver(store: store)
     /// What each session has been doing, for the Plancia (UX §5).
     private let activity = ActivityRecorder()
+    /// The permissions the panel answers, when switched on (D80).
+    private let permissions = PermissionDesk()
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
     private var lampMasterWindow: LampMasterWindowController?
 
@@ -234,6 +236,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let server = SignalServer(
             port: port,
             token: token,
+            checkKey: TokenStore(url: AppConfig.checkKeyURL).loadOrCreate(),
             onSignal: { [store, lampMaster, activity] signal in
                 Task { @MainActor in
                     store.handle(signal)
@@ -281,11 +284,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onWatch: { [store] report in
                 Task { @MainActor in store.apply(.watched(report), now: Date()) }
-            }
+            },
+            onCheck: { [permissions] body, nonce, proof, key in permissions.check(body, nonce: nonce, proof: proof, key: key) },
+            onChecks: { [permissions] in permissions.listing },
+            onCheckAnswer: { [permissions] body in permissions.answer(body: body) }
         )
 
         do {
             try server.start()
+            permissions.start()
             self.server = server
             ModReceiver.publishPort(port)
         } catch {
