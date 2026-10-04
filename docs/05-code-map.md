@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  14,621 lines · 116 files  pure logic, zero AppKit
-  LampBoardApp/    18,811 lines · 102 files   shell: AppKit, network, windows
+  LampBoardApp/    18,843 lines · 102 files   shell: AppKit, network, windows
   LampBoardTests/  12,559 lines · 69 files   897 cases, instantaneous
   LampBoardE2E/    3,598 lines · 14 files   122 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -1104,7 +1104,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 368
+### `main.swift` · `AppDelegate.swift` · 382
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1166,10 +1166,13 @@ forwarded to the running panel with the token, as the hooks do, carrying
 failure comes back as a tool error the calling model can read, never a dead server.
 `mcp install | uninstall | status` manage its entry in Claude Code (D63).
 
-### `TrialLauncher.swift` · 61
+### `TrialLauncher.swift` · 76
 `lampboard tour`: starts the tutorial's trial panel beside the real one, as a second
 process of this binary on a temporary home and a free port, so the two never share
-anything (D64). `--json` prints the script for the site and the screenshots.
+anything (D64). `--json` prints the script for the site and the screenshots. The
+same start serves the menus' *Take the tour…* and the offer made right after the
+hooks are installed; neither appears inside a trial, where a tour would stack
+panels.
 
 ### `CommandLineInterface.swift` · 785
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
@@ -1352,7 +1355,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 468 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 469 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1364,7 +1367,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 389 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
-| `PanelHomes.swift` | 348 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
+| `PanelHomes.swift` | 351 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |

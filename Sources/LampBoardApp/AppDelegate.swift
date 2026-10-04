@@ -297,6 +297,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             next time they start.
             """
         )
+        offerTour()
+    }
+
+    /// Right after the hooks, the one moment somebody is certainly looking at
+    /// LampBoard for the first time. Asked once; the menu keeps it afterwards.
+    private func offerTour() {
+        guard Alerts.confirm(
+            title: "A three-minute tour?",
+            message: "A second panel opens with invented sessions — none of them yours — and shows "
+                + "what each colour means, step by step. You can quit it at any moment, and take it "
+                + "again from the menu: Take the tour.",
+            confirmTitle: "Take the tour"
+        ) else { return }
+        TrialLauncher.startFromMenu()
     }
 }
 

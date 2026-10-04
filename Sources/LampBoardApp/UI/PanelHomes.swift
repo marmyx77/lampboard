@@ -169,6 +169,8 @@ extension PanelController {
             : "Put the panel in the menu bar") { [weak self] in self?.toggleHome() }
         add("Open the conversations…") { [weak self] in self?.openExtendedWindow() }
         add("Settings…") { [weak self] in self?.onOpenSettings?() }
+        // Not inside a trial: a tour started from the tour would stack panels.
+        if TrialStage.mode == nil { add("Take the tour…") { TrialLauncher.startFromMenu() } }
         menu.addItem(.separator())
         // Greyed rather than absent when it would strand the panel: an entry that
         // disappears teaches nothing, and this one has a reason worth reading.

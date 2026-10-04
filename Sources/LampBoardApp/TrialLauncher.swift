@@ -16,10 +16,21 @@ enum TrialLauncher {
             print(DemoScript.standard.json())
             return 0
         }
-        guard let executable = Bundle.main.executablePath else { return 1 }
-        guard let port = ports.first(where: isFree) else {
-            FileHandle.standardError.write(Data("No free port between \(ports.lowerBound) and \(ports.upperBound).\n".utf8))
+        if let failure = start() {
+            FileHandle.standardError.write(Data((failure + "\n").utf8))
             return 1
+        }
+        print("A trial panel with invented sessions is starting. Quit it from its menu.")
+        return 0
+    }
+
+    /// Starts the trial; the reason when it could not. Shared by the command
+    /// and by the menu entry and first-run offer of the running panel.
+    @discardableResult
+    static func start() -> String? {
+        guard let executable = Bundle.main.executablePath else { return "This app's path is unknown." }
+        guard let port = ports.first(where: isFree) else {
+            return "No free port between \(ports.lowerBound) and \(ports.upperBound)."
         }
         let home = FileManager.default.temporaryDirectory
             .appendingPathComponent(TrialStage.homePrefix + UUID().uuidString.prefix(8).lowercased())
@@ -36,11 +47,15 @@ enum TrialLauncher {
         do {
             try process.run()
         } catch {
-            FileHandle.standardError.write(Data("The trial did not start: \(error.localizedDescription)\n".utf8))
-            return 1
+            return "The trial did not start: \(error.localizedDescription)"
         }
-        print("A trial panel with invented sessions is starting on port \(port). Quit it from its menu.")
-        return 0
+        return nil
+    }
+
+    /// The menu entry: a trial, or the sentence that says why not.
+    @MainActor
+    static func startFromMenu() {
+        if let failure = start() { Alerts.warn(title: "The tour did not start", message: failure) }
     }
 
     /// Free when it can be bound on loopback: the test the server itself makes.

@@ -2211,3 +2211,7 @@ try found a trial that would not quit: opening a row reached for an editor that 
 invented folder does not have, and the modal warning held off the quit. In a trial,
 opening a row now only marks it seen, which is the gesture the step teaches.
 
+The tour has its doors: *Take the tour…* in both menus, and an offer right after
+the hooks are installed, the one moment somebody is certainly looking at LampBoard
+for the first time.
+

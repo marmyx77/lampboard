@@ -308,6 +308,7 @@ struct PanelRootView: View {
         // setting; this is the door.
         Button("Open the conversations…", action: actions.openExtended)
         Button("What the lights mean…", action: actions.openLegend)
+        if tour == nil { Button("Take the tour…") { TrialLauncher.startFromMenu() } }
         Button("Settings…", action: actions.openSettings)
 
         Divider()
