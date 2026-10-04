@@ -154,6 +154,17 @@ enum WaitingQueueSuite {
             t.expect(!arming.isArmed(old[0], now: at(3_600.5)), "an hour-old ask, shown half a second ago")
         },
 
+        TestCase("The next card to arm is the earliest still unarmed") { t in
+            let one = WaitingQueue.cards(sessions: [row("a", .failed)], suggestions: [], now: at(0))
+            let two = WaitingQueue.cards(sessions: [row("a", .failed), row("b", .failed, since: 1)], suggestions: [], now: at(0.3))
+            var arming = WaitingQueue.Arming()
+            arming.update(one, now: at(0))
+            arming.update(two, now: at(0.3))
+            t.expectEqual(arming.nextArming(after: at(0.4)), at(0.6), "a arms first")
+            t.expectEqual(arming.nextArming(after: at(0.7)), at(0.9), "then b")
+            t.expectNil(arming.nextArming(after: at(1)), "all armed")
+        },
+
         TestCase("A new answer joining the group re-arms it, and keeps its place") { t in
             let three = WaitingQueue.cards(sessions: [row("r1", .ready), row("r2", .ready, since: 1), row("r3", .ready, since: 2)],
                                            suggestions: [], now: at(5))
@@ -180,6 +191,14 @@ enum WaitingQueueSuite {
             let stuck = WaitingQueue.cards(sessions: [row("w", .working, tool: RunningTool(tool: "Bash", detail: "make", since: at(0)))],
                                            suggestions: [], now: at(20 * 60))
             t.expect(WaitingQueue.resolvedElsewhere(before: stuck, after: [], actedOn: []).isEmpty, "the tool ended")
+        },
+
+        TestCase("Four cards are drawn, around the one selected, and the rest are counted") { t in
+            t.expectEqual(WaitingQueue.window(count: 3, selected: 0), 0..<3, "all of a short queue")
+            t.expectEqual(WaitingQueue.window(count: 9, selected: 0), 0..<4)
+            t.expectEqual(WaitingQueue.window(count: 9, selected: 5), 2..<6, "the selected one is always drawn")
+            t.expectEqual(WaitingQueue.window(count: 9, selected: 8), 5..<9)
+            t.expectEqual(WaitingQueue.window(count: 0, selected: 0), 0..<0)
         },
 
         TestCase("A card gone without the panel acting on it was resolved elsewhere") { t in

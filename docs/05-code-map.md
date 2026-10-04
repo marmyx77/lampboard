@@ -1,18 +1,18 @@
 # Code map
 
-~54,200 lines of Swift across five targets. For each file: what it contains, why
+~54,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,372 lines · 128 files  pure logic, zero AppKit
-  LampBoardApp/    19,875 lines · 109 files   shell: AppKit, network, windows
-  LampBoardTests/  13,639 lines · 79 files   982 cases, instantaneous
+  LampBoardCore/  16,403 lines · 128 files  pure logic, zero AppKit
+  LampBoardApp/    20,270 lines · 113 files   shell: AppKit, network, windows
+  LampBoardTests/  13,673 lines · 79 files   985 cases, instantaneous
   LampBoardE2E/    3,949 lines · 17 files   134 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 796 lines. The limit the project sets itself is 800.
+No file exceeds 794 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -229,6 +229,10 @@ Nothing caps the column here. A ceiling of twelve rows was the first answer and 
 was wrong twice over: it hid the rows under an opened project, and there are
 people with twenty sessions open. The screen is what bounds it, and that is the
 caller's business.
+
+The queue above the rows (D74) is counted here too, card by card with its «more»
+line and the padding above it: drawn above the rows, an uncounted queue would push
+the last project off the end.
 
 ### `ShortSpan.swift`
 How long ago, in one number and one letter, and **never more than two digits**.
@@ -1033,7 +1037,7 @@ filter lives here.
 
 ## `Queue/`
 
-### `WaitingQueue.swift` · 203
+### `WaitingQueue.swift` · 221
 "Waiting for you" (UX §3, D74): the cards drawn from the rows — a permission, a
 question, a turn stuck on one tool, a failed turn, answers to read (one card each up
 to two, then one card for all), LampMaster's first open suggestion last with the
@@ -1330,6 +1334,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 89 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 502 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `WaitingQueueModel.swift` | 183 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E` and answers `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
@@ -1494,7 +1499,10 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 796 | holds everything together; row and panel actions |
+| `PanelController.swift` | 714 | holds everything together; row and panel actions |
+| `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
+| `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
+| `WaitingQueueSection.swift` | 126 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -1504,7 +1512,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 472 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 475 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1514,7 +1522,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 391 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 397 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
@@ -1547,7 +1555,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 982 cases
+## `LampBoardTests/` — 985 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

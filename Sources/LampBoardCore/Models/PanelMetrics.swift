@@ -28,12 +28,15 @@ public enum PanelMetrics {
         public let issueStrip: CGFloat
         /// One line of the allowance strip, drawn once per signed-in account.
         public let allowanceLine: CGFloat
+        /// One card of "Waiting for you" (D74).
+        public let queueCard: CGFloat
 
         public init(
             row: CGFloat, subRow: CGFloat, spacing: CGFloat, blockInset: CGFloat,
             tail: CGFloat, padding: CGFloat, footer: CGFloat, issueStrip: CGFloat,
-            allowanceLine: CGFloat = 0
+            allowanceLine: CGFloat = 0, queueCard: CGFloat = 0
         ) {
+            self.queueCard = queueCard
             self.row = row
             self.subRow = subRow
             self.spacing = spacing
@@ -88,10 +91,19 @@ public enum PanelMetrics {
     ///   same reason as the allowance: uncounted, it takes the last row's room.
     /// - Parameter tourLines: the tutorial's band in a trial, in lines of the
     ///   issue strip's height; zero everywhere else.
+    /// - Parameters queueCards, queueMore: the cards of "Waiting for you" drawn
+    ///   above the rows, and whether a line says how many more there are. Above
+    ///   the rows, so uncounted they would push the last project off the end.
+    ///   The queue takes a padding above it; the column's own is the gap below.
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
-        allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0, sizes: Sizes
+        allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0,
+        queueCards: Int = 0, queueMore: Bool = false, sizes: Sizes
     ) -> CGFloat {
+        let queue = queueCards > 0
+            ? CGFloat(queueCards) * sizes.queueCard + CGFloat(queueCards - 1) * sizes.spacing
+                + (queueMore ? sizes.spacing + sizes.issueStrip : 0) + sizes.padding
+            : 0
         let all = blocks + Array(repeating: sizes.row, count: extras)
         let content = all.reduce(0, +) + CGFloat(max(all.count - 1, 0)) * sizes.spacing
         let allowance = allowanceLines > 0
@@ -103,5 +115,6 @@ public enum PanelMetrics {
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
             + (showsLampMaster ? sizes.issueStrip : 0)
             + CGFloat(tourLines) * sizes.issueStrip
+            + queue
     }
 }

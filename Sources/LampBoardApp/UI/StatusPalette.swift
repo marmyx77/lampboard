@@ -351,9 +351,14 @@ enum Layout {
             row: rowHeight, subRow: subRowHeight, spacing: rowSpacing,
             blockInset: blockInset, tail: tailHeight, padding: panelPadding,
             footer: footerHeight, issueStrip: issueStripHeight,
-            allowanceLine: allowanceLine
+            allowanceLine: allowanceLine, queueCard: queueCard
         )
     }
+
+    /// One card of "Waiting for you" (D74): the project and what kind of thing
+    /// it is on one line, what it asks on the second. Two lines because the ask
+    /// is the point, and a name beside it in 240 points leaves it three words.
+    static let queueCard: CGFloat = 32
 
     /// The "and N more" line under a project showing more than it can.
     static let tailHeight: CGFloat = 16
@@ -380,11 +385,12 @@ enum Layout {
 
     static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
-        showsLampMaster: Bool = false, tourLines: Int = 0
+        showsLampMaster: Bool = false, tourLines: Int = 0, queueCards: Int = 0, queueMore: Bool = false
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
-            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines, sizes: sizes
+            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines,
+            queueCards: queueCards, queueMore: queueMore, sizes: sizes
         )
     }
 

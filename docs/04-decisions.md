@@ -2900,3 +2900,31 @@ from when the queue first shows it as it is, with an ask's words in its id, sinc
 second permission in the same turn otherwise inherited the first one's armed
 buttons. Only an ask that leaves unanswered by the panel says "resolved elsewhere".
 
+## D75 · The queue takes keys only while the panel holds the keyboard
+
+**Decided.** The queue's keys — `J`, `K`, `O`, `E`, and the ones still inert —
+act only while the panel is the key window, which it becomes when it is clicked and
+never on its own. A local key monitor reads them then and lets every other key pass.
+The selected card is outlined only in that state; it starts on the most urgent card
+each time the panel takes the keyboard, stays there as newer cards land until `J`
+or `K` moves it, and from then on follows the card that was chosen. A key that will
+answer a permission beeps rather than doing nothing in silence.
+
+**Why.** The panel exists beside the editor somebody is typing in, and a panel that
+read keys it was not given would put a stray `e` into a session as easily as it
+would mark one read. Clicking it is already how it becomes key (it is a
+non-activating panel, so the editor's app stays active), so the gesture that says
+"I am looking at this now" is the one that hands it the keyboard. An outline drawn
+without the keyboard promised that a key would act, and on the test Mac the trial
+panel, key from its launch, showed the outline on the last card to arrive rather
+than the first. Not verified on screen: the keys themselves, which need a click and
+key presses that ssh cannot send on the test Mac; they are held by the tests of
+`WaitingQueue.Cursor`.
+
+A code review found the keys acting in the narrow panel, where the queue is not
+drawn — an `e` would have marked read an answer nobody could see — so the keys now
+need the wide panel as well as the keyboard. It also found the height two points
+short when the «more» line shows, a card left looking unarmed after it had armed,
+and a resolved card cleared early by an older timer; all fixed. A stuck turn has no
+event to announce it, so the queue also looks every thirty seconds.
+

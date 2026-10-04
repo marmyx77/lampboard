@@ -16,6 +16,8 @@ final class PanelController {
     let panel: FloatingPanel
 
     private var compact: Bool
+    /// The narrow panel, read by the queue's keys (`PanelQueue.swift`).
+    var isCompact: Bool { compact }
     /// Not private: `PanelAllowance.swift` subscribes here too, for the same
     /// reason it exists — the subject was taken out whole to keep this file under
     /// the eight hundred lines the project refuses to cross.
@@ -24,6 +26,8 @@ final class PanelController {
     /// The lamp in the menu bar. It exists whether or not the panel lives up
     /// there: two surfaces, one column, and the switch for each is its own.
     let lamp = MenuBarLamp()
+    /// "Waiting for you", above the rows (D74). Wired in `PanelQueue.swift`.
+    let queue = WaitingQueueModel()
     var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.
@@ -87,6 +91,7 @@ final class PanelController {
         logPanelState()
         observeStore()
         observeAllowance()
+        wireQueue()
         observeLampMaster()
         observePanelMoves()
     }
@@ -149,6 +154,7 @@ final class PanelController {
                 // (`StateStore.givePlaces`). The view holds its options by value,
                 // so it has to be rebuilt to learn about it; every other change
                 // is a resize.
+                self.refreshQueue()
                 if self.columnOptions != self.renderedOptions {
                     self.rebuildContent()
                 } else {
@@ -260,7 +266,8 @@ final class PanelController {
             actions: makeActions(),
             rowActions: makeRowActions(),
             allowance: allowance,
-            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour
+            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour,
+            queue: compact ? nil : queue
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -317,7 +324,8 @@ final class PanelController {
             height: Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
                 allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
-                tourLines: tour == nil ? 0 : TourBand.lines
+                tourLines: tour == nil ? 0 : TourBand.lines,
+                queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0
             )
         )
 
@@ -702,95 +710,5 @@ final class PanelController {
         } catch {
             store.reportError(error.localizedDescription)
         }
-    }
-
-    func togglePresence() {
-        let wanted = !preferences.presenceEnabled
-        preferences.presenceEnabled = wanted
-
-        if wanted {
-            Alerts.info(
-                title: "Phone push notifications suppressed while you're at the Mac",
-                message: """
-                Claude Code will skip the notifications on your phone for as long as \
-                lampboard declares your presence.
-
-                For this to work, the CLAUDE_CLIENT_PRESENCE_FILE variable has to \
-                point at \(AppConfig.presenceFileURL.path).
-
-                Careful: if the detection gets it wrong, the result is not one \
-                notification too many but a notification lost.
-                """
-            )
-        }
-        rebuildContent()
-    }
-
-    /// "Show terminal sessions" (D25). Off takes its rows away at once; on lets
-    /// the next poll adopt what is there, within five seconds.
-    func toggleTerminalSessions() {
-        let wanted = !preferences.showsTerminalSessions
-        preferences.showsTerminalSessions = wanted
-        if wanted {
-            store.poll()
-        } else {
-            store.forgetTerminalSessions()
-        }
-        rebuildContent()
-    }
-
-    func toggleLaunchAtLogin() {
-        if let failure = LaunchAtLogin.setEnabled(!LaunchAtLogin.isEnabled) {
-            Alerts.warn(title: "Launch at login", message: failure)
-        }
-        rebuildContent()
-    }
-
-    func installHooks() {
-        // Every agent on this machine, and the alert names them: the menu used
-        // to say "in Claude Code" and mean it, leaving Codex unregistered for
-        // anyone who never opened a terminal to run the installer.
-        let agents = HookSetup.state()
-            .filter { $0.outcome != .notPresent }
-            .map(\.harness.displayName)
-            .joined(separator: " and ")
-
-        guard Alerts.confirm(
-            title: "Install the hooks?",
-            message: """
-            lampboard will register \(HookConfigMerger.defaultEvents.count) hooks in the \
-            configuration of \(agents), so it knows when sessions change state.
-
-            Existing hooks are preserved and a backup copy of each file is created. \
-            Sessions that are already open pick up the new configuration the next \
-            time they start.
-            """,
-            confirmTitle: "Install"
-        ) else { return }
-
-        let reports = HookSetup.install(includeMessageDelivery: preferences.messageSendingEnabled)
-        rebuildContent()
-        guard !HookSetup.hasFailure(in: reports) else {
-            let summary = HookSetup.summary(of: reports)
-            store.reportError(summary)
-            Alerts.warn(title: "Not everything was installed", message: summary)
-            return
-        }
-        Alerts.info(title: "Hooks installed", message: HookSetup.summary(of: reports))
-    }
-
-    func uninstallHooks() {
-        let reports = HookSetup.remove()
-        rebuildContent()
-        guard !HookSetup.hasFailure(in: reports) else {
-            let summary = HookSetup.summary(of: reports)
-            store.reportError(summary)
-            Alerts.warn(title: "Removal failed", message: summary)
-            return
-        }
-        Alerts.info(
-            title: "Hooks removed",
-            message: "lampboard will no longer receive signals from either agent."
-        )
     }
 }

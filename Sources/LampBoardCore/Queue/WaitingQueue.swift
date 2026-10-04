@@ -78,6 +78,18 @@ public enum WaitingQueue {
         return cards.sorted { ($0.kind, $0.appearedAt, $0.id) < ($1.kind, $1.appearedAt, $1.id) }
     }
 
+    /// The most cards drawn at once: past four, a queue pushes the column it
+    /// sits on off the screen, and the fifth thing is never what you do next.
+    public static let shownAtOnce = 4
+
+    /// Which cards are drawn: the first four, or four ending at the selected
+    /// one once it is further down.
+    public static func window(count: Int, selected: Int) -> Range<Int> {
+        guard count > shownAtOnce else { return 0..<count }
+        let end = min(max(selected + 1, shownAtOnce), count)
+        return (end - shownAtOnce)..<end
+    }
+
     public static func isArmed(appearedAt: Date, now: Date) -> Bool {
         now.timeIntervalSince(appearedAt) >= armDelay
     }
@@ -97,6 +109,12 @@ public enum WaitingQueue {
                 next[key] = firstShown[key] ?? now
             }
             firstShown = next
+        }
+
+        /// When the next card still unarmed arms, so the panel redraws then and
+        /// not only when the newest one does.
+        public func nextArming(after now: Date) -> Date? {
+            firstShown.values.map { $0.addingTimeInterval(WaitingQueue.armDelay) }.filter { $0 > now }.min()
         }
 
         public func isArmed(_ card: WaitingCard, now: Date) -> Bool {

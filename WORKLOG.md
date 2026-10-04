@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **982**, instantaneous |
+| Domain tests | **985**, instantaneous |
 | End-to-end tests | **134**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 796 lines, `PanelController.swift` (limit the project sets itself: 800) |
+| Longest file | 794 lines, `StateStore.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -2373,3 +2373,13 @@ what waits for you, as cards in the order that costs the least waiting —
 permissions, questions, stuck turns, failures, answers, LampMaster last — armed
 600 ms after they appear, and worked with `J`, `K`, `O` and `E`. The keys that will
 answer a permission are there already and say they cannot yet.
+
+And now drawn (D75): the queue sits above the rows in the wide panel, four cards at
+most and a line for the rest, each dimmed for its first 600 ms, and the panel grows
+by exactly what it draws. It takes keys only while the panel holds the keyboard,
+which a click gives it. Photographed on the test Mac with the trial's sessions: a
+session asking, a failed turn, an answer to read and LampMaster's suggestion, in that
+order; the README's picture is that one now. Looking for why the trial's Codex row
+had vanished from it turned up the reason it never drew its letter either: no
+process named `codex` holds its rollout open, and that is the only proof of life a
+Codex session gives.

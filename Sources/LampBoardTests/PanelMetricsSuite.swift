@@ -98,6 +98,21 @@ enum PanelMetricsSuite {
             )
         },
 
+        TestCase("The queue is counted card by card, with its «more» line") { t in
+            let withQueue = PanelMetrics.Sizes(
+                row: 20, subRow: 10, spacing: 2, blockInset: 3,
+                tail: 16, padding: 8, footer: 25, issueStrip: 17, queueCard: 30
+            )
+            let blocks = [block()]
+            let none = PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: withQueue)
+            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false,
+                                              queueCards: 2, sizes: withQueue) - none, 2 * 30 + 2 + 8,
+                          "two cards, the gap between them, and the padding above the queue")
+            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false,
+                                              queueCards: 4, queueMore: true, sizes: withQueue) - none,
+                          4 * 30 + 4 * 2 + 17 + 8, "four cards and a line saying how many more, a gap before it too")
+        },
+
         TestCase("An empty column is still a panel") { t in
             // The chrome is 8 + 8 of padding and 25 of footer, and one row's worth
             // of room so the empty state has somewhere to be.
