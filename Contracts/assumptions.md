@@ -883,6 +883,32 @@ whose title carries the session name, which zellij writes there.
 
 ---
 
+## mod.api · the mod reads session.measure, session.start and session.end
+
+**We assume** Claude Code 2.1.287 and later run a plugin's function hooks, that
+`session.measure` carries `context.tokens` and `context.window`, `rateLimits[]`
+with `kind` (`five_hour`, `seven_day`), `percentUsed` and `resetsAt`, and `cost.usd`;
+that `session.start` carries `surface` and `isInteractive`, `session.end` carries
+`sessionId` and `reason`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
+`$.session.id` and `$.session.model` exist.
+
+**Depends at** [register.js](../mod/hooks/register.js) ·
+[ModReport.swift](../Sources/LampBoardCore/Mod/ModReport.swift) ·
+[ModAllowance.swift](../Sources/LampBoardCore/Mod/ModAllowance.swift)
+
+**How verified** — `probe` and `binary`. A throwaway session on the test Mac, with
+the mod loaded and then installed, delivered `start`, a measure of 21,140 tokens
+with two windows, and `end` (4 October 2026, 2.1.289); the names are read in the
+binary by `check-contract.sh`, which also has `claude plugin validate --strict` list
+the mod's hooks and calls and compares them with `companionMod` in
+`required-fields.json`.
+
+**Failure mode** — silent, and narrow. A renamed field reaches the panel as a
+missing one: the ring falls back to the transcript's figure, the strip to the
+usage request, the cost line disappears. Nothing turns the wrong colour, because
+the colours never came from the mod (D65). A call that no longer exists makes the
+mod's own `try` give up, and the panel hears nothing from it.
+
 ## What this cannot do
 
 It cannot catch what nobody thought to write down here. The list grows the way it

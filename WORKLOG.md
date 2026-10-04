@@ -2296,3 +2296,12 @@ row's card says it, summed over the project's conversations, at list price — a
 line that is simply absent without the mod rather than a zero, and never `$0.00`
 for a session that has cost under a cent. It reaches the row the way the context
 does, as a figure the reducer adds and no colour.
+
+The mod's dependence on Claude Code is now in the contract like the hooks': a record
+in `Contracts/assumptions.md`, the names and the exact hooks and calls in
+`required-fields.json`, and a section of `check-contract.sh` that finds the names in
+the binary and has `claude plugin validate --strict` list the mod's hooks and calls.
+Its first run on the test Mac failed, rightly: mod 1.1.0 reaches `$.env.get` from two
+functions, Claude Code writes that as "(via config, panel)", and splitting the list
+on commas before dropping the parenthesis made one call into three — the same split
+in the Settings card would have printed the fragments as calls the mod makes.

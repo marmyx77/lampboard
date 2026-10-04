@@ -65,9 +65,12 @@ public enum ModTrust {
     static func sentence(for note: String) -> String {
         guard let colon = note.range(of: ": ") else { return note }
         let label = note[..<colon.lowerBound]
-        let items = note[colon.upperBound...].split(separator: ",").map {
-            $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: #" \(via [^)]*\)"#, with: "", options: .regularExpression)
-        }
+        // The "(via a, b)" goes first: it holds commas of its own, which split
+        // one call into three (measured with mod 1.1.0, whose `$.env.get` is
+        // reached from two functions).
+        let items = String(note[colon.upperBound...])
+            .replacingOccurrences(of: #"\s*\(via [^)]*\)"#, with: "", options: .regularExpression)
+            .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         if label.hasSuffix(" hooks") {
             return "It runs " + list(items.map { hooks[$0] ?? "on \($0)" }) + "."
         }

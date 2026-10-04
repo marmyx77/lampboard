@@ -401,5 +401,35 @@
       "DISABLE_COMPACT",
       "settings.json: autoCompactWindow"
     ]
+  },
+  "companionMod": {
+    "_comment": [
+      "What the companion mod (mod/hooks/register.js) uses of Claude Code's mod API, from 2.1.287.",
+      "events and calls are what `claude plugin validate --strict` must list for the mod, exactly;",
+      "binaryStrings are names the mod and ModReport.swift read, which must still be in the binary."
+    ],
+    "firstRelease": "2.1.287",
+    "events": [
+      "session.start",
+      "session.measure",
+      "session.end"
+    ],
+    "calls": [
+      "$.env.get",
+      "$.fs.read",
+      "$.http.fetch",
+      "$.session.id",
+      "$.session.model"
+    ],
+    "binaryStrings": [
+      "session.measure",
+      "rateLimits",
+      "percentUsed",
+      "resetsAt",
+      "isInteractive",
+      "sessionId",
+      "five_hour",
+      "seven_day"
+    ]
   }
 }

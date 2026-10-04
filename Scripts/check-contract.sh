@@ -908,6 +908,60 @@ PY
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+head_ "The companion mod"
+
+# The mod leans on Claude Code's mod API (2.1.287 and later), as unannounced as
+# the hooks. Two checks, both static and free: the names the mod and
+# `ModReport.swift` read are still in the binary, and Claude Code's own reading of
+# the module lists exactly the events and calls recorded — a mod that grew a call
+# shows here before it shows in anybody's sessions.
+if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
+    skip "no Claude Code binary to read the mod API from"
+else
+    MISSING_MOD=""
+    for name in $(python3 -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1]))["companionMod"]["binaryStrings"]))' "$SPEC"); do
+        grep -a -q -- "$name" "$CLAUDE_BIN" || MISSING_MOD="$MISSING_MOD $name"
+    done
+    if [ -z "$MISSING_MOD" ]; then
+        ok "every name the mod reads is in the binary"
+    else
+        bad "the mod API moved: not in the binary:$MISSING_MOD"
+        note "Contracts/assumptions.md, mod.api, says what stops arriving."
+    fi
+
+    VALIDATE="$( (cd "$ROOT" && claude plugin validate --strict --json ./mod 2>/dev/null) || true )"
+    if REPORT="$(printf '%s' "$VALIDATE" | python3 -c '
+import json, re, sys
+spec = json.load(open(sys.argv[1]))["companionMod"]
+try:
+    reading = json.load(sys.stdin)
+except ValueError:
+    print("claude plugin validate printed no JSON"); sys.exit(1)
+notes = [n for c in reading.get("contents", []) for n in c.get("notes", [])]
+def listed(label):
+    for note in notes:
+        if note.split(": ", 1)[0].endswith(label):
+            # The "(via a, b)" first: it can hold commas of its own.
+            bare = re.sub(r"\s*\(via [^)]*\)", "", note.split(": ", 1)[1])
+            return {x.strip() for x in bare.split(",")}
+    return set()
+problems = []
+if not reading.get("success"):
+    problems.append("Claude Code does not accept the mod")
+for label, key in (("hooks", "events"), ("calls", "calls")):
+    got, want = listed(label), set(spec[key])
+    if got != want:
+        problems.append("%s: listed %s, recorded %s" % (label, sorted(got), sorted(want)))
+print("; ".join(problems) or "%d hooks, %d calls" % (len(spec["events"]), len(spec["calls"])))
+sys.exit(1 if problems else 0)
+' "$SPEC")"; then
+        ok "Claude Code reads the mod as recorded ($REPORT)"
+    else
+        bad "the mod is not what the contract records: $REPORT"
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 printf '\n%s\n' "────────────────────────────────────────────────────────"
 
 if [ "$CHECKS" = "0" ]; then

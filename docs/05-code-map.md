@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,532 lines · 123 files  pure logic, zero AppKit
+  LampBoardCore/  15,535 lines · 123 files  pure logic, zero AppKit
   LampBoardApp/    19,550 lines · 106 files   shell: AppKit, network, windows
-  LampBoardTests/  13,027 lines · 73 files   933 cases, instantaneous
+  LampBoardTests/  13,028 lines · 73 files   933 cases, instantaneous
   LampBoardE2E/    3,748 lines · 15 files   127 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```

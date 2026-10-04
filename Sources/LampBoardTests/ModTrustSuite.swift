@@ -5,7 +5,8 @@ import TestKit
 /// What the mod does, said from what Claude Code reads in it.
 ///
 /// The JSON is what `claude plugin validate --strict --json` printed for the
-/// mod on the test Mac on 4 October 2026, paths shortened.
+/// mod on the test Mac on 4 October 2026, paths shortened; the calls line is
+/// mod 1.1.0's, whose "(via config, panel)" once split one call into three.
 enum ModTrustSuite {
 
     private static let validate = Data(#"""
@@ -13,7 +14,7 @@ enum ModTrustSuite {
          "manifest":{"file":"/x/mod/.claude-plugin/plugin.json","type":"plugin","errors":[],"warnings":[],"notes":[]},
          "contents":[{"file":"/x/mod/hooks/hooks.json","type":"hooks","errors":[],"warnings":[],"notes":[
            "./register.js hooks: session.start, session.measure, session.end",
-           "./register.js calls: $.env.get (via panel), $.fs.read (via panel), $.http.fetch (via post), $.session.id (via post), $.session.model (via model)",
+           "./register.js calls: $.env.get (via config, panel), $.fs.read (via panel), $.http.fetch (via panel, post), $.session.id (via post), $.session.model (via model)",
            "./register.js env writes: nothing",
            "./register.js env reads: HOME, LAMPBOARD_HOME"]}]}
         """#.utf8)
