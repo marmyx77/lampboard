@@ -27,6 +27,8 @@ struct Preferences {
         static let dismissedSessions = "panel.dismissedSessions"
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
+        static let notifyFinished = "notify.finished"
+        static let menuBarCounter = "menubar.counter"
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
@@ -303,6 +305,21 @@ struct Preferences {
     var notificationsEnabled: Bool {
         get { defaults.bool(forKey: Key.notificationsEnabled) }
         nonmutating set { defaults.set(newValue, forKey: Key.notificationsEnabled) }
+    }
+
+    /// Also a notification when a turn finishes with an answer, carrying its
+    /// first line (5.6). Off by default: with two dozen sessions it is a stream,
+    /// and the panel's green already says it for those who glance.
+    var notifyFinished: Bool {
+        get { defaults.bool(forKey: Key.notifyFinished) }
+        nonmutating set { defaults.set(newValue, forKey: Key.notifyFinished) }
+    }
+
+    /// The menu bar lamp carries `wanting · working` beside it. Off by default,
+    /// so nobody's menu bar changes width on an update they did not ask for.
+    var menuBarCounter: Bool {
+        get { defaults.bool(forKey: Key.menuBarCounter) }
+        nonmutating set { defaults.set(newValue, forKey: Key.menuBarCounter) }
     }
 
     /// Projects that generate no notifications, by path.

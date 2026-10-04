@@ -31,6 +31,10 @@ final class SessionNotifier {
     private var cancellables = Set<AnyCancellable>()
     private var isPanelVisible: () -> Bool = { false }
     private var authorized = false
+    /// Each session's status at the last pass, to tell a turn that just failed
+    /// or finished from one that already had. `nil` before the first pass, so
+    /// what was already so at launch is not news.
+    private var lastStatus: [String: SessionStatus]?
 
     init(
         store: StateStore,
@@ -89,6 +93,7 @@ final class SessionNotifier {
     // MARK: - Reacting to state changes
 
     private func react(to state: TrafficLightState) {
+        announceTransitions(in: state)
         let blocked = state.sessions.values.filter { $0.status == .awaiting }
         let blockedIds = Set(blocked.map(\.id))
 
@@ -129,7 +134,7 @@ final class SessionNotifier {
 
             announced.insert(session.id)
             guard passesGate(session) else { continue }
-            deliver(session)
+            deliver(session, event: .waiting)
         }
 
         // Come back for the ones that were too young. The store publishes only
@@ -143,6 +148,25 @@ final class SessionNotifier {
         guard soonest < .greatestFiniteMagnitude else { return }
         recheck = Timer.scheduledTimer(withTimeInterval: soonest + 0.2, repeats: false) { [weak self] _ in
             Task { @MainActor in self?.react(to: state) }
+        }
+    }
+
+    /// A turn that has just died, always; one that has just finished with an
+    /// answer, when asked for (5.6). On the transition only: a session already
+    /// red or green at launch, or when the switch went on, is not news.
+    private func announceTransitions(in state: TrafficLightState) {
+        let now = state.sessions.mapValues(\.status)
+        defer { lastStatus = now }
+        guard let before = lastStatus, preferences.notificationsEnabled else { return }
+        for session in state.sessions.values where before[session.id] != session.status {
+            switch session.status {
+            case .failed where passesGate(session):
+                deliver(session, event: .failed)
+            case .ready where preferences.notifyFinished && passesGate(session):
+                deliver(session, event: .finished)
+            default:
+                continue
+            }
         }
     }
 
@@ -183,28 +207,22 @@ final class SessionNotifier {
         return true
     }
 
-    private func deliver(_ session: SessionState) {
+    private func deliver(_ session: SessionState, event: NotificationText.Event) {
         guard Bundle.main.bundleIdentifier != nil else { return }
 
         let content = UNMutableNotificationContent()
         content.title = RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName
-        // Not `lastMessage`, and this is a correction rather than a preference.
-        // A `Notification` payload carries no `last_assistant_message`, and
-        // `with(lastMessage:)` keeps the previous value when the new one is
-        // absent — so the row still holds the reply from the turn *before* the
-        // question. Quoting it here presented the previous answer as the thing
-        // being asked about, which is the worst kind of wrong: fluent, specific,
-        // and false. The session's own title is current by construction; where
-        // there is none, the plain sentence says only what is true.
-        content.body = session.title.map { "Waiting for your answer: \($0)" }
-            ?? "Waiting for your answer."
+        // What happened, in a line: the command or question waiting, why the
+        // turn died, the answer's first line. Never the previous turn's reply
+        // for a waiting session (`NotificationText`).
+        content.body = NotificationText.body(for: event, session: session)
         content.sound = .default
         // Carries the session id: clicking the notification has to take you *there*,
         // not generically to the app.
         content.userInfo = ["sessionId": session.id]
 
         let request = UNNotificationRequest(
-            identifier: "lampboard.awaiting.\(session.id)",
+            identifier: "lampboard.\(event).\(session.id)",
             content: content,
             trigger: nil
         )

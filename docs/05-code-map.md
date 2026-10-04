@@ -1,13 +1,13 @@
 # Code map
 
-~52,500 lines of Swift across five targets. For each file: what it contains, why
+~52,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,594 lines · 124 files  pure logic, zero AppKit
-  LampBoardApp/    19,567 lines · 106 files   shell: AppKit, network, windows
-  LampBoardTests/  13,076 lines · 74 files   937 cases, instantaneous
+  LampBoardCore/  15,660 lines · 125 files  pure logic, zero AppKit
+  LampBoardApp/    19,654 lines · 107 files   shell: AppKit, network, windows
+  LampBoardTests/  13,132 lines · 75 files   941 cases, instantaneous
   LampBoardE2E/    3,850 lines · 16 files   130 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -456,6 +456,13 @@ Whether the lamp is in the menu bar is a **separate** switch, because somebody
 who keeps the panel floating all day may still want the lamp for the moments the
 panel is behind a full-screen window. Only one direction is forced: a panel that
 lives up there needs the lamp, because nothing else could bring it back.
+
+### `NotificationText.swift`
+What a notification says (5.6): for a waiting session the command or question, for
+a failed turn the reason, for a finished one the first line of the answer without
+Markdown's marks, cut at 160 characters where it says so. Never the last message
+for a waiting session: a `Notification` payload carries none, and the row still
+holds the previous turn's reply. Also the menu bar's `wanting · working` counter.
 
 ### `MenuBarSummary.swift` · 123
 What the lamp shows, computed from the `ColumnRendering` the panel draws rather
@@ -1272,7 +1279,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 84 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 502 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `LampMasterService.swift` | 237 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
@@ -1283,7 +1290,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 162 | talks to the live instance for `sessions` and `next`, and for the `lampmaster` MCP server, which waits as long as a question may take |
-| `SessionNotifier.swift` | 241 | `awaiting` notifications, anti-duplicate memory, gate |
+| `SessionNotifier.swift` | 259 | `awaiting` notifications after a delay, `failed` and (asked for) `ready` on the transition only, so what was already so at launch is not news; anti-duplicate memory, gate; the text from `NotificationText` |
 | `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `ContextReader.swift` | 98 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
@@ -1460,7 +1467,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `StatusPalette.swift` | 389 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
-| `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
+| `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
@@ -1469,7 +1476,8 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 166 | the Settings form: LampMaster first, the companion mod, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
+| `AlertSettings.swift` | 41 | the menu bar counter and the notification for a finished turn, both off until asked for (5.6) |
+| `SettingsView.swift` | 168 | the Settings form: LampMaster first, the companion mod, the menu bar and notifications, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
 | `ModSettings.swift` | 92 | the companion mod's switch, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
@@ -1489,7 +1497,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 937 cases
+## `LampBoardTests/` — 941 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1531,6 +1539,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |

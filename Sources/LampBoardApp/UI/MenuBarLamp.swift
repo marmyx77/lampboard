@@ -105,6 +105,13 @@ final class MenuBarLamp: NSObject {
         }
         item = created
         Diagnostics.log("menu bar lamp shown")
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(preferencesChanged), name: .menuBarCounterChanged, object: nil
+        )
+        render()
+    }
+
+    @objc private func preferencesChanged() {
         render()
     }
 
@@ -135,7 +142,10 @@ final class MenuBarLamp: NSObject {
         // build showed `6` next to a resting ring, because six projects were
         // idle — a count of things asking for nothing, in the one place on the
         // screen where space is scarcest.
-        button.title = summary.needsAttention && summary.count > 1 ? " \(summary.count)" : ""
+        // With the counter asked for, both halves always: `0 · 3` is an answer.
+        button.title = Preferences().menuBarCounter
+            ? (summary.isEmpty ? "" : " " + summary.counter)
+            : summary.needsAttention && summary.count > 1 ? " \(summary.count)" : ""
         button.toolTip = summary.tooltip
         summary.blinks ? startBlinking() : stopBlinking()
     }

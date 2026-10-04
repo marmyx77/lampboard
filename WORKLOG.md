@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **937**, instantaneous |
+| Domain tests | **941**, instantaneous |
 | End-to-end tests | **130**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2314,3 +2314,13 @@ through, none refused, and a POST carrying `Origin` got 403. Each guard was seen
 failing its test with the guard taken out. And a session file whose pid now belongs
 to another process is a dead session: `kill(pid, 0)` asked only whether the pid
 existed, so a recycled pid kept a dead row alive for as long as the stranger ran.
+
+Notifications now say what happened (5.6): the command or the question a session
+waits on, why a turn died, and — for whoever switches it on — the first line of a
+finished answer. A failed turn notifies now too, which *Getting started* had been
+promising without the code doing it. Failed and finished are announced on the
+transition only, so a column already red at launch is not a burst. And the menu
+bar can carry `wanting · working` beside the lamp, off by default so nobody's menu
+bar changes width on an update they did not ask for. Not seen on screen: on the
+test Mac the status item's window could not be isolated for a capture; the counter
+is held by its tests.

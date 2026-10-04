@@ -357,6 +357,10 @@ blink: a session merely working is the ordinary condition of the machine, and a
 signal that is on most of the day is not a signal. *Don't blink* on a project
 silences the movement up here too, and not the colour.
 
+*Count in the menu bar*, in Settings, puts `2 · 3` beside the lamp instead: how
+many sessions want you — waiting, finished to read, failed — and how many are at
+work, zeros included, since "nothing waits, three at work" is half of the answer.
+
 At rest it is a hollow ring that follows the menu bar's own light rather than the
 column's dim red. Dim red works among a dozen rows, where it reads as *this one
 is resting*; alone beside the clock it reads as a fault.
@@ -457,13 +461,17 @@ Two features, both **off by default**. Neither turns itself on. Notifications as
 the moment you enable them; presence needs no permission, only the environment
 variable below.
 
-**Notify when a session gets blocked.** Only `awaiting`, never `ready`. That
-distinction is the whole feature: a ready answer can wait until you look at it, a
-permission cannot — until you answer, that work is stopped. With a dozen sessions,
-notifying on green too would produce tens of alerts a day, and a channel that
-alerts too often gets switched off within two days: at that point the real blocks
-would stop arriving as well. Clicking the notification takes you **to that
-session**.
+**Notify when a session gets blocked, or a turn fails.** `awaiting` and `failed`,
+not `ready` unless you ask. That distinction is the whole feature: a ready answer
+can wait until you look at it, a permission or a dead turn cannot — until you act,
+that work is stopped. With a dozen sessions, notifying on green too would produce
+tens of alerts a day, and a channel that alerts too often gets switched off within
+two days: at that point the real blocks would stop arriving as well. *Also notify
+when a turn finishes*, in Settings, is there for whoever wants the stream anyway.
+
+The notification says what happened, so some are answered by reading: the command
+waiting for a yes or the question, why the turn ended, the first line of a finished
+answer. Clicking it takes you **to that session**.
 
 What suppresses an alert is only what you asked for: the memory that avoids
 duplicates, the per-project silence, and the timed one. A presence condition used
@@ -1383,7 +1391,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 937 domain tests, instantaneous
+swift run LampBoardTests              # 941 domain tests, instantaneous
 swift run LampBoardE2E                # 130 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
