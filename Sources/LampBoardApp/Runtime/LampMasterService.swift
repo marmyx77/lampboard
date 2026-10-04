@@ -35,6 +35,8 @@ final class LampMasterService: ObservableObject {
     private let box = LampMasterBox()
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
+    /// Told when a card is answered, whatever the answer: the tour's last step.
+    var onReact: (() -> Void)?
     /// The port this panel listens on, which the MCP server's entry must name.
     var port = AppConfig.listenPort
     private var timer: Timer?
@@ -92,6 +94,7 @@ final class LampMasterService: ObservableObject {
 
     /// The user's reaction to a suggestion on screen.
     func react(to id: String, with outcome: LampMasterShown.Outcome) {
+        onReact?()
         let shown = files.suggestions()
         if outcome == .muted, let kind = shown.first(where: { $0.id == id })?.suggestion.kind {
             preferences.lampMasterMuted.insert(kind)

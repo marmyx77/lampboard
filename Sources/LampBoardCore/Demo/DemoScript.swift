@@ -93,6 +93,18 @@ public struct DemoScript: Codable, Sendable, Equatable {
         return payload
     }
 
+    /// The allowance strip's line in the trial: the script's account, its
+    /// session limit, and when it comes back.
+    public func allowanceReport(now: Date) -> AllowanceReport {
+        AllowanceReport(
+            account: ClaudeAccount(email: account, uuid: nil), machine: "mac",
+            limits: AccountLimits(limits: [.init(
+                span: .session, percent: Int((allowanceUsed * 100).rounded()),
+                resetsAt: now.addingTimeInterval(Double(allowanceResetMinutes) * 60)
+            )], readAt: now)
+        )
+    }
+
     /// The script as JSON, for the site's demo and the screenshots.
     public func json() -> String {
         let encoder = JSONEncoder()

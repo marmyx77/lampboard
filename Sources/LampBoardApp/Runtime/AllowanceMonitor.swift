@@ -125,4 +125,11 @@ final class AllowanceMonitor: ObservableObject {
             )
         }
     }
+
+    /// The trial's invented line. No request is made: the trial never reaches
+    /// the network, and the switch stays off.
+    func showTrial(_ invented: [AllowanceReport]) {
+        reports = invented
+        quiet = nil
+    }
 }

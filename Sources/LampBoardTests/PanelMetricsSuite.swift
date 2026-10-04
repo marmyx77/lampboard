@@ -89,6 +89,15 @@ enum PanelMetricsSuite {
             )
         },
 
+        TestCase("The tutorial's band is counted line by line, and only in a trial") { t in
+            let blocks = [block()]
+            t.expectEqual(
+                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, tourLines: 3, sizes: sizes)
+                    - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes),
+                51, "three lines of seventeen points"
+            )
+        },
+
         TestCase("An empty column is still a panel") { t in
             // The chrome is 8 + 8 of padding and 25 of footer, and one row's worth
             // of room so the empty state has somewhere to be.

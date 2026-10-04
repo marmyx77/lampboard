@@ -378,11 +378,11 @@ enum Layout {
 
     static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
-        showsLampMaster: Bool = false
+        showsLampMaster: Bool = false, tourLines: Int = 0
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
-            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, sizes: sizes
+            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines, sizes: sizes
         )
     }
 

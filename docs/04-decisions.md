@@ -2639,3 +2639,9 @@ because they never share a process, a home or a port, and every colour the tour
 shows is one the panel really produces. Mixing them in the real panel would have
 needed a switch between two stores at the heart of the app, and one forgotten
 branch would show a real session in a screenshot meant for the public.
+
+The tour's progress is kept by step id in a domain of its own, apart from the
+trial's, because every trial starts on a fresh home and somebody who stopped at step
+three should find step three. In a trial, opening a row only marks it seen: an
+invented folder has no editor, and reaching for one raised a modal warning that,
+measured on the test Mac, also held off the trial's quit.

@@ -84,9 +84,12 @@ struct PanelRootView: View {
     /// LampMaster's line draws itself only while it is switched on.
     let lampMaster: LampMasterService?
     let openLampMaster: () -> Void
+    /// The tutorial, in a trial only.
+    var tour: TourController? = nil
 
     var body: some View {
         VStack(spacing: 0) {
+            if let tour { TourBand(tour: tour, compact: flags.compact) }
             TrafficLightColumn(
                 store: store,
                 compact: flags.compact,
@@ -101,7 +104,8 @@ struct PanelRootView: View {
             if let lampMaster {
                 LampMasterStrip(service: lampMaster, compact: flags.compact, open: openLampMaster)
             }
-            AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
+            AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
+                           reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
             issueStrip
             footer
         }

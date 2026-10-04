@@ -86,9 +86,11 @@ public enum PanelMetrics {
     /// - Parameter showsLampMaster: LampMaster's line, drawn while it is
     ///   switched on. One line the height of the issue strip, counted for the
     ///   same reason as the allowance: uncounted, it takes the last row's room.
+    /// - Parameter tourLines: the tutorial's band in a trial, in lines of the
+    ///   issue strip's height; zero everywhere else.
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
-        allowanceLines: Int = 0, showsLampMaster: Bool = false, sizes: Sizes
+        allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0, sizes: Sizes
     ) -> CGFloat {
         let all = blocks + Array(repeating: sizes.row, count: extras)
         let content = all.reduce(0, +) + CGFloat(max(all.count - 1, 0)) * sizes.spacing
@@ -100,5 +102,6 @@ public enum PanelMetrics {
         return max(content, sizes.row)
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
             + (showsLampMaster ? sizes.issueStrip : 0)
+            + CGFloat(tourLines) * sizes.issueStrip
     }
 }

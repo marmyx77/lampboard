@@ -21,6 +21,8 @@ final class StateStore: ObservableObject {
     /// decide whether to offer a button, and which pane that button opens, and
     /// neither question can be answered by reading English back.
     @Published private(set) var issue: PanelIssue?
+    /// Told when a row is opened: the tutorial's tour moves on with it.
+    var onSeen: ((String) -> Void)?
 
     private let windowReader: IDEWindowReader
     private let liveSessionReader: LiveSessionReader
@@ -531,6 +533,7 @@ final class StateStore: ObservableObject {
 
     /// The user opened the session: the unread states are cleared.
     func markSeen(sessionId: String) {
+        onSeen?(sessionId)
         apply(.markSeen(sessionId: sessionId), now: clock())
     }
 

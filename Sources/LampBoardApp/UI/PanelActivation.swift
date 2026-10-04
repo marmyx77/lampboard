@@ -17,6 +17,12 @@ extension PanelController {
             for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
         }
 
+        // In a trial there is no window behind an invented session: being
+        // marked as seen is the whole gesture the tour teaches. Reaching for an
+        // editor would only raise a warning — modal, so it also held off the
+        // trial's own quit until somebody dismissed it (measured on the test Mac).
+        if tour != nil { return }
+
         let session = row.primary
 
         // A terminal row's place is a terminal tab, found through the session's

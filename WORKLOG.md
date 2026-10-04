@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **895**, instantaneous |
+| Domain tests | **897**, instantaneous |
 | End-to-end tests | **122**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 794 lines, `PanelController.swift` (limit the project sets itself: 800) |
+| Longest file | 796 lines, `PanelController.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -2202,4 +2202,12 @@ session — and plays the script into its own server. The end-to-end suite runs 
 twenty times faster and finds every session in the state the reducer produces, and
 nothing left behind on quit. A trial without `LAMPBOARD_HOME` is refused: it would
 write invented sessions into the real `~/.claude`.
+
+And the tour on screen, photographed on the test Mac: the trial panel opens with
+the band — "TRIAL · invented sessions", step 1 of 4 — over the four invented
+sessions in their scripted colours, LampMaster's line and a quota at 62%. Opening
+the green row moved the band to step 2; opening the wrong row did not. The first
+try found a trial that would not quit: opening a row reached for an editor that an
+invented folder does not have, and the modal warning held off the quit. In a trial,
+opening a row now only marks it seen, which is the gesture the step teaches.
 

@@ -90,6 +90,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = PanelController(store: store, installer: installer)
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         controller.lampMaster = lampMaster
+        if TrialStage.mode != nil {
+            let tour = TourController()
+            controller.tour = tour
+            store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
+            lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }
+        }
         let lampMasterWindow = LampMasterWindowController(
             service: lampMaster, actions: controller.lampMasterActions(for: lampMaster)
         )
@@ -102,6 +108,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         legendWindow = legend
         controller.onOpenLegend = { legend.show() }
         controller.show()
+        if TrialStage.mode != nil {
+            controller.allowance.showTrial([DemoScript.standard.allowanceReport(now: Date())])
+        }
         panelController = controller
 
         startNotifier(for: controller)

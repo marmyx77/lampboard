@@ -46,6 +46,13 @@ enum TourSuite {
             t.expectNotNil(try? JSONSerialization.jsonObject(with: Data(script.json().utf8)), "the export parses")
         },
 
+        TestCase("The trial's allowance line is the script's invented account") { t in
+            let report = DemoScript.standard.allowanceReport(now: Date(timeIntervalSince1970: 1_800_000_000))
+            t.expectEqual(report.account?.email, "design@example.com")
+            t.expectEqual(report.limits.limits.first?.percent, 62)
+            t.expectEqual(report.limits.limits.first?.resetsAt, Date(timeIntervalSince1970: 1_800_000_000 + 95 * 60))
+        },
+
         TestCase("Today's tour shows only what 0.5 can do") { t in
             t.expectEqual(today.map(\.id), ["colours", "amber", "allowance", "lampmaster"])
             t.expectEqual(Tour.steps(available: Set(Tour.Feature.allCases)).count, 9, "every step once all is there")

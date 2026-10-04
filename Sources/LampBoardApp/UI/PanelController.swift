@@ -45,6 +45,7 @@ final class PanelController {
     /// LampMaster's round and the opening of its window, set by whoever owns them.
     var lampMaster: LampMasterService?
     var onOpenLampMaster: (() -> Void)?
+    var tour: TourController?
 
     var onNotificationToggle: ((Bool) -> Void)?
 
@@ -259,7 +260,7 @@ final class PanelController {
             actions: makeActions(),
             rowActions: makeRowActions(),
             allowance: allowance,
-            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }
+            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -315,7 +316,8 @@ final class PanelController {
             width: Layout.width(compact: compact),
             height: Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
-                allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster
+                allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
+                tourLines: tour == nil ? 0 : TourBand.lines
             )
         )
 

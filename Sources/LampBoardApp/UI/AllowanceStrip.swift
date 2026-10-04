@@ -36,6 +36,8 @@ import SwiftUI
 /// lamps first is volume, not palette: five points of bar at eighty-five percent
 /// against a saturated disc of thirteen.
 struct AllowanceStrip: View {
+    /// Told when a line is pointed at: a step of the tutorial waits for it.
+    var onInspect: (() -> Void)? = nil
     /// One line per account. More than one is the ordinary case for anybody whose
     /// laptop and build box are signed in differently.
     let reports: [AllowanceReport]
@@ -123,6 +125,7 @@ struct AllowanceStrip: View {
             // so hovering a line did nothing at all, which is how the other two
             // limits came to be unreachable.
             .tooltip(report)
+            .onHover { inside in if inside { onInspect?() } }
         }
     }
 
