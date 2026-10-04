@@ -545,6 +545,7 @@ enum CommandLineInterface {
                                 single tool call.
           --skip-setup-prompt   don't offer to install the hooks at startup.
                                 Useful when launching the app automatically at login.
+          --getting-started     open the Getting started window at launch.
           --headless            start without the panel: server and realignment only.
                                 Used by the end-to-end tests.
 

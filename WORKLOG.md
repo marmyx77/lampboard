@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **897**, instantaneous |
+| Domain tests | **898**, instantaneous |
 | End-to-end tests | **122**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2214,4 +2214,9 @@ opening a row now only marks it seen, which is the gesture the step teaches.
 The tour has its doors: *Take the tour…* in both menus, and an offer right after
 the hooks are installed, the one moment somebody is certainly looking at LampBoard
 for the first time.
+
+That moment now opens *Getting started*: the setup, each item said before its
+button — what the hooks write, what the Accessibility permission is for, what
+LampMaster sends and spends — and the first steps with one's own sessions, ticked
+from what the panel already knows. Photographed on the test Mac.
 

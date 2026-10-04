@@ -90,6 +90,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = PanelController(store: store, installer: installer)
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         controller.lampMaster = lampMaster
+        GettingStartedWindowController.shared.configure(
+            port: port, lampMaster: lampMaster,
+            toggleNotifications: { [weak controller] in controller?.toggleNotifications() }
+        )
         if TrialStage.mode != nil {
             let tour = TourController()
             controller.tour = tour
@@ -111,6 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if TrialStage.mode != nil {
             controller.allowance.showTrial([DemoScript.standard.allowanceReport(now: Date())])
         }
+        // Opens the window at launch: for the screenshots, and for a check on a
+        // Mac where nobody is there to click the menu.
+        if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
         panelController = controller
 
         startNotifier(for: controller)
@@ -297,20 +304,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             next time they start.
             """
         )
-        offerTour()
-    }
-
-    /// Right after the hooks, the one moment somebody is certainly looking at
-    /// LampBoard for the first time. Asked once; the menu keeps it afterwards.
-    private func offerTour() {
-        guard Alerts.confirm(
-            title: "A three-minute tour?",
-            message: "A second panel opens with invented sessions — none of them yours — and shows "
-                + "what each colour means, step by step. You can quit it at any moment, and take it "
-                + "again from the menu: Take the tour.",
-            confirmTitle: "Take the tour"
-        ) else { return }
-        TrialLauncher.startFromMenu()
+        // Right after the hooks, the one moment somebody is certainly looking at
+        // LampBoard for the first time: the rest of the setup, and the tour.
+        GettingStartedWindowController.shared.show()
     }
 }
 

@@ -1,13 +1,13 @@
 # Code map
 
-~50,000 lines of Swift across five targets. For each file: what it contains, why
+~50,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  14,621 lines · 116 files  pure logic, zero AppKit
-  LampBoardApp/    18,843 lines · 102 files   shell: AppKit, network, windows
-  LampBoardTests/  12,559 lines · 69 files   897 cases, instantaneous
+  LampBoardCore/  14,709 lines · 117 files  pure logic, zero AppKit
+  LampBoardApp/    19,010 lines · 103 files   shell: AppKit, network, windows
+  LampBoardTests/  12,573 lines · 69 files   898 cases, instantaneous
   LampBoardE2E/    3,598 lines · 14 files   122 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -740,6 +740,14 @@ and reducer as the real one. `DemoScriptCheck` refuses an account outside
 private address: the same rule as the repository's gate, applied to the one file
 that is shown on screens.
 
+### `GettingStarted.swift`
+The two lists of *Getting started*: the real setup — hooks, the Accessibility
+permission, and the switches that send something off the Mac, each explained before
+its button — and the first gestures worth trying on one's own sessions. Every tick is
+read from state the panel already keeps (row names, row order, LampMaster's answered
+cards, the questions sessions asked), so nothing new is recorded about anybody, and
+an item is done wherever it was done. Optional ones never count as left to do.
+
 ### `Tour.swift`
 The tour's steps, every version's, and the ones this version shows: a step whose
 feature is not installed yet is not shown. A step moves on with its own gesture —
@@ -1104,7 +1112,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 382
+### `main.swift` · `AppDelegate.swift` · 378
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1174,7 +1182,7 @@ same start serves the menus' *Take the tour…* and the offer made right after t
 hooks are installed; neither appears inside a trial, where a tour would stack
 panels.
 
-### `CommandLineInterface.swift` · 785
+### `CommandLineInterface.swift` · 786
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -1355,7 +1363,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 469 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 472 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1367,7 +1375,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 389 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
-| `PanelHomes.swift` | 351 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
+| `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
@@ -1380,6 +1388,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `SettingsView.swift` | 166 | the Settings form: LampMaster first, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
+| `GettingStartedWindow.swift` | 164 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 107 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
 | `LampMasterWindow.swift` | 180 | the cards, in a window of their own (D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the action, *Ignore*, *Wrong*, *Don't suggest this kind*. Opening it asks for a round if the last is older than fifteen minutes |
@@ -1395,7 +1404,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 897 cases
+## `LampBoardTests/` — 898 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

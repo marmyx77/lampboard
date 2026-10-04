@@ -81,6 +81,20 @@ enum TourSuite {
             t.expectEqual(unknown.current(in: today)?.id, "colours", "a step that is gone falls back to the first")
         },
 
+        TestCase("Getting started ticks what the Mac already shows, and leaves the optional out of the count") { t in
+            var facts = GettingStarted.Facts()
+            t.expectEqual(GettingStarted.remaining(facts), 4, "hooks, accessibility, rename, reorder")
+            facts.hooks = true
+            facts.renamed = true
+            t.expectEqual(GettingStarted.remaining(facts), 2)
+            t.expect(GettingStarted.preparation(facts).first { $0.id == "hooks" }?.done == true, "hooks ticked")
+            let answer = GettingStarted.firstSteps(facts).first { $0.id == "answer" }
+            t.expectEqual(answer?.optional, true, "answering LampMaster is optional while it is off")
+            facts.lampMaster = true
+            t.expectEqual(GettingStarted.firstSteps(facts).first { $0.id == "answer" }?.optional, false, "and expected once it is on")
+            t.expectEqual(GettingStarted.remaining(facts), 3)
+        },
+
         TestCase("Progress survives the preferences by step id") { t in
             let progress = TourProgress(status: .inProgress, stepId: "allowance")
             let data = try? JSONEncoder().encode(progress)
