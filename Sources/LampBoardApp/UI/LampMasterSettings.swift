@@ -14,6 +14,8 @@ struct LampMasterSettings: View {
     @State private var minutes = Int(Preferences().lampMasterInterval / 60)
     @State private var model = Preferences().lampMasterModel
     @State private var muted = Preferences().lampMasterMuted
+    @State private var callable = LampMasterSetup.isRegistered
+    @State private var setupError: String?
 
     var body: some View {
         Section {
@@ -35,6 +37,25 @@ struct LampMasterSettings: View {
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+
+            Toggle("Let every Claude Code session ask LampMaster", isOn: Binding(
+                get: { callable },
+                set: { wanted in Task { await setCallable(wanted) } }
+            ))
+            Text("""
+            Adds lampmaster to Claude Code as an MCP server, for all your projects. A session can \
+            then ask who else is on its files, who worked on a topic, who hit the same error — \
+            answered from this Mac, at no cost — and put a question to LampMaster, which runs a \
+            model like a round does, at most twenty times an hour. The answers describe other \
+            sessions; they never carry what those sessions wrote. Sessions already open see it \
+            after a restart.
+            """)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            if let setupError {
+                Text(setupError).font(.caption).foregroundStyle(.red)
+            }
 
             Picker("Every", selection: $minutes) {
                 ForEach([30, 60, 90, 120], id: \.self) { Text("\($0) minutes").tag($0) }
@@ -69,5 +90,16 @@ struct LampMasterSettings: View {
         // A card's "don't suggest this kind" publishes the service's state; the
         // list here follows it rather than keeping what it saw when it opened.
         .onReceive(service.$snapshot) { _ in muted = preferences.lampMasterMuted }
+    }
+
+    /// Runs `claude mcp add` or `remove` off the main thread: it is a process,
+    /// and the Settings window must not freeze while it starts.
+    private func setCallable(_ wanted: Bool) async {
+        let port = service.port
+        let outcome = await Task.detached {
+            wanted ? LampMasterSetup.register(port: port) : LampMasterSetup.unregister()
+        }.value
+        callable = LampMasterSetup.isRegistered
+        if case .failed(let reason) = outcome { setupError = reason } else { setupError = nil }
     }
 }

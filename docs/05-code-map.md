@@ -1,14 +1,14 @@
 # Code map
 
-~48,900 lines of Swift across five targets. For each file: what it contains, why
+~49,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  14,266 lines · 113 files  pure logic, zero AppKit
-  LampBoardApp/    18,309 lines · 98 files   shell: AppKit, network, windows
-  LampBoardTests/  12,442 lines · 68 files   885 cases, instantaneous
-  LampBoardE2E/    3,520 lines · 13 files   118 cases, the real binary
+  LampBoardCore/  14,303 lines · 114 files  pure logic, zero AppKit
+  LampBoardApp/    18,455 lines · 99 files   shell: AppKit, network, windows
+  LampBoardTests/  12,459 lines · 68 files   887 cases, instantaneous
+  LampBoardE2E/    3,541 lines · 13 files   119 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -712,6 +712,12 @@ carry an invented one into another session. Twenty questions an hour, five per
 session, and the same question within ten minutes gets the answer already given:
 a session's model calls tools on its own, and a loop in one must not spend the day.
 
+### `LampMasterRegistration.swift`
+The arguments of `claude mcp add` and `remove` for the `lampmaster` server, and
+whether it is registered, read from `~/.claude.json`. Read, not asked: measured on
+4 October 2026, `claude mcp get` **starts** the server to check it, and a status
+check must not launch anything. The port is named only when it is not the default.
+
 ### `LampMasterLedger.swift`
 The records of `rounds.jsonl` and `suggestions.jsonl`, and what is read back from
 them: the last run, today's tokens, the open suggestions, what the next frame is
@@ -1116,7 +1122,7 @@ up.
 this Mac and every node, with the reason when there is nothing. The quickest way
 to watch the credential being read without a dialog (D52).
 
-### `CommandLineInstall.swift` · 158
+### `CommandLineInstall.swift` · 176
 The two commands that write into somebody else's configuration file:
 `install-hooks` and `uninstall-hooks`. Split out when `CommandLineInterface`
 reached the 800-line ceiling, along the seam that was already there — everything
@@ -1131,14 +1137,15 @@ was, `1` when nothing worked, and **`2` when one agent was set up and another
 failed** — which used to be `0`, telling a script that had half-installed the
 hooks that it was finished.
 
-### `CommandLineMCP.swift` · 51
+### `CommandLineMCP.swift` · 75
 `lampboard mcp`, the `lampmaster` MCP server Claude Code starts for a session. It
 holds nothing: each line is answered by `LampMasterMCP`, each tool call is
 forwarded to the running panel with the token, as the hooks do, carrying
 `CLAUDE_CODE_SESSION_ID` and the working directory Claude Code gives it. Every
 failure comes back as a tool error the calling model can read, never a dead server.
+`mcp install | uninstall | status` manage its entry in Claude Code (D63).
 
-### `CommandLineInterface.swift` · 762
+### `CommandLineInterface.swift` · 775
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -1164,7 +1171,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
-| `LampMasterFiles.swift` | 150 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames, the last day's questions. The folder is `0700` because the frames quote conversations |
+| `LampMasterFiles.swift` | 159 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames, the last day's questions. The folder is `0700` because the frames quote conversations |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1287,6 +1294,13 @@ they had. The first version reinstalled at its own port with fresh defaults, and
 test instance on another port turned the whole shared installation towards a
 process that then exited.
 
+### `LampMasterSetup.swift` · 53
+Puts the `lampmaster` MCP server into Claude Code with `claude mcp add --scope user`
+and takes it out with `remove` — Claude Code's own writer, never a second one on
+`~/.claude.json`. Registering again replaces the entry, because the app may have
+moved. `claude` gets an empty standard input: otherwise it inherits the caller's,
+and could wait on a terminal nobody types in. `uninstall-hooks` removes it too.
+
 ### `ClaudeCodeInstallation.swift` · 66
 Which Claude Code is installed here, read rather than assumed: the native
 installer's `~/.local/bin/claude` link is named after its version, and
@@ -1335,7 +1349,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
 | `SettingsView.swift` | 166 | the Settings form: LampMaster first, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
-| `LampMasterSettings.swift` | 66 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); how often, which model, the kinds switched off |
+| `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
 | `LampMasterWindow.swift` | 180 | the cards, in a window of their own (D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the action, *Ignore*, *Wrong*, *Don't suggest this kind*. Opening it asks for a round if the last is older than fifteen minutes |
 | `PanelLampMaster.swift` | 101 | what a card does to the panel, by reusing what a row does: the same raise, the same confirmation before ending a process, the same dismissal. A card can never do something a row could not |
@@ -1350,7 +1364,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 885 cases
+## `LampBoardTests/` — 887 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1411,7 +1425,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 118 cases
+## `LampBoardE2E/` — 119 cases
 
 | Suite | Covers |
 |---|---|
@@ -1421,7 +1435,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
-| `LampMasterE2ESuite` | `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
+| `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
 
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows
 how to run the commands and the hook script, and waits with `waitUntil` because

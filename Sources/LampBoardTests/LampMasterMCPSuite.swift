@@ -159,6 +159,23 @@ enum LampMasterMCPSuite {
                           "another session asks its own")
         },
 
+        TestCase("Registration goes through claude mcp add, naming the port only when it is not the default") { t in
+            t.expectEqual(LampMasterRegistration.addArguments(executable: "/Applications/LampBoard.app/Contents/MacOS/LampBoard",
+                                                             port: 9877, defaultPort: 9877),
+                          ["mcp", "add", "--scope", "user", "lampmaster", "--", "/Applications/LampBoard.app/Contents/MacOS/LampBoard", "mcp"])
+            t.expectEqual(Array(LampMasterRegistration.addArguments(executable: "/x", port: 9899, defaultPort: 9877).suffix(3)),
+                          ["mcp", "--port", "9899"])
+            t.expectEqual(LampMasterRegistration.removeArguments, ["mcp", "remove", "--scope", "user", "lampmaster"])
+        },
+
+        TestCase("Whether it is registered is read from ~/.claude.json, never asked of a server") { t in
+            let registered = #"{"userID":"x","mcpServers":{"lampmaster":{"type":"stdio","command":"/x","args":["mcp"]}}}"#
+            t.expectEqual(LampMasterRegistration.registeredCommand(in: Data(registered.utf8)), "/x")
+            t.expectNil(LampMasterRegistration.registeredCommand(in: Data(#"{"mcpServers":{"other":{}}}"#.utf8)))
+            t.expectNil(LampMasterRegistration.registeredCommand(in: Data("not json".utf8)))
+            t.expectNil(LampMasterRegistration.registeredCommand(in: nil))
+        },
+
         TestCase("Five questions an hour a session, twenty in all") { t in
             let five = (0..<5).map { LampMasterAskLimits.Asked(at: F.at(Double($0)), session: "s1", question: "q\($0)", answer: "a") }
             guard case .refuse = LampMasterAskLimits.decide(history: five, session: "s1", question: "new", now: F.at(10)) else {

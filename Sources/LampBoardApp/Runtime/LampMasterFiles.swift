@@ -95,9 +95,18 @@ struct LampMasterFiles {
     }
 
     /// A booked question, completed with its answer and its cost.
+    ///
+    /// Found by session, question and second, not by equality: the file keeps
+    /// whole seconds, so the booking read back is never equal to the one in
+    /// memory. Measured on the test Mac: every question stayed in the file
+    /// twice, booked and answered, and counted twice against the limits.
     func replace(_ booked: LampMasterAskLimits.Asked, with done: LampMasterAskLimits.Asked) {
         var all = asks()
-        if let index = all.lastIndex(of: booked) { all[index] = done } else { all.append(done) }
+        let index = all.lastIndex {
+            $0.answer == nil && $0.tokens == nil && $0.session == booked.session && $0.question == booked.question
+                && abs($0.at.timeIntervalSince(booked.at)) < 1
+        }
+        if let index { all[index] = done } else { all.append(done) }
         write(all.compactMap(LampMasterLedger.line).map { $0 + "\n" }.joined(), to: asksURL)
     }
 

@@ -2604,3 +2604,19 @@ carries is the caller's own word and serves only the per-session limit; the hour
 total is the bound. What remains is the answer's prose, LampMaster's own synthesis,
 which no program can hold to the frame word for word; it comes from a run with no
 tools, and reaches the session after the notice.
+
+## D63 · Sessions reach LampMaster only once the user puts it into Claude Code
+
+**Decided.** The `lampmaster` MCP server reaches Claude Code only through a switch
+in Settings, or `lampboard mcp install`, which runs `claude mcp add --scope user`;
+switching it off, `lampboard mcp uninstall` and `lampboard uninstall-hooks` run
+`claude mcp remove`. Whether it is registered is read from `~/.claude.json`.
+
+**Why.** User scope, because the session that would benefit is never the one
+somebody thought of ahead of time. Claude Code's own command, because
+`~/.claude.json` is a file Claude Code rewrites all day, and a second writer is a
+race that shows up as a setting quietly gone. Read rather than asked, because
+measured on 4 October 2026 `claude mcp get` starts the server to check its health:
+a status that launches what it reports on is not a status. And with the hooks on
+uninstall, because a registration left behind makes every session start a binary
+that may no longer exist, and fail where nobody looks.

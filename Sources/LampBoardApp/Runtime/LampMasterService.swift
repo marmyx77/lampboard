@@ -35,6 +35,8 @@ final class LampMasterService: ObservableObject {
     private let box = LampMasterBox()
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
+    /// The port this panel listens on, which the MCP server's entry must name.
+    var port = AppConfig.listenPort
     private var timer: Timer?
 
     init(

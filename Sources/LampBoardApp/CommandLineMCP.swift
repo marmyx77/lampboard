@@ -48,4 +48,28 @@ enum LampMasterBridge {
             return (text, reply["isError"] as? Bool ?? false)
         }
     }
+
+    /// `lampboard mcp install | uninstall | status`.
+    static func setup(_ verb: String, port: UInt16) -> Int32 {
+        let outcome: LampMasterSetup.Outcome
+        switch verb {
+        case "install": outcome = LampMasterSetup.register(port: port)
+        case "uninstall": outcome = LampMasterSetup.unregister()
+        default:
+            print(LampMasterSetup.isRegistered
+                ? "lampmaster is registered in Claude Code: every session can ask LampMaster."
+                : "lampmaster is not registered in Claude Code.")
+            return 0
+        }
+        switch outcome {
+        case .done:
+            print(verb == "install"
+                ? "lampmaster registered in Claude Code. Sessions started from now on can ask LampMaster."
+                : "lampmaster removed from Claude Code.")
+            return 0
+        case .failed(let reason):
+            FileHandle.standardError.write(Data("lampmaster: \(reason)\n".utf8))
+            return 1
+        }
+    }
 }

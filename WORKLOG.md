@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **885**, instantaneous |
-| End-to-end tests | **118**, about a minute |
+| Domain tests | **887**, instantaneous |
+| End-to-end tests | **119**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2181,4 +2181,13 @@ minute-long answer read the same history — and that titles and file names, cho
 by other sessions, reached the asking model untouched. Questions are now booked
 before they run, two at most at once; names are flattened and clipped, and every
 result opens with a notice that it is data, not instructions.
+
+Last, the switch that puts `lampmaster` into Claude Code for every session (D63),
+and the proof the plan asked for: on the test Mac a throwaway session, Haiku,
+given the freshly built server, called `overlaps` and found the invented session
+that had written `routes.ts`, then asked LampMaster who renamed the endpoint and
+got the answer, in Italian, with its one real source — 11 seconds, $0.023 for the
+caller and 1,904 tokens for the question. The run also showed every question
+written twice to its ledger, booked and answered, because a booking read back had
+lost its fractions of a second; it is matched by session, question and second now.
 

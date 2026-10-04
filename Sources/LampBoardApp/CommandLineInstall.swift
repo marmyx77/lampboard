@@ -108,6 +108,18 @@ extension CommandLineInterface {
             }
         }
 
+        // The MCP server goes with the hooks: an uninstall that left it would
+        // leave every session starting a binary that may no longer be there.
+        if LampMasterSetup.isRegistered {
+            switch LampMasterSetup.unregister() {
+            case .done:
+                print("LampMaster: the lampmaster MCP server removed from Claude Code.")
+            case .failed(let reason):
+                FileHandle.standardError.write(Data("LampMaster: NOT removed: \(reason)\n".utf8))
+                failed = true
+            }
+        }
+
         return failed ? 1 : 0
     }
 

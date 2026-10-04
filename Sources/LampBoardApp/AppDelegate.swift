@@ -69,6 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store.startPolling()
         fleet.start()
+        lampMaster.port = port
         lampMaster.start()
 
         if !headless && shouldPromptForInstallation {

@@ -305,6 +305,8 @@ enum LampMasterE2ESuite {
                     let text = ((first[7]?["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
                     t.expect(text.hasPrefix(LampMasterMCP.dataNotice + "\nThe docs build waits for a yes"), text)
                     t.expect(!bench.read("stdin.txt").contains("watching the docs build"), "no notebook in a question's frame")
+                    let asks = (try? String(contentsOf: bench.folder.appendingPathComponent("asks.jsonl"), encoding: .utf8)) ?? ""
+                    t.expectEqual(asks.split(separator: "\n").count, 1, "the booking became the answer, not a second line")
                     t.expect(text.contains("Shall I publish it to staging?"), "the real source stays")
                     t.expect(!text.contains("production already"), "the invented one goes")
                     t.expect(text.contains("only the user"), "the referral says who sends it")
@@ -312,6 +314,25 @@ enum LampMasterE2ESuite {
                     let again = bench.mcp(as: "0000aaaa-asker", [question])
                     t.expectNotNil(again[7], "answered again")
                     t.expectEqual(bench.calls(), 1, "the repeat cost nothing")
+                }
+            },
+
+            TestCase("mcp install registers through claude, uninstall-hooks takes it out again") { t in
+                bench(t) { bench in
+                    let install = bench.app.runCommand(["mcp", "install", "--port", String(bench.app.port)])
+                    t.expectEqual(install.status, 0, "installed: \(install.output)")
+                    let args = bench.read("args.txt").split(separator: "\n").map(String.init)
+                    t.expectEqual(Array(args.prefix(6)), ["mcp", "add", "--scope", "user", "lampmaster", "--"], "claude's own command")
+                    t.expectEqual(Array(args.suffix(3)), ["mcp", "--port", String(bench.app.port)], "this binary, on this port")
+                    // What claude would have written, so the uninstall sees it.
+                    let config = bench.app.home.appendingPathComponent(".claude.json")
+                    try? #"{"mcpServers":{"lampmaster":{"type":"stdio","command":"/x","args":["mcp"]}}}"#
+                        .write(to: config, atomically: true, encoding: .utf8)
+                    t.expectEqual(bench.app.runCommand(["mcp", "status"]).output.contains("is registered"), true, "status reads the file")
+                    let uninstall = bench.app.runCommand(["uninstall-hooks"])
+                    t.expect(uninstall.output.contains("lampmaster MCP server removed"), "uninstall-hooks: \(uninstall.output)")
+                    t.expectEqual(bench.read("args.txt").split(separator: "\n").map(String.init),
+                                  ["mcp", "remove", "--scope", "user", "lampmaster"], "removed with claude's own command")
                 }
             },
 

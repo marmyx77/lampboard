@@ -16,6 +16,9 @@ enum CommandLineInterface {
         /// The `lampmaster` MCP server: Claude Code starts it, it talks JSON-RPC
         /// on standard input and output and asks the running panel.
         case mcp(port: UInt16)
+        /// `mcp install`, `mcp uninstall`, `mcp status`: the server's entry in
+        /// Claude Code's user settings.
+        case mcpSetup(verb: String, port: UInt16)
         case focus(workspaceName: String, dryRun: Bool)
         case next(port: UInt16)
         /// `nil` lists the assignments instead of opening one.
@@ -51,6 +54,9 @@ enum CommandLineInterface {
         case "codex-probe":
             return .codexProbe
         case "mcp":
+            if let verb = args.dropFirst().first, ["install", "uninstall", "status"].contains(verb) {
+                return .mcpSetup(verb: verb, port: port)
+            }
             return .mcp(port: port)
         case "selftest", "doctor":
             return .selfTest(port: port)
@@ -131,6 +137,9 @@ enum CommandLineInterface {
 
         case .mcp(let port):
             return LampMasterBridge.run(port: port)
+
+        case .mcpSetup(let verb, let port):
+            return LampMasterBridge.setup(verb, port: port)
 
         case .focus(let workspaceName, let dryRun):
             return runFocus(workspaceName: workspaceName, dryRun: dryRun)
@@ -513,6 +522,10 @@ enum CommandLineInterface {
                                               without touching the editor
           lampboard remote [verb] [host]    the machines whose sessions join the column:
                                               list | add | remove | check | install | uninstall
+          lampboard mcp [install|uninstall|status]
+                                            the lampmaster MCP server: with no verb, the server
+                                              itself, as Claude Code starts it; install registers
+                                              it for every session, uninstall removes it
           lampboard help                    show this text
 
         OPTIONS
