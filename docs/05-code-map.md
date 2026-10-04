@@ -1,13 +1,13 @@
 # Code map
 
-~44,100 lines of Swift across five targets. For each file: what it contains, why
+~45,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  12,236 lines · 99 files   pure logic, zero AppKit
+  LampBoardCore/  13,206 lines · 106 files  pure logic, zero AppKit
   LampBoardApp/    16,939 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,542 lines · 61 files   812 cases, instantaneous
+  LampBoardTests/  11,989 lines · 66 files   848 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -608,6 +608,59 @@ transcript is the bug the end-to-end suite caught — a turn that has just start
 has written nothing yet, so a row cleared a moment ago could never go yellow
 again.
 
+## `LampMaster/`
+
+LampMaster, the director: once an hour it reads every session and suggests at
+most three things — one session knows what another needs, something waits or is
+stuck, two sessions overlap, work is done and can be closed, a problem was solved
+before somewhere else. This folder is the part that decides; nothing here runs a
+model or reads a disk (D58).
+
+### `SessionCard.swift`
+What LampMaster knows about one conversation: the last three prompts, the last
+answer, the model and context, the files written, the calls that failed, and what
+got saved — commits, merges, pushes, pull requests, test runs. Small on purpose:
+eight conversations fit in about 2,500 tokens. `lastAnswerAsks` is a heuristic
+(a question mark, or a short English list of hand-overs) and is labelled as one;
+the round reads the answer itself.
+
+### `SessionCardReader.swift`
+Fills the card from transcript chunks, keeping the line a chunk cut in two, like
+`TranscriptTail`. Prompts and answers come from `TranscriptDecoder`, so a tool
+result is never mistaken for something the user typed. A shell command counts as
+a milestone only when its result comes back without an error, and only by the
+verb after `git` and its global options: a commit message that says "merge" is
+not a merge. Everything it keeps is bounded.
+
+### `FailureFingerprint.swift`
+An error with its paths, hashes and numbers taken out, so the same failure twice
+reads the same — what "stuck on the same error" and "solved before" are both
+matched on. A hash must contain a digit, or `defaced` would be one.
+
+### `LampMasterSignals.swift`
+What can be told without any model, with every threshold in one place: waiting on
+you, stuck in a turn, the same failure three times in an hour, the same files or
+branch as another session, finished, context nearly full. They show at once and
+reach the round already worked out, so its tokens go on what only a model can
+judge. A session asking through the panel's own amber is not also "waiting".
+
+### `LampMasterFrame.swift`
+The frame the round is given, under a 12,000-token budget: sessions with signals
+first, then live ones, then the most recent. Over budget it shortens quiet closed
+sessions before it drops any. A live session is in as soon as it has done
+anything; a closed one for six hours, or a week if it was left asking.
+
+### `LampMasterAdvice.swift`
+The round's answer and the validator between it and the panel. A suggestion is
+shown only if every session it names is in the frame, it quotes the frame word
+for word for at least twenty characters, it was not shown in the last day, its
+kind is not muted, its confidence is at least 0.5, and fewer than three were
+shown already. A malformed answer is no answer.
+
+### `LampMasterPrompt.swift`
+The system prompt, the fenced user message and the JSON Schema for `--json-schema`.
+The frame is declared as data: what sessions wrote may read like orders.
+
 ## `Seat/`
 
 Where a session's process lives — what a click on a terminal row has to bring
@@ -1205,7 +1258,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 812 cases
+## `LampBoardTests/` — 848 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1227,6 +1280,8 @@ script, before it was split. The most important ones:
 | `AwaitingReleaseSuite` | a question you have answered stops flashing |
 | `WaitingSuite` | a session that has stopped but is not done is blue, and says what it waits on |
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
+| `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
+| `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |

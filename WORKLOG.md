@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **812**, instantaneous |
+| Domain tests | **848**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2127,3 +2127,17 @@ vigilant-ramanujan-790712` on branch `claude/vigilant-ramanujan-790712`, still a
 `main`'s commit. The row carried the generated name. Rows of the application's
 worktrees now read `Exit · vigilant-ramanujan` (D57); seven domain cases, among
 them an editor's worktree row that must keep its folder's name.
+
+## 4 October — LampMaster, the part that decides
+
+The director has a name, LampMaster, and its first stage: the cards a transcript
+is read into, the signals that need no model, the frame the hourly round is given
+and the validator between the round and the panel (D58). Nothing runs a model
+yet and nothing reads a disk: this is the part that decides, under 36 new domain
+cases. The round itself was measured first, read-only, against real sessions —
+and the measurement that mattered was the one before it: an unconfigured
+`claude -p` spends 268,908 tokens to say "ok".
+
+The gate now runs on a second Mac (`Scripts/run-remote.sh`), and the package
+builds with Swift 6.4.
+

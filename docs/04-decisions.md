@@ -2464,3 +2464,30 @@ conversation. The repository name was already known — the card said "a linked
 worktree; the name is the main repository's" — it just was not the row's name.
 Editor rows keep the folder because their name is the title of the window they
 raise, and a row that disagreed with its window would read as a different place.
+
+## D58 · LampMaster notices for free and thinks once an hour
+
+**Decided.** LampBoard gets a director, LampMaster, that reads every session and
+suggests at most three things an hour: one session knows what another needs,
+something waits or is stuck, two sessions overlap, work is done and can be
+closed, a problem was solved before somewhere else. What can be told from data
+the panel already has is told by rules, at no cost, and shown at once; a real
+model (Opus) reads the whole picture once an hour, through `claude -p` with
+everything of the user's own setup switched off. Every suggestion quotes the
+picture word for word or is dropped before it is shown. LampMaster proposes; the
+user acts.
+
+**Why.** Measured on 4 October 2026 against the sessions of the one person using
+it, read-only. A plain `claude -p` asked to answer "ok" wrote **268,908 tokens**
+to the cache, nearly all of them the user's MCP connectors; with
+`--tools "" --strict-mcp-config --setting-sources "" --disable-slash-commands`,
+hooks disabled and no session persistence, the same call costs 689. A whole
+round over eight conversations was then about 7,000 tokens and 17 seconds with
+Opus, and it found what no single session can see: a build waiting for an
+"install" for 106 minutes, while another session showed the old version still
+running and a third had merged work the build had to contain. Sonnet found the
+first and missed the connection. Without the hooks switched off the round would
+have shown up as a session in the panel itself.
+
+The validator is there because the prototype's best property — it invented
+nothing — was a hope; here it is a check.
