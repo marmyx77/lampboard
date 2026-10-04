@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  17,028 lines · 134 files  pure logic, zero AppKit
-  LampBoardApp/    21,458 lines · 122 files   shell: AppKit, network, windows
-  LampBoardTests/  14,090 lines · 83 files   1024 cases, instantaneous
-  LampBoardE2E/    4,093 lines · 18 files   139 cases, the real binary
+  LampBoardCore/  17,069 lines · 134 files  pure logic, zero AppKit
+  LampBoardApp/    21,545 lines · 122 files   shell: AppKit, network, windows
+  LampBoardTests/  14,129 lines · 83 files   1027 cases, instantaneous
+  LampBoardE2E/    4,103 lines · 18 files   140 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -1078,7 +1078,7 @@ editor.
 
 ## `Permission/`
 
-### `PermissionGate.swift` · 117
+### `PermissionGate.swift` · 126
 Allow and Deny from the panel (D73, D80), as rules: the ask a session's mod posts —
 session, call, tool, and one masked line, read with the mod's own validators and
 refused rather than guessed when malformed; the verdict, one of `allow`, `deny`,
@@ -1107,16 +1107,19 @@ one line of at most 120 characters; `record` reads a `ModReport` into it. In mem
 
 ## `Queue/`
 
-### `WaitingQueue.swift` · 221
+### `WaitingQueue.swift` · 254
 "Waiting for you" (UX §3, D74): the cards drawn from the rows — a permission, a
 question, a turn stuck on one tool, a failed turn, answers to read (one card each up
 to two, then one card for all), LampMaster's first open suggestion last with the
 count of the rest — in that order, then by age, read from the state the row shows.
+An ask the panel holds (D80) is a permission card of its own, carrying its call.
 A card is armed 600 ms after the queue first shows it as it is (`Arming`): an ask's
 words are in its id, so a second permission is a new card. The keys: `J` `K` move and stop at the ends, `O` opens, `E` marks read what
-there is to read; `A` `S` `D`, `R` and the digits answer *unavailable* until the
-panel has a hand in the session (D73). A card that leaves without the panel acting
-on it, if it was an ask, was resolved elsewhere.
+there is to read; `A` and `D` answer an ask the panel holds; `S`, `R` and the digits,
+and `A` `D` on any other card, answer *unavailable* until the panel has a hand in the
+session (D73). A card that leaves without the panel acting on it, if it was an ask,
+was answered in the terminal; a held ask is said only when it went back to its
+dialog (`returned`).
 
 > **Touching here** changes what interrupts somebody first. A permission must never
 > be something `E` reads away: that is a question left unanswered.
@@ -1406,11 +1409,11 @@ there, the hooks are registered — and it names the link that broke.
 | `ModReceiver.swift` | 93 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 518 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
-| `PermissionDesk.swift` | 132 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check` |
+| `PermissionDesk.swift` | 152 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog |
 | `PlanciaModel.swift` | 49 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it, the pin |
 | `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
-| `WaitingQueueModel.swift` | 183 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E` and answers `A S D R 1–9` with a beep until the panel can act in a session (D73) |
+| `WaitingQueueModel.swift` | 198 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
@@ -1575,14 +1578,14 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 743 | holds everything together; row and panel actions |
+| `PanelController.swift` | 745 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
-| `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
+| `PanelQueue.swift` | 68 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow and Deny handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
 | `PanelPlancia.swift` | 124 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 80 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go |
-| `WaitingQueueSection.swift` | 126 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; VoiceOver reads the kind, the project and the ask |
+| `WaitingQueueSection.swift` | 156 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -1618,7 +1621,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `SettingsView.swift` | 168 | the Settings form: LampMaster first, the companion mod, the menu bar and notifications, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
-| `ModSettings.swift` | 92 | the companion mod's switch, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
+| `ModSettings.swift` | 112 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
@@ -1635,7 +1638,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1024 cases
+## `LampBoardTests/` — 1027 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1711,7 +1714,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 139 cases
+## `LampBoardE2E/` — 140 cases
 
 | Suite | Covers |
 |---|---|
@@ -1722,7 +1725,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
-| `PermissionE2ESuite` | an ask without the token's proof answered `ask`, unsigned; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once |
+| `PermissionE2ESuite` | a permission key of its own, not the token; an ask without the key's proof, or proven with the token, answered `ask`, unsigned; a new installation answering `ask` at once; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
 | `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |

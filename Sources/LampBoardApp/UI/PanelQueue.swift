@@ -17,6 +17,9 @@ extension PanelController {
         queue.onMarkRead = { [weak self] ids in
             ids.forEach { self?.store.markSeen(sessionId: $0) }
         }
+        queue.onAnswer = { [weak self] session, call, verdict in
+            self?.permissionDesk?.answer(session: session, call: call, verdict) ?? false
+        }
         queue.onLayoutChange = { [weak self] in
             guard let self else { return }
             self.resizeToFit(self.store.state)
@@ -44,6 +47,12 @@ extension PanelController {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refreshQueue() }
             .store(in: &cancellables)
+        // An ask the panel holds comes and goes with the mod, not with a hook.
+        permissionDesk?.$pending
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshQueue() }
+            .store(in: &cancellables)
         // A turn becomes stuck by time alone, with no event to say so.
         Timer.publish(every: 30, on: .main, in: .common)
             .autoconnect()
@@ -53,6 +62,7 @@ extension PanelController {
     }
 
     func refreshQueue() {
-        queue.refresh(sessions: Array(store.state.sessions.values), suggestions: lampMaster?.snapshot.open ?? [])
+        queue.refresh(sessions: Array(store.state.sessions.values), suggestions: lampMaster?.snapshot.open ?? [],
+                      asks: permissionDesk?.pending ?? [], returned: permissionDesk?.returned ?? [])
     }
 }

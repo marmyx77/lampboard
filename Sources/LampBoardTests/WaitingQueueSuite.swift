@@ -26,6 +26,10 @@ enum WaitingQueueSuite {
 
     private static func kinds(_ cards: [WaitingCard]) -> [WaitingCard.Kind] { cards.map(\.kind) }
 
+    private static func held(_ session: String, _ call: String, line: String = "Bash: npm publish", at seconds: Double = 0) -> PermissionGate.Request {
+        PermissionGate.Request(sessionId: session, callId: call, tool: "Bash", line: line, receivedAt: at(seconds))
+    }
+
     static let suite = TestSuite("The queue of what waits for you", [
 
         TestCase("Permissions, questions, stuck, failed, ready, LampMaster: urgency, then age") { t in
@@ -110,6 +114,41 @@ enum WaitingQueueSuite {
             for key in [WaitingQueue.Key.allow, .always, .deny, .reply, .option(1)] {
                 t.expectEqual(cursor.press(key, cards: cards), .unavailable, "\(key)")
             }
+        },
+
+        TestCase("An ask the panel holds is a permission card, first, with its call") { t in
+            let cards = WaitingQueue.cards(sessions: [row("p", .working), row("f", .failed)], suggestions: [],
+                                           asks: [held("p", "toolu_1", at: 3)], now: at(5))
+            t.expectEqual(kinds(cards), [.permission, .failed])
+            t.expectEqual(cards.first?.call, "toolu_1")
+            t.expectEqual(cards.first?.sessionIds, ["p"])
+            t.expectEqual(cards.first?.title, "p", "the session's name")
+            t.expectEqual(cards.first?.line, "Bash: npm publish")
+            t.expectEqual(cards.first?.appearedAt, at(3))
+            let stranger = WaitingQueue.cards(sessions: [], suggestions: [], asks: [held("gone", "toolu_2")], now: at(5))
+            t.expectEqual(stranger.first?.title, "A session", "one the panel does not show is still asked about")
+        },
+
+        TestCase("Allow and Deny answer an ask the panel holds; Always does not") { t in
+            let cards = WaitingQueue.cards(sessions: [row("p", .working)], suggestions: [], asks: [held("p", "toolu_1")], now: at(5))
+            var cursor = WaitingQueue.Cursor()
+            t.expectEqual(cursor.press(.allow, cards: cards), .answer(sessionId: "p", call: "toolu_1", .allow))
+            t.expectEqual(cursor.press(.deny, cards: cards), .answer(sessionId: "p", call: "toolu_1", .deny))
+            t.expectEqual(cursor.press(.always, cards: cards), .unavailable, "the mod can say allow, not always")
+            t.expectEqual(cursor.press(.open, cards: cards), .open(sessionId: "p"))
+        },
+
+        TestCase("An ask the panel held that left unanswered went back to the terminal") { t in
+            let before = WaitingQueue.cards(sessions: [row("p", .working)], suggestions: [], asks: [held("p", "toolu_1")], now: at(5))
+            let after = WaitingQueue.cards(sessions: [row("p", .awaiting)], suggestions: [], now: at(60))
+            t.expectEqual(WaitingQueue.resolvedElsewhere(before: before, after: after, actedOn: []), [],
+                          "answered from the panel by another door: nothing to say")
+            let gone = WaitingQueue.resolvedElsewhere(before: before, after: after, actedOn: [],
+                                                      returned: [WaitingQueue.heldKey(session: "p", call: "toolu_1")])
+            t.expectEqual(gone.map(\.call), ["toolu_1"])
+            t.expectEqual(gone.first.map(WaitingQueue.resolvedLine), "Back to the terminal's dialog")
+            let answered = WaitingQueue.cards(sessions: [row("q", .awaiting)], suggestions: [], now: at(5))
+            t.expectEqual(answered.first.map(WaitingQueue.resolvedLine), "Answered in the terminal")
         },
 
         TestCase("The selection follows its card when the queue changes, and stays in range") { t in

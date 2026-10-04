@@ -46,10 +46,11 @@ enum PermissionE2ESuite {
     }
 
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
-        func instance(on: Bool, _ t: Assertions, _ body: (AppUnderTest) -> Void) {
+        // `on: nil` leaves the switch as a new installation has it.
+        func instance(on: Bool?, _ t: Assertions, _ body: (AppUnderTest) -> Void) {
             let app = AppUnderTest(binaryURL: binaryURL, port: port)
             let domain = "com.lampboard.app.test.\(app.home.lastPathComponent)"
-            UserDefaults(suiteName: domain)?.set(on, forKey: "permissions.panel")
+            if let on { UserDefaults(suiteName: domain)?.set(on, forKey: "permissions.panel") }
             UserDefaults(suiteName: domain)?.synchronize()
             defer {
                 app.stop()
@@ -82,6 +83,15 @@ enum PermissionE2ESuite {
                     let reply = check(app, call: "toolu_off", nonce: nonce)
                     t.expectEqual(reply, PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce))
                     t.expect(Date().timeIntervalSince(started) < 3, "no wait")
+                }
+            },
+
+            TestCase("a new installation does not answer permissions until switched on (D73)") { t in
+                instance(on: nil, t) { app in
+                    let started = Date()
+                    t.expectEqual(check(app, call: "toolu_new", nonce: nonce), PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce))
+                    t.expect(Date().timeIntervalSince(started) < 3, "no wait: the dialog, as without the panel")
+                    t.expectEqual(app.raw(method: "GET", path: AppConfig.checkPath).body, "[]", "nothing held")
                 }
             },
 

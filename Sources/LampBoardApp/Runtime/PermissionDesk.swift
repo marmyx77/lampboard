@@ -11,6 +11,9 @@ import LampBoardCore
 final class PermissionDesk: ObservableObject {
 
     @Published private(set) var pending: [PermissionGate.Request] = []
+    /// The asks that went back to their dialog, by `WaitingQueue.heldKey`:
+    /// expired, or given up on. The latest few, so the queue can say so.
+    private(set) var returned: Set<String> = []
 
     private let preferences: Preferences
     private var book = PermissionGate.Book() { didSet { box.publish(book.pending) } }
@@ -67,7 +70,9 @@ final class PermissionDesk: ObservableObject {
             }
             return PermissionGate.signed(.ask, key: key, nonce: nonce)
         }
-        _ = reply.done.wait(timeout: .now() + PermissionGate.answerWithin + 1)
+        // Past the once-a-second expiry, so a late answer is never taken by an
+        // ask whose connection has already gone back to the dialog.
+        _ = reply.done.wait(timeout: .now() + PermissionGate.answerWithin + 2)
         return PermissionGate.signed(reply.verdict, key: key, nonce: nonce)
     }
 
@@ -95,6 +100,7 @@ final class PermissionDesk: ObservableObject {
               let reply = replies.removeValue(forKey: Self.key(session, callId)) else { return false }
         reply.verdict = given
         reply.done.signal()
+        if given == .ask { remember(returned: [WaitingQueue.heldKey(session: session, call: callId)]) }
         pending = book.pending
         return true
     }
@@ -117,7 +123,12 @@ final class PermissionDesk: ObservableObject {
         let gone = book.expired(at: Date())
         guard !gone.isEmpty else { return }
         for request in gone { replies.removeValue(forKey: Self.key(request.sessionId, request.callId))?.done.signal() }
+        remember(returned: gone.map { WaitingQueue.heldKey(session: $0.sessionId, call: $0.callId) })
         pending = book.pending
+    }
+
+    private func remember(returned keys: [String]) {
+        returned = Set(keys).union(returned.count > 32 ? [] : returned)
     }
 
     /// What waits, as JSON, readable from the server's queue without a hop.
@@ -134,7 +145,7 @@ final class PermissionDesk: ObservableObject {
         func current() -> Data { lock.lock(); defer { lock.unlock() }; return data }
     }
 
-    private static func key(_ session: String, _ call: String) -> String { session + "/" + call }
+    private static func key(_ session: String, _ call: String) -> String { WaitingQueue.heldKey(session: session, call: call) }
 
     private final class Box: @unchecked Sendable { var reply: Reply?; var abandoned = false }
     private final class Flag: @unchecked Sendable { var value = false }

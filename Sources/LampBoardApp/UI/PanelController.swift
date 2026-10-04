@@ -63,6 +63,8 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// What each session has been doing, for the Plancia's tabs.
     var activity: ActivityRecorder?
+    /// The permissions the panel holds, answered from the queue (D80).
+    var permissionDesk: PermissionDesk?
     var onOpenLampMaster: (() -> Void)?
     var tour: TourController?
 

@@ -13,8 +13,12 @@ struct WaitingQueueSection: View {
         if !model.cards.isEmpty || !model.resolved.isEmpty {
             VStack(spacing: Layout.rowSpacing) {
                 ForEach(model.visible) { card in
-                    WaitingCardView(card: card, selected: model.isSelected(card), armed: model.isArmed(card), resolved: false)
-                        .onTapGesture { model.click(card) }
+                    WaitingCardView(card: card, selected: model.isSelected(card), armed: model.isArmed(card), resolved: false,
+                                    onAnswer: { model.answer(card, $0) })
+                        // Not on a held permission: a click on its Allow must
+                        // never also raise the session (a review finding). `O`
+                        // still opens it.
+                        .onTapGesture { if card.call == nil { model.click(card) } }
                 }
                 ForEach(model.resolved) { card in
                     WaitingCardView(card: card, selected: false, armed: false, resolved: true)
@@ -44,6 +48,8 @@ struct WaitingCardView: View {
     let armed: Bool
     /// Answered somewhere else, shown for a moment before it goes.
     let resolved: Bool
+    /// Allow or Deny, for an ask the panel holds.
+    var onAnswer: (PermissionGate.Verdict) -> Void = { _ in }
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
@@ -63,12 +69,19 @@ struct WaitingCardView: View {
                     if card.more > 0 {
                         Text("+\(card.more)").font(.system(size: 9, weight: .bold)).monospacedDigit().foregroundStyle(tint)
                     }
+                    if card.call != nil, !resolved {
+                        answerButton("Deny", .deny)
+                        answerButton("Allow", .allow)
+                    }
                 }
-                Text(resolved ? "Resolved elsewhere" : card.line)
+                Text(resolved ? WaitingQueue.resolvedLine(card) : card.line)
                     .font(.system(size: 10))
                     .foregroundStyle(Color.primary.opacity(0.62))
                     .lineLimit(1)
-                    .truncationMode(.tail)
+                    // What is allowed keeps both ends: `curl … | sh` must not
+                    // lose its tail beside the Allow button.
+                    .truncationMode(card.call == nil ? .tail : .middle)
+                    .help(card.call == nil ? "" : card.line)
             }
         }
         .padding(.horizontal, 6)
@@ -86,9 +99,26 @@ struct WaitingCardView: View {
         // Unarmed, it looks it: a card that looks ready must be.
         .opacity(resolved ? 0.45 : (armed ? 1 : 0.7))
         .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(kindName): \(card.title), \(resolved ? "resolved elsewhere" : card.line)")
+        .accessibilityElement(children: card.call == nil || resolved ? .ignore : .contain)
+        .accessibilityLabel("\(kindName): \(card.title), \(resolved ? WaitingQueue.resolvedLine(card) : card.line)")
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
+        .accessibilityHint(card.call == nil || resolved ? "" : "Allow or Deny from the actions, or A and D")
+        .accessibilityAction(named: "Allow") { if card.call != nil, !resolved { onAnswer(.allow) } }
+        .accessibilityAction(named: "Deny") { if card.call != nil, !resolved { onAnswer(.deny) } }
+    }
+
+    /// Small, and inert until the card arms: a permission that pops up under
+    /// the pointer is never answered by a click meant for something else.
+    private func answerButton(_ title: String, _ verdict: PermissionGate.Verdict) -> some View {
+        Button(title) { onAnswer(verdict) }
+            .buttonStyle(.plain)
+            .font(.system(size: 9, weight: .semibold))
+            .padding(.horizontal, 5)
+            .frame(height: 13)
+            .background(Capsule().fill(verdict == .allow ? tint.opacity(0.28) : StatusPalette.blockEdge))
+            .disabled(!armed)
+            .help(verdict == .allow ? "Allow this call (A)" : "Deny this call (D)")
+            .accessibilityLabel(verdict == .allow ? "Allow" : "Deny")
     }
 
     private var glyph: String {

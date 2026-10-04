@@ -23,6 +23,9 @@ final class WaitingQueueModel: ObservableObject {
     /// Opens a session, as a click on its row does.
     var onOpen: (String) -> Void = { _ in }
     var onMarkRead: ([String]) -> Void = { _ in }
+    /// Allow or Deny for an ask the panel holds.
+    /// `false` when the ask was gone already: said with a beep, not in silence.
+    var onAnswer: (String, String, PermissionGate.Verdict) -> Bool = { _, _, _ in false }
     /// The number of lines drawn changed: the panel has to be remeasured.
     var onLayoutChange: () -> Void = {}
     /// Whether the panel holds the keyboard now. Keys are only ever taken then.
@@ -59,12 +62,13 @@ final class WaitingQueueModel: ObservableObject {
         keyboardActive = active
     }
 
-    func refresh(sessions: [SessionState], suggestions: [LampMasterShown], now: Date = Date()) {
-        let next = WaitingQueue.cards(sessions: sessions, suggestions: suggestions, now: now)
+    func refresh(sessions: [SessionState], suggestions: [LampMasterShown], asks: [PermissionGate.Request] = [],
+                 returned: Set<String> = [], now: Date = Date()) {
+        let next = WaitingQueue.cards(sessions: sessions, suggestions: suggestions, asks: asks, now: now)
         arming.update(next, now: now)
         guard next != cards else { return }
         let before = (drawn: drawnCards, more: hiddenCount > 0)
-        let gone = WaitingQueue.resolvedElsewhere(before: cards, after: next, actedOn: actedOn)
+        let gone = WaitingQueue.resolvedElsewhere(before: cards, after: next, actedOn: actedOn, returned: returned)
         var followed = moved ? cursor : WaitingQueue.Cursor()
         if moved { followed.follow(from: cards, to: next) }
         cursor = followed
@@ -80,6 +84,14 @@ final class WaitingQueueModel: ObservableObject {
         guard isArmed(card), let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
         cursor = WaitingQueue.Cursor(selected: index)
         perform(cursor.selected, .open)
+    }
+
+    /// A click on a held permission's Allow or Deny: what `A` and `D` do, once
+    /// the card is armed.
+    func answer(_ card: WaitingCard, _ verdict: PermissionGate.Verdict) {
+        guard isArmed(card), let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
+        cursor = WaitingQueue.Cursor(selected: index)
+        perform(cursor.selected, verdict == .allow ? .allow : .deny)
     }
 
     // MARK: - Keys
@@ -123,6 +135,9 @@ final class WaitingQueueModel: ObservableObject {
         case .markRead(let ids):
             actedOn.insert(cards[index].id)
             onMarkRead(ids)
+        case .answer(let session, let call, let verdict):
+            actedOn.insert(cards[index].id)
+            if !onAnswer(session, call, verdict) { NSSound.beep() }
         case .unavailable:
             // Said, not swallowed in silence: the key is right, the hand is not
             // there yet (D73).

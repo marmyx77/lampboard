@@ -102,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         controller.lampMaster = lampMaster
         controller.activity = activity
+        controller.permissionDesk = permissions
         mod.onReport = { [activity] report, at in activity.record(report, at: at) }
         GettingStartedWindowController.shared.configure(
             port: port, lampMaster: lampMaster,

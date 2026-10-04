@@ -33,6 +33,14 @@ public enum PermissionGate {
         public let tool: String
         public let line: String
         public let receivedAt: Date
+
+        public init(sessionId: String, callId: String, tool: String, line: String, receivedAt: Date) {
+            self.sessionId = sessionId
+            self.callId = callId
+            self.tool = tool
+            self.line = line
+            self.receivedAt = receivedAt
+        }
     }
 
     /// The body the mod posts: `{"v":1,"session","id","tool","detail"?}`.

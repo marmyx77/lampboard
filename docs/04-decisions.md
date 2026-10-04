@@ -3094,3 +3094,22 @@ suite asks with it to see so. A call id already waiting under one session no
 longer stops the same id from another; and a connection that gave up withdraws
 only its own booking, never another's for the same call.
 
+**The panel's side (AD3).** An ask the panel holds is a permission card at the
+top of "Waiting for you" (D74), with Allow and Deny on it and on `A` and `D`,
+inert for the queue's 600 ms like every card; Always stays a beep, since the mod
+can say allow and not always. The session's row stays yellow while the panel
+holds the ask — no dialog has been shown, so no hook has said otherwise — and the
+card is what says that the session waits. A card that leaves because its ask went
+back to the dialog, at 55 seconds or given up on, says "Back to the terminal's
+dialog" for its moment; one answered from the panel, by a click, a key or
+`/check/answer`, leaves without a word. A review asked for four things, all done:
+the ask's line is cut in the middle, never at its tail beside Allow, and whole in a
+tooltip; a click on the held card does not also open the session, which `O` still
+does; an answer to an ask already gone beeps; and Allow and Deny are VoiceOver
+actions on the card. The switch lives under the mod in
+Settings, off by default, with what it does said above it (D73); a new
+installation answers every ask `ask` at once, which the E2E suite checks. Tried
+on the test Mac with the trial's invented sessions: the card drawn with its two
+buttons, a Deny through `/check/answer` reaching the asker signed, and an ask
+left alone going back after 55 seconds with its line.
+

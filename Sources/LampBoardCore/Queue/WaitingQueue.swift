@@ -30,6 +30,9 @@ public struct WaitingCard: Sendable, Equatable, Identifiable {
     public let appearedAt: Date
     /// LampMaster's other open suggestions, behind this one («+2»).
     public let more: Int
+    /// The call a permission waits on while the panel holds it (D80): only
+    /// then can the card's Allow and Deny answer it.
+    public var call: String? = nil
 }
 
 /// What waits for you, in order, and what a key does to it. Pure: the panel
@@ -43,8 +46,9 @@ public enum WaitingQueue {
     /// Ready answers stand one card each up to this many; more are one card.
     public static let readyStandAlone = 2
 
-    public static func cards(sessions: [SessionState], suggestions: [LampMasterShown], now: Date) -> [WaitingCard] {
-        var cards: [WaitingCard] = []
+    public static func cards(sessions: [SessionState], suggestions: [LampMasterShown],
+                             asks: [PermissionGate.Request] = [], now: Date) -> [WaitingCard] {
+        var cards = asks.map { held($0, in: sessions) }
         var ready: [SessionState] = []
         for session in sessions {
             // The state the row shows, not the one beneath it: with a subagent
@@ -131,10 +135,26 @@ public enum WaitingQueue {
     /// terminal, most likely. The panel says so for a second. Only asks: a
     /// stuck tool that ends, or an answer read by clicking its row, resolved
     /// nothing elsewhere.
-    public static func resolvedElsewhere(before: [WaitingCard], after: [WaitingCard], actedOn: Set<String>) -> [WaitingCard] {
+    /// What a card gone elsewhere says for its moment: an ask the panel held
+    /// and did not answer in time went back to the session's dialog.
+    public static func resolvedLine(_ card: WaitingCard) -> String {
+        card.call == nil ? "Answered in the terminal" : "Back to the terminal's dialog"
+    }
+
+    /// How the panel names an ask it holds, in `returned`.
+    public static func heldKey(session: String, call: String) -> String { session + "/" + call }
+
+    /// An ask the panel held is said only when it went back to its dialog
+    /// (`returned`): one answered from the panel, by any of its doors, needs
+    /// no word.
+    public static func resolvedElsewhere(before: [WaitingCard], after: [WaitingCard], actedOn: Set<String>,
+                                         returned: Set<String> = []) -> [WaitingCard] {
         let remaining = Set(after.map(\.id))
-        return before.filter {
-            ($0.kind == .permission || $0.kind == .question) && !remaining.contains($0.id) && !actedOn.contains($0.id)
+        return before.filter { card in
+            guard card.kind == .permission || card.kind == .question,
+                  !remaining.contains(card.id), !actedOn.contains(card.id) else { return false }
+            guard let call = card.call else { return true }
+            return returned.contains(heldKey(session: card.sessionIds.first ?? "", call: call))
         }
     }
 
@@ -150,6 +170,8 @@ public enum WaitingQueue {
         case none, moved, unavailable
         case open(sessionId: String)
         case markRead(sessionIds: [String])
+        /// Allow or Deny for an ask the panel holds.
+        case answer(sessionId: String, call: String, PermissionGate.Verdict)
     }
 
     /// The selected card, by position, kept on its card when the queue changes.
@@ -180,7 +202,10 @@ public enum WaitingQueue {
                 case .failed, .ready, .readyGroup: return .markRead(sessionIds: card.sessionIds)
                 default: return .none
                 }
-            case .allow, .always, .deny, .reply, .option:
+            case .allow, .deny:
+                guard let call = card.call, let session = card.sessionIds.first else { return .unavailable }
+                return .answer(sessionId: session, call: call, key == .allow ? .allow : .deny)
+            case .always, .reply, .option:
                 return .unavailable
             }
         }
@@ -203,6 +228,14 @@ public enum WaitingQueue {
         let ask = kind == .permission || kind == .question ? ":" + line : ""
         return WaitingCard(id: "\(kind.rawValue):\(session.id)\(ask)", kind: kind, sessionIds: [session.id], title: session.displayName,
                     line: line, appearedAt: appearedAt ?? session.statusSince, more: 0)
+    }
+
+    /// An ask the panel holds. Its session's row is not amber — no dialog has
+    /// been shown — so it is the queue that says the session waits.
+    private static func held(_ ask: PermissionGate.Request, in sessions: [SessionState]) -> WaitingCard {
+        let title = sessions.first { $0.id == ask.sessionId }?.displayName ?? "A session"
+        return WaitingCard(id: "held:\(ask.sessionId):\(ask.callId)", kind: .permission, sessionIds: [ask.sessionId],
+                           title: title, line: ask.line, appearedAt: ask.receivedAt, more: 0, call: ask.callId)
     }
 
     private static func readyCards(_ ready: [SessionState]) -> [WaitingCard] {

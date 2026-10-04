@@ -748,7 +748,7 @@ row that has sat on one tool for a quarter of an hour shows `⌛` and how long, 
 its card names the tool and the line: a build that takes ten minutes, or a command
 left waiting on input.
 
-It reads the home, LampBoard's token and port, and of a running tool its name and
+It reads the home, LampBoard's token, port and permission key, and of a running tool its name and
 the first line of its shell command or its file path — no conversation, no file's
 contents; the panel masks anything in a command that looks like a secret — writes
 nothing, runs nothing, and talks only to
@@ -757,6 +757,19 @@ nothing, runs nothing, and talks only to
 rows still come from the hooks, with or without the mod
 ([D65](docs/04-decisions.md)). `lampboard mod uninstall` takes it out, and
 `uninstall-hooks` takes it out with the hooks.
+
+**Permissions from the panel**, off until you switch it on in Settings, under the
+mod. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
+put to the panel first: it waits at the top of the panel with **Allow** and
+**Deny** (or `A` and `D` once you have clicked the panel), inert for the first
+0.6 seconds so a click meant for something else never answers it. Unanswered in
+55 seconds, it goes back to the session's own dialog, and the card says so. Only
+what the engine would have asked you: a call it allows or refuses by itself is
+never changed. The mod proves the ask with a key of its own,
+`~/.lampboard/check-key`, which it sends nowhere, and believes only an answer
+signed with it, so nothing else listening on that port can say *allow*; it finds
+the panel from your home folder, which a project's settings cannot move
+([D80](docs/04-decisions.md)).
 
 ## Installation
 
@@ -1409,8 +1422,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1024 domain tests, instantaneous
-swift run LampBoardE2E                # 139 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1027 domain tests, instantaneous
+swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

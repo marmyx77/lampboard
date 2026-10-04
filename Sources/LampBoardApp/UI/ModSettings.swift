@@ -13,6 +13,7 @@ struct ModSettings: View {
     @State private var working = false
     @State private var problem: String?
     @State private var reading: ModTrust.Reading?
+    @State private var permissions = Preferences().permissionsFromPanel
     /// Getting started, the command line or the launch refresh can change it
     /// while this window is open: read again every few seconds.
     private let refresh = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
@@ -29,7 +30,7 @@ struct ModSettings: View {
             Claude Code 2.1.287 and later run small plugins inside each session. LampBoard's \
             tells this panel each session's context as Claude Code counts it, what the session \
             has cost, your plan's limits, which tool it is running and why it ended. It reads \
-            LampBoard's token and port, and of a running tool its name and the first line of \
+            LampBoard's token, port and permission key, and of a running tool its name and the first line of \
             its shell command (anything that looks like a secret masked) or its file path — \
             no conversation, no file's contents — writes nothing, runs nothing, \
             and talks only to 127.0.0.1, once that port answers as \
@@ -60,6 +61,23 @@ struct ModSettings: View {
             if let problem {
                 Text(problem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
+
+            // Said before it is switched on (D73): it decides what runs.
+            Text("""
+            With the mod installed, a session about to ask you whether it may run something can \
+            ask this panel first. The ask waits in "Waiting for you" with Allow and Deny, also \
+            on the A and D keys, for up to 55 seconds; unanswered, the session shows its own \
+            dialog, as it always did. Only what Claude Code would have asked you: nothing it \
+            allows or refuses by itself is ever changed. Sessions with mod 1.4.0 pick it up at once.
+            """)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            Toggle("Answer permissions from the panel", isOn: Binding(
+                get: { permissions },
+                set: { permissions = $0; Preferences().permissionsFromPanel = $0 }
+            ))
+            .disabled(!installed && !permissions)
         } header: {
             Text("The LampBoard mod")
         }
