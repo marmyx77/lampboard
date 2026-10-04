@@ -103,6 +103,8 @@ let suites: [TestSuite] = [
     CommandSuite.suite,
     TunnelRefusalSuite.suite,
     ContextSuite.suite,
+    ModReportSuite.suite,
+    ModLedgerSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

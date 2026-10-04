@@ -1,13 +1,13 @@
 # Code map
 
-~50,300 lines of Swift across five targets. For each file: what it contains, why
+~50,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  14,735 lines · 117 files  pure logic, zero AppKit
+  LampBoardCore/  15,049 lines · 119 files  pure logic, zero AppKit
   LampBoardApp/    19,039 lines · 103 files   shell: AppKit, network, windows
-  LampBoardTests/  12,573 lines · 69 files   898 cases, instantaneous
+  LampBoardTests/  12,775 lines · 70 files   913 cases, instantaneous
   LampBoardE2E/    3,599 lines · 14 files   122 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -537,7 +537,7 @@ included, which Foundation deliberately leaves alone.
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
 
-### `RowSummary.swift` · 199
+### `RowSummary.swift` · 227
 Everything a row can say about itself, as **fields** rather than as a paragraph:
 title, state, subtitle, an ordered grid of label/value/detail, the per-session
 list of a group, the last message, the help line. It used to be a `private var`
@@ -725,6 +725,32 @@ told about the last day, when each key was shown. An open suggestion expires aft
 four hours, and settles by itself when its sessions leave the frame; a late click
 on a settled card changes nothing. A line that does not decode costs that line,
 not the file.
+
+## `Mod/`
+
+What the companion mod (`lampboard@lampboard`) reports from inside a session, and
+what the panel keeps of it (D65). The mod brings what the hooks cannot know; the
+colours stay with the hooks.
+
+### `ModReport.swift`
+The wire format of `POST /mod`, version 1: `start` (surface, interactive, model),
+`measure` (the session's own context count, cost, rate-limit windows) and `end`
+(Claude Code's own reason). Every field is bounded on the way in, because the route
+takes whatever a process of this user sends: a session id of a UUID's alphabet,
+numbers in range, words from a short alphabet, at most eight windows. A reading
+from a measure is `reported`, and the reducer never lets a transcript reading
+replace it.
+
+> **Touching here** changes what the mod in `mod/` must write: a field renamed on
+> one side only is a figure that silently stops arriving. A new version number is
+> refused by an older panel, on purpose.
+
+### `ModLedger.swift`
+Per session: surface, interactive, model, cost, the last rate-limit windows and
+when they were read, why it ended. An empty list of windows keeps the last figures
+(it means "no reading", never "every window at zero"); the account's windows are
+the newest any session reported. Bounded at 300 sessions, least recently heard
+first out.
 
 ## `Demo/`
 
@@ -1404,7 +1430,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 898 cases
+## `LampBoardTests/` — 913 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1444,6 +1470,7 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
+| `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 

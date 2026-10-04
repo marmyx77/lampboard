@@ -169,6 +169,11 @@ public struct RowSummary: Sendable, Equatable {
                 return "\(context.tokens.formatted()) tokens"
             }
             return "\(context.tokens.formatted()) of \(window.formatted()) · window stated by the harness"
+        case .reported:
+            guard let window = context.window else {
+                return "\(context.tokens.formatted()) tokens"
+            }
+            return "\(context.tokens.formatted()) of \(window.formatted()) · counted by the session"
         }
     }
 

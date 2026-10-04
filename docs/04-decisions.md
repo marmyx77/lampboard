@@ -2645,3 +2645,21 @@ trial's, because every trial starts on a fresh home and somebody who stopped at 
 three should find step three. In a trial, opening a row only marks it seen: an
 invented folder has no editor, and reaching for one raised a modal warning that,
 measured on the test Mac, also held off the trial's quit.
+
+## D65 · The companion mod reports figures; the colours stay with the hooks
+
+**Decided.** The companion mod (`lampboard@lampboard`) posts to `POST /mod` what
+only the session knows: its context as Claude Code counts it, what it has cost,
+the account's rate-limit windows, where it draws, and why it ended. It does not
+post the turns that move a row's colour; the hooks keep doing that, on every
+version and surface, with or without the mod. A context figure the mod reported is
+never replaced by one read from the transcript.
+
+**Why.** The hooks are measured on every Claude Code version back to the ones the
+nodes still run, on the terminal, the editor and the application; the mod exists
+from 2.1.287. With both posting a `Stop`, the panel would receive one fact twice,
+from two processes, in either order, and every rule about when a status changes
+would have to be proved again against duplicates. Kept apart, a row reads the same
+whether its session has the mod or not, and the mod adds only what nobody else
+could: the session's own count, against which the transcript's sum is a floor or a
+guess at the window.

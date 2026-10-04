@@ -29,6 +29,10 @@ public struct ContextReading: Sendable, Equatable {
         /// count, so nothing about that percentage rests on a table of ours that
         /// a vendor could invalidate without telling anybody.
         case declared
+        /// The session counted it itself and the companion mod passed it on:
+        /// the figure Claude Code's own status line shows. The strongest of all,
+        /// so a transcript reading never replaces it (`StateReducer`, D65).
+        case reported
         /// Something was loaded afterwards: the true figure is higher.
         case floor
         /// A compaction or a refused prompt sits after it. The number is known

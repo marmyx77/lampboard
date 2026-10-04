@@ -179,6 +179,10 @@ public enum StateReducer {
 
         case .observed(let sessionId, let context):
             guard let session = state.sessions[sessionId] else { return state }
+            // The session's own count outranks any arithmetic on its transcript:
+            // once the mod has spoken for a session, the transcript reader's
+            // figure (a floor, or one resting on our window table) is older news.
+            if session.context?.confidence == .reported, context.confidence != .reported { return state }
             return state.upserting(session.with(context: context))
 
         case .rehome(let sessionId, let workspace):

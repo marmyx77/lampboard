@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **898**, instantaneous |
+| Domain tests | **913**, instantaneous |
 | End-to-end tests | **122**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2225,3 +2225,10 @@ the trial and photographs it, so demo data lives in one place. The script grew t
 sessions, one per state, the last a Codex one; the blue row needed a shell left
 running, because the panel rightly does not count a monitor as work.
 
+
+The companion mod's first piece is the part that decides what to believe (D65):
+the reports it will post — the session's own context count, its cost, the
+account's windows, its surface, why it ended — read and bounded on the way in, and
+kept per session beside the column. The colours stay with the hooks. A figure the
+session counted itself outranks the transcript's arithmetic, and nothing the
+transcript reader finds later replaces it.
