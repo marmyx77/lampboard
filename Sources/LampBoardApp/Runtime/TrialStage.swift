@@ -53,10 +53,10 @@ enum TrialStage {
             try? manager.createDirectory(atPath: path, withIntermediateDirectories: true)
             write(["pid": Int(getpid()), "workspaceFolders": [path], "ideName": "Visual Studio Code", "transport": "ws"],
                   to: claude.appendingPathComponent("ide/\(41_000 + index).lock"))
-            guard let holder = hold() else { continue }
+            if session.isCodex { writeRollout(session, cwd: path, now: now) } else { writeTranscript(session, at: path, now: now) }
+            guard let holder = session.isCodex ? holdAsCodex(rollout(of: session)) ?? hold() : hold() else { continue }
             write(["pid": Int(holder), "sessionId": session.id, "cwd": path, "entrypoint": "claude-vscode", "kind": "interactive"],
                   to: claude.appendingPathComponent("sessions/\(holder).json"))
-            if session.isCodex { writeRollout(session, now: now) } else { writeTranscript(session, at: path, now: now) }
         }
         seedLampMaster(script, preferences: preferences, files: files, now: now)
     }
@@ -89,19 +89,60 @@ enum TrialStage {
 
     static var rollouts: URL { AppConfig.codexSessionsDirectory.appendingPathComponent("2026/01/01", isDirectory: true) }
 
-    /// Codex keeps its own shape: a turn context naming the model, and a token
-    /// count that carries the window, as `make-screenshots.sh` wrote it before.
-    private static func writeRollout(_ session: DemoScript.Session, now: Date) {
+    private static func rollout(of session: DemoScript.Session) -> URL {
+        rollouts.appendingPathComponent("rollout-\(session.id).jsonl")
+    }
+
+    /// Codex keeps its own shape: the session's identity first — without it the
+    /// sweep cannot say whose rollout a process holds — then a turn context
+    /// naming the model, and a token count that carries the window.
+    private static func writeRollout(_ session: DemoScript.Session, cwd: String, now: Date) {
         try? FileManager.default.createDirectory(at: rollouts, withIntermediateDirectories: true)
         let stamp = ISO8601DateFormatter().string(from: now)
         let records: [[String: Any]] = [
+            ["timestamp": stamp, "type": "session_meta",
+             "payload": ["id": session.id, "cwd": cwd, "originator": "codex_cli_rs", "cli_version": "0.0.0"]],
             ["timestamp": stamp, "type": "turn_context", "payload": ["turn_id": "t1", "model": session.model]],
             ["timestamp": stamp, "type": "event_msg", "payload": ["type": "token_count", "info": [
                 "last_token_usage": ["input_tokens": 17_002], "model_context_window": 258_400]]],
         ]
         let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
             .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
-        try? text.write(to: rollouts.appendingPathComponent("rollout-\(session.id).jsonl"), atomically: true, encoding: .utf8)
+        try? text.write(to: rollout(of: session), atomically: true, encoding: .utf8)
+    }
+
+    /// A Codex session is alive while a process named `codex` holds its rollout
+    /// open (`CodexHolders`), and the trial's had none: its row went at the
+    /// first sweep, five seconds in, and never drew its model's letter.
+    ///
+    /// So the app runs itself under that name, through a hard link in the
+    /// trial's home, as `codex trial-hold <rollout>`. Measured on the test Mac:
+    /// the process table and `lsof` read the link's name, where a symbolic link
+    /// to `tail` reads `tail` and a shell script `bash`. A link that cannot be
+    /// made — another volume — leaves the row to go as it always had.
+    private static func holdAsCodex(_ rollout: URL) -> pid_t? {
+        guard let executable = Bundle.main.executableURL else { return nil }
+        let folder = AppConfig.homeDirectory.appendingPathComponent("trial-bin", isDirectory: true)
+        let link = folder.appendingPathComponent("codex")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: link.path) {
+            guard (try? FileManager.default.linkItem(at: executable, to: link)) != nil else { return nil }
+        }
+        let process = Process()
+        process.executableURL = link
+        process.arguments = ["trial-hold", rollout.path]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        holders.append(process)
+        return process.processIdentifier
+    }
+
+    /// `trial-hold`: open the file and wait to be ended. The descriptor is the
+    /// whole point; the process does nothing else.
+    static func holdOpen(_ path: String) -> Int32 {
+        guard open(path, O_RDONLY) >= 0 else { return 1 }
+        while true { pause() }
     }
 
     private static func hold() -> pid_t? {

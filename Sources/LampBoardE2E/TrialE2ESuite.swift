@@ -25,6 +25,22 @@ enum TrialE2ESuite {
                 t.expect(state.body.contains("demo slots renamed"), "LampMaster's demo card is there")
             },
 
+            TestCase("the trial's Codex session outlives the sweep, held open as Codex holds a rollout") { t in
+                let trial = AppUnderTest(binaryURL: binaryURL, port: port)
+                trial.extraArguments = ["--trial", "--trial-pace", "20"]
+                defer { trial.stop() }
+                do { try trial.start() } catch { return t.fail("the trial did not start: \(error)") }
+                let arrived = trial.waitUntil(timeout: 15) { trial.status(of: "demo-billing-6") != "absent" }
+                t.expect(arrived, "the Codex row arrives")
+                // The Codex sweep keeps only what a process named codex holds
+                // open; it runs every five seconds, so three of them pass here.
+                Thread.sleep(forTimeInterval: 16)
+                // Without its stand-in the row did not vanish for good: it went at the
+                // sweep and came back from the trial's session file as a Claude
+                // Code row, with no Codex letter — which is what the README showed.
+                t.expectEqual(trial.session(id: "demo-billing-6")?.harness, "codex", "still a Codex row after the sweeps")
+            },
+
             TestCase("quitting a trial removes its home and its stand-in processes") { t in
                 let home = FileManager.default.temporaryDirectory
                     .appendingPathComponent("lampboard-trial-e2e\(ProcessInfo.processInfo.processIdentifier)")

@@ -6,9 +6,9 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  16,403 lines · 128 files  pure logic, zero AppKit
-  LampBoardApp/    20,270 lines · 113 files   shell: AppKit, network, windows
+  LampBoardApp/    20,320 lines · 113 files   shell: AppKit, network, windows
   LampBoardTests/  13,673 lines · 79 files   985 cases, instantaneous
-  LampBoardE2E/    3,949 lines · 17 files   134 cases, the real binary
+  LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -1299,7 +1299,7 @@ same start serves the menus' *Take the tour…* and the offer made right after t
 hooks are installed; neither appears inside a trial, where a tour would stack
 panels.
 
-### `CommandLineInterface.swift` · 713
+### `CommandLineInterface.swift` · 722
 The commands and their dispatch: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename, mcp, mod, watch, tour. `--port` is read only before a `--`, so a watched command's own `--port` stays its own. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -1340,7 +1340,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
 | `LampMasterFiles.swift` | 159 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames, the last day's questions. The folder is `0700` because the frames quote conversations |
-| `TrialStage.swift` | 156 | the trial: an editor lock per invented project, a stand-in process per session, a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
+| `TrialStage.swift` | 197 | the trial: an editor lock per invented project, a stand-in process per session — for the Codex one, the app itself run as `codex trial-hold <rollout>` through a hard link, since a Codex session lives only while a process of that name holds its rollout open — a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1627,7 +1627,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 134 cases
+## `LampBoardE2E/` — 135 cases
 
 | Suite | Covers |
 |---|---|
@@ -1639,7 +1639,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
-| `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
+| `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token; a failure repeated three times bringing a quick round with Sonnet at the turn's end, and a second turn's end within the minute bringing none |
 

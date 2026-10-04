@@ -12,6 +12,9 @@ enum CommandLineInterface {
         case uninstall
         case status
         case codexProbe
+        /// The trial's stand-in for a Codex process: holds a rollout open until
+        /// it is ended. Started by the trial under the name `codex`; not for people.
+        case trialHold(path: String)
         case selfTest(port: UInt16)
         /// The `lampmaster` MCP server: Claude Code starts it, it talks JSON-RPC
         /// on standard input and output and asks the running panel.
@@ -60,6 +63,9 @@ enum CommandLineInterface {
             return .status
         case "codex-probe":
             return .codexProbe
+        case "trial-hold":
+            guard let path = args.dropFirst().first else { return .help }
+            return .trialHold(path: path)
         case "tour":
             return .tour(json: args.contains("--json"))
         case "mcp":
@@ -144,6 +150,9 @@ enum CommandLineInterface {
 
         case .codexProbe:
             return runCodexProbe()
+
+        case .trialHold(let path):
+            return TrialStage.holdOpen(path)
 
         case .selfTest(let port):
             return SelfTest.run(port: port)

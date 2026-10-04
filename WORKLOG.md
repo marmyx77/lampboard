@@ -931,7 +931,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 | | |
 |---|---|
 | Domain tests | **985**, instantaneous |
-| End-to-end tests | **134**, about a minute |
+| End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2383,3 +2383,11 @@ order; the README's picture is that one now. Looking for why the trial's Codex r
 had vanished from it turned up the reason it never drew its letter either: no
 process named `codex` holds its rollout open, and that is the only proof of life a
 Codex session gives.
+
+So the trial now gives it one. The app runs itself as `codex trial-hold <rollout>`,
+through a hard link in the trial's home — the only name a process table believes,
+measured against a symbolic link (read as `tail`) and a script (read as `bash`) —
+and the trial's rollout starts with the `session_meta` the sweep reads to know whose
+it is. The row is a Codex row after three sweeps now, where before it went at the
+first and came back from the trial's session file as a Claude Code row, which is the
+picture the README had been showing. The README has six projects again, and a `G`.
