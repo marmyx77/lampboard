@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **848**, instantaneous |
+| Domain tests | **864**, instantaneous |
 | End-to-end tests | **109**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2140,4 +2140,10 @@ and the measurement that mattered was the one before it: an unconfigured
 
 The gate now runs on a second Mac (`Scripts/run-remote.sh`), and the package
 builds with Swift 6.4.
+
+The round's own machinery followed: the command it runs and the envelope it reads,
+the calendar that skips a round for nothing, and the ledger of what was shown and
+what became of it (D59). The frame goes in on standard input, because an argument
+is readable with `ps`; one real call with the exact arguments confirmed it, at
+1,483 tokens. 16 more domain cases.
 

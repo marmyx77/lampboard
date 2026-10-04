@@ -2491,3 +2491,25 @@ have shown up as a session in the panel itself.
 
 The validator is there because the prototype's best property — it invented
 nothing — was a hope; here it is a check.
+
+## D59 · The round reads its frame from standard input, and skips for free
+
+**Decided.** The round's frame goes to `claude -p` on standard input; the command
+line holds only what is the same for every user. Before any token is spent the
+round is skipped when LampMaster is switched off, when no session is worth a
+look, when the frame says what it said at the last round, and when the day's
+200,000 tokens are spent — in that order. A round that failed counts as a run.
+
+**Why.** The frame carries pieces of the user's conversations, and the arguments
+of a process can be read by any other process on the Mac with `ps`; standard
+input cannot. The prototype passed the frame as an argument, which was fine for
+one person reading their own sessions and is not for an application. Measured on
+4 October 2026 on the test Mac, the exact arguments of `LampMasterCommand` with
+the frame piped in: answer in the schema, 1.9 s, 1,483 tokens, two turns.
+
+The digest that decides "unchanged" leaves out the minutes since each session's
+last activity: they change every minute and say nothing new until a threshold is
+crossed, and then a signal appears, which the digest does include. Without that,
+a quiet evening would buy twelve identical answers. A failed round counts as a
+run because otherwise a broken `claude` — logged out, an unknown flag — would be
+called again at every tick of the timer.

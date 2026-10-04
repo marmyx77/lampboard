@@ -1,13 +1,13 @@
 # Code map
 
-~45,700 lines of Swift across five targets. For each file: what it contains, why
+~46,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  13,206 lines · 106 files  pure logic, zero AppKit
+  LampBoardCore/  13,619 lines · 109 files  pure logic, zero AppKit
   LampBoardApp/    16,939 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  11,989 lines · 66 files   848 cases, instantaneous
+  LampBoardTests/  12,180 lines · 67 files   864 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -661,6 +661,30 @@ shown already. A malformed answer is no answer.
 The system prompt, the fenced user message and the JSON Schema for `--json-schema`.
 The frame is declared as data: what sessions wrote may read like orders.
 
+### `LampMasterCommand.swift`
+The arguments of the isolated `claude -p` and the reading of its JSON envelope.
+Every flag is there because of a measurement: without them one call cost 268,908
+tokens, with them 689 (D58). The frame is **not** among the arguments — any
+process can read those with `ps` — and goes in on standard input (D59). The
+envelope's tokens are counted even when the run failed: the ceiling counts what
+was spent. Drop a flag and the round shows up as a session in the panel, or
+carries the user's connectors into every hour.
+
+### `LampMasterSchedule.swift`
+When a round runs and when it is skipped for nothing: switched off, no session to
+look at, the frame unchanged since the last round, the day's 200,000 tokens spent.
+The digest leaves out the minutes, which change by themselves; a threshold crossed
+shows up as a signal, and signals are in it. A failed round counts as a run, or a
+broken `claude` would be called every minute.
+
+### `LampMasterLedger.swift`
+The records of `rounds.jsonl` and `suggestions.jsonl`, and what is read back from
+them: the last run, today's tokens, the open suggestions, what the next frame is
+told about the last day, when each key was shown. An open suggestion expires after
+four hours, and settles by itself when its sessions leave the frame; a late click
+on a settled card changes nothing. A line that does not decode costs that line,
+not the file.
+
 ## `Seat/`
 
 Where a session's process lives — what a click on a terminal row has to bring
@@ -1258,7 +1282,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 848 cases
+## `LampBoardTests/` — 864 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1282,6 +1306,7 @@ script, before it was split. The most important ones:
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
+| `LampMasterRoundSuite` | the flags that keep the round invisible and cheap, the frame kept off the command line, the envelope read even when it failed, every skip and its order, suggestions that expire or settle |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |
 | `DictationLocaleSuite` | silence beats confident nonsense |

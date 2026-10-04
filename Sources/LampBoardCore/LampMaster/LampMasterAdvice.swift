@@ -10,10 +10,10 @@ import Foundation
 /// it, and the reason is kept so the prompt can be fixed.
 public struct LampMasterAdvice: Decodable, Sendable, Equatable {
 
-    public struct Suggestion: Decodable, Sendable, Equatable {
+    public struct Suggestion: Codable, Sendable, Equatable {
 
         /// LampMaster's five jobs.
-        public enum Kind: String, Decodable, Sendable, Equatable, CaseIterable {
+        public enum Kind: String, Codable, Sendable, Equatable, CaseIterable {
             /// One session knows something another needs now.
             case cross
             /// Waiting on the user, blocked, or left half done.
@@ -26,8 +26,8 @@ public struct LampMasterAdvice: Decodable, Sendable, Equatable {
             case precedent
         }
 
-        public struct Action: Decodable, Sendable, Equatable {
-            public enum Kind: String, Decodable, Sendable, Equatable {
+        public struct Action: Codable, Sendable, Equatable {
+            public enum Kind: String, Codable, Sendable, Equatable {
                 case open, ask, reply, handoff, close, archive, none
             }
             public let kind: Kind
@@ -98,6 +98,11 @@ public enum LampMasterValidator {
     public struct Verdict: Sendable, Equatable {
         public let shown: [LampMasterAdvice.Suggestion]
         public let rejected: [(LampMasterAdvice.Suggestion, Rejection)]
+
+        public init(shown: [LampMasterAdvice.Suggestion], rejected: [(LampMasterAdvice.Suggestion, Rejection)]) {
+            self.shown = shown
+            self.rejected = rejected
+        }
 
         public static func == (lhs: Verdict, rhs: Verdict) -> Bool {
             lhs.shown == rhs.shown

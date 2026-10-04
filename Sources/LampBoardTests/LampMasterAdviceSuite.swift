@@ -8,12 +8,12 @@ enum LampMasterAdviceSuite {
     typealias S = LampMasterAdvice.Suggestion
     typealias F = LampMasterFixtures
 
-    static let frame = #"{"sessions":[{"id":"9ffa24f0","lastAnswer":"The build SanchoDev-8241f9e is ready but not installed: write «install» when you want"},{"id":"ba409f17","context":"872k/1000k"}]}"#
+    static let frame = #"{"sessions":[{"id":"9ffa24f0","lastAnswer":"The build DocsSite-8241f9e is ready but not installed: write «install» when you want"},{"id":"ba409f17","context":"872k/1000k"}]}"#
     static let ids: Set<String> = ["9ffa24f0", "ba409f17"]
 
     static func suggestion(
         kind: S.Kind = .stalled, sessions: [String] = ["9ffa24f0"],
-        evidence: String = #"The answer says "The build SanchoDev-8241f9e is ready but not installed"."#,
+        evidence: String = #"The answer says "The build DocsSite-8241f9e is ready but not installed"."#,
         target: String? = nil, confidence: Double = 0.8, key: String = "build waiting"
     ) -> S {
         S(kind: kind, sessions: sessions, text: "The build waits for you.", evidence: evidence,

@@ -34,7 +34,7 @@ public struct LampMasterFrame: Encodable, Sendable, Equatable {
         public let agent: String
         public let account: String?
         public let state: LampMasterSession.Liveness
-        public let quietMinutes: Int
+        public var quietMinutes: Int
         public let context: String?
         public let model: String?
         public let branch: String?
