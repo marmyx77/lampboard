@@ -68,6 +68,8 @@ public struct SessionCardReader: Sendable, Equatable {
         guard type == "user" || type == "assistant" else { return }
         if record["isSidechain"] as? Bool == true { return }
         if let cwd = (record["cwd"] as? String)?.nilIfEmpty { card.cwd = cwd }
+        if let entrypoint = (record["entrypoint"] as? String)?.nilIfEmpty { card.entrypoint = entrypoint }
+        if let branch = (record["gitBranch"] as? String)?.nilIfEmpty { card.gitBranch = branch }
         let at = TranscriptDecoder.date(from: record["timestamp"] as? String)
         card.lastActivity = max(card.lastActivity ?? at, at)
 

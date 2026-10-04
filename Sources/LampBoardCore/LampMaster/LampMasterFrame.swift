@@ -114,6 +114,9 @@ public enum LampMasterFrameBuilder {
 
     static func include(_ session: LampMasterSession, now: Date) -> Bool {
         let card = session.card
+        // A script's `claude -p`, an SDK agent, another tool's observer: the
+        // panel's own rule for what is nobody's session holds here too.
+        if let entrypoint = card.entrypoint, AppConfig.nonInteractiveEntrypoints.contains(entrypoint) { return false }
         // A live session counts as soon as it has done anything, even before it
         // has said anything: the files it writes are what overlaps are made of.
         if session.liveness != .closed { return card.lastActivity != nil }
@@ -135,7 +138,7 @@ public enum LampMasterFrameBuilder {
             name: card.title, host: session.host, surface: session.surface, agent: session.agent,
             account: session.account, state: session.liveness, quietMinutes: quiet,
             context: card.contextTokens > 0 ? "\(card.contextTokens / 1_000)k/\(window / 1_000)k" : nil,
-            model: card.model, branch: session.branch,
+            model: card.model, branch: session.branch ?? card.gitBranch,
             recentPrompts: card.recentPrompts.isEmpty ? nil : card.recentPrompts,
             lastAnswer: card.lastAnswer, answerAsks: card.lastAnswerAsks ? true : nil,
             filesLastHour: files.isEmpty ? nil : Array(files.prefix(6)),

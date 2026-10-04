@@ -87,15 +87,27 @@ public enum Command {
     ///     — because a warning printed on the error stream would arrive
     ///     interleaved with the data and be read as a record. Everywhere else it
     ///     stays on: that is where a tool puts the sentence explaining a refusal.
+    ///   - input: written to the tool's standard input, then closed. For what
+    ///     must not be an argument: arguments are readable by any process on the
+    ///     Mac with `ps`, standard input is not.
+    ///   - directory: the tool's working directory.
+    ///   - launched: told the process id once the tool is running, so a caller
+    ///     that is itself shutting down can stop it instead of leaving it behind.
     public static func run(
         _ tool: String,
         _ arguments: [String] = [],
         deadline: TimeInterval,
-        capturingStandardError: Bool = true
+        capturingStandardError: Bool = true,
+        input: Data? = nil,
+        directory: URL? = nil,
+        launched: ((pid_t) -> Void)? = nil
     ) throws -> Result {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
+        if let directory { process.currentDirectoryURL = directory }
+        let inputPipe = input.map { _ in Pipe() }
+        if let inputPipe { process.standardInput = inputPipe }
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -127,6 +139,9 @@ public enum Command {
             throw Failure.couldNotStart(tool: tool, reason: error.localizedDescription)
         }
 
+        launched?(process.processIdentifier)
+        if let input, let inputPipe { feed(input, into: inputPipe.fileHandleForWriting) }
+
         if finished.wait(timeout: .now() + deadline) == .timedOut {
             process.terminate()
             if finished.wait(timeout: .now() + graceAfterTerminate) == .timedOut {
@@ -146,5 +161,19 @@ public enum Command {
             status: process.terminationStatus,
             output: String(decoding: buffer.bytes, as: UTF8.self)
         )
+    }
+
+    /// Writes the input on its own thread, for the same reason the output is
+    /// read on one: past what a pipe holds, a write waits for a reader, and the
+    /// tool may be waiting for us. A tool that exits without reading closes its
+    /// end, and writing into a closed pipe sends `SIGPIPE`, whose default is to
+    /// end the process that wrote — this app. `F_SETNOSIGPIPE` turns that into
+    /// an error on this one write, which is all it deserves.
+    private static func feed(_ input: Data, into handle: FileHandle) {
+        _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? handle.write(contentsOf: input)
+            try? handle.close()
+        }
     }
 }

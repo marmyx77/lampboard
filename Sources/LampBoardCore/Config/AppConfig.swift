@@ -38,6 +38,10 @@ public enum AppConfig {
     /// touching the editor. Same shape as `/open`, same authentication.
     public static let chatPath = "/chat"
 
+    /// LampMaster: `GET` reads its state, `POST` asks for a round now. Behind
+    /// the token, like `/sessions`: what it returns quotes conversations.
+    public static let lampMasterPath = "/lampmaster"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without
@@ -242,6 +246,12 @@ public enum AppConfig {
     public static var supportDirectory: URL {
         homeDirectory
             .appendingPathComponent(".lampboard", isDirectory: true)
+    }
+
+    /// LampMaster's rounds, suggestions, notebook and last frames. Owner-only:
+    /// the frames hold pieces of conversations.
+    public static var lampMasterDirectory: URL {
+        supportDirectory.appendingPathComponent("lampmaster", isDirectory: true)
     }
 
     /// Where the hook scripts lived before the project was renamed.

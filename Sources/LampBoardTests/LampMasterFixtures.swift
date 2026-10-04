@@ -19,9 +19,13 @@ enum LampMasterFixtures {
         return String(decoding: data, as: UTF8.self) + "\n"
     }
 
-    static func prompt(_ text: String, at minutes: Double, cwd: String = "/home/dev/docs-site") -> String {
-        line(["type": "user", "timestamp": stamp(minutes), "cwd": cwd, "origin": ["kind": "human"],
-              "message": ["role": "user", "content": text]])
+    static func prompt(_ text: String, at minutes: Double, cwd: String = "/home/dev/docs-site",
+                       entrypoint: String? = nil, branch: String? = nil) -> String {
+        var record: [String: Any] = ["type": "user", "timestamp": stamp(minutes), "cwd": cwd, "origin": ["kind": "human"],
+                                     "message": ["role": "user", "content": text]]
+        record["entrypoint"] = entrypoint
+        record["gitBranch"] = branch
+        return line(record)
     }
 
     static func answer(_ text: String, at minutes: Double, model: String = "claude-opus-5-5",

@@ -40,6 +40,11 @@ public struct SessionCard: Sendable, Equatable {
     public let sessionId: String
     public internal(set) var title: String?
     public internal(set) var cwd: String?
+    /// How the session was started (`cli`, `claude-vscode`, `sdk-cli`…), from
+    /// the records that carry it: a script's `claude -p` is nobody's session.
+    public internal(set) var entrypoint: String?
+    /// The branch its records were written on, so a closed session still has one.
+    public internal(set) var gitBranch: String?
     public internal(set) var model: String?
     /// Tokens the last answer was given: input plus both kinds of cache.
     public internal(set) var contextTokens: Int = 0

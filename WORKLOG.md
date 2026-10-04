@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **864**, instantaneous |
-| End-to-end tests | **109**, about a minute |
+| Domain tests | **868**, instantaneous |
+| End-to-end tests | **116**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2146,4 +2146,13 @@ the calendar that skips a round for nothing, and the ledger of what was shown an
 what became of it (D59). The frame goes in on standard input, because an argument
 is readable with `ps`; one real call with the exact arguments confirmed it, at
 1,483 tokens. 16 more domain cases.
+
+Then the round itself, in the running app: cards kept from the transcripts by byte
+offset, the five-minute tick, the files under `~/.lampboard/lampmaster/`, and a
+`/lampmaster` route behind the token (D60). LampMaster is off until switched on.
+Seven end-to-end cases drive the real binary against a fake `claude` that writes
+down what it was given: the frame arrives on standard input and never as an
+argument, an invented quote is dropped, nothing new means no call. One of them
+caught two rounds in the same second tying on their stamp, and the older one
+winning; the ledger now goes by the order of the file.
 

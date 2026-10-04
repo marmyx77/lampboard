@@ -101,10 +101,12 @@ enum LampMasterRoundSuite {
             t.expectEqual(LampMasterSchedule.clamp(45 * 60), 45 * 60)
         },
 
-        TestCase("Opening the card refreshes after fifteen minutes; asking runs at once") { t in
+        TestCase("Opening the card refreshes after fifteen minutes; asking needs two") { t in
             t.expectEqual(decide(.opened, at: 14), .wait)
             t.expectEqual(decide(.opened, at: 15), .run)
-            t.expectEqual(decide(.asked, at: 1), .run)
+            t.expectEqual(decide(.asked, at: 1), .skip(.tooSoon), "a loop of requests cannot spend the day")
+            t.expectEqual(decide(.asked, at: 2), .run)
+            t.expectEqual(decide(.asked, lastRun: nil, at: 0), .run, "never ran")
         },
 
         TestCase("The skips, in order: off, nobody, nothing new, the day's ceiling") { t in
@@ -136,6 +138,9 @@ enum LampMasterRoundSuite {
             utc.timeZone = TimeZone(identifier: "UTC")!
             t.expectEqual(LampMasterLedger.lastRun(rounds)?.at, F.at(70))
             t.expectEqual(LampMasterLedger.lastRun(Array(rounds.prefix(3)))?.outcome, .failed)
+            let tied = [LampMasterRound(at: F.at(0), trigger: .timer, outcome: .ran, digest: "first"),
+                        LampMasterRound(at: F.at(0), trigger: .asked, outcome: .ran, digest: "second")]
+            t.expectEqual(LampMasterLedger.lastRun(tied)?.digest, "second", "a tie goes to the later line")
             t.expectEqual(LampMasterLedger.tokens(on: F.at(80), in: rounds, calendar: utc), 7_900)
         },
 

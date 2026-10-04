@@ -31,6 +31,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var legendWindow: LegendWindowController?
     private var notifier: SessionNotifier?
     private var presence: PresenceFile?
+    /// LampMaster's round. Started in every mode: the end-to-end suite drives
+    /// it headless, and its timer does nothing while it is switched off.
+    private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
 
     init(port: UInt16, skipSetupPrompt: Bool = false, headless: Bool = false) {
         self.port = port
@@ -65,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store.startPolling()
         fleet.start()
+        lampMaster.start()
 
         if !headless && shouldPromptForInstallation {
             preferences.wasSetupPromptShown = true
@@ -161,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         store.stopPolling()
         fleet.stop()
+        lampMaster.stop()
         server?.stop()
         // The presence file has to go: leaving it would say "I'm at the Mac"
         // forever, and the phone push notifications would never arrive again.
@@ -206,6 +211,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onChatInSlot: { [weak self] slot in
                 Self.onMain(timeout: 2) { self?.panelController?.openChatInSlot(slot) }
+            },
+            onLampMaster: { [lampMaster] in lampMaster.encodedState },
+            onLampMasterRound: { [weak self] in
+                Self.onMain(timeout: 2) { self?.lampMaster.request(.asked) } ?? false
             }
         )
 

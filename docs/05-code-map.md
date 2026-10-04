@@ -1,14 +1,14 @@
 # Code map
 
-~46,300 lines of Swift across five targets. For each file: what it contains, why
+~47,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  13,619 lines · 109 files  pure logic, zero AppKit
-  LampBoardApp/    16,939 lines · 88 files   shell: AppKit, network, windows
-  LampBoardTests/  12,180 lines · 67 files   864 cases, instantaneous
-  LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
+  LampBoardCore/  13,680 lines · 109 files  pure logic, zero AppKit
+  LampBoardApp/    17,593 lines · 91 files   shell: AppKit, network, windows
+  LampBoardTests/  12,230 lines · 67 files   868 cases, instantaneous
+  LampBoardE2E/    3,417 lines · 13 files   116 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 545
+### `AppConfig.swift` · 555
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -955,7 +955,7 @@ The Python that runs on another machine to inspect it, write the hook script and
 
 ## `System/`
 
-### `Command.swift` · 141
+### `Command.swift` · 179
 Running an outside tool without being taken hostage by it. The obvious three
 lines have two failure modes and both are silence: `waitUntilExit` waits
 forever, so a hung `spctl` took the updater with it and nothing was ever going
@@ -965,6 +965,12 @@ neither moves. Reading on another thread makes the deadline the only thing that
 can end the wait. In Core rather than beside its caller so both failures can be
 demonstrated instead of argued about — `CommandSuite` runs a tool that sleeps
 and one that writes two hundred kilobytes.
+
+`input` goes to standard input on a thread of its own, for the same reason in
+the other direction, and with `F_SETNOSIGPIPE` on the pipe: a tool that exits
+without reading would otherwise end this app with `SIGPIPE`. It is how LampMaster
+hands `claude` a frame that must not be an argument (D59). `launched` hands the
+caller the process id, so an app quitting mid-run can stop what it started.
 
 ## `Workspace/`
 
@@ -1036,7 +1042,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 333
+### `main.swift` · `AppDelegate.swift` · 342
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1111,7 +1117,10 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `Preferences.swift` | 399 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `LampMasterService.swift` | 302 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time. Also `LampMasterRunner`, which finds `claude` — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; and `RunningProcess`, the pid of the round's `claude` held only while it runs, so quitting mid-round stops it instead of leaving it spending the allowance |
+| `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
+| `LampMasterFiles.swift` | 127 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames. The folder is `0700` because the frames quote conversations |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1153,8 +1162,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 366
-Seven routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 414
+Eight routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1162,6 +1171,12 @@ method, authentication, validation and the three answers are written once. All t
 carry the slot in the **body**, not the path — a router that has to interpret path
 segments is a router with a parsing bug waiting in it, and this parser is
 deliberately not a general-purpose one.
+
+`/lampmaster` is behind the token both ways: `GET` returns LampMaster's state,
+which quotes conversations, and `POST` asks for a round, which spends the user's
+allowance. The `POST` answers 202 at once and the round runs on its own; a
+connection held for the two minutes a round may take would be one more way to tie
+the server up.
 
 `requiredLocalEndpoint` is the line that binds the socket to loopback.
 `acceptLocalOnly` does **not** do that.
@@ -1282,7 +1297,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 864 cases
+## `LampBoardTests/` — 868 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1342,7 +1357,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 109 cases
+## `LampBoardE2E/` — 116 cases
 
 | Suite | Covers |
 |---|---|
@@ -1352,6 +1367,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
+| `LampMasterE2ESuite` | a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
 
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows
 how to run the commands and the hook script, and waits with `waitUntil` because

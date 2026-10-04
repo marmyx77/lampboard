@@ -38,6 +38,11 @@ struct Preferences {
         static let conversationOrder = "panel.conversationOrder"
         static let menuBarIcon = "menubar.icon"
         static let panelPlacement = "panel.placement"
+        static let lampMasterEnabled = "lampmaster.enabled"
+        static let lampMasterInterval = "lampmaster.intervalMinutes"
+        static let lampMasterModel = "lampmaster.model"
+        static let lampMasterMuted = "lampmaster.muted"
+        static let lampMasterTimeout = "lampmaster.timeoutSeconds"
     }
 
     private let defaults: UserDefaults
@@ -365,6 +370,48 @@ struct Preferences {
     var messageSendingEnabled: Bool {
         get { defaults.bool(forKey: Key.messageSendingEnabled) }
         nonmutating set { defaults.set(newValue, forKey: Key.messageSendingEnabled) }
+    }
+
+    // MARK: - LampMaster
+
+    /// Whether LampMaster's hourly round runs. **Off by default**, for the same
+    /// reason as the allowance strip: it sends pieces of the user's
+    /// conversations to Anthropic and spends their allowance, and that is a
+    /// choice to make, not a default to discover (D60).
+    var lampMasterEnabled: Bool {
+        get { defaults.bool(forKey: Key.lampMasterEnabled) }
+        nonmutating set { defaults.set(newValue, forKey: Key.lampMasterEnabled) }
+    }
+
+    /// Minutes between rounds, kept inside `LampMasterSchedule.intervalRange`.
+    var lampMasterInterval: TimeInterval {
+        get {
+            let minutes = defaults.double(forKey: Key.lampMasterInterval)
+            return LampMasterSchedule.clamp(minutes > 0 ? minutes * 60 : LampMasterSchedule.defaultInterval)
+        }
+        nonmutating set { defaults.set(LampMasterSchedule.clamp(newValue) / 60, forKey: Key.lampMasterInterval) }
+    }
+
+    /// One of `LampMasterCommand.models`; anything else reads as the default.
+    var lampMasterModel: String {
+        get {
+            let stored = defaults.string(forKey: Key.lampMasterModel)
+            return stored.flatMap { LampMasterCommand.models.contains($0) ? $0 : nil } ?? LampMasterCommand.defaultModel
+        }
+        nonmutating set { defaults.set(newValue, forKey: Key.lampMasterModel) }
+    }
+
+    /// The kinds of suggestion switched off with "Don't suggest this kind again".
+    var lampMasterMuted: Set<LampMasterAdvice.Suggestion.Kind> {
+        get { Set(readSet(Key.lampMasterMuted).compactMap(LampMasterAdvice.Suggestion.Kind.init(rawValue:))) }
+        nonmutating set { writeSet(Set(newValue.map(\.rawValue)), to: Key.lampMasterMuted) }
+    }
+
+    /// The round's deadline. Not in the Settings window: it exists so the
+    /// end-to-end suite can prove the deadline without waiting two minutes.
+    var lampMasterTimeout: TimeInterval {
+        let seconds = defaults.double(forKey: Key.lampMasterTimeout)
+        return seconds > 0 ? seconds : LampMasterCommand.timeout
     }
 
     // MARK: - Persisted sets

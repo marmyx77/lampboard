@@ -110,8 +110,12 @@ public enum LampMasterLedger {
     public static let recentWindow: TimeInterval = LampMasterValidator.repeatWindow
 
     /// The last round that reached `claude`, failed or not.
+    ///
+    /// By the file's order, not by time: the stamps are whole seconds, and two
+    /// rounds in one second — a request right after another — tie, and a tie
+    /// once picked the older one.
     public static func lastRun(_ rounds: [LampMasterRound]) -> LampMasterRound? {
-        rounds.filter { $0.outcome != .skipped }.max { $0.at < $1.at }
+        rounds.last { $0.outcome != .skipped }
     }
 
     /// Tokens spent on the calendar day `now` falls on.

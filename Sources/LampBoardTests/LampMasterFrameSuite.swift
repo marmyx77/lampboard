@@ -23,6 +23,15 @@ enum LampMasterFrameSuite {
             t.expectEqual(Set(frame.sessions.map(\.id)), ["live0001", "recent01"])
         },
 
+        TestCase("A script's claude -p stays out; the branch comes from the records") { t in
+            let frame = LampMasterFrameBuilder.build(sessions: [
+                session("script01", [F.prompt("summarise", at: 0, entrypoint: "sdk-cli")], .closed),
+                session("human001", [F.prompt("fix it", at: 0, entrypoint: "cli", branch: "fix/login")], .closed),
+            ], now: F.at(10))
+            t.expectEqual(frame.sessions.map(\.id), ["human001"])
+            t.expectEqual(frame.sessions.first?.branch, "fix/login")
+        },
+
         TestCase("A closed session left asking stays in for a week") { t in
             let asking = [F.answer("Which of the two do you want?", at: 0)]
             let days = { (d: Double) in F.at(d * 24 * 60) }

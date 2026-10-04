@@ -2513,3 +2513,36 @@ crossed, and then a signal appears, which the digest does include. Without that,
 a quiet evening would buy twelve identical answers. A failed round counts as a
 run because otherwise a broken `claude` — logged out, an unknown flag — would be
 called again at every tick of the timer.
+
+## D60 · LampMaster is off until it is switched on
+
+**Decided.** LampMaster's round does not run until the user switches it on. Once
+on, it looks at this Mac's Claude Code conversations — the panel's rows and the
+transcripts closed in the last week — every hour, and at nothing else until the
+nodes' stage. Its state and a request for a round are on the local server, behind
+the token; the request answers at once and the round runs on its own, one at a
+time.
+
+**Why.** A round sends pieces of the user's conversations to Anthropic and spends
+their allowance. The allowance strip set the rule for that kind of feature: a
+thing that reaches the network on the user's behalf is a choice made once, with
+the sentence that says what it does, not a default discovered on a bill. The one
+person using LampBoard today asked for LampMaster at once, and switching it on is
+one click.
+
+The request answers 202 rather than waiting because a round may take two minutes,
+and a connection held that long is one more way to tie up the server that the
+hooks post to. The fake `claude` of the end-to-end suite is looked for only in the
+fake home: a test that forgot to write it must fail, not spend the real one.
+
+Two rounds asked for in so many words are at least two minutes apart, and a
+request while a round runs is refused with a 409: anything holding the token
+could otherwise ask in a loop and, while the sessions kept changing, spend the
+day's ceiling in a minute. A second "too soon" in a row is not even written down.
+
+`claude` is looked for first in `~/.local/bin`, a folder the user can write,
+because that is where Claude Code's own installer puts it. A security review
+asked for a signature check before handing it the frame; it is not done, because
+the installation through npm is a script with no signature to check, and because
+a process able to plant a file there runs as the user and can read every
+transcript directly — the frame would tell it nothing it could not read.

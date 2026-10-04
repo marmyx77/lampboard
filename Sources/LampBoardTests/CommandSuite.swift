@@ -98,6 +98,38 @@ enum CommandSuite {
             }
         },
 
+        TestCase("Input goes in on standard input, past what a pipe holds") { t in
+            let input = String(repeating: "frame ", count: 40_000)
+            do {
+                let result = try Command.run("/bin/cat", deadline: 20, input: Data(input.utf8))
+                t.expectEqual(result.output.count, input.count, "every byte came back")
+            } catch {
+                t.fail("cat should echo its input: \(error)")
+            }
+        },
+
+        TestCase("A tool that never reads its input does not take the caller down") { t in
+            // Writing into a pipe whose reader has gone raises SIGPIPE, which ends
+            // the writer: here, the panel.
+            let input = Data(repeating: 0x61, count: 300_000)
+            do {
+                let result = try Command.run("/usr/bin/true", deadline: 20, input: input)
+                t.expectEqual(result.status, 0, "status")
+            } catch {
+                t.fail("true should succeed: \(error)")
+            }
+        },
+
+        TestCase("The tool runs in the directory it is given") { t in
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("command-directory-\(ProcessInfo.processInfo.processIdentifier)")
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let result = try? Command.run("/bin/pwd", ["-P"], deadline: 10, directory: directory)
+            t.expect(result?.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                .hasSuffix(directory.lastPathComponent) == true, "pwd names the directory")
+        },
+
         TestCase("A tool that is not there is refused straight away") { t in
             do {
                 _ = try Command.run("/usr/bin/no-such-tool-exists-here", deadline: 10)

@@ -1,0 +1,226 @@
+import LampBoardCore
+import Foundation
+import TestKit
+
+/// LampMaster's round in the real binary, against a fake `claude`.
+///
+/// The fake is a shell script in the fake home's `~/.local/bin`, the only place
+/// the binary looks under `LAMPBOARD_HOME`. It writes down what it was given on
+/// standard input and as arguments, counts its calls, and prints an envelope
+/// fixed by each case — so a case can prove the frame went in through the pipe,
+/// the validator dropped what it should, and a skip never reached `claude`.
+///
+/// Each case starts its own instance: the switch, the model and the deadline
+/// are preferences, read from a domain that has to be written before launch.
+enum LampMasterE2ESuite {
+
+    static let sessionId = "e2e1a2b3-0000-4000-8000-00000000d0c5"
+    static let answer = "The docs build is ready. Shall I publish it to staging?"
+
+    static func envelope(_ suggestions: String) -> String {
+        #"{"type":"result","subtype":"success","is_error":false,"duration_ms":1200,"total_cost_usd":0.01,"#
+            + #""usage":{"input_tokens":10,"cache_read_input_tokens":3000,"cache_creation_input_tokens":0,"output_tokens":200},"#
+            + #""structured_output":{"notebook":"watching the docs build","suggestions":["# + suggestions + "]}}"
+    }
+
+    static let goodAndInvented = envelope(
+        #"{"kind":"stalled","sessions":["e2e1a2b3"],"text":"The docs build waits for a yes.","#
+            + #""evidence":"It asked \"Shall I publish it to staging?\" and nobody answered.","action":{"kind":"open"},"#
+            + #""confidence":0.8,"key":"docs build waiting"},"#
+            + #"{"kind":"cross","sessions":["e2e1a2b3"],"text":"Invented.","evidence":"It said \"the deployment to production failed twice\".","#
+            + #""action":{"kind":"none"},"confidence":0.9,"key":"invented"}"#
+    )
+
+    /// One instance with LampMaster's preferences, its fake `claude`, and a
+    /// closed conversation from a minute ago.
+    final class Bench {
+        let app: AppUnderTest
+        let domain: String
+        var bin: URL { app.home.appendingPathComponent(".local/bin") }
+        var folder: URL { app.home.appendingPathComponent(".lampboard/lampmaster") }
+
+        init(binaryURL: URL, port: UInt16, enabled: Bool = true, timeout: Double? = nil) {
+            app = AppUnderTest(binaryURL: binaryURL, port: port)
+            domain = "com.lampboard.app.test.\(app.home.lastPathComponent)"
+            let defaults = UserDefaults(suiteName: domain)
+            defaults?.removePersistentDomain(forName: domain)
+            defaults?.set(enabled, forKey: "lampmaster.enabled")
+            defaults?.set("sonnet", forKey: "lampmaster.model")
+            if let timeout { defaults?.set(timeout, forKey: "lampmaster.timeoutSeconds") }
+            defaults?.synchronize()
+        }
+
+        func start(reply: String, sleeping: Bool = false) throws {
+            try app.start()
+            try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+            try reply.write(to: bin.appendingPathComponent("reply.json"), atomically: true, encoding: .utf8)
+            let script = """
+            #!/bin/sh
+            here="$(dirname "$0")"
+            cat > "$here/stdin.txt"
+            printf '%s\\n' "$@" > "$here/args.txt"
+            echo call >> "$here/calls.txt"
+            \(sleeping ? "exec /bin/sleep 30" : "cat \"$here/reply.json\"")
+            """
+            let fake = bin.appendingPathComponent("claude")
+            try script.write(to: fake, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fake.path)
+            writeConversation()
+        }
+
+        func stop() {
+            app.stop()
+            UserDefaults(suiteName: domain)?.removePersistentDomain(forName: domain)
+        }
+
+        /// A closed conversation that asked something a minute ago: in the
+        /// frame for six hours.
+        func writeConversation() {
+            let folder = app.home.appendingPathComponent(".claude/projects/-home-dev-docs-site")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let stamp = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-60))
+            let records: [[String: Any]] = [
+                ["type": "user", "timestamp": stamp, "cwd": "/home/dev/docs-site", "entrypoint": "cli",
+                 "message": ["role": "user", "content": "build the docs site"]],
+                ["type": "assistant", "timestamp": stamp, "cwd": "/home/dev/docs-site", "entrypoint": "cli",
+                 "message": ["role": "assistant", "model": "claude-sonnet-5-5",
+                             "content": [["type": "text", "text": LampMasterE2ESuite.answer]]]],
+            ]
+            let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+                .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
+            try? text.write(to: folder.appendingPathComponent("\(LampMasterE2ESuite.sessionId).jsonl"),
+                            atomically: true, encoding: .utf8)
+        }
+
+        func ask() -> Int { app.raw(method: "POST", path: AppConfig.lampMasterPath).status }
+
+        func state() -> [String: Any]? {
+            let result = app.raw(method: "GET", path: AppConfig.lampMasterPath)
+            guard result.status == 200 else { return nil }
+            return try? JSONSerialization.jsonObject(with: Data(result.body.utf8)) as? [String: Any]
+        }
+
+        var lastRound: [String: Any]? { state()?["lastRound"] as? [String: Any] }
+        var open: [[String: Any]] { state()?["open"] as? [[String: Any]] ?? [] }
+
+        func calls() -> Int {
+            ((try? String(contentsOf: bin.appendingPathComponent("calls.txt"), encoding: .utf8)) ?? "")
+                .split(separator: "\n").count
+        }
+
+        func read(_ name: String) -> String {
+            (try? String(contentsOf: bin.appendingPathComponent(name), encoding: .utf8)) ?? ""
+        }
+
+        /// Asks for a round and waits until one more is recorded. Counted, not
+        /// timed: two rounds within a second carry the same stamp.
+        @discardableResult
+        func round(timeout: TimeInterval = 15) -> [String: Any]? {
+            let before = state()?["roundsToday"] as? Int ?? 0
+            guard ask() == 202 else { return nil }
+            app.waitUntil(timeout: timeout) {
+                guard let now = state(), now["running"] as? Bool == false else { return false }
+                return (now["roundsToday"] as? Int ?? 0) > before
+            }
+            return lastRound
+        }
+    }
+
+    static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
+        func bench(enabled: Bool = true, timeout: Double? = nil, reply: String = goodAndInvented,
+                   sleeping: Bool = false, _ t: Assertions, _ body: (Bench) -> Void) {
+            let bench = Bench(binaryURL: binaryURL, port: port, enabled: enabled, timeout: timeout)
+            defer { bench.stop() }
+            do { try bench.start(reply: reply, sleeping: sleeping) } catch {
+                return t.fail("the instance did not start: \(error)")
+            }
+            body(bench)
+        }
+
+        return TestSuite("E2E · LampMaster", [
+
+            TestCase("a round reaches claude with the frame on standard input, and the validator screens the answer") { t in
+                bench(t) { bench in
+                    let round = bench.round()
+                    t.expectEqual(round?["outcome"] as? String, "ran", "the round ran")
+                    t.expectEqual(round?["shown"] as? Int, 1, "one suggestion shown")
+                    t.expectEqual((round?["rejected"] as? [String: Int])?["noEvidence"], 1, "the invented one dropped")
+                    t.expectEqual(round?["tokens"] as? Int, 3_210, "tokens as billed")
+                    t.expectEqual(bench.open.compactMap { ($0["suggestion"] as? [String: Any])?["key"] as? String },
+                                  ["docs build waiting"])
+                    let stdin = bench.read("stdin.txt"), args = bench.read("args.txt")
+                    t.expect(stdin.contains("<frame>") && stdin.contains("e2e1a2b3"), "the frame came on stdin")
+                    t.expect(stdin.contains(answer), "with the session's last answer")
+                    t.expect(!args.contains("<frame>") && !args.contains(answer), "and not as an argument")
+                    for flag in ["--no-session-persistence", "--strict-mcp-config", #"{"disableAllHooks":true}"#] {
+                        t.expect(args.contains(flag), "\(flag) passed")
+                    }
+                    let mode = (try? FileManager.default.attributesOfItem(atPath: bench.folder.path))?[.posixPermissions] as? Int
+                    t.expectEqual(mode, 0o700, "the folder is the owner's")
+                    t.expect(FileManager.default.fileExists(atPath: bench.folder.appendingPathComponent("notebook.md").path),
+                             "the notebook is kept")
+                }
+            },
+
+            TestCase("a second round with nothing new is skipped without calling claude") { t in
+                bench(t) { bench in
+                    bench.round()
+                    let again = bench.round()
+                    t.expectEqual(again?["outcome"] as? String, "skipped", "skipped")
+                    t.expectEqual(again?["skip"] as? String, "unchanged", "because nothing changed")
+                    t.expectEqual(bench.calls(), 1, "claude was called once")
+                }
+            },
+
+            TestCase("past the day's ceiling no round reaches claude") { t in
+                bench(t) { bench in
+                    let spent = LampMasterRound(at: Date(), trigger: .timer, outcome: .ran, tokens: 200_000, digest: "earlier")
+                    try? FileManager.default.createDirectory(at: bench.folder, withIntermediateDirectories: true)
+                    try? ((LampMasterLedger.line(spent) ?? "") + "\n")
+                        .write(to: bench.folder.appendingPathComponent("rounds.jsonl"), atomically: true, encoding: .utf8)
+                    let round = bench.round()
+                    t.expectEqual(round?["skip"] as? String, "dailyCap", "the ceiling")
+                    t.expectEqual(bench.calls(), 0, "claude never called")
+                }
+            },
+
+            TestCase("a claude that does not answer is stopped at the deadline") { t in
+                bench(timeout: 2, sleeping: true, t) { bench in
+                    t.expectEqual(bench.ask(), 202, "accepted")
+                    t.expectEqual(bench.state()?["running"] as? Bool, true, "the state says a round is in flight")
+                    t.expectEqual(bench.ask(), 409, "a second request while it runs is refused, and says so")
+                    bench.app.waitUntil(timeout: 20) { bench.state()?["running"] as? Bool == false }
+                    let round = bench.lastRound
+                    t.expectEqual(round?["outcome"] as? String, "failed", "failed")
+                    t.expectEqual(round?["failure"] as? String, "timedOut", "at the deadline")
+                    t.expect(bench.open.isEmpty, "nothing shown")
+                }
+            },
+
+            TestCase("an answer outside the schema is a failed round, never half a suggestion") { t in
+                let prose = #"{"type":"result","subtype":"success","is_error":false,"result":"Here are my thoughts."}"#
+                bench(reply: prose, t) { bench in
+                    let round = bench.round()
+                    t.expectEqual(round?["failure"] as? String, "offSchema", "off schema")
+                    t.expect(bench.open.isEmpty, "nothing shown")
+                }
+            },
+
+            TestCase("switched off, a request is recorded as skipped and claude is never called") { t in
+                bench(enabled: false, t) { bench in
+                    let round = bench.round()
+                    t.expectEqual(round?["skip"] as? String, "off", "off")
+                    t.expectEqual(bench.calls(), 0, "claude never called")
+                }
+            },
+
+            TestCase("the state and the round are behind the token") { t in
+                bench(t) { bench in
+                    t.expectEqual(bench.app.raw(method: "GET", path: AppConfig.lampMasterPath, token: .some(nil)).status, 401)
+                    t.expectEqual(bench.app.raw(method: "POST", path: AppConfig.lampMasterPath, token: .some("wrong")).status, 401)
+                    t.expectEqual(bench.calls(), 0, "claude never called")
+                }
+            },
+        ])
+    }
+}

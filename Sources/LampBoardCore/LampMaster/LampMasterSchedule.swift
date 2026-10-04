@@ -3,7 +3,8 @@ import Foundation
 /// When the round runs, and when it does not, at no cost.
 ///
 /// Every skip is decided here, before a token is spent: switched off, nobody
-/// to look at, nothing new since the last round, or the day's ceiling reached.
+/// to look at, nothing new since the last round, the day's ceiling reached, or
+/// asked for again too soon.
 /// "Nothing new" is what keeps the cost down on a quiet evening: twelve
 /// identical frames an hour apart would buy twelve identical answers.
 public enum LampMasterSchedule {
@@ -15,6 +16,10 @@ public enum LampMasterSchedule {
     /// Opening LampMaster's card asks for a fresh round when the last one is
     /// older than this.
     public static let openedRefresh: TimeInterval = 15 * 60
+    /// The least time between two rounds asked for in so many words. Without
+    /// it, anything holding the server's token could ask in a loop and spend
+    /// the day's ceiling in a minute while the sessions kept changing.
+    public static let askedSpacing: TimeInterval = 2 * 60
     /// About twenty-five rounds at the 4 October measurement of 7.1k tokens a
     /// round: twice what an hourly round spends in a working day.
     public static let dailyTokenCap = 200_000
@@ -36,6 +41,8 @@ public enum LampMasterSchedule {
         case unchanged
         /// The day's tokens are spent.
         case dailyCap
+        /// Asked for again within `askedSpacing` of the last run.
+        case tooSoon
     }
 
     public enum Decision: Sendable, Equatable {
@@ -63,6 +70,7 @@ public enum LampMasterSchedule {
         if sessionCount == 0 { return .skip(.empty) }
         if digest == lastDigest { return .skip(.unchanged) }
         if tokensToday >= cap { return .skip(.dailyCap) }
+        if trigger == .asked, since < askedSpacing { return .skip(.tooSoon) }
         return .run
     }
 

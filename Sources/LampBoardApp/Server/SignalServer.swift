@@ -53,6 +53,8 @@ final class SignalServer {
     private let onOpenSlot: (Int) -> String?
     private let onNewInSlot: (Int) -> String?
     private let onChatInSlot: (Int) -> String?
+    private let onLampMaster: () -> Data
+    private let onLampMasterRound: () -> Bool
     private let token: String?
 
     private var listener: NWListener?
@@ -66,7 +68,9 @@ final class SignalServer {
         onNext: @escaping () -> String? = { nil },
         onOpenSlot: @escaping (Int) -> String? = { _ in nil },
         onNewInSlot: @escaping (Int) -> String? = { _ in nil },
-        onChatInSlot: @escaping (Int) -> String? = { _ in nil }
+        onChatInSlot: @escaping (Int) -> String? = { _ in nil },
+        onLampMaster: @escaping () -> Data = { Data("{}".utf8) },
+        onLampMasterRound: @escaping () -> Bool = { false }
     ) {
         self.port = port
         self.token = token
@@ -77,6 +81,8 @@ final class SignalServer {
         self.onOpenSlot = onOpenSlot
         self.onNewInSlot = onNewInSlot
         self.onChatInSlot = onChatInSlot
+        self.onLampMaster = onLampMaster
+        self.onLampMasterRound = onLampMasterRound
     }
 
     // MARK: - Lifecycle
@@ -177,6 +183,9 @@ final class SignalServer {
         case AppConfig.chatPath:
             return handleSlotRoute(request, action: onChatInSlot)
 
+        case AppConfig.lampMasterPath:
+            return handleLampMaster(request)
+
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")
@@ -220,6 +229,38 @@ final class SignalServer {
             onError("Serializing the sessions failed: \(error.localizedDescription)")
             return HTTPRequestParser.response(status: 500, reason: "Internal Server Error")
         }
+    }
+
+    /// `GET /lampmaster` — LampMaster's state; `POST` asks for a round now.
+    ///
+    /// Behind the token both ways: the state quotes conversations, and a round
+    /// spends the user's allowance. The POST answers at once with 202 and the
+    /// round runs on its own; whoever asked reads the outcome with a GET. A
+    /// connection held open for two minutes would be one more way to tie up
+    /// the server.
+    private func handleLampMaster(_ request: HTTPRequest) -> Data {
+        guard request.method == "GET" || request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        guard let token else {
+            return HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+        }
+        guard AccessToken.matches(
+            request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName),
+            expected: token
+        ) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        guard request.method == "POST" else {
+            return HTTPRequestParser.response(
+                status: 200, reason: "OK", body: onLampMaster(), contentType: "application/json"
+            )
+        }
+        guard onLampMasterRound() else {
+            // 409, not 202: the request was dropped, and the caller should know.
+            return HTTPRequestParser.response(status: 409, reason: "Conflict", body: "a round is already running")
+        }
+        return HTTPRequestParser.response(status: 202, reason: "Accepted", body: "round requested")
     }
 
     /// `POST /next` — raises the window of the next waiting session.
