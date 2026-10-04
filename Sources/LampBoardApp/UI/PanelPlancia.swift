@@ -1,0 +1,124 @@
+import AppKit
+import Combine
+import LampBoardCore
+
+/// The Plancia wired in (UX §1, §5, D79): opening a session beside the list,
+/// `⌘⇧L` through the depths, `Esc` back to the panel, and the Plancia closing
+/// by itself when the pointer has been elsewhere with nothing waiting.
+///
+/// Its own file for the reason `PanelQueue.swift` is one: `PanelController`
+/// stays under the eight hundred lines this project refuses.
+extension PanelController {
+
+    /// Whether a text field or view in the panel has the keyboard — the bar's,
+    /// the Plancia's composer. Single keys belong to it then: a queue key read
+    /// out of a sentence typed in the composer would answer a permission (a
+    /// review finding), and `Esc` there would throw the draft away.
+    var isTyping: Bool { panel.firstResponder is NSText }
+
+    /// The Plancia needs room for a conversation, whatever the column needs.
+    static let planciaMinimumHeight: CGFloat = 520
+
+    func wirePlancia() {
+        planciaKeys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.panel.isKeyWindow, !self.bar.isEditing, !self.isTyping else { return event }
+            let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if modifiers == [.command, .shift], event.charactersIgnoringModifiers?.lowercased() == "l" {
+                self.cycleDepth()
+                return nil
+            }
+            // Esc closes the Plancia and nothing else: narrowing the panel to a
+            // column on a key somebody presses to dismiss things would surprise.
+            if event.keyCode == 53, modifiers.isEmpty, self.plancia.isOpen {
+                self.closePlancia()
+                return nil
+            }
+            return event
+        }
+        // A session that ends while open closes the Plancia: its composer would
+        // otherwise take a message nothing will ever deliver.
+        store.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] state in
+                guard let self, let id = self.plancia.sessionId, state.session(named: id) == nil else { return }
+                self.closePlancia()
+            }
+            .store(in: &cancellables)
+        Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.closePlanciaIfAway() }
+            .store(in: &cancellables)
+    }
+
+    func openPlancia(sessionId: String) {
+        guard let session = session(named: sessionId), !session.workspace.isRemote else { return }
+        if isCompact { toggleCompact() }
+        // The side is chosen once, from the narrow panel, and kept until it
+        // closes: read again from the wide frame it could flip mid-use.
+        if !plancia.isOpen { plancia.leading = planciaLeading }
+        widthKeepsRight = plancia.leading
+        plancia.open(session, store: store)
+        planciaAwaySince = nil
+        rebuildContent()
+    }
+
+    func closePlancia() {
+        guard plancia.isOpen else { return }
+        widthKeepsRight = plancia.leading
+        plancia.close()
+        rebuildContent()
+    }
+
+    /// `⌘⇧L`: the column, the panel, the Plancia on what is most urgent, and
+    /// back to the column.
+    func cycleDepth() {
+        if isCompact {
+            toggleCompact()
+        } else if plancia.isOpen {
+            closePlancia()
+            toggleCompact()
+        } else if let id = queue.cards.first?.sessionIds.first ?? currentRendering.rows.first?.primary.id {
+            openPlancia(sessionId: id)
+        } else {
+            toggleCompact()
+        }
+    }
+
+    func session(named id: String) -> SessionState? { store.state.session(named: id) }
+
+    /// The side toward the middle of the screen: a panel on the right half
+    /// opens its Plancia to the left.
+    var planciaLeading: Bool {
+        guard let visible = (panel.screen ?? NSScreen.main)?.visibleFrame else { return false }
+        return panel.frame.midX > visible.midX
+    }
+
+    /// The anchor for a new width: the edge the Plancia chose when it is the
+    /// Plancia opening or closing, else the edge nearest the side (D78).
+    func widthAnchor(to width: CGFloat) -> CGPoint {
+        defer { if width != panel.frame.width { widthKeepsRight = nil } }
+        let frame = panel.frame
+        if let keepRight = widthKeepsRight, width != frame.width {
+            return CGPoint(x: keepRight ? frame.maxX - width : frame.minX, y: frame.maxY)
+        }
+        return PanelPlacement.anchor(widening: frame, to: width, in: (panel.screen ?? NSScreen.main)?.visibleFrame ?? frame)
+    }
+
+    func planciaHeight(_ height: CGFloat) -> CGFloat {
+        plancia.isOpen ? max(height, Self.planciaMinimumHeight) : height
+    }
+
+    private func closePlanciaIfAway() {
+        guard plancia.isOpen else { planciaAwaySince = nil; return }
+        if panel.frame.contains(NSEvent.mouseLocation) {
+            planciaAwaySince = nil
+            return
+        }
+        let since = planciaAwaySince ?? Date()
+        planciaAwaySince = since
+        if PanelDepth.closesPlancia(queueEmpty: queue.cards.isEmpty, pointerAwayFor: Date().timeIntervalSince(since),
+                                    pinned: plancia.pinned) {
+            closePlancia()
+        }
+    }
+}

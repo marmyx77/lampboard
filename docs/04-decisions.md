@@ -3002,3 +3002,33 @@ screen beside the editor, which is the trade the UX made for a panel that can be
 read without hovering. The Plancia, at 780, is the next step and comes only when
 asked for.
 
+## D79 · The Plancia opens a session beside the list, and Esc only closes it
+
+**Decided.** A session opens in the Plancia from its row's menu (*Open in the
+Plancia*) or with `⌘⇧L`, which steps through the depths of the UX — column, panel,
+the Plancia on the most urgent session, the column again. The panel widens to 780
+points toward the middle of the screen and the conversation sits on that side of
+the list: the chat window's own view, so the reader, and the composer when sending
+is on, are the ones that already exist (D15). It closes with its button, with
+`Esc`, or by itself after four seconds with the pointer elsewhere, nothing waiting
+and no pin.
+
+**Why `Esc` only closes it.** The UX had `Esc` step down a level each time, panel
+to column included. A key people press to dismiss things should not narrow the
+panel they keep beside their work, so `Esc` leaves the Plancia and stops there;
+`⌘⇧L` is the way down to the column.
+
+**Found while building it.** A LampMaster card names its sessions by their first
+eight characters, and every place that opened a session looked them up as whole
+ids: opening a LampMaster card from the queue had done nothing since 0.6's queue.
+The state now finds a session by those eight characters when they name one only.
+
+A code review found the queue's single keys reading letters typed in the Plancia's
+composer — `a` in "ask" would have allowed a waiting permission — and `Esc` there
+throwing the draft away: no single key is taken while a text view has the keyboard.
+It also found the Plancia staying open on a session that had ended, the side it
+opens on able to flip once the panel was wide, and the chat window and the Plancia
+taking the same session's mailbox marker from each other; the Plancia now closes
+with its session, keeps the side it chose, and the marker goes only when the last
+view holding it lets go.
+

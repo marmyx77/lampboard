@@ -138,3 +138,17 @@ public struct TrafficLightState: Sendable, Equatable {
         return TrafficLightState(sessions: survivors, dismissed: dismissed)
     }
 }
+
+extension TrafficLightState {
+    /// A session by its id, or by the eight characters LampMaster names it with
+    /// when they name one session only. A LampMaster card carries the short
+    /// form; looked up as an id it found nothing, and opening the card did
+    /// nothing (found on the test Mac while building the Plancia).
+    public func session(named id: String) -> SessionState? {
+        if let exact = sessions[id] { return exact }
+        guard id.count >= 8 else { return nil }
+        let matches = sessions.values.filter { $0.id.hasPrefix(id) }
+        return matches.count == 1 ? matches.first : nil
+    }
+}
+

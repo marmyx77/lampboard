@@ -34,6 +34,13 @@ final class PanelController {
     var barKeys: Any?
     /// The bar's shortcut from any application, when one is chosen (D77).
     var barHotKey: GlobalHotKey?
+    /// The Plancia: a session open beside the list (D79). Wired in `PanelPlancia.swift`.
+    let plancia = PlanciaModel()
+    var planciaKeys: Any?
+    var planciaAwaySince: Date?
+    /// For the next change of width only: which edge stays put, when the
+    /// Plancia opens or closes on a side already chosen.
+    var widthKeepsRight: Bool?
     var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.
@@ -99,11 +106,13 @@ final class PanelController {
         observeAllowance()
         wireQueue()
         wireBar()
+        wirePlancia()
         observeLampMaster()
         observePanelMoves()
     }
 
     func close() {
+        plancia.close()
         chats.close()
         lamp.hide()
         panel.close()
@@ -275,7 +284,13 @@ final class PanelController {
             rowActions: makeRowActions(),
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour,
-            queue: compact ? nil : queue, bar: compact ? nil : bar
+            queue: compact ? nil : queue, bar: compact ? nil : bar,
+            plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading,
+            openInEditor: { [weak self] id in
+                guard let self, let session = self.store.state.sessions[id] else { return }
+                self.activate(session: session)
+            },
+            closePlancia: { [weak self] in self?.closePlancia() }
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -328,14 +343,14 @@ final class PanelController {
         }
 
         let wanted = NSSize(
-            width: Layout.width(compact: compact),
-            height: Layout.height(
+            width: plancia.isOpen ? PanelDepth.plancia.width : Layout.width(compact: compact),
+            height: planciaHeight(Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
                 allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
                 tourLines: tour == nil ? 0 : TourBand.lines,
                 queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0,
                 bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil)
-            )
+            ))
         )
 
         // Clamped to what the display can show. Without this an opened project on
@@ -378,8 +393,7 @@ final class PanelController {
             Preferences.placed(
                 size: size,
                 // A new width keeps the edge nearest the side of the screen.
-                anchor: PanelPlacement.anchor(widening: panel.frame, to: size.width,
-                                              in: (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame),
+                anchor: widthAnchor(to: size.width),
                 on: panel.screen
             ),
             display: true, animate: false
@@ -440,7 +454,8 @@ final class PanelController {
             moveSession: { [weak self] row, member, offset in
                 self?.move(member, in: row, by: offset)
             },
-            revealInFinder: { row in FinderReveal.open(row.workspace.path) }
+            revealInFinder: { row in FinderReveal.open(row.workspace.path) },
+            openPlancia: { [weak self] row in self?.openPlancia(sessionId: row.primary.id) }
         )
     }
 
@@ -657,6 +672,7 @@ final class PanelController {
     // MARK: - Panel actions
 
     func toggleCompact() {
+        if plancia.isOpen { closePlancia() }
         compact.toggle()
         preferences.isCompact = compact
         rebuildContent()

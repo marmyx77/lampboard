@@ -33,6 +33,18 @@ enum PlanciaSuite {
             t.expect(!PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 60, pinned: true), "pinned")
         },
 
+        TestCase("A session is found by its id, or by LampMaster's eight characters when they name one") { t in
+            func session(_ id: String) -> SessionState {
+                SessionState(id: id, status: .idle, workspace: Workspace(path: "/home/dev/x"), updatedAt: t0, statusSince: t0)
+            }
+            let state = TrafficLightState(sessions: ["e5f6a7b8-1": session("e5f6a7b8-1"), "c0ffee00-2": session("c0ffee00-2"),
+                                                     "c0ffee00-3": session("c0ffee00-3")])
+            t.expectEqual(state.session(named: "e5f6a7b8-1")?.id, "e5f6a7b8-1", "the whole id")
+            t.expectEqual(state.session(named: "e5f6a7b8")?.id, "e5f6a7b8-1", "the short form LampMaster uses")
+            t.expectNil(state.session(named: "c0ffee00"), "two sessions share it: neither")
+            t.expectNil(state.session(named: "e5f6"), "too short to mean one")
+        },
+
         TestCase("A tool's start and end make one entry with its duration") { t in
             var log = SessionActivity()
             log.toolStarted(id: "c1", tool: "Bash", detail: "npm test", at: at(0))

@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1012**, instantaneous |
+| Domain tests | **1013**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2417,3 +2417,9 @@ its duration, each turn with what it alone cost.
 The panel is 340 points wide now, the column 44 (D78): the widths the UX settled on,
 because a row's second line and the bar are sentences. A panel kept at the right
 of the screen grows to the left.
+
+The Plancia opens (D79): a session beside the list, toward the middle of the
+screen, from its row's menu or `⌘⇧L`, with its conversation in the chat window's own
+view. Photographed on the test Mac through a new `--plancia` launch option. Building
+it found that a LampMaster card in the queue opened nothing — it names sessions by
+eight characters, and every lookup wanted the whole id.

@@ -11,7 +11,7 @@ extension PanelController {
 
     func wireQueue() {
         queue.onOpen = { [weak self] id in
-            guard let self, let session = self.store.state.sessions[id] else { return }
+            guard let self, let session = self.session(named: id) else { return }
             self.activate(session: session)
         }
         queue.onMarkRead = { [weak self] ids in
@@ -27,7 +27,7 @@ extension PanelController {
         // key acting on a card nobody can see would be a review finding twice.
         queue.holdsKeyboard = { [weak self] in
             guard let self else { return false }
-            return self.panel.isKeyWindow && !self.isCompact && !self.bar.isEditing
+            return self.panel.isKeyWindow && !self.isCompact && !self.bar.isEditing && !self.isTyping
         }
         queue.startListening()
         for (name, active) in [(NSWindow.didBecomeKeyNotification, true), (NSWindow.didResignKeyNotification, false)] {

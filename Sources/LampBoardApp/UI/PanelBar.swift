@@ -12,7 +12,7 @@ extension PanelController {
 
     func wireBar() {
         bar.onOpenSession = { [weak self] id in
-            guard let self, let session = self.store.state.sessions[id] else { return }
+            guard let self, let session = self.session(named: id) else { return }
             self.activate(session: session)
         }
         bar.onAction = { [weak self] action in

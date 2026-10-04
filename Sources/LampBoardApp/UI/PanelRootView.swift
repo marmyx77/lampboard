@@ -90,8 +90,36 @@ struct PanelRootView: View {
     var queue: WaitingQueueModel? = nil
     /// The bar at the top; nil in the narrow panel.
     var bar: CommandBarModel? = nil
+    /// The Plancia, while a session is open in it (D79), on the side toward the
+    /// middle of the screen.
+    var plancia: PlanciaModel? = nil
+    var planciaLeading = false
+    var openInEditor: (String) -> Void = { _ in }
+    var closePlancia: () -> Void = {}
 
     var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            if let plancia, planciaLeading { planciaColumn(plancia) }
+            column
+            if let plancia, !planciaLeading { planciaColumn(plancia) }
+        }
+        .background(PanelBackground().overlay(StatusPalette.panelScrim))
+        .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    private func planciaColumn(_ model: PlanciaModel) -> some View {
+        HStack(spacing: 0) {
+            if !planciaLeading { Divider() }
+            PlanciaView(model: model, openInEditor: openInEditor, close: closePlancia)
+            if planciaLeading { Divider() }
+        }
+    }
+
+    private var column: some View {
         VStack(spacing: 0) {
             if let tour { TourBand(tour: tour, compact: flags.compact) }
             if let bar { CommandBarView(model: bar) }
@@ -115,12 +143,6 @@ struct PanelRootView: View {
             issueStrip
             footer
         }
-        .background(PanelBackground().overlay(StatusPalette.panelScrim))
-        .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-        )
         // The panel menu stays reachable from the margins: over the rows it is
         // shadowed by the row menu, which is more specific and therefore takes the
         // right precedence. The global entries are not duplicated into every row

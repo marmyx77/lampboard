@@ -128,6 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
         if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
+        // The Plancia on the most urgent session, once the first rows are in.
+        if CommandLine.arguments.contains("--plancia") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak controller] in controller?.cycleDepth() }
+        }
         panelController = controller
 
         startNotifier(for: controller)

@@ -37,6 +37,8 @@ struct RowActions {
     let moveSession: (ColumnRow, RowSession, Int) -> Void
     /// Opens the folder the session is working in, in the Finder.
     let revealInFinder: (ColumnRow) -> Void
+    /// Opens the row's session in the Plancia, beside the list (D79).
+    var openPlancia: (ColumnRow) -> Void = { _ in }
 }
 
 /// What the column tells a row about the drag in progress.
@@ -366,6 +368,9 @@ struct TrafficLightRow: View {
             Button("Read here: opens the conversations", action: { actions.openChat(row) })
         }
         Button("Open", action: { actions.open(row) })
+        if !row.workspace.isRemote, !compact {
+            Button("Open in the Plancia", action: { actions.openPlancia(row) })
+        }
         Button("Open without marking as read", action: { actions.peek(row) })
 
         if row.status == .idle {

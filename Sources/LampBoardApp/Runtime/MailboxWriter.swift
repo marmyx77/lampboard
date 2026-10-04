@@ -43,6 +43,7 @@ struct MailboxWriter {
             try Mailbox.ensureDirectory(using: fileManager)
             try Data().write(to: paths.open, options: .atomic)
             try Mailbox.restrict(paths.open, using: fileManager)
+            Self.leases.take(sessionId)
             return .success(())
         } catch {
             return .failure(.notDelivered(error.localizedDescription))
@@ -64,6 +65,9 @@ struct MailboxWriter {
     @discardableResult
     func close(sessionId: String) -> Bool {
         guard let paths = Mailbox.paths(for: sessionId) else { return false }
+        // The chat window and the Plancia can hold one session at once: the
+        // first to let go must not take the marker from the other (D79).
+        guard Self.leases.give(sessionId) == 0 else { return true }
         guard !fileManager.fileExists(atPath: paths.message.path) else { return false }
         try? fileManager.removeItem(at: paths.open)
         return true
@@ -175,5 +179,28 @@ struct MailboxWriter {
             )
         }
         return verdict.cleared
+    }
+
+    // MARK: - Leases
+
+    /// How many views hold each session's marker open, across every writer.
+    private static let leases = Leases()
+
+    private final class Leases: @unchecked Sendable {
+        private let lock = NSLock()
+        private var counts: [String: Int] = [:]
+
+        func take(_ id: String) {
+            lock.lock(); defer { lock.unlock() }
+            counts[id, default: 0] += 1
+        }
+
+        /// What is left after letting go of one; never below zero.
+        func give(_ id: String) -> Int {
+            lock.lock(); defer { lock.unlock() }
+            let left = max((counts[id] ?? 0) - 1, 0)
+            counts[id] = left == 0 ? nil : left
+            return left
+        }
     }
 }
