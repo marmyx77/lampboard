@@ -931,7 +931,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 | | |
 |---|---|
 | Domain tests | **895**, instantaneous |
-| End-to-end tests | **119**, about a minute |
+| End-to-end tests | **122**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2195,4 +2195,11 @@ The tutorial began with its two foundations (D64): the script of invented sessio
 the tour, the screenshots and the site will all be played from, checked to hold
 nothing real, and the tour itself — steps that move only on their gesture, follow
 the installed version, and resume where they were left.
+
+Then the trial itself: `lampboard tour` starts a second panel on a temporary home,
+which sets its stage — an editor lock per invented project, a stand-in process per
+session — and plays the script into its own server. The end-to-end suite runs it
+twenty times faster and finds every session in the state the reducer produces, and
+nothing left behind on quit. A trial without `LAMPBOARD_HOME` is refused: it would
+write invented sessions into the real `~/.claude`.
 

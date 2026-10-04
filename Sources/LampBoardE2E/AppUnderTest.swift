@@ -31,6 +31,8 @@ final class AppUnderTest {
 
     let home: URL
     let port: UInt16
+    /// Added to the launch, for the cases that start the app in another mode.
+    var extraArguments: [String] = []
 
     private let process = Process()
     private let binaryURL: URL
@@ -66,7 +68,7 @@ final class AppUnderTest {
         }
 
         process.executableURL = binaryURL
-        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"]
+        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"] + extraArguments
 
         var environment = ProcessInfo.processInfo.environment
         environment[AppConfig.homeOverrideVariable] = home.path
@@ -90,7 +92,7 @@ final class AppUnderTest {
         }
 
         process.executableURL = binaryURL
-        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"]
+        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"] + extraArguments
 
         var environment = ProcessInfo.processInfo.environment
         environment[AppConfig.homeOverrideVariable] = home.path

@@ -61,6 +61,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // remember. Writes nothing when there is nothing to change.
         HookSetup.repairTokens(port: port, token: token)
 
+        // A trial sets its stage before anything reads the home (D64).
+        let trial = TrialStage.mode
+        if trial != nil {
+            TrialStage.prepare(.standard, preferences: preferences, files: LampMasterFiles())
+        }
+
         startServer(token: token)
 
         if !headless {
@@ -71,8 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.start()
         lampMaster.port = port
         lampMaster.start()
+        if let trial { TrialStage.play(.standard, port: port, pace: trial.pace) }
 
-        if !headless && shouldPromptForInstallation {
+        if !headless && trial == nil && shouldPromptForInstallation {
             preferences.wasSetupPromptShown = true
             promptForInstallation()
         }
@@ -180,6 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         presence?.stop()
         presence?.remove()
         panelController?.close()
+        if TrialStage.mode != nil { TrialStage.tearDown() }
     }
 
     // MARK: - Server

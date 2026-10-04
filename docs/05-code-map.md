@@ -1,14 +1,14 @@
 # Code map
 
-~49,500 lines of Swift across five targets. For each file: what it contains, why
+~49,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  14,606 lines · 116 files  pure logic, zero AppKit
-  LampBoardApp/    18,455 lines · 99 files   shell: AppKit, network, windows
+  LampBoardApp/    18,667 lines · 101 files   shell: AppKit, network, windows
   LampBoardTests/  12,543 lines · 69 files   895 cases, instantaneous
-  LampBoardE2E/    3,541 lines · 13 files   119 cases, the real binary
+  LampBoardE2E/    3,598 lines · 14 files   122 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -1104,7 +1104,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 350
+### `main.swift` · `AppDelegate.swift` · 359
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1166,7 +1166,12 @@ forwarded to the running panel with the token, as the hooks do, carrying
 failure comes back as a tool error the calling model can read, never a dead server.
 `mcp install | uninstall | status` manage its entry in Claude Code (D63).
 
-### `CommandLineInterface.swift` · 775
+### `TrialLauncher.swift` · 61
+`lampboard tour`: starts the tutorial's trial panel beside the real one, as a second
+process of this binary on a temporary home and a free port, so the two never share
+anything (D64). `--json` prints the script for the site and the screenshots.
+
+### `CommandLineInterface.swift` · 785
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -1193,6 +1198,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
 | `LampMasterFiles.swift` | 159 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames, the last day's questions. The folder is `0700` because the frames quote conversations |
+| `TrialStage.swift` | 133 | the trial: an editor lock per invented project, a stand-in process per session, a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1447,7 +1453,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 119 cases
+## `LampBoardE2E/` — 122 cases
 
 | Suite | Covers |
 |---|---|
@@ -1456,6 +1462,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
+| `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
 

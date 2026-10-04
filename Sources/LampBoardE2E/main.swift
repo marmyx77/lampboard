@@ -84,6 +84,7 @@ let suites: [TestSuite] = [
     // Instances of its own, each with LampMaster's preferences written before
     // launch, on a port of its own.
     LampMasterE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 2),
+    TrialE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 3),
     // Deliberately last: it starts other instances against the same home and
     // changes their token, so everything before it must already be finished.
     TokenLifecycleSuite.suite(binaryURL: binaryURL, home: app.home, port: testPort &+ 1),

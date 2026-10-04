@@ -19,6 +19,9 @@ enum CommandLineInterface {
         /// `mcp install`, `mcp uninstall`, `mcp status`: the server's entry in
         /// Claude Code's user settings.
         case mcpSetup(verb: String, port: UInt16)
+        /// The tutorial's trial panel on invented sessions, or with `--json` the
+        /// script it plays (D64).
+        case tour(json: Bool)
         case focus(workspaceName: String, dryRun: Bool)
         case next(port: UInt16)
         /// `nil` lists the assignments instead of opening one.
@@ -53,6 +56,8 @@ enum CommandLineInterface {
             return .status
         case "codex-probe":
             return .codexProbe
+        case "tour":
+            return .tour(json: args.contains("--json"))
         case "mcp":
             if let verb = args.dropFirst().first, ["install", "uninstall", "status"].contains(verb) {
                 return .mcpSetup(verb: verb, port: port)
@@ -140,6 +145,9 @@ enum CommandLineInterface {
 
         case .mcpSetup(let verb, let port):
             return LampMasterBridge.setup(verb, port: port)
+
+        case .tour(let json):
+            return TrialLauncher.run(json: json)
 
         case .focus(let workspaceName, let dryRun):
             return runFocus(workspaceName: workspaceName, dryRun: dryRun)
@@ -526,6 +534,8 @@ enum CommandLineInterface {
                                             the lampmaster MCP server: with no verb, the server
                                               itself, as Claude Code starts it; install registers
                                               it for every session, uninstall removes it
+          lampboard tour [--json]           a trial panel on invented sessions, beside yours;
+                                              --json prints the script it plays
           lampboard help                    show this text
 
         OPTIONS
