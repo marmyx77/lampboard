@@ -30,13 +30,17 @@ public enum PanelMetrics {
         public let allowanceLine: CGFloat
         /// One card of "Waiting for you" (D74).
         public let queueCard: CGFloat
+        /// A project's row in the wide panel, which carries a second line (D76);
+        /// `nil` where it is as tall as the narrow one.
+        public let wideRow: CGFloat?
 
         public init(
             row: CGFloat, subRow: CGFloat, spacing: CGFloat, blockInset: CGFloat,
             tail: CGFloat, padding: CGFloat, footer: CGFloat, issueStrip: CGFloat,
-            allowanceLine: CGFloat = 0, queueCard: CGFloat = 0
+            allowanceLine: CGFloat = 0, queueCard: CGFloat = 0, wideRow: CGFloat? = nil
         ) {
             self.queueCard = queueCard
+            self.wideRow = wideRow
             self.row = row
             self.subRow = subRow
             self.spacing = spacing
@@ -65,8 +69,9 @@ public enum PanelMetrics {
         sizes: Sizes
     ) -> CGFloat {
         let inset = (!compact && rowCount > 1) ? sizes.blockInset * 2 : 0
-        guard shownConversations > 0 else { return sizes.row + inset }
-        return sizes.row
+        let row = compact ? sizes.row : (sizes.wideRow ?? sizes.row)
+        guard shownConversations > 0 else { return row + inset }
+        return row
             + CGFloat(shownConversations) * (sizes.subRow + sizes.spacing)
             + (hasTail ? sizes.tail : 0)
             + inset

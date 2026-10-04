@@ -98,6 +98,17 @@ enum PanelMetricsSuite {
             )
         },
 
+        TestCase("A wide row with its second line is taller; a narrow one is not") { t in
+            let twoLines = PanelMetrics.Sizes(
+                row: 20, subRow: 10, spacing: 2, blockInset: 3,
+                tail: 16, padding: 8, footer: 25, issueStrip: 17, wideRow: 30
+            )
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 1, shownConversations: 0, hasTail: false, compact: false, sizes: twoLines), 30)
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 1, shownConversations: 0, hasTail: false, compact: true, sizes: twoLines), 20)
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 3, shownConversations: 2, hasTail: false, compact: false, sizes: twoLines),
+                          30 + 2 * (10 + 2) + 6, "an opened project: the row, its conversations, the inset")
+        },
+
         TestCase("The queue is counted card by card, with its «more» line") { t in
             let withQueue = PanelMetrics.Sizes(
                 row: 20, subRow: 10, spacing: 2, blockInset: 3,

@@ -252,6 +252,9 @@ enum Layout {
     /// points the row uses everywhere else are seven points off the name.
     static let dotToRing: CGFloat = 4
     static let rowHeight: CGFloat = 24
+    /// A row in the wide panel, with its second line (D76): what the session is
+    /// doing now. Twelve points more, for a ten-point line and its leading.
+    static let wideRowHeight: CGFloat = 36
     static let rowSpacing: CGFloat = 2
     static let panelPadding: CGFloat = 8
     static let cornerRadius: CGFloat = 12
@@ -351,7 +354,7 @@ enum Layout {
             row: rowHeight, subRow: subRowHeight, spacing: rowSpacing,
             blockInset: blockInset, tail: tailHeight, padding: panelPadding,
             footer: footerHeight, issueStrip: issueStripHeight,
-            allowanceLine: allowanceLine, queueCard: queueCard
+            allowanceLine: allowanceLine, queueCard: queueCard, wideRow: wideRowHeight
         )
     }
 

@@ -215,7 +215,7 @@ public struct RowSummary: Sendable, Equatable {
     }
 
     /// `monitor ×2, shell` — in the order they were registered, counted.
-    private static func counted(_ types: [String]) -> String {
+    static func counted(_ types: [String]) -> String {
         let counts = types.reduce(into: [(String, Int)]()) { totals, type in
             if let index = totals.firstIndex(where: { $0.0 == type }) {
                 totals[index].1 += 1

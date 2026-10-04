@@ -2928,3 +2928,26 @@ short when the «more» line shows, a card left looking unarmed after it had arm
 and a resolved card cleared early by an older timer; all fixed. A stuck turn has no
 event to announce it, so the queue also looks every thirty seconds.
 
+## D76 · A row says what its session is doing, on a second line
+
+**Decided.** In the wide panel every row has two lines: the name and its time, and
+under them one phrase about now — what an amber row asks, the tool a yellow one is
+on (and past fifteen minutes on one, that it may be stuck), why a red one died, the
+first line of the answer a green one holds, what keeps a blue one waiting, and at
+rest only the agent. A session on another machine says the machine first. Rows are
+36 points rather than 24 there; the narrow panel is unchanged.
+
+**Why.** The column answered "which session" and left "doing what" to a hover, one
+row at a time; with a dozen projects that is a dozen hovers. The phrase is the card's
+most useful field, said where the eye already is. It costs height, twelve points a
+row, and that is the trade the UX accepted: a panel a third taller that can be read
+without touching it. The phrase repeats what a queue card says for the rows that
+are in the queue, deliberately — the queue is the order to act in, the column is
+where everything is.
+
+A code review asked for the screen reader: the row is one sentence — name, how many
+conversations, state, activity, context — with expanded or collapsed as its value,
+and what its hidden children did is offered as actions (open, move up and down, show
+in Finder). It also found an answer opening with a blank line leaving the line
+empty, and a tab gluing two words; both fixed, with `+N` for a project of several.
+

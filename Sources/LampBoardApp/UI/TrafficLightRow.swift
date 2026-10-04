@@ -80,6 +80,19 @@ struct TrafficLightRow: View {
 
     private var isDragged: Bool { drag?.isDragged ?? false }
 
+    private var activity: String { RowActivity.line(for: row, now: now) }
+
+    /// The row's own height: the folder, the grip and the handle are as tall as
+    /// it, or a third of a wide row is a place the pointer cannot grab.
+    private var height: CGFloat { compact ? Layout.rowHeight : Layout.wideRowHeight }
+
+    private var accessibilitySentence: String {
+        var parts = [row.displayName, row.status.label, activity]
+        if row.count > 1 { parts.insert("\(row.count) conversations", at: 1) }
+        if let context = row.context { parts.append("context " + context.label) }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         HStack(spacing: 7) {
             // The light and its ring travel together, closer to each other than
@@ -95,47 +108,59 @@ struct TrafficLightRow: View {
             if !compact {
                 place
 
-                Text(row.displayName)
-                    // Twelve points, not eleven. The point came out of the
-                    // timestamp: `yesterday` was 49.83 points of a field this one
-                    // shares, `1d` is 13.04, and the tooltip says the word. Even
-                    // on the rows that kept the widest label — `14:56`, `22/07` —
-                    // the name loses two points and gains a size.
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                // Two lines in the wide panel (D76): the name and its time, and
+                // under them what the session is doing now — the phrase the card
+                // would take a hover to say.
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 7) {
+                        Text(row.displayName)
+                            // Twelve points, not eleven. The point came out of the
+                            // timestamp: `yesterday` was 49.83 points of a field this one
+                            // shares, `1d` is 13.04, and the tooltip says the word. Even
+                            // on the rows that kept the widest label — `14:56`, `22/07` —
+                            // the name loses two points and gains a size.
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(labelColor)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
 
-                recall
+                        recall
 
-                if let badge {
-                    Text(badge)
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(StatusPalette.badgeForeground)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(
-                            Capsule().fill(StatusPalette.badgeBackground)
-                        )
-                        .fixedSize()
+                        if let badge {
+                            Text(badge)
+                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                .foregroundStyle(StatusPalette.badgeForeground)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(
+                                    Capsule().fill(StatusPalette.badgeBackground)
+                                )
+                                .fixedSize()
+                        }
+
+                        blockBadge
+
+                        Spacer(minLength: 4)
+
+                        Text(timeLabel)
+                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                            // The hierarchy against the name comes from the font weight,
+                            // not from fading the color: on a dark vibrant surface
+                            // `.tertiary` becomes illegible, and a timestamp you can't
+                            // read takes up space without saying anything.
+                            .foregroundStyle(StatusPalette.timeColor)
+                            .lineLimit(1)
+                            // Stops a long name from squeezing out the timestamp: the
+                            // timestamp has priority, it's the information read in passing.
+                            .layoutPriority(1)
+                            .monospacedDigit()
+                    }
+                    Text(activity)
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundStyle(StatusPalette.timeColor)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
-
-                blockBadge
-
-                Spacer(minLength: 4)
-
-                Text(timeLabel)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    // The hierarchy against the name comes from the font weight,
-                    // not from fading the color: on a dark vibrant surface
-                    // `.tertiary` becomes illegible, and a timestamp you can't
-                    // read takes up space without saying anything.
-                    .foregroundStyle(StatusPalette.timeColor)
-                    .lineLimit(1)
-                    // Stops a long name from squeezing out the timestamp: the
-                    // timestamp has priority, it's the information read in passing.
-                    .layoutPriority(1)
-                    .monospacedDigit()
 
                 // Appears under the pointer and takes eighteen points off the
                 // name while it is there. That cost is the whole argument: the
@@ -153,7 +178,7 @@ struct TrafficLightRow: View {
         }
         .animation(.easeOut(duration: 0.12), value: hovering)
         .padding(.horizontal, 6)
-        .frame(height: Layout.rowHeight)
+        .frame(height: height)
         // Compact mode is thirty-five points of panel with one eleven-point dot
         // in it: leading alignment left that dot two points off the centre line,
         // which on a column of twelve rows reads as a column that is crooked.
@@ -163,6 +188,19 @@ struct TrafficLightRow: View {
                 .fill(Color.white.opacity(isDragged ? 0.18 : hovering ? 0.12 : 0))
         )
         .contentShape(Rectangle())
+        // One sentence for VoiceOver, the way the UX spells it: the project,
+        // its state, what it is doing, its context. The parts are drawn as a
+        // light, a ring and two lines, none of which a screen reader can see.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySentence)
+        .accessibilityValue(row.count > 1 ? (flags.isExpanded ? "expanded" : "collapsed") : "")
+        .accessibilityAddTraits(.isButton)
+        // The children are folded into one sentence, so what they do is offered
+        // here: a screen reader cannot hover for the folder or drag the handle.
+        .accessibilityAction(named: "Open") { actions.open(row) }
+        .accessibilityAction(named: "Move up") { actions.move(row, -1) }
+        .accessibilityAction(named: "Move down") { actions.move(row, 1) }
+        .accessibilityAction(named: "Show in Finder") { actions.revealInFinder(row) }
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
         .contextMenu { menu }
@@ -246,7 +284,7 @@ struct TrafficLightRow: View {
             Image(systemName: "folder")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Color.primary.opacity(hoveringFolder ? 0.85 : 0.45))
-                .frame(width: 13, height: Layout.rowHeight)
+                .frame(width: 13, height: height)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -267,10 +305,10 @@ struct TrafficLightRow: View {
             // Neutral, because a project belongs to no single agent. The
             // tinted grips are on the conversations inside it, and both come from
             // one view so they cannot drift apart again.
-            AgentGrip(harness: nil, bright: hovering || drag.isDragged, height: Layout.rowHeight)
+            AgentGrip(harness: nil, bright: hovering || drag.isDragged, height: height)
                 .allowsHitTesting(false)
         }
-        .frame(width: 14, height: Layout.rowHeight)
+        .frame(width: 14, height: height)
     }
 
 

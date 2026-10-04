@@ -17,7 +17,8 @@ while three background agents keep working for another forty minutes.
 <img src="docs/images/panel.png" width="240" alt="The panel: six projects, six
 states, and a ring on each row showing how full its context window is.">
 
-A project in each state, and a ring on every row. The letter in the ring is the
+A project in each state, a ring on every row, and under each name what that
+session is doing now. The letter in the ring is the
 model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT model of the Codex row at the
 bottom. Above the rows, what waits for you, most urgent
 first: a session asking, a turn that failed, an answer to read, and LampMaster's
@@ -1408,7 +1409,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 985 domain tests, instantaneous
+swift run LampBoardTests              # 993 domain tests, instantaneous
 swift run LampBoardE2E                # 135 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

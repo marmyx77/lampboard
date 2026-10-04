@@ -1,13 +1,13 @@
 # Code map
 
-~54,700 lines of Swift across five targets. For each file: what it contains, why
+~54,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,403 lines · 128 files  pure logic, zero AppKit
-  LampBoardApp/    20,320 lines · 113 files   shell: AppKit, network, windows
-  LampBoardTests/  13,673 lines · 79 files   985 cases, instantaneous
+  LampBoardCore/  16,475 lines · 129 files  pure logic, zero AppKit
+  LampBoardApp/    20,361 lines · 113 files   shell: AppKit, network, windows
+  LampBoardTests/  13,758 lines · 80 files   993 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -229,6 +229,9 @@ Nothing caps the column here. A ceiling of twelve rows was the first answer and 
 was wrong twice over: it hid the rows under an opened project, and there are
 people with twenty sessions open. The screen is what bounds it, and that is the
 caller's business.
+
+A wide row is taller than a narrow one by its second line (D76), and the block
+height uses it wherever the panel is wide.
 
 The queue above the rows (D74) is counted here too, card by card with its «more»
 line and the padding above it: drawn above the rows, an uncounted queue would push
@@ -557,6 +560,17 @@ included, which Foundation deliberately leaves alone.
 
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
+
+### `RowActivity.swift` · 67
+The row's second line in the wide panel (D76): what the session is doing now, in
+the fewest words — what it asks, the tool it is on and, past fifteen minutes on
+one, `stuck 16m on npm install`; why it died; the first line of the answer that
+waits; what holds a blue row; at rest only its agent. A remote row says its
+machine first, a project of several adds `+N`. One line, its control and format
+characters turned to spaces, cut at eighty characters.
+
+> **Touching here** changes what every row says at a glance. It must stay one
+> phrase: the card is where the rest goes.
 
 ### `RowSummary.swift` · 251
 Everything a row can say about itself, as **fields** rather than as a paragraph:
@@ -1507,7 +1521,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 466 | one row: dot, context ring, name, badge, timestamp (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
+| `TrafficLightRow.swift` | 504 | one row: dot, context ring, name, badge, timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
@@ -1522,7 +1536,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 397 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 400 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
@@ -1555,7 +1569,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 985 cases
+## `LampBoardTests/` — 993 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1605,6 +1619,7 @@ script, before it was split. The most important ones:
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
+| `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 

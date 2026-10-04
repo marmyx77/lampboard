@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **985**, instantaneous |
+| Domain tests | **993**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2391,3 +2391,7 @@ and the trial's rollout starts with the `session_meta` the sweep reads to know w
 it is. The row is a Codex row after three sweeps now, where before it went at the
 first and came back from the trial's session file as a Claude Code row, which is the
 picture the README had been showing. The README has six projects again, and a `G`.
+
+Every row now says what its session is doing (D76), on a second line in the wide
+panel: the ask, the tool it is on, why it died, the answer's first line, what holds
+it. Twelve points a row, which is what reading the column without hovering costs.
