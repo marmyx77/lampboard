@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1013**, instantaneous |
+| Domain tests | **1014**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2423,3 +2423,7 @@ screen, from its row's menu or `⌘⇧L`, with its conversation in the chat wind
 view. Photographed on the test Mac through a new `--plancia` launch option. Building
 it found that a LampMaster card in the queue opened nothing — it names sessions by
 eight characters, and every lookup wanted the whole id.
+
+And its tabs: Activity, each tool and how long it ran and each turn and what it
+cost; Cost, the context and what the session has cost. Both from the mod's reports
+and the hooks' turn ends, kept in memory for the sessions seen most recently.

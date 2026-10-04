@@ -34,6 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// LampMaster's round. Started in every mode: the end-to-end suite drives
     /// it headless, and its timer does nothing while it is switched off.
     private lazy var mod = ModReceiver(store: store)
+    /// What each session has been doing, for the Plancia (UX §5).
+    private let activity = ActivityRecorder()
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
     private var lampMasterWindow: LampMasterWindowController?
 
@@ -97,6 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = PanelController(store: store, installer: installer)
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         controller.lampMaster = lampMaster
+        controller.activity = activity
+        mod.onReport = { [activity] report, at in activity.record(report, at: at) }
         GettingStartedWindowController.shared.configure(
             port: port, lampMaster: lampMaster,
             toggleNotifications: { [weak controller] in controller?.toggleNotifications() }
@@ -230,9 +234,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let server = SignalServer(
             port: port,
             token: token,
-            onSignal: { [store, lampMaster] signal in
+            onSignal: { [store, lampMaster, activity] signal in
                 Task { @MainActor in
                     store.handle(signal)
+                    if signal.event == .stop || signal.event == .stopFailure {
+                        activity.turnEnded(sessionId: signal.sessionId, at: Date())
+                    }
                     if LampMasterService.nudgedBy.contains(signal.event) { lampMaster.nudge() }
                 }
             },

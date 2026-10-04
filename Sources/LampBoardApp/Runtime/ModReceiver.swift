@@ -22,9 +22,13 @@ final class ModReceiver {
         self.clock = clock
     }
 
+    /// Every report, after the ledger has it: the Plancia's activity log.
+    var onReport: (ModReport, Date) -> Void = { _, _ in }
+
     func receive(_ report: ModReport) {
         let now = clock()
         ledger = ledger.applying(report, now: now)
+        onReport(report, now)
         // Only under LAMPBOARD_DEBUG: "is my mod talking?" is the first question
         // when a figure does not show, and this is where it is answered.
         Diagnostics.log("mod: \(Self.kind(of: report)) from \(report.session.prefix(8))")

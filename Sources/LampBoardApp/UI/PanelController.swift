@@ -61,6 +61,8 @@ final class PanelController {
     var onOpenLegend: (() -> Void)?
     /// LampMaster's round and the opening of its window, set by whoever owns them.
     var lampMaster: LampMasterService?
+    /// What each session has been doing, for the Plancia's tabs.
+    var activity: ActivityRecorder?
     var onOpenLampMaster: (() -> Void)?
     var tour: TourController?
 
@@ -285,7 +287,7 @@ final class PanelController {
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour,
             queue: compact ? nil : queue, bar: compact ? nil : bar,
-            plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading,
+            plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading, activity: activity,
             openInEditor: { [weak self] id in
                 guard let self, let session = self.store.state.sessions[id] else { return }
                 self.activate(session: session)

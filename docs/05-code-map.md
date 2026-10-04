@@ -1,13 +1,13 @@
 # Code map
 
-~56,100 lines of Swift across five targets. For each file: what it contains, why
+~56,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,803 lines · 133 files  pure logic, zero AppKit
-  LampBoardApp/    21,074 lines · 120 files   shell: AppKit, network, windows
-  LampBoardTests/  13,963 lines · 82 files   1013 cases, instantaneous
+  LampBoardCore/  16,816 lines · 133 files  pure logic, zero AppKit
+  LampBoardApp/    21,236 lines · 121 files   shell: AppKit, network, windows
+  LampBoardTests/  13,977 lines · 82 files   1014 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1084,11 +1084,11 @@ one deeper and from the Plancia back to the column, `Esc` one down; the widths a
 the UX's, 44, 340 and 780 points; the Plancia closes by itself after four seconds
 with the pointer away, nothing waiting and no pin. Used by the panel from P2 on.
 
-### `SessionActivity.swift` · 67
+### `SessionActivity.swift` · 80
 What one session has been doing, for the Plancia's Activity tab: each tool with its
 duration once it ends (an end without its start adds nothing), each turn with what
 it alone cost from the mod's running total, the newest sixty kept, a tool's detail
-one line of at most 120 characters. In memory only: a view of now, not a record.
+one line of at most 120 characters; `record` reads a `ModReport` into it. In memory only: a view of now, not a record.
 
 ## `Queue/`
 
@@ -1284,7 +1284,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 405
+### `main.swift` · `AppDelegate.swift` · 412
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1388,8 +1388,9 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `ModReceiver.swift` | 89 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
+| `ModReceiver.swift` | 93 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 510 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `PlanciaModel.swift` | 49 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it, the pin |
 | `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
@@ -1558,12 +1559,12 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 741 | holds everything together; row and panel actions |
+| `PanelController.swift` | 743 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
 | `PanelPlancia.swift` | 124 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard |
-| `PlanciaView.swift` | 46 | the Plancia drawn: a pin and a close button above the chat window's own `ChatView`, so the reader and the composer are the same ones (D15) |
+| `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 80 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go |
 | `WaitingQueueSection.swift` | 126 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
@@ -1575,7 +1576,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 500 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 501 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1618,7 +1619,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1013 cases
+## `LampBoardTests/` — 1014 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1669,7 +1670,7 @@ script, before it was split. The most important ones:
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
-| `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the newest sixty kept, a detail one short line |
+| `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the mod's reports read into it; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |

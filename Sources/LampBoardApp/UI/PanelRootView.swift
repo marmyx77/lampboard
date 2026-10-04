@@ -94,6 +94,7 @@ struct PanelRootView: View {
     /// middle of the screen.
     var plancia: PlanciaModel? = nil
     var planciaLeading = false
+    var activity: ActivityRecorder? = nil
     var openInEditor: (String) -> Void = { _ in }
     var closePlancia: () -> Void = {}
 
@@ -114,7 +115,7 @@ struct PanelRootView: View {
     private func planciaColumn(_ model: PlanciaModel) -> some View {
         HStack(spacing: 0) {
             if !planciaLeading { Divider() }
-            PlanciaView(model: model, openInEditor: openInEditor, close: closePlancia)
+            PlanciaView(model: model, store: store, activity: activity, openInEditor: openInEditor, close: closePlancia)
             if planciaLeading { Divider() }
         }
     }

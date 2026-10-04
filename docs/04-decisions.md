@@ -3032,3 +3032,9 @@ taking the same session's mailbox marker from each other; the Plancia now closes
 with its session, keeps the side it chose, and the marker goes only when the last
 view holding it lets go.
 
+**Its tabs.** Beside Thread, the Plancia has Activity — each tool the session ran
+and how long it took, each turn and what it alone cost — and Cost — its context,
+the total the mod reported, the recent turns. Both come from the companion mod and
+the hooks, folded per session in memory; without the mod they say so rather than
+showing zeros.
+

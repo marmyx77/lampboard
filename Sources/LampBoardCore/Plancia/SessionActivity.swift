@@ -48,6 +48,19 @@ public struct SessionActivity: Sendable, Equatable {
         lastCost = usd
     }
 
+    /// What the companion mod reported, as far as this log is concerned: a
+    /// tool's start or end, and the session's running cost.
+    public mutating func record(_ report: ModReport, at date: Date) {
+        switch report {
+        case .tool(_, let run):
+            if run.finished { toolEnded(id: run.id, at: date) } else { toolStarted(id: run.id, tool: run.tool, detail: run.detail, at: date) }
+        case .measure(_, let measure):
+            if let usd = measure.costUSD { costReported(usd, at: date) }
+        case .start, .end:
+            break
+        }
+    }
+
     public mutating func turnEnded(at date: Date) {
         let cost = lastCost.map { total in total - (costAtLastTurn ?? 0) }
         costAtLastTurn = lastCost ?? costAtLastTurn

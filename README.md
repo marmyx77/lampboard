@@ -1409,7 +1409,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1013 domain tests, instantaneous
+swift run LampBoardTests              # 1014 domain tests, instantaneous
 swift run LampBoardE2E                # 135 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

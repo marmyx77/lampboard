@@ -73,6 +73,20 @@ enum PlanciaSuite {
             t.expectEqual(turns.last?.costUSD.map { ($0 * 100).rounded() / 100 }, 0.15, "the cost of that turn alone")
         },
 
+        TestCase("The mod's reports feed the log: tools by their call, the cost for the next turn") { t in
+            func report(_ json: String) -> ModReport? { try? ModReport.decode(Data(json.utf8)) }
+            let id = "5f0c2a7e-1b3d-4c8e-9a6f-2d4b8e1c7a90"
+            var log = SessionActivity()
+            if let start = report(#"{"v":1,"kind":"tool","session":"\#(id)","id":"toolu_1","tool":"Bash","phase":"start","detail":"make"}"#) {
+                log.record(start, at: at(0))
+            }
+            if let end = report(#"{"v":1,"kind":"tool","session":"\#(id)","id":"toolu_1","tool":"Bash","phase":"end"}"#) {
+                log.record(end, at: at(4))
+            }
+            t.expectEqual(log.entries.first?.seconds, 4, "start and end of one call")
+            t.expectEqual(log.entries.first?.kind, .tool(name: "Bash", detail: "make"))
+        },
+
         TestCase("The log keeps the newest entries, and a detail stays one short line") { t in
             var log = SessionActivity()
             for i in 0..<(SessionActivity.kept + 10) {
