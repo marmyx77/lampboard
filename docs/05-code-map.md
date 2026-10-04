@@ -1,13 +1,13 @@
 # Code map
 
-~49,100 lines of Swift across five targets. For each file: what it contains, why
+~49,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  14,303 lines · 114 files  pure logic, zero AppKit
+  LampBoardCore/  14,606 lines · 116 files  pure logic, zero AppKit
   LampBoardApp/    18,455 lines · 99 files   shell: AppKit, network, windows
-  LampBoardTests/  12,459 lines · 68 files   887 cases, instantaneous
+  LampBoardTests/  12,543 lines · 69 files   895 cases, instantaneous
   LampBoardE2E/    3,541 lines · 13 files   119 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -726,6 +726,27 @@ four hours, and settles by itself when its sessions leave the frame; a late clic
 on a settled card changes nothing. A line that does not decode costs that line,
 not the file.
 
+## `Demo/`
+
+The invented sessions and the tutorial's tour (D64). One place for demo data, so
+one place to check that it holds nothing real.
+
+### `DemoScript.swift`
+The script the tutorial, the screenshots and the site's demo are played from: four
+invented projects, beats in time, each beat a hook payload exactly as the installed
+hook would post it, so the trial panel reaches its colours through the same server
+and reducer as the real one. `DemoScriptCheck` refuses an account outside
+`example.com`/`example.net`, a project outside the invented list, a home path or a
+private address: the same rule as the repository's gate, applied to the one file
+that is shown on screens.
+
+### `Tour.swift`
+The tour's steps, every version's, and the ones this version shows: a step whose
+feature is not installed yet is not shown. A step moves on with its own gesture —
+the row clicked, the card answered — and with nothing else; there is no "Next".
+Progress is kept by step id, so a version that adds steps still resumes at the
+right one, and never leaves the Mac.
+
 ## `Seat/`
 
 Where a session's process lives — what a click on a terminal row has to bring
@@ -1364,7 +1385,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 887 cases
+## `LampBoardTests/` — 895 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1388,6 +1409,7 @@ script, before it was split. The most important ones:
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
+| `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |
 | `LampMasterMCPSuite` | the protocol line by line, `server/discover` refused without ending the conversation, each lookup on invented sessions, no lookup carrying another session's words, sources quoted in full or dropped, the limits |
 | `LampMasterRoundSuite` | the flags that keep the round invisible and cheap, the frame kept off the command line, the envelope read even when it failed, every skip and its order, suggestions that expire or settle |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |

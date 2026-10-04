@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **887**, instantaneous |
+| Domain tests | **895**, instantaneous |
 | End-to-end tests | **119**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2190,4 +2190,9 @@ got the answer, in Italian, with its one real source — 11 seconds, $0.023 for 
 caller and 1,904 tokens for the question. The run also showed every question
 written twice to its ledger, booked and answered, because a booking read back had
 lost its fractions of a second; it is matched by session, question and second now.
+
+The tutorial began with its two foundations (D64): the script of invented sessions
+the tour, the screenshots and the site will all be played from, checked to hold
+nothing real, and the tour itself — steps that move only on their gesture, follow
+the installed version, and resume where they were left.
 

@@ -2620,3 +2620,22 @@ measured on 4 October 2026 `claude mcp get` starts the server to check its healt
 a status that launches what it reports on is not a status. And with the hooks on
 uninstall, because a registration left behind makes every session start a binary
 that may no longer exist, and fail where nobody looks.
+
+## D64 · The tutorial plays invented sessions in an instance of its own
+
+**Decided.** The tutorial's tour runs on a script of invented sessions kept in
+Core, in Swift and under test; `lampboard tour --json` exports it for the site's
+demo and the screenshots. The tour is played by a second instance of the app, with
+a temporary home and a port of its own, its panel marked as a trial; the script's
+beats reach it as hook payloads, through the same server and reducer as real ones.
+A step moves on with its gesture, and a step whose feature this version lacks is
+not shown.
+
+**Why.** The script is the one thing shown on screens, in screenshots and on the
+site, so it is the one place demo data may live, and the check that it holds
+nothing real runs with the tests. A second instance is the arrangement
+`make-screenshots.sh` already proved: invented sessions cannot mix with real ones,
+because they never share a process, a home or a port, and every colour the tour
+shows is one the panel really produces. Mixing them in the real panel would have
+needed a switch between two stores at the heart of the app, and one forgotten
+branch would show a real session in a screenshot meant for the public.
