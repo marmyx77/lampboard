@@ -725,6 +725,16 @@ Rows can be **renamed** (right-click → Rename…, or `lampboard rename <folder
 the window is still found by its title, `/sessions` still says the folder. Leave
 the name empty to go back to the original.
 
+## Any long job as a row
+
+`lampboard watch -- npm test` runs the command in your terminal, exactly as it
+would have run — same output, same input, same exit code, Ctrl-C included — and
+puts a row in the panel for it: yellow while it runs, green when it exits 0, red
+with its exit code otherwise. The row sits with the sessions of the same folder;
+`--name` gives it a name other than the program's (arguments are never shown:
+they carry passwords). With no panel running, the
+command runs anyway and says so once ([D70](docs/04-decisions.md)).
+
 ## The companion mod
 
 Claude Code 2.1.287 and later run plugins of function hooks inside each session,
@@ -1289,6 +1299,7 @@ lampboard chat <n>                 open the extended view on slot n
 lampboard focus <workspace>        reproduce the click and explain what happens
 lampboard focus <workspace> --dry-run    diagnose without activating anything
 lampboard mod install|uninstall|status   the companion mod in every Claude Code session
+lampboard watch [--name N] -- <command>  the command as a row: yellow, then green on 0 or red
 lampboard help
 ```
 
@@ -1396,8 +1407,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 949 domain tests, instantaneous
-swift run LampBoardE2E                # 130 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 957 domain tests, instantaneous
+swift run LampBoardE2E                # 133 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

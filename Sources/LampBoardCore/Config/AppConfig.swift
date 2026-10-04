@@ -50,6 +50,10 @@ public enum AppConfig {
     /// token, always: the mod is new, so no installed copy predates it.
     public static let modPath = "/mod"
 
+    /// Where `lampboard watch` reports the command it runs (D70). Behind the
+    /// token: the one route besides `/signal` that may create a row.
+    public static let watchPath = "/watch"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without

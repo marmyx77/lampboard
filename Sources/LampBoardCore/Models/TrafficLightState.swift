@@ -129,8 +129,11 @@ public struct TrafficLightState: Sendable, Equatable {
     public func pruning(
         olderThan maxAge: TimeInterval, at now: Date, keepingAlive alive: Set<String> = []
     ) -> TrafficLightState {
+        // A watched command still running is alive by definition: nothing
+        // refreshes it while it runs, and a night-long job would vanish mid-run.
         let survivors = sessions.filter { id, session in
             alive.contains(id) || now.timeIntervalSince(session.updatedAt) <= maxAge
+                || (session.harness == .command && session.status == .working)
         }
         return TrafficLightState(sessions: survivors, dismissed: dismissed)
     }

@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **949**, instantaneous |
-| End-to-end tests | **130**, about a minute |
+| Domain tests | **957**, instantaneous |
+| End-to-end tests | **133**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2335,3 +2335,12 @@ seconds apart. The contract records the new hook and passes. A security review
 asked for the rest: only the command's first line reaches the panel, secrets in it
 masked; an "end" that overtakes its "start" no longer leaves a phantom; a call from an
 earlier turn is not this one's; a subagent's call is not tracked.
+
+`lampboard watch -- <command>` makes any long job a row (D70): the command runs in
+the terminal as it would have — output, input, exit code, Ctrl-C — and the panel
+shows it yellow, then green on 0 or red with its code, beside the sessions of the
+same folder. Its rows belong to a third harness, `command`, with no context ring and
+no window to raise. Photographed on the test Mac with three commands; the first
+capture was an empty panel, because the sweep that forgets terminal sessions while
+they are switched off took the watched commands with them, and a dashed ring said
+"nothing read yet" about something that will never have a reading.

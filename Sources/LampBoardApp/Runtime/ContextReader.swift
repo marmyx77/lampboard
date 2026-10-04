@@ -88,9 +88,11 @@ actor ContextReader {
             // the widening search around them is identical — a tail, and a
             // bigger tail if the first held no count. Only the parse differs.
             let tail = String(decoding: data, as: UTF8.self)
-            let reading = switch harness {
+            let reading: ContextReading? = switch harness {
             case .claudeCode: ContextScanner.read(tail: tail)
             case .codex: CodexRolloutScanner.read(tail: tail)
+            // A watched command has no transcript and no context.
+            case .command: nil
             }
             if let reading { return reading }
             if wholeFile { return nil }

@@ -85,6 +85,11 @@ enum LocalClient {
                 timeout: LampMasterAsk.timeout + 20)
     }
 
+    /// `lampboard watch` telling the panel a command started or ended.
+    static func watch(_ report: WatchReport, port: UInt16) -> Result<Data, ClientError> {
+        request(method: "POST", path: AppConfig.watchPath, port: port, body: report.encoded())
+    }
+
     private static func slotRequest(
         path: String, slot: Int, port: UInt16
     ) -> Result<String, ClientError> {

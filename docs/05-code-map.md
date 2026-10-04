@@ -1,14 +1,14 @@
 # Code map
 
-~53,000 lines of Swift across five targets. For each file: what it contains, why
+~53,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,875 lines · 125 files  pure logic, zero AppKit
-  LampBoardApp/    19,665 lines · 107 files   shell: AppKit, network, windows
-  LampBoardTests/  13,242 lines · 76 files   949 cases, instantaneous
-  LampBoardE2E/    3,850 lines · 16 files   130 cases, the real binary
+  LampBoardCore/  16,033 lines · 126 files  pure logic, zero AppKit
+  LampBoardApp/    19,821 lines · 109 files   shell: AppKit, network, windows
+  LampBoardTests/  13,332 lines · 77 files   957 cases, instantaneous
+  LampBoardE2E/    3,897 lines · 17 files   133 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 569
+### `AppConfig.swift` · 573
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -43,7 +43,7 @@ The six states and the three properties governing their behavior:
 > **Touching `blocksDowngrade`** changes which states resist a late signal.
 > `failed` is deliberately outside it: the reducer handles it separately.
 
-### `Harness.swift` · 153
+### `Harness.swift` · 172
 Which coding agent a session belongs to, and — the reason the type exists at all
 — **what that agent is unable to say**. One row shape for every harness; what
 differs is what a row can promise. `cannotReport` is checked against each
@@ -52,6 +52,10 @@ otherwise infer a state from silence has to consult it first.
 
 The rule it encodes: an absence is declared, never inferred. Codex publishes no
 error event of any kind, so a Codex row never turns red and the card says why.
+
+`command` is not an agent but a command run under `lampboard watch` (D70): it can be
+neither waited on nor have subagents, has no transcript and no context, and no hook
+can claim it — `named` never returns it, so its rows come only through `/watch`.
 
 ### `PendingAsk.swift` · 102
 What a blocked session is asking for, as one line: `Bash: git push origin main`.
@@ -422,6 +426,12 @@ questions the reducer asks it.
 The ten events registered by default, plus one decoded and registered only with `install-hooks --with-tool-events` (`PreToolUse`), and the five
 `Notification` subtypes. An unknown event is not an
 error: it is ignored, so the app doesn't break when Anthropic adds more.
+
+### `WatchReport.swift`
+What `lampboard watch` posts to `/watch`, bounded like the mod's reports, and the row
+it leaves: yellow while the command runs, green on 0, red with `exit` and the code in
+the message otherwise. Its session id carries its own `watch-` prefix, so it never
+meets a real one, and an end whose start the panel missed still makes its row.
 
 ### `StopFailureReason.swift`
 A **closed** set of ten causes. An unexpected value falls back to `unknown`
@@ -1260,10 +1270,22 @@ same start serves the menus' *Take the tour…* and the offer made right after t
 hooks are installed; neither appears inside a trial, where a tour would stack
 panels.
 
-### `CommandLineInterface.swift` · 795
-Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
+### `CommandLineInterface.swift` · 713
+The commands and their dispatch: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename, mcp, mod, watch, tour. `--port` is read only before a `--`, so a watched command's own `--port` stays its own. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
+
+### `CommandLineHelp.swift`
+The text `lampboard help` prints, moved out of the parser when it reached the
+800-line ceiling: it grows with every command.
+
+### `CommandLineWatch.swift`
+`lampboard watch [--name N] -- <command>` (D70). The command runs as a child with
+this terminal's input and output, and its exit code is returned as its own, so the
+wrapper can stand in for the command in a script. Ctrl-C reaches the command —
+through an empty handler, because an ignored signal is inherited across exec — and
+this process lives to report how it ended. A panel that is not there leaves the
+command alone, said once on the error stream.
 
 ### `SelfTest.swift` · 287
 `lampboard selftest`: the whole chain, link by link — the port opens, a signal
@@ -1274,7 +1296,7 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 793 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStore.swift` | 794 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 221 | the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
@@ -1292,11 +1314,11 @@ there, the hooks are registered — and it names the link that broke.
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
-| `LocalClient.swift` | 162 | talks to the live instance for `sessions` and `next`, and for the `lampmaster` MCP server, which waits as long as a question may take |
+| `LocalClient.swift` | 167 | talks to the live instance for `sessions` and `next`, and for the `lampmaster` MCP server, which waits as long as a question may take |
 | `SessionNotifier.swift` | 259 | `awaiting` notifications after a delay, `failed` and (asked for) `ready` on the transition only, so what was already so at launch is not news; anti-duplicate memory, gate; the text from `NotificationText` |
 | `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
-| `ContextReader.swift` | 98 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
+| `ContextReader.swift` | 110 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `MailboxWriter.swift` | 179 | the panel's end of the mailbox; carries out the reaper's verdict |
@@ -1330,8 +1352,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 478
-Ten routes, behind `LoopbackGuard`. A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 509
+Eleven routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1448,11 +1470,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 796 | holds everything together; row and panel actions |
-| `PanelActivation.swift` | 155 | where a click goes, which is a different question for every surface |
+| `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 462 | one row: dot, context ring, name, badge, timestamp (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
+| `TrafficLightRow.swift` | 466 | one row: dot, context ring, name, badge, timestamp (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
@@ -1467,7 +1489,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 389 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 391 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
@@ -1500,7 +1522,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 949 cases
+## `LampBoardTests/` — 957 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1542,6 +1564,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
 | `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
@@ -1569,11 +1592,12 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 130 cases
+## `LampBoardE2E/` — 133 cases
 
 | Suite | Covers |
 |---|---|
 | `TransportSuite` | **the socket via `lsof`**, token, methods, refusals; a POST with `Origin` and a rebound `Host` refused, through `curl` since URLSession will not send a Host of the caller's choosing |
+| `WatchE2ESuite` | `lampboard watch` run for real: a failing command red with the command's own exit code and output, a succeeding one green with its own `--port`, `/watch` behind the token, the command left alone when no panel hears |
 | `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |

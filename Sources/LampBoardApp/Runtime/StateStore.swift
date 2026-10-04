@@ -681,7 +681,8 @@ final class StateStore: ObservableObject {
 
         // The switch turning off takes its rows with it — here, so that a switch
         // flipped from the Settings window is honoured within one poll.
-        if !showsTerminalSessions, state.sessions.values.contains(where: { $0.origin == .terminal }) {
+        if !showsTerminalSessions,
+           state.sessions.values.contains(where: { $0.origin == .terminal && $0.harness != .command }) {
             apply(.forget(origin: .terminal), now: now)
         }
 

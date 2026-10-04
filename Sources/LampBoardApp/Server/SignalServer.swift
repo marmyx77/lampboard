@@ -57,6 +57,7 @@ final class SignalServer {
     private let onLampMasterRound: () -> Bool
     private let onLampMasterTool: (Data) -> Data
     private let onMod: (ModReport) -> Void
+    private let onWatch: (WatchReport) -> Void
     private let token: String?
 
     private var listener: NWListener?
@@ -74,7 +75,8 @@ final class SignalServer {
         onLampMaster: @escaping () -> Data = { Data("{}".utf8) },
         onLampMasterRound: @escaping () -> Bool = { false },
         onLampMasterTool: @escaping (Data) -> Data = { _ in Data("{}".utf8) },
-        onMod: @escaping (ModReport) -> Void = { _ in }
+        onMod: @escaping (ModReport) -> Void = { _ in },
+        onWatch: @escaping (WatchReport) -> Void = { _ in }
     ) {
         self.port = port
         self.token = token
@@ -89,6 +91,7 @@ final class SignalServer {
         self.onLampMasterRound = onLampMasterRound
         self.onLampMasterTool = onLampMasterTool
         self.onMod = onMod
+        self.onWatch = onWatch
     }
 
     // MARK: - Lifecycle
@@ -205,6 +208,9 @@ final class SignalServer {
 
         case AppConfig.modPath:
             return handleMod(request)
+
+        case AppConfig.watchPath:
+            return handleWatch(request)
 
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
@@ -326,6 +332,30 @@ final class SignalServer {
         } catch {
             return HTTPRequestParser.response(status: 400, reason: "Bad Request", body: "\(error)")
         }
+    }
+
+    /// `POST /watch` — a command run under `lampboard watch` (D70). Behind the
+    /// token, because it is the one route besides `/signal` that makes a row.
+    private func handleWatch(_ request: HTTPRequest) -> Data {
+        guard request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        guard let token else {
+            return HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+        }
+        guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        // A folder that exists: the row's folder glyph opens it, and a path to an
+        // application or a document there would be a click that launches it.
+        var isDirectory: ObjCBool = false
+        guard let report = try? WatchReport.decode(request.body),
+              FileManager.default.fileExists(atPath: report.cwd, isDirectory: &isDirectory), isDirectory.boolValue
+        else {
+            return HTTPRequestParser.response(status: 400, reason: "Bad Request", body: "not a watch report")
+        }
+        onWatch(report)
+        return HTTPRequestParser.response(status: 204, reason: "No Content")
     }
 
     /// `POST /next` — raises the window of the next waiting session.

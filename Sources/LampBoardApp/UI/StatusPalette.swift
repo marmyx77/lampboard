@@ -194,6 +194,8 @@ enum StatusPalette {
         switch harness {
         case .claudeCode: return Color(red: 0.85, green: 0.47, blue: 0.34).opacity(0.80)
         case .codex: return Color(red: 0.18, green: 0.83, blue: 0.75)
+        // A command is no agent: the grip stays neutral, like a project's own.
+        case .command: return Color.secondary.opacity(0.6)
         }
     }
 

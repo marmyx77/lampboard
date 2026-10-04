@@ -16,6 +16,8 @@ public enum StopFailureReason: String, Sendable, Equatable, CaseIterable, Codabl
     case serverError = "server_error"
     case maxOutputTokens = "max_output_tokens"
     case unknown = "unknown"
+    /// A command under `lampboard watch` exited with a code other than 0.
+    case commandFailed = "command_failed"
 
     /// Lenient construction: any unrecognized value becomes `unknown`.
     public static func from(rawValue: String?) -> StopFailureReason {
@@ -37,6 +39,7 @@ public enum StopFailureReason: String, Sendable, Equatable, CaseIterable, Codabl
         case .serverError: return "server"
         case .maxOutputTokens: return "truncated"
         case .unknown: return "API error"
+        case .commandFailed: return "exit"
         }
     }
 
@@ -53,6 +56,7 @@ public enum StopFailureReason: String, Sendable, Equatable, CaseIterable, Codabl
         case .serverError: return "server error"
         case .maxOutputTokens: return "answer truncated at maximum length"
         case .unknown: return "turn interrupted by an API error"
+        case .commandFailed: return "the command exited with an error"
         }
     }
 

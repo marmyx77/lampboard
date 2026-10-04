@@ -2750,3 +2750,28 @@ ones waiting for a yes, and the card may be on a shared screen. An "end" that
 overtakes its "start" leaves a mark so the late start is ignored; a call from before
 the row began working is not this turn's; and `Agent`, which runs as long as its
 subagent, is not tracked, or it would read as stuck while hiding the inner tool.
+
+## D70 · A watched command is a row of its own kind
+
+**Decided.** `lampboard watch [--name N] -- <command>` runs the command as its child,
+with the terminal's own input and output and its exit code returned, and reports its
+start and end to `POST /watch`, behind the token. The row belongs to a third harness,
+`command`: yellow while it runs, green on 0, red with `exit` and the code otherwise;
+no context ring, no window to open, a click only marks it seen. No hook can claim
+that harness, and the switch that hides terminal sessions does not hide it.
+
+**Why.** A build or a deploy is waited on like a session, and the panel is where
+waiting is looked at. Its own harness, because every rule about a session — a
+transcript to read, a context to measure, a window to raise, a permission to wait
+for — is false for a command, and `Harness` is where the app says what a row cannot
+do. Behind the token, because it is the one route besides `/signal` that creates a
+row, and `/signal` is kept open only for hooks older than tokens. On the test Mac a
+failing, a succeeding and a running command drew the three rows; the first try
+showed none, because the sweep that forgets terminal sessions took them too.
+
+A security review added the bounds: the folder must exist and be a directory, with
+no control or bidi character, since its glyph opens it; at most twenty command rows,
+the oldest finished one making room; a running command is never pruned; the default
+name is the program's, never its arguments; SIGTERM and SIGHUP reach the command and
+its end is still reported; and a click on a project row whose most urgent member is
+a command goes to the project's first real session.

@@ -23,7 +23,10 @@ extension PanelController {
         // trial's own quit until somebody dismissed it (measured on the test Mac).
         if tour != nil { return }
 
-        let session = row.primary
+        // A watched command has no window: seeing its result is the gesture. In a
+        // project row it may be the most urgent member, and the click then goes
+        // to the project's first real session rather than nowhere.
+        guard let session = row.sessions.first(where: { $0.harness != .command }) else { return }
 
         // A terminal row's place is a terminal tab, found through the session's
         // process at click time (D25): its pid from the session file, the chain

@@ -111,6 +111,7 @@ let suites: [TestSuite] = [
     LoopbackGuardSuite.suite,
     NotificationTextSuite.suite,
     StuckSuite.suite,
+    WatchSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

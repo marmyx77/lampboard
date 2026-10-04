@@ -225,7 +225,11 @@ struct TrafficLightRow: View {
     /// appeared and disappeared would move the names of half the column sideways
     /// every time a session replied.
     private var ring: some View {
+        // A watched command has no context: the place is kept, so the names stay
+        // in line, and nothing is drawn in it — a dashed ring would say "nothing
+        // read yet" about something that will never have a reading.
         ContextRing(reading: row.context)
+            .opacity(row.primary.harness == .command ? 0 : 1)
     }
 
     /// The folder this session is working in, one click away.

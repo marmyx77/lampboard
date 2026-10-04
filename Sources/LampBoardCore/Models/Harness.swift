@@ -28,11 +28,17 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
     /// themselves in an `originator` field.
     case codex = "codex"
 
+    /// Not an agent: a command run under `lampboard watch` (D70). A build, a
+    /// test suite, a deploy becomes a row — yellow while it runs, green when it
+    /// exits 0, red otherwise — beside the sessions of the same folder.
+    case command = "command"
+
     /// The name to show a person.
     public var displayName: String {
         switch self {
         case .claudeCode: return "Claude Code"
         case .codex: return "Codex"
+        case .command: return "Command"
         }
     }
 
@@ -45,6 +51,8 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
         switch self {
         case .claudeCode: return AppConfig.claudeDirectory
         case .codex: return AppConfig.codexDirectory
+        // No transcript: nothing under this root is ever read for a command.
+        case .command: return AppConfig.supportDirectory.appendingPathComponent("watch", isDirectory: true)
         }
     }
 
@@ -71,6 +79,10 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
             // does; the blue state works there too. Guessing a limit is the same
             // mistake as guessing a capability, and it costs a real feature.
             return [.failed]
+        case .command:
+            // It runs or it has ended: nobody can be waited on, and it has no
+            // subagents.
+            return [.awaiting, .waiting]
         }
     }
 
@@ -82,6 +94,8 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
             return nil
         case .codex:
             return "Codex reports no failures: a turn that fails stops speaking"
+        case .command:
+            return "a command run with lampboard watch: green when it exits 0, red otherwise, and no window to open"
         }
     }
 
@@ -96,6 +110,7 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
         switch self {
         case .claudeCode: return false
         case .codex: return true
+        case .command: return false
         }
     }
 
@@ -134,6 +149,8 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
                 // flashing at somebody who has already replied.
                 "PostToolUse",
             ]
+        case .command:
+            return []
         }
     }
 
@@ -145,7 +162,9 @@ public enum Harness: String, Sendable, Equatable, CaseIterable, Codable {
     /// time either vendor changed a field. An unknown or missing name means
     /// Claude Code, which is what every script written before this existed sends.
     public static func named(_ raw: String?) -> Harness {
-        guard let raw = raw?.trimmed.lowercased(), let harness = Harness(rawValue: raw) else {
+        // `command` is never a hook's: its rows come only through `/watch`, behind
+        // the token, so a header cannot make one.
+        guard let raw = raw?.trimmed.lowercased(), let harness = Harness(rawValue: raw), harness != .command else {
             return .claudeCode
         }
         return harness

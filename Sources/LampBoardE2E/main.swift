@@ -82,6 +82,7 @@ let suites: [TestSuite] = [
     ClaudeDesktopE2ESuite.suite(app: app),
     ModE2ESuite.suite(app, binaryURL: binaryURL, port: testPort &+ 5),
     PidReuseE2ESuite.suite(app),
+    WatchE2ESuite.suite(app),
     UpdateSwapSuite.suite(),
     // Instances of its own, each with LampMaster's preferences written before
     // launch, on a port of its own.

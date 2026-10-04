@@ -261,6 +261,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onLampMasterTool: { [lampMaster] body in lampMaster.answer(body) },
             onMod: { [mod] report in
                 Task { @MainActor in mod.receive(report) }
+            },
+            onWatch: { [store] report in
+                Task { @MainActor in store.apply(.watched(report), now: Date()) }
             }
         )
 

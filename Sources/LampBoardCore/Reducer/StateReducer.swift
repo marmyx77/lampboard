@@ -65,6 +65,9 @@ public enum ReducerAction: Sendable, Equatable {
     case costed(sessionId: String, usd: Double)
     /// The tool a session has been running longest, or none (5.7).
     case tooling(sessionId: String, tool: RunningTool?)
+    /// A command under `lampboard watch` started or ended (D70). The one action
+    /// besides a hook that may create a row: it comes through the token.
+    case watched(WatchReport)
     /// Moves a row to the folder it turns out to belong to, colour and history
     /// untouched. Used when a node's probe answers after the row already exists:
     /// the first hooks named a `cwd` nobody could resolve, and now the window
@@ -123,6 +126,7 @@ extension ReducerAction {
         case .observed: return "observed"
         case .costed: return "costed"
         case .tooling: return "tooling"
+        case .watched: return "watched"
         case .rehome: return "rehome"
         case .adopt: return "adopt"
         case .dismiss: return "dismiss"
@@ -196,6 +200,20 @@ public enum StateReducer {
             guard let session = state.sessions[sessionId] else { return state }
             return state.upserting(session.with(costUSD: usd))
 
+        case .watched(let report):
+            let old = state.sessions[report.sessionId]
+            var state = state
+            if old == nil {
+                let commands = state.sessions.values.filter { $0.harness == .command }
+                if commands.count >= WatchReport.maxRows,
+                   let oldest = commands.filter({ $0.status != .working }).min(by: { $0.updatedAt < $1.updatedAt }) {
+                    state = TrafficLightState(sessions: state.sessions.filter { $0.key != oldest.id }, dismissed: state.dismissed)
+                }
+            }
+            // An end for a command the panel never saw start (it was launched
+            // before the panel) still makes its row: the result is the news.
+            return state.upserting(report.session(updating: old, at: now))
+
         case .tooling(let sessionId, let tool):
             guard let session = state.sessions[sessionId] else { return state }
             return state.upserting(session.with(runningTool: tool))
@@ -244,8 +262,10 @@ public enum StateReducer {
             return state.upserting(session.with(title: title))
 
         case .forget(let origin):
+            // A watched command is not a terminal session: the switch that hides
+            // those is not about it, and its row was asked for by name (D70).
             return TrafficLightState(
-                sessions: state.sessions.filter { $0.value.origin != origin },
+                sessions: state.sessions.filter { $0.value.origin != origin || $0.value.harness == .command },
                 dismissed: state.dismissed
             )
         }
