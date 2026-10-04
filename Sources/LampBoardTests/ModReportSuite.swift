@@ -41,6 +41,10 @@ enum ModReportSuite {
             t.expectEqual(m.window, 200_000)
             t.expectEqual(m.model, "claude-opus-5-5")
             t.expectEqual(m.costUSD, 0.096836)
+            t.expect(!m.defaultAccount, "a report that does not say is not the default account")
+            guard case .measure(_, let said) = try? decode(measure.replacingOccurrences(of: #""v":1,"#, with: #""v":1,"config":"default","#))
+            else { return t.fail("not read") }
+            t.expect(said.defaultAccount, "config default")
             t.expectEqual(m.rateLimits.map(\.kind), ["five_hour", "seven_day"])
             t.expectEqual(m.rateLimits.map(\.percent), [20, 67])
             t.expectNotNil(m.rateLimits.first?.resetsAt, "the fractional-second date is read")
@@ -161,7 +165,8 @@ enum ModLedgerSuite {
     private static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 
     private static func measure(_ id: String, cost: Double?, limits: [ModReport.RateLimit] = []) -> ModReport {
-        .measure(session: id, measure: .init(tokens: 10, window: 100, model: nil, rateLimits: limits, costUSD: cost))
+        .measure(session: id, measure: .init(tokens: 10, window: 100, model: nil, rateLimits: limits, costUSD: cost,
+                                             defaultAccount: true))
     }
 
     static let suite = TestSuite("What the panel keeps of the mod's reports", [
@@ -199,6 +204,14 @@ enum ModLedgerSuite {
                 .applying(measure(a, cost: 0.3), now: t0.addingTimeInterval(300))
             t.expectEqual(ledger.latestRateLimits?.limits, [new])
             t.expectEqual(ledger.latestRateLimits?.at, t0.addingTimeInterval(120))
+        },
+
+        TestCase("Only the default account's windows are the strip's") { t in
+            let other = ModReport.measure(session: b, measure: .init(
+                tokens: 1, window: 1, model: nil, rateLimits: [.init(kind: "five_hour", percent: 90, resetsAt: nil)],
+                costUSD: nil, defaultAccount: false))
+            let ledger = ModLedger().applying(other, now: t0)
+            t.expectNil(ledger.latestRateLimits, "a session with a config of its own may be another account")
         },
 
         TestCase("A restart clears the end, and the sessions gone from the column are dropped") { t in

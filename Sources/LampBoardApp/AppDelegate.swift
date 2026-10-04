@@ -121,6 +121,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.show()
         if TrialStage.mode != nil {
             controller.allowance.showTrial([DemoScript.standard.allowanceReport(now: Date())])
+        } else {
+            mod.onWindows = { [weak controller] windows in controller?.allowance.showFromMod(windows) }
         }
         // Opens the window at launch: for the screenshots, and for a check on a
         // Mac where nobody is there to click the menu.

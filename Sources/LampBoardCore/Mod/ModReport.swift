@@ -49,13 +49,22 @@ public enum ModReport: Equatable, Sendable {
         public let model: String?
         public let rateLimits: [RateLimit]
         public let costUSD: Double?
+        /// The session runs on Claude Code's default configuration, so its
+        /// windows are those of the account this Mac's allowance strip reads.
+        /// A session with a `CLAUDE_CONFIG_DIR` of its own may be another
+        /// account, and a report that does not say is taken as one (mod 1.0.0).
+        public let defaultAccount: Bool
 
-        public init(tokens: Int?, window: Int?, model: String?, rateLimits: [RateLimit], costUSD: Double?) {
+        public init(
+            tokens: Int?, window: Int?, model: String?, rateLimits: [RateLimit], costUSD: Double?,
+            defaultAccount: Bool = false
+        ) {
             self.tokens = tokens
             self.window = window
             self.model = model
             self.rateLimits = rateLimits
             self.costUSD = costUSD
+            self.defaultAccount = defaultAccount
         }
     }
 
@@ -133,7 +142,8 @@ public enum ModReport: Equatable, Sendable {
                 window: wire.context?.window.flatMap { count($0, from: 1) },
                 model: wire.model.flatMap(model),
                 rateLimits: Array(limits),
-                costUSD: wire.cost?.usd.flatMap { $0.isFinite && (0...maxCostUSD).contains($0) ? $0 : nil }
+                costUSD: wire.cost?.usd.flatMap { $0.isFinite && (0...maxCostUSD).contains($0) ? $0 : nil },
+                defaultAccount: wire.config == "default"
             ))
         case "end":
             return .end(session: session, reason: wire.reason.flatMap(EndReason.init(rawValue:)) ?? .other)
@@ -190,6 +200,7 @@ public enum ModReport: Equatable, Sendable {
         let rateLimits: [Limit]?
         let cost: Cost?
         let reason: String?
+        let config: String?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

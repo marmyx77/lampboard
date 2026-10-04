@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.0.0"
+    public static let version = "1.1.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,7 +44,7 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
@@ -114,6 +114,13 @@ async function post($, kind, fields) {
   }
 }
 
+// Whether the session runs on Claude Code's default configuration: then its
+// rate-limit windows are those of the account the panel's allowance strip
+// shows. Only whether the variable is set is sent, never its value.
+async function config($) {
+  try { return (await $.env.get('CLAUDE_CONFIG_DIR')) ? 'own' : 'default' } catch (_) { return undefined }
+}
+
 async function model($) {
   try { return await $.session.model() } catch (_) { return undefined }
 }
@@ -129,6 +136,7 @@ export function register(on) {
     const result = await next(e)
     await post($, 'measure', {
       model: await model($),
+      config: await config($),
       context: { tokens: e.context.tokens, window: e.context.window },
       rateLimits: e.rateLimits.map((r) => ({ kind: r.kind, percentUsed: r.percentUsed, resetsAt: r.resetsAt })),
       cost: e.cost ? { usd: e.cost.usd } : undefined,

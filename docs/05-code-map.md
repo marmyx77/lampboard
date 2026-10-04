@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,415 lines · 122 files  pure logic, zero AppKit
-  LampBoardApp/    19,515 lines · 106 files   shell: AppKit, network, windows
-  LampBoardTests/  12,934 lines · 72 files   926 cases, instantaneous
+  LampBoardCore/  15,486 lines · 123 files  pure logic, zero AppKit
+  LampBoardApp/    19,547 lines · 106 files   shell: AppKit, network, windows
+  LampBoardTests/  13,004 lines · 73 files   931 cases, instantaneous
   LampBoardE2E/    3,747 lines · 15 files   127 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -768,6 +768,13 @@ call the table has no words for is shown as Claude Code spelled it, and a valid
 reading that lists nothing is unreadable rather than reassuring: a changed mod
 must look changed.
 
+### `ModAllowance.swift`
+This Mac's allowance with the mod's windows in it (D67): `five_hour` and
+`seven_day` become the session and week bars when they are newer than the usage
+service's answer, which keeps the account's name and a model's own weekly cap; with
+no answer at all they stand alone, labelled by the machine. A window with no bar
+here, a gateway's spend limit, is left out.
+
 ### `ModLedger.swift`
 Per session: surface, interactive, model, cost, the last rate-limit windows and
 when they were read, why it ended. An empty list of windows keeps the last figures
@@ -1252,7 +1259,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `ModReceiver.swift` | 73 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported`. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
+| `ModReceiver.swift` | 81 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `LampMasterService.swift` | 237 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1282,7 +1289,7 @@ there, the hooks are registered — and it names the link that broke.
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 340 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
-| `AllowanceMonitor.swift` | 135 | the timer behind that strip. On a 429 it keeps the last readings and waits longer before asking again (D54). No timer and no request while the switch is off: a feature that reaches the network is either off or on |
+| `AllowanceMonitor.swift` | 156 | the timer behind that strip. On a 429 it keeps the last readings and waits longer before asking again (D54). No timer and no request while the switch is off: a feature that reaches the network is either off or on. The strip is the service's answers merged with the mod's windows (D67), which need no switch: they never leave the Mac |
 | `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
@@ -1470,7 +1477,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 926 cases
+## `LampBoardTests/` — 931 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1512,6 +1519,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |

@@ -19,12 +19,15 @@ public struct ModLedger: Equatable, Sendable {
         public let rateLimitsAt: Date?
         public let ended: ModReport.EndReason?
         public let heardAt: Date
+        /// Whether its windows are this Mac's default account's (`Measure`).
+        public let defaultAccount: Bool
 
         public init(
             surface: String? = nil, interactive: Bool? = nil, model: String? = nil, costUSD: Double? = nil,
             rateLimits: [ModReport.RateLimit] = [], rateLimitsAt: Date? = nil,
-            ended: ModReport.EndReason? = nil, heardAt: Date
+            ended: ModReport.EndReason? = nil, heardAt: Date, defaultAccount: Bool = false
         ) {
+            self.defaultAccount = defaultAccount
             self.surface = surface
             self.interactive = interactive
             self.model = model
@@ -55,7 +58,7 @@ public struct ModLedger: Equatable, Sendable {
             facts = Facts(
                 surface: start.surface, interactive: start.interactive, model: start.model ?? old?.model,
                 costUSD: old?.costUSD, rateLimits: old?.rateLimits ?? [], rateLimitsAt: old?.rateLimitsAt,
-                ended: nil, heardAt: now
+                ended: nil, heardAt: now, defaultAccount: old?.defaultAccount ?? false
             )
         case .measure(_, let measure):
             // An empty list is "no reading yet" or "not a subscription", never
@@ -66,12 +69,13 @@ public struct ModLedger: Equatable, Sendable {
                 costUSD: measure.costUSD ?? old?.costUSD,
                 rateLimits: fresh ? measure.rateLimits : old?.rateLimits ?? [],
                 rateLimitsAt: fresh ? now : old?.rateLimitsAt,
-                ended: old?.ended, heardAt: now
+                ended: old?.ended, heardAt: now, defaultAccount: measure.defaultAccount
             )
         case .end(_, let reason):
             facts = Facts(
                 surface: old?.surface, interactive: old?.interactive, model: old?.model, costUSD: old?.costUSD,
-                rateLimits: old?.rateLimits ?? [], rateLimitsAt: old?.rateLimitsAt, ended: reason, heardAt: now
+                rateLimits: old?.rateLimits ?? [], rateLimitsAt: old?.rateLimitsAt, ended: reason, heardAt: now,
+                defaultAccount: old?.defaultAccount ?? false
             )
         }
         var next = sessions
@@ -88,9 +92,11 @@ public struct ModLedger: Equatable, Sendable {
         ModLedger(sessions: sessions.filter { ids.contains($0.key) })
     }
 
-    /// The newest rate-limit figures any session reported, with when.
+    /// The newest rate-limit figures any session on this Mac's default account
+    /// reported, with when. Only those: the strip they join is that account's.
     public var latestRateLimits: (limits: [ModReport.RateLimit], at: Date)? {
         sessions.values
+            .filter(\.defaultAccount)
             .compactMap { facts in facts.rateLimitsAt.map { (facts.rateLimits, $0) } }
             .max { $0.1 < $1.1 }
             .map { (limits: $0.0, at: $0.1) }

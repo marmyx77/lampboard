@@ -279,6 +279,17 @@ account, and two machines signed into the same account draw one group. Each node
 is asked **on the node** — only the three percentages come back over the tunnel,
 never the credential.
 
+**With the companion mod, no request at all.** A Claude Code session counts its
+account's session and week windows on every response, and the mod passes them on:
+with it installed the strip draws those two bars for this Mac with the switch off,
+since nothing leaves the Mac to get them. They are taken only from sessions on
+Claude Code's default configuration — a session with a `CLAUDE_CONFIG_DIR` of its
+own may be another account — and a session does not say whose account it is, so
+the group is labelled by the machine unless the request below has named it. Turned
+on as well, the request stays the reserve and the only source of the model's own
+weekly cap; whichever reading is newer draws the session and week bars
+([D67](docs/04-decisions.md)).
+
 **This is the only thing lampboard sends anywhere apart from the update check,
 and the reason it has a switch.** Everything else here reads files that are
 already on your Mac. This asks `api.anthropic.com`, roughly every two and a half
@@ -1369,7 +1380,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 926 domain tests, instantaneous
+swift run LampBoardTests              # 931 domain tests, instantaneous
 swift run LampBoardE2E                # 127 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

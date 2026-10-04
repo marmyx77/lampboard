@@ -55,6 +55,13 @@ async function post($, kind, fields) {
   }
 }
 
+// Whether the session runs on Claude Code's default configuration: then its
+// rate-limit windows are those of the account the panel's allowance strip
+// shows. Only whether the variable is set is sent, never its value.
+async function config($) {
+  try { return (await $.env.get('CLAUDE_CONFIG_DIR')) ? 'own' : 'default' } catch (_) { return undefined }
+}
+
 async function model($) {
   try { return await $.session.model() } catch (_) { return undefined }
 }
@@ -70,6 +77,7 @@ export function register(on) {
     const result = await next(e)
     await post($, 'measure', {
       model: await model($),
+      config: await config($),
       context: { tokens: e.context.tokens, window: e.context.window },
       rateLimits: e.rateLimits.map((r) => ({ kind: r.kind, percentUsed: r.percentUsed, resetsAt: r.resetsAt })),
       cost: e.cost ? { usd: e.cost.usd } : undefined,

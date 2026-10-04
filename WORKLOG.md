@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **926**, instantaneous |
+| Domain tests | **931**, instantaneous |
 | End-to-end tests | **127**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2280,3 +2280,13 @@ a refused step left half in; an end-to-end case refuses one on purpose and check
 the next try works. Tried again with the real `claude` on the test Mac: installed,
 20,844 tokens reported from a throwaway session, uninstalled, the folder gone, the
 account's real settings unchanged.
+
+The allowance strip learns from the mod (D67). A session counts its account's
+session and week windows on every response, and the mod, now 1.1.0, passes them on
+together with whether the session runs on Claude Code's default configuration — a
+session with a `CLAUDE_CONFIG_DIR` of its own may be another account, and its
+windows are left out rather than drawn under the wrong name. With the mod, the strip
+needs no request and no switch; the request, when on, stays the reserve and the only
+source of a model's own weekly cap. On the test Mac a throwaway session's measure
+carried two windows, and the panel, switch off and no row, grew from 65 to 86 points
+to draw the bar. An installed 1.0.0 is replaced at the next launch.

@@ -21,6 +21,13 @@ final class AllowanceMonitor: ObservableObject {
     /// before the first ask, or when nothing could be read.
     @Published private(set) var reports: [AllowanceReport] = []
 
+    /// What the usage service answered, and the windows the companion mod
+    /// reported for this Mac's default account. `reports` is the two together
+    /// (D67): the mod's figures are fresher and free, and need no switch of
+    /// their own — they never leave the Mac, and installing the mod was the yes.
+    private var serviceReports: [AllowanceReport] = []
+    private var modWindows: (limits: [ModReport.RateLimit], at: Date)?
+
     /// Why there is nothing, when there is nothing. Only ever the **local**
     /// machine's reason: a node that is signed out or unreachable is not something
     /// to report on a strip about allowances, and one line per silent host would
@@ -73,7 +80,8 @@ final class AllowanceMonitor: ObservableObject {
         timer = nil
         // Cleared, not kept: a figure left on screen after the switch went off
         // would be the panel still showing what it promised to stop asking.
-        reports = []
+        serviceReports = []
+        publish()
         quiet = nil
         refusals = 0
         quietUntil = .distantPast
@@ -108,22 +116,35 @@ final class AllowanceMonitor: ObservableObject {
                     afterRefusals: self.refusals, base: AppConfig.usagePollInterval
                 ) - AppConfig.usagePollInterval
                 self.quietUntil = now.addingTimeInterval(max(0, wait))
-                self.reports = AllowanceThrottle.carriedOver(
-                    previous: self.reports, fresh: result.reports, now: now
+                self.serviceReports = AllowanceThrottle.carriedOver(
+                    previous: self.serviceReports, fresh: result.reports, now: now
                 )
+                self.publish()
                 self.quiet = self.reports.isEmpty ? result.quiet : nil
                 Diagnostics.log("allowance: answered 429, \(self.refusals) in a row; next ask in \(Int(wait + AppConfig.usagePollInterval))s")
             } else {
                 self.refusals = 0
                 self.quietUntil = .distantPast
-                self.reports = result.reports
-                self.quiet = result.quiet
+                self.serviceReports = result.reports
+                self.publish()
+                self.quiet = self.reports.isEmpty ? result.quiet : nil
             }
             Diagnostics.log(
                 "allowance: \(result.reports.count) account(s) drawn"
                     + (result.reports.isEmpty ? "" : " (" + result.reports.map(\.machine).joined(separator: ", ") + ")")
             )
         }
+    }
+
+    /// The newest windows the mod reported, from `ModReceiver`.
+    func showFromMod(_ windows: (limits: [ModReport.RateLimit], at: Date)?) {
+        modWindows = windows
+        publish()
+        if !reports.isEmpty { quiet = nil }
+    }
+
+    private func publish() {
+        reports = ModAllowance.merged(serviceReports, mod: modWindows, machine: AccountLimitsReader.localMachine)
     }
 
     /// The trial's invented line. No request is made: the trial never reaches

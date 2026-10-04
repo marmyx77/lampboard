@@ -11,6 +11,9 @@ import Foundation
 final class ModReceiver {
 
     private(set) var ledger = ModLedger()
+    /// Told the default account's newest windows whenever a measure brings
+    /// some: the allowance strip draws them (D67).
+    var onWindows: ((limits: [ModReport.RateLimit], at: Date)?) -> Void = { _ in }
     private let store: StateStore
     private let clock: () -> Date
 
@@ -28,6 +31,9 @@ final class ModReceiver {
         // A measure for a row the hooks have not announced yet is dropped: the
         // reducer only annotates rows that exist, and the next response brings
         // a fresh one. The mod never creates a row.
+        if case .measure(_, let measure) = report, measure.defaultAccount, !measure.rateLimits.isEmpty {
+            onWindows(ledger.latestRateLimits)
+        }
         guard case .measure(let id, let measure) = report,
               let reading = measure.reading(previous: store.state.sessions[id]?.context, at: now)
         else { return }
@@ -37,7 +43,9 @@ final class ModReceiver {
     private static func kind(of report: ModReport) -> String {
         switch report {
         case .start(_, let start): return "start (\(start.surface ?? "no surface"))"
-        case .measure(_, let measure): return "measure (\(measure.tokens.map(String.init) ?? "no") tokens)"
+        case .measure(_, let measure):
+            return "measure (\(measure.tokens.map(String.init) ?? "no") tokens, \(measure.rateLimits.count) windows, "
+                + (measure.defaultAccount ? "default account)" : "other or unknown account)")
         case .end(_, let reason): return "end (\(reason.rawValue))"
         }
     }

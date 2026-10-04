@@ -2683,3 +2683,21 @@ what a node will be sent over ssh. Claude Code's own commands, because they writ
 the race D63 refused. Under `LAMPBOARD_HOME`, `claude` is run with that home as its
 `HOME`: measured on the test Mac, `claude plugin` honours `HOME`, and a child
 inheriting the real one would install into the real Claude Code from a test.
+
+## D67 · The allowance strip draws the mod's windows, with the request as reserve
+
+**Decided.** The rate-limit windows a session reports through the companion mod
+draw this Mac's session and week bars, with or without the allowance switch, when
+they are newer than the usage service's answer. They are taken only from sessions
+on Claude Code's default configuration: the mod (1.1.0) says whether
+`CLAUDE_CONFIG_DIR` is set, never its value. The service's answer, when the switch
+is on, still names the account and is the only source of a model's own weekly cap.
+
+**Why.** The session's figures come with every response, cost nothing, need no
+borrowed credential and never leave the Mac, which is what the switch exists to
+guard; installing the mod was the consent. But a session does not say whose account
+it is, and a Mac can run several through `CLAUDE_CONFIG_DIR`, so a window from such
+a session could belong to an account other than the one the strip names; those are
+left out rather than drawn under the wrong name. Measured on the test Mac on 4
+October 2026: a throwaway session's measure carried two windows, and the panel,
+with the switch off and no row, grew from 65 to 86 points to draw the bar.

@@ -107,6 +107,7 @@ let suites: [TestSuite] = [
     ModLedgerSuite.suite,
     ModFilesSuite.suite,
     ModTrustSuite.suite,
+    ModAllowanceSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first
