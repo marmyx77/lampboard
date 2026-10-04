@@ -731,10 +731,15 @@ Claude Code 2.1.287 and later run plugins of function hooks inside each session,
 and LampBoard carries one: `lampboard mod install` puts it into every Claude Code on
 this Mac, through Claude Code's own `claude plugin` commands. From then on each
 session tells the panel its context as Claude Code counts it, what it has cost, the
-account's rate-limit windows, and why it ended.
+account's rate-limit windows, which tool it is running, and why it ended. A working
+row that has sat on one tool for a quarter of an hour shows `⌛` and how long, and
+its card names the tool and the line: a build that takes ten minutes, or a command
+left waiting on input.
 
-It reads the home, LampBoard's token and port, and nothing else — no conversation,
-no file of your projects — writes nothing, runs nothing, and talks only to
+It reads the home, LampBoard's token and port, and of a running tool its name and
+the first line of its shell command or its file path — no conversation, no file's
+contents; the panel masks anything in a command that looks like a secret — writes
+nothing, runs nothing, and talks only to
 `127.0.0.1`, and only once that port answers as LampBoard. `claude plugin validate
 --strict ~/.lampboard/mod-marketplace/mod` lists exactly that. The colours of the
 rows still come from the hooks, with or without the mod
@@ -1391,7 +1396,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 941 domain tests, instantaneous
+swift run LampBoardTests              # 949 domain tests, instantaneous
 swift run LampBoardE2E                # 130 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

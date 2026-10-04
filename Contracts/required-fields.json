@@ -412,7 +412,8 @@
     "events": [
       "session.start",
       "session.measure",
-      "session.end"
+      "session.end",
+      "tool.call"
     ],
     "calls": [
       "$.env.get",
@@ -429,7 +430,8 @@
       "isInteractive",
       "sessionId",
       "five_hour",
-      "seven_day"
+      "seven_day",
+      "tool_use_id"
     ]
   }
 }

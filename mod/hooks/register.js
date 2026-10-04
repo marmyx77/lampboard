@@ -2,7 +2,10 @@
 // the session knows — its context as Claude Code counts it, what it has cost,
 // the account's rate-limit windows, where it draws and why it ended.
 //
-// It reads nothing of the conversation, writes nothing, runs nothing, and
+// It reads nothing of the conversation — of a running tool only its name and
+// the first line of its shell command or its file path, to say which one a
+// stuck session is on; the panel masks what looks like a secret — writes
+// nothing, runs nothing, and
 // talks to one address: 127.0.0.1, on the port the panel wrote, with the token
 // the panel wrote, both under ~/.lampboard (or $LAMPBOARD_HOME/.lampboard).
 // When the panel is not there it does nothing, silently: a session must never
@@ -62,6 +65,16 @@ async function config($) {
   try { return (await $.env.get('CLAUDE_CONFIG_DIR')) ? 'own' : 'default' } catch (_) { return undefined }
 }
 
+// The same allow-list the panel applies to a permission prompt: the first line
+// of the shell command or which file, never a tool's free-form input. One line,
+// so a heredoc's body never leaves; cut by characters, so no half of a pair.
+function detailOf(e) {
+  for (const key of ['command', 'file_path', 'path']) {
+    if (typeof e[key] === 'string' && e[key]) return Array.from(e[key].split('\n')[0]).slice(0, 120).join('')
+  }
+  return undefined
+}
+
 async function model($) {
   try { return await $.session.model() } catch (_) { return undefined }
 }
@@ -83,6 +96,19 @@ export function register(on) {
       cost: e.cost ? { usd: e.cost.usd } : undefined,
     })
     return result
+  })
+
+  // Which tool runs, and since when, so the panel can tell a long build from a
+  // command left waiting (5.7). The posts are not awaited: a tool call must
+  // never wait on the panel, and they cannot throw.
+  on('tool.call', async ($, e, next) => {
+    const id = e.tool_use_id
+    if (id) void post($, 'tool', { id, tool: e.tool, phase: 'start', detail: detailOf(e) })
+    try {
+      return await next(e)
+    } finally {
+      if (id) void post($, 'tool', { id, tool: e.tool, phase: 'end' })
+    }
   })
 
   // `session.end` has 1.5 s in all: one short post, and no model lookup.

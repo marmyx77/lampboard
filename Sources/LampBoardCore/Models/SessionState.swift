@@ -122,6 +122,11 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// Code counts it. Only the companion mod knows it; `nil` without it.
     public let costUSD: Double?
 
+    /// The tool it has been running longest, from the companion mod (5.7).
+    /// Shown only while the row is working: a lost "end" must not outlive the
+    /// turn it belonged to.
+    public let runningTool: RunningTool?
+
     /// When this session first appeared to the panel.
     ///
     /// The one moment about a session that never moves: `updatedAt` follows every
@@ -152,9 +157,11 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         title: String? = nil,
         context: ContextReading? = nil,
         costUSD: Double? = nil,
+        runningTool: RunningTool? = nil,
         firstSeenAt: Date? = nil
     ) {
         self.costUSD = costUSD
+        self.runningTool = runningTool
         self.firstSeenAt = firstSeenAt ?? updatedAt
         self.context = context
         self.waitingOn = waitingOn
@@ -242,7 +249,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         replacing(
             status: newStatus,
             updatedAt: now,
-            statusSince: newStatus == baseStatus ? statusSince : now
+            statusSince: newStatus == baseStatus ? statusSince : now,
+            // A turn that stops working takes its running tool with it: an "end"
+            // the mod never sent must not make the next turn look stuck for hours.
+            runningTool: newStatus != .working && runningTool != nil ? .some(nil) : nil
         )
     }
 
@@ -291,6 +301,19 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     public func with(costUSD usd: Double) -> SessionState {
         guard usd != costUSD else { return self }
         return replacing(costUSD: .some(usd))
+    }
+
+    /// Copy carrying the tool it is running, or none.
+    public func with(runningTool tool: RunningTool?) -> SessionState {
+        guard tool != runningTool else { return self }
+        return replacing(runningTool: .some(tool))
+    }
+
+    /// The tool it has been on too long, while it works: what makes a yellow
+    /// row a possibly stuck one.
+    public func stuckTool(at now: Date) -> RunningTool? {
+        guard status == .working, let runningTool, runningTool.isStuck(at: now) else { return nil }
+        return runningTool
     }
 
     /// Copy belonging to the harness the hook says it does.
@@ -460,7 +483,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         origin: SessionOrigin? = nil,
         title: String?? = nil,
         context: ContextReading?? = nil,
-        costUSD: Double?? = nil
+        costUSD: Double?? = nil,
+        runningTool: RunningTool?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -481,6 +505,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             title: title ?? self.title,
             context: context ?? self.context,
             costUSD: costUSD ?? self.costUSD,
+            runningTool: runningTool ?? self.runningTool,
             firstSeenAt: firstSeenAt
         )
     }

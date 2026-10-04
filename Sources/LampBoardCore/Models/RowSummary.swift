@@ -78,6 +78,13 @@ public struct RowSummary: Sendable, Equatable {
             fields.append(Field("context", "—", detail: "nothing read from this session yet"))
         }
 
+        // A yellow row that has sat on one tool for a quarter of an hour: the
+        // card names the tool and the line, the row only marks it (5.7).
+        if let stuck = row.primary.stuckTool(at: now) {
+            fields.append(Field("stuck?", stuck.sentence,
+                                detail: "running for \(CompactDuration.label(seconds: now.timeIntervalSince(stuck.since)))"))
+        }
+
         // Only the companion mod knows it, so a row without it has no line here
         // rather than a zero. Summed over the project's conversations: the row is
         // the project.

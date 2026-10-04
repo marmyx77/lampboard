@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **941**, instantaneous |
+| Domain tests | **949**, instantaneous |
 | End-to-end tests | **130**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2324,3 +2324,14 @@ bar can carry `wanting · working` beside the lamp, off by default so nobody's m
 bar changes width on an update they did not ask for. Not seen on screen: on the
 test Mac the status item's window could not be isolated for a capture; the counter
 is held by its tests.
+
+A session that has sat on one tool for a quarter of an hour now says so (D69): the
+mod, 1.2.0, reports each tool's start and end with its shell line or file path, and
+a working row shows `⌛ 22m` where its duration was, with the tool and the line on
+its card. Not a seventh colour: a build can honestly take ten minutes, and only a
+person can tell it from a command waiting on input. Tried on the test Mac: a
+throwaway session's three-second `sleep` arrived as a start and an end three
+seconds apart. The contract records the new hook and passes. A security review
+asked for the rest: only the command's first line reaches the panel, secrets in it
+masked; an "end" that overtakes its "start" no longer leaves a phantom; a call from an
+earlier turn is not this one's; a subagent's call is not tracked.

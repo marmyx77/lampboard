@@ -110,6 +110,7 @@ let suites: [TestSuite] = [
     ModAllowanceSuite.suite,
     LoopbackGuardSuite.suite,
     NotificationTextSuite.suite,
+    StuckSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

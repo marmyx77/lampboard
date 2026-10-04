@@ -28,9 +28,11 @@ struct ModSettings: View {
             Text("""
             Claude Code 2.1.287 and later run small plugins inside each session. LampBoard's \
             tells this panel each session's context as Claude Code counts it, what the session \
-            has cost, your plan's limits and why a session ended. It reads LampBoard's token \
-            and port and nothing else — no conversation, no file of your projects — writes \
-            nothing, runs nothing, and talks only to 127.0.0.1, once that port answers as \
+            has cost, your plan's limits, which tool it is running and why it ended. It reads \
+            LampBoard's token and port, and of a running tool its name and the first line of \
+            its shell command (anything that looks like a secret masked) or its file path — \
+            no conversation, no file's contents — writes nothing, runs nothing, \
+            and talks only to 127.0.0.1, once that port answers as \
             LampBoard. It adds nothing to the context of your sessions. Sessions already open \
             pick it up after a restart.
             """)

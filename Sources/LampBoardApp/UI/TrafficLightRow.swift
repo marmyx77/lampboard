@@ -441,6 +441,10 @@ struct TrafficLightRow: View {
     private var timeLabel: String {
         switch row.status {
         case .working, .waiting:
+            // A quarter of an hour on one tool: how long on *that*, marked (5.7).
+            if let stuck = row.primary.stuckTool(at: now) {
+                return "⌛ " + CompactDuration.label(seconds: now.timeIntervalSince(stuck.since))
+            }
             return CompactDuration.label(seconds: row.primary.statusDuration(at: now))
         case .failed:
             return (row.primary.failureReason ?? .unknown).shortLabel

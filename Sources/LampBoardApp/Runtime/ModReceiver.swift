@@ -34,6 +34,10 @@ final class ModReceiver {
         if case .measure(_, let measure) = report, measure.defaultAccount, !measure.rateLimits.isEmpty {
             onWindows(ledger.latestRateLimits)
         }
+        if case .tool(let id, _) = report {
+            let start = store.state.sessions[id].map { $0.status == .working ? $0.statusSince : now } ?? now
+            store.apply(.tooling(sessionId: id, tool: ledger.longestRunning(in: id, since: start)), now: now)
+        }
         if case .measure(let id, let measure) = report, let usd = measure.costUSD {
             store.apply(.costed(sessionId: id, usd: usd), now: now)
         }
@@ -50,6 +54,7 @@ final class ModReceiver {
             return "measure (\(measure.tokens.map(String.init) ?? "no") tokens, \(measure.rateLimits.count) windows, "
                 + (measure.defaultAccount ? "default account)" : "other or unknown account)")
         case .end(_, let reason): return "end (\(reason.rawValue))"
+        case .tool(_, let run): return "tool \(run.finished ? "end" : "start") (\(run.tool))"
         }
     }
 

@@ -63,6 +63,8 @@ public enum ReducerAction: Sendable, Equatable {
     /// What the session has cost so far, as it counted it and the companion mod
     /// passed it on (D65: a figure, never a colour).
     case costed(sessionId: String, usd: Double)
+    /// The tool a session has been running longest, or none (5.7).
+    case tooling(sessionId: String, tool: RunningTool?)
     /// Moves a row to the folder it turns out to belong to, colour and history
     /// untouched. Used when a node's probe answers after the row already exists:
     /// the first hooks named a `cwd` nobody could resolve, and now the window
@@ -120,6 +122,7 @@ extension ReducerAction {
             return "reconcile \(harness.rawValue) keeping \(alive.count)"
         case .observed: return "observed"
         case .costed: return "costed"
+        case .tooling: return "tooling"
         case .rehome: return "rehome"
         case .adopt: return "adopt"
         case .dismiss: return "dismiss"
@@ -192,6 +195,10 @@ public enum StateReducer {
         case .costed(let sessionId, let usd):
             guard let session = state.sessions[sessionId] else { return state }
             return state.upserting(session.with(costUSD: usd))
+
+        case .tooling(let sessionId, let tool):
+            guard let session = state.sessions[sessionId] else { return state }
+            return state.upserting(session.with(runningTool: tool))
 
         case .rehome(let sessionId, let workspace):
             guard let session = state.sessions[sessionId], session.workspace != workspace else { return state }

@@ -21,6 +21,7 @@ public enum ModTrust {
         "session.start": "when a session starts",
         "session.measure": "when its context, cost or limits change",
         "session.end": "when it ends",
+        "tool.call": "when a tool starts and ends",
     ]
 
     /// Claude Code's capability, in words, and no more than it says: which

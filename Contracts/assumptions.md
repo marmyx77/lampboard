@@ -891,7 +891,8 @@ whose title carries the session name, which zellij writes there.
 `session.measure` carries `context.tokens` and `context.window`, `rateLimits[]`
 with `kind` (`five_hour`, `seven_day`), `percentUsed` and `resetsAt`, and `cost.usd`;
 that `session.start` carries `surface` and `isInteractive`, `session.end` carries
-`sessionId` and `reason`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
+`sessionId` and `reason`, `tool.call` carries `tool`, `tool_use_id` and the tool's
+own arguments beside them (`command`, `file_path`, `path`) and wraps the run; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
 `$.session.id` and `$.session.model` exist.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·

@@ -19,10 +19,28 @@ public enum ModReport: Equatable, Sendable {
     case start(session: String, start: Start)
     case measure(session: String, measure: Measure)
     case end(session: String, reason: EndReason)
+    /// `tool.call`: a tool began or finished running (5.7).
+    case tool(session: String, run: ToolRun)
 
     public var session: String {
         switch self {
-        case .start(let session, _), .measure(let session, _), .end(let session, _): return session
+        case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _): return session
+        }
+    }
+
+    /// One tool call, at its start or its end. The detail is the shell line for
+    /// Bash, or which file: the same allow-list as `PendingAsk`, never contents.
+    public struct ToolRun: Equatable, Sendable {
+        public let id: String
+        public let tool: String
+        public let detail: String?
+        public let finished: Bool
+
+        public init(id: String, tool: String, detail: String?, finished: Bool) {
+            self.id = id
+            self.tool = tool
+            self.detail = detail
+            self.finished = finished
         }
     }
 
@@ -147,6 +165,14 @@ public enum ModReport: Equatable, Sendable {
             ))
         case "end":
             return .end(session: session, reason: wire.reason.flatMap(EndReason.init(rawValue:)) ?? .other)
+        case "tool":
+            guard let id = wire.id, isSessionId(id) || isCallId(id),
+                  let tool = wire.tool.flatMap(toolName),
+                  wire.phase == "start" || wire.phase == "end"
+            else { throw Failure.unreadable }
+            return .tool(session: session, run: ToolRun(
+                id: id, tool: tool, detail: wire.detail.flatMap(detail), finished: wire.phase == "end"
+            ))
         default:
             throw Failure.unknownKind
         }
@@ -183,6 +209,53 @@ public enum ModReport: Equatable, Sendable {
         return Int(raw.rounded())
     }
 
+    /// `toolu_01AbC…`: letters, digits, `_` and `-`.
+    static func isCallId(_ id: String) -> Bool {
+        (1...80).contains(id.count) && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }
+    }
+
+    /// `Bash`, `mcp__docs__search`: a tool's name, or nothing.
+    static func toolName(_ raw: String) -> String? {
+        guard (1...maxModelLength).contains(raw.count),
+              raw.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "_-.".contains($0)) })
+        else { return nil }
+        return raw
+    }
+
+    /// One line, printable, secrets masked, at most `PendingAsk.detailLimit`,
+    /// cut where it says so.
+    ///
+    /// Not only the control characters: bidi overrides, zero-width marks and
+    /// line separators (format and separator categories) can reorder or hide part
+    /// of a command on a card, which is the one place it is read to judge it.
+    static func detail(_ raw: String) -> String? {
+        let visible = String(String.UnicodeScalarView(raw.unicodeScalars.map { scalar -> Unicode.Scalar in
+            switch scalar.properties.generalCategory {
+            case .control, .format, .lineSeparator, .paragraphSeparator: return " "
+            default: return scalar
+            }
+        }))
+        let line = masked(visible).trimmingCharacters(in: .whitespaces)
+        guard !line.isEmpty else { return nil }
+        return line.count <= PendingAsk.detailLimit ? line : String(line.prefix(PendingAsk.detailLimit - 1)) + "…"
+    }
+
+    /// A shell line with what looks like a secret replaced by `***`: a variable
+    /// named like a key or a password, a password in a URL, an Authorization
+    /// header, a `--password` argument. Commands carry them, and this one is
+    /// shown on a card that may be on a shared screen.
+    static func masked(_ line: String) -> String {
+        let rules: [(String, String)] = [
+            (#"(?i)\b(\w*(?:KEY|TOKEN|SECRET|PASS(?:WORD)?|AUTH)\w*)=(\S+)"#, "$1=***"),
+            (#"://([^/\s:@]+):[^@\s/]+@"#, "://$1:***@"),
+            (#"(?i)(authorization:\s*)(\S+(?:\s+\S+)?)"#, "$1***"),
+            (#"(?i)(--password[=\s]+)(\S+)"#, "$1***"),
+        ]
+        return rules.reduce(line) { text, rule in
+            text.replacingOccurrences(of: rule.0, with: rule.1, options: .regularExpression)
+        }
+    }
+
     static func date(_ raw: String) -> Date? {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -201,6 +274,10 @@ public enum ModReport: Equatable, Sendable {
         let cost: Cost?
         let reason: String?
         let config: String?
+        let id: String?
+        let tool: String?
+        let detail: String?
+        let phase: String?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

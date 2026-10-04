@@ -2723,3 +2723,30 @@ route that answers one without the token, `/health`, says only that LampBoard is
 there. The pid check keeps what it cannot disprove — no start in the file, a form it
 does not read, a process it cannot ask — and allows two seconds, because a wrong
 answer here hides a live row.
+
+## D69 · A stuck session is a mark on a yellow row, not a seventh colour
+
+**Decided.** The companion mod (1.2.0) reports when a tool starts and ends, with
+its name and its shell line or file path. A working row whose session has sat on one
+tool for fifteen minutes shows `⌛` and how long in place of its duration, and its
+card names the tool and the line. The colour stays yellow. A turn that stops
+working takes its running tool with it.
+
+**Why.** A seventh state would move through the legend, the reducer, the menu bar,
+the notifications and every rule about what a click clears, for a fact that is a
+suspicion and not a state: a build or a test suite can honestly run for ten
+minutes, and only a person can tell it from a command waiting on input. The colours
+come from the hooks (D65), and this keeps them there. Fifteen minutes because the
+long honest tools measured here finish well within it; the card says how long
+either way. The posts are not awaited, so a tool call never waits on the panel —
+measured on the test Mac: a three-second `sleep` reported its start and its end
+three seconds apart, and the session's own run was unchanged.
+
+A security review shaped the rest. The line is the first one of the command, cut at
+120 characters, with what looks like a secret masked (a variable named like a key or
+password, a password in a URL, an Authorization header, `--password`) and bidi and
+zero-width characters removed: every command now reaches the panel, not only the
+ones waiting for a yes, and the card may be on a shared screen. An "end" that
+overtakes its "start" leaves a mark so the late start is ignored; a call from before
+the row began working is not this turn's; and `Agent`, which runs as long as its
+subagent, is not tracked, or it would read as stuck while hiding the inner tool.

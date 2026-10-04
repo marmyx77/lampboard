@@ -60,8 +60,9 @@ public enum GettingStarted {
                  done: facts.lampMasterCallable, optional: true),
             Item(id: "mod", title: "The LampBoard mod, for exact figures",
                  detail: "A small plugin inside each Claude Code session (2.1.287 and later) that tells the panel its "
-                    + "context, cost and limits as Claude Code counts them. It reads LampBoard's token and port and "
-                    + "nothing else, writes nothing, runs nothing, and talks only to this Mac. Settings shows what "
+                    + "context, cost and limits as Claude Code counts them, and which tool it is running. It reads no "
+                    + "conversation and no file's contents, writes nothing, runs nothing, and talks only to this Mac. "
+                    + "Settings shows what "
                     + "Claude Code reads in it.",
                  done: facts.mod, optional: true),
             Item(id: "tour", title: "Take the three-minute tour",

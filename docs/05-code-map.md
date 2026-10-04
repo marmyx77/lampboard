@@ -1,13 +1,13 @@
 # Code map
 
-~52,700 lines of Swift across five targets. For each file: what it contains, why
+~53,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,660 lines · 125 files  pure logic, zero AppKit
-  LampBoardApp/    19,654 lines · 107 files   shell: AppKit, network, windows
-  LampBoardTests/  13,132 lines · 75 files   941 cases, instantaneous
+  LampBoardCore/  15,875 lines · 125 files  pure logic, zero AppKit
+  LampBoardApp/    19,665 lines · 107 files   shell: AppKit, network, windows
+  LampBoardTests/  13,242 lines · 76 files   949 cases, instantaneous
   LampBoardE2E/    3,850 lines · 16 files   130 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -66,7 +66,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 487
+### `SessionState.swift` · 512
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -544,7 +544,7 @@ included, which Foundation deliberately leaves alone.
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
 
-### `RowSummary.swift` · 244
+### `RowSummary.swift` · 251
 Everything a row can say about itself, as **fields** rather than as a paragraph:
 title, state, subtitle, an ordered grid of label/value/detail, the per-session
 list of a group, the last message, the help line. It used to be a `private var`
@@ -741,8 +741,9 @@ colours stay with the hooks.
 
 ### `ModReport.swift`
 The wire format of `POST /mod`, version 1: `start` (surface, interactive, model),
-`measure` (the session's own context count, cost, rate-limit windows) and `end`
-(Claude Code's own reason). Every field is bounded on the way in, because the route
+`measure` (the session's own context count, cost, rate-limit windows), `end`
+(Claude Code's own reason) and `tool` (a call's start or end, its name, and its
+line cut to one printable line). Every field is bounded on the way in, because the route
 takes whatever a process of this user sends: a session id of a UUID's alphabet,
 numbers in range, words from a short alphabet, at most eight windows. A reading
 from a measure is `reported`, and the reducer never lets a transcript reading
@@ -784,7 +785,9 @@ here, a gateway's spend limit, is left out.
 
 ### `ModLedger.swift`
 Per session: surface, interactive, model, cost, the last rate-limit windows and
-when they were read, why it ended. An empty list of windows keeps the last figures
+when they were read, why it ended, and the tools running now by call id (at most
+32, forgotten at the session's end). `RunningTool` says when one has run long enough
+to call the session stuck: fifteen minutes (D69). An empty list of windows keeps the last figures
 (it means "no reading", never "every window at zero"); the account's windows are
 the newest any session reported. Bounded at 300 sessions, least recently heard
 first out.
@@ -1011,7 +1014,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 673
+### `StateReducer.swift` · 680
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1278,7 +1281,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `ModReceiver.swift` | 84 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
+| `ModReceiver.swift` | 89 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 502 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `LampMasterService.swift` | 237 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1449,7 +1452,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 430 | one row: dot, context ring, name, badge, timestamp, folder, handle, menu |
+| `TrafficLightRow.swift` | 462 | one row: dot, context ring, name, badge, timestamp (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
@@ -1497,7 +1500,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 941 cases
+## `LampBoardTests/` — 949 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1539,6 +1542,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
 | `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
