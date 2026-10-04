@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1003**, instantaneous |
+| Domain tests | **1004**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2406,3 +2406,6 @@ opened, because a field there took the keyboard whenever the panel became key. T
 README's picture caught it in a first draft as a grey square: `make-screenshots.sh`
 took the widest window of the process, and the field had left a hidden one wider
 than the column; it now takes the widest visible one.
+
+The bar can be reached from any application, once a shortcut is chosen in Settings
+(`⌥⌘K` or `⌃⌘K`; off by default). Carbon's hot keys, so no permission is asked.

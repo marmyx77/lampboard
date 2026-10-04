@@ -2980,3 +2980,10 @@ move its height, and an answer is dropped unless its bar is still open on its
 question. `⌘K` in an open bar gives its field the keyboard back, and a session's
 title reaches the results as one clean line.
 
+**The shortcut from anywhere, built.** Settings offers off, `⌥⌘K` and `⌃⌘K`, each
+registered through Carbon's hot keys, which need no permission — a global key
+monitor would need Accessibility and would see every key typed on the Mac. Pressed,
+it brings the panel up holding the keyboard with the bar open, without activating
+the app. On the test Mac both combinations registered; the press itself was not
+tried, since ssh cannot press keys there.
+

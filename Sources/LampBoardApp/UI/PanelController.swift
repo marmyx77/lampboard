@@ -32,6 +32,8 @@ final class PanelController {
     let bar = CommandBarModel()
     /// The `⌘K` monitor, kept so it lives as long as the panel.
     var barKeys: Any?
+    /// The bar's shortcut from any application, when one is chosen (D77).
+    var barHotKey: GlobalHotKey?
     var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.

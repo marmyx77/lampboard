@@ -29,6 +29,7 @@ struct Preferences {
         static let notificationsEnabled = "notify.enabled"
         static let notifyFinished = "notify.finished"
         static let menuBarCounter = "menubar.counter"
+        static let barShortcut = "bar.shortcut"
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
@@ -320,6 +321,13 @@ struct Preferences {
     var menuBarCounter: Bool {
         get { defaults.bool(forKey: Key.menuBarCounter) }
         nonmutating set { defaults.set(newValue, forKey: Key.menuBarCounter) }
+    }
+
+    /// The shortcut that reaches the bar from any application (D77). Off by
+    /// default: a global shortcut is a claim on the whole Mac.
+    var barShortcut: BarShortcut {
+        get { BarShortcut.stored(defaults.string(forKey: Key.barShortcut)) }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.barShortcut) }
     }
 
     /// Projects that generate no notifications, by path.

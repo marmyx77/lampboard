@@ -74,6 +74,16 @@ enum CommandBarSuite {
             t.expectEqual(found.first?.title, "Fix nigol the login")
         },
 
+        TestCase("The shortcut from anywhere is off unless one is chosen, and never ⌘K alone") { t in
+            t.expectEqual(BarShortcut.stored(nil), .off)
+            t.expectEqual(BarShortcut.stored("commandK"), .off, "an unknown value is off, not a guess")
+            t.expectNil(BarShortcut.off.keyCode)
+            t.expectEqual(BarShortcut.stored("optionCommandK").keyCode, 40)
+            for shortcut in BarShortcut.allCases where shortcut != .off {
+                t.expect(shortcut.carbonModifiers & 0x1800 != 0, "\(shortcut.label) carries ⌥ or ⌃, so VS Code keeps ⌘K")
+            }
+        },
+
         TestCase("The selection moves within the results and stops at the ends") { t in
             t.expectEqual(CommandBar.move(0, by: -1, count: 3), 0)
             t.expectEqual(CommandBar.move(0, by: 1, count: 3), 1)

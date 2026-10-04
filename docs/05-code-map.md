@@ -1,13 +1,13 @@
 # Code map
 
-~55,500 lines of Swift across five targets. For each file: what it contains, why
+~55,600 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,635 lines · 130 files  pure logic, zero AppKit
-  LampBoardApp/    20,681 lines · 116 files   shell: AppKit, network, windows
-  LampBoardTests/  13,854 lines · 81 files   1003 cases, instantaneous
+  LampBoardCore/  16,670 lines · 131 files  pure logic, zero AppKit
+  LampBoardApp/    20,775 lines · 117 files   shell: AppKit, network, windows
+  LampBoardTests/  13,864 lines · 81 files   1004 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1065,6 +1065,12 @@ it is switched off.
 > **Touching here** changes what a few keystrokes reach. A name typed exactly must
 > stay the first result, or the bar stops being faster than the column.
 
+### `BarShortcut.swift` · 35
+The bar's shortcut from any application (D77): off, `⌥⌘K` or `⌃⌘K`, with the key code
+and Carbon modifier mask each one registers; a stored value nobody recognises is off.
+A short list rather than a recorder, because every entry on it leaves `⌘K` to the
+editor.
+
 ## `Queue/`
 
 ### `WaitingQueue.swift` · 221
@@ -1363,8 +1369,9 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 89 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 502 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 510 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
+| `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 183 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E` and answers `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1530,11 +1537,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 721 | holds everything together; row and panel actions |
+| `PanelController.swift` | 723 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
-| `PanelBar.swift` | 60 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the panel remeasured when its results come and go |
+| `PanelBar.swift` | 80 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go |
 | `WaitingQueueSection.swift` | 126 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
@@ -1567,7 +1574,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `AlertSettings.swift` | 41 | the menu bar counter and the notification for a finished turn, both off until asked for (5.6) |
+| `AlertSettings.swift` | 56 | the menu bar counter and the notification for a finished turn, both off until asked for (5.6), and the bar's shortcut from any app, off until chosen (D77) |
 | `SettingsView.swift` | 168 | the Settings form: LampMaster first, the companion mod, the menu bar and notifications, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
@@ -1588,7 +1595,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1003 cases
+## `LampBoardTests/` — 1004 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1638,7 +1645,7 @@ script, before it was split. The most important ones:
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
-| `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list |
+| `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |

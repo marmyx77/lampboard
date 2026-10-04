@@ -44,6 +44,16 @@ extension PanelController {
             self.bar.focus()
             return nil
         }
+        barHotKey = GlobalHotKey { [weak self] in self?.summonBar() }
+        barHotKey?.apply(preferences.barShortcut)
+        NotificationCenter.default.publisher(for: .barShortcutChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.barHotKey?.apply(self.preferences.barShortcut)
+            }
+            .store(in: &cancellables)
+
         // The switch decides whether a question can be asked, and the bar says so.
         lampMaster?.$snapshot
             .map(\.enabled)
@@ -52,6 +62,16 @@ extension PanelController {
             .sink { [weak self] _ in self?.refreshBar() }
             .store(in: &cancellables)
         refreshBar()
+    }
+
+    /// The shortcut from anywhere: the panel comes up holding the keyboard, its
+    /// bar open. Without activating the app — the panel is non-activating, so
+    /// the application underneath stays the active one.
+    func summonBar() {
+        panel.orderFrontRegardless()
+        panel.makeKey()
+        guard !isCompact else { return }
+        bar.focus()
     }
 
     func refreshBar() {
