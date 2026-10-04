@@ -35,6 +35,8 @@ public enum TranscriptDecoder {
             return userEntries(record, uuid: uuid, timestamp: timestamp)
         case "assistant":
             return assistantEntries(record, uuid: uuid, timestamp: timestamp)
+        case "attachment":
+            return queuedPeerEntries(record, uuid: uuid, timestamp: timestamp)
         default:
             return []
         }
@@ -126,11 +128,45 @@ public enum TranscriptDecoder {
             return [TranscriptEntry(id: uuid, kind: .note, text: fallback, timestamp: timestamp)]
         }
 
+        if origin(record) == "peer" {
+            return peerEntries(from: record["origin"] as? [String: Any], text: plainText(in: record), uuid: uuid, timestamp: timestamp)
+        }
+
         guard isHuman(record) else { return [] }
 
         let text = plainText(in: record)
         guard let text = text.nilIfEmpty else { return [] }
         return [TranscriptEntry(id: uuid, kind: .human, text: text, timestamp: timestamp)]
+    }
+
+    // MARK: - Messages through the box (D81)
+
+    /// A message through Claude Code's box. The user's words only when it says
+    /// it is from LampBoard *and* starts with its preamble. A session talking to
+    /// another names itself, so its messages read as notes; a process of the
+    /// user's own could claim both, which is the account boundary of D15, D81.
+    private static func peerEntries(
+        from origin: [String: Any]?, text: String, uuid: String, timestamp: Date
+    ) -> [TranscriptEntry] {
+        let sender = (origin?["from"] as? String).map { String($0.prefix(40)).trimmed } ?? ""
+        if sender == PeerBox.sender, let typed = PeerBox.typed(fromDelivered: text) {
+            return [TranscriptEntry(id: uuid, kind: .human, text: typed, timestamp: timestamp)]
+        }
+        let who = sender.isEmpty ? "" : " (\(sender))"
+        return [TranscriptEntry(id: uuid, kind: .note, text: "a message from another session\(who)", timestamp: timestamp)]
+    }
+
+    /// A message taken into a running turn is kept as a `queued_command`
+    /// attachment, not a user record (measured, 2.1.289). Only the box's are
+    /// read: a prompt the user queued in the terminal has its own record.
+    private static func queuedPeerEntries(
+        _ record: [String: Any], uuid: String, timestamp: Date
+    ) -> [TranscriptEntry] {
+        guard let attachment = record["attachment"] as? [String: Any],
+              attachment["type"] as? String == "queued_command",
+              let origin = attachment["origin"] as? [String: Any], origin["kind"] as? String == "peer"
+        else { return [] }
+        return peerEntries(from: origin, text: (attachment["prompt"] as? String) ?? "", uuid: uuid, timestamp: timestamp)
     }
 
     // MARK: - Assistant records

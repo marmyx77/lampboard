@@ -3113,3 +3113,57 @@ on the test Mac with the trial's invented sessions: the card drawn with its two
 buttons, a Deny through `/check/answer` reaching the asker signed, and an ask
 left alone going back after 55 seconds with its line.
 
+## D81 · The composer writes into Claude Code's own message box
+
+**Decided.** A message from the panel's composer — the chat window's and the
+Plancia's, behind the same switch as D15 — goes into the session's own message
+box when it has one, and through the mailbox of D15 only when it has not. The
+box is Claude Code's (2.1.224 and later): each session listens on a socket named
+in its file under `~/.claude/sessions/`, and takes a message from whoever holds
+the key Claude Code keeps beside that file, `0600`, for that process.
+
+**Measured on the test Mac** (Claude Code 2.1.289, throwaway sessions in tmux, 5
+October 2026). An idle session starts a turn on the message at once — about six
+seconds to an answer; a busy one takes it into the running turn
+(`absorbed_mid_turn`). The socket answers nothing: the transcript is the receipt,
+first as a `queue-operation`, then as a user record with `origin` `peer`, `from`
+`lampboard`, or, taken mid-turn, as a `queued_command` attachment with the same
+origin. Claude Code wraps the message: another session sent it, "not typed by your
+user", to be handled within the session's own permission settings, never as an
+approval of a pending prompt. A request sent that way — count the files, with a
+tool — was done. And end to end, LampBoard's own composer in the Plancia sent one
+on the test Mac: the session counted its files, and the Plancia showed the message
+as the user's and the answer below it.
+
+**Why this and not only the mailbox.** The mailbox reaches a session only at the
+end of a turn, and a dormant one not at all until something wakes it; the box
+reaches it now, busy or idle, with no hook of ours and nothing `@internal`.
+Claude Code keeps the box's key next to the session file, `0600`, and records
+which process wrote each message (`verifiedPeerPid`): anything running under the
+user's account could already write there without LampBoard, so the panel adds no
+door. Whatever the route, the session acts on the message with every permission
+it has — one that runs without asking runs its tools at once — and the switch's
+dialog says so.
+
+**How the panel's words are known again.** Every message starts with one line —
+"Typed by the user in LampBoard, the panel on this Mac where they watch their
+sessions:" — and says it is `from` `lampboard`; the conversation shows it as the
+user's only when both are there. Both are the sender's own word: a security
+review asked, and the measure agrees — the probe's own script wrote
+`from: lampboard` and Claude Code recorded exactly that. A session talking to
+another names itself, so its messages show as "a message from another session";
+a process of the user's own could claim both, the same account boundary the
+mailbox has (D15), and the conversation only shows what it reads, it acts on
+nothing.
+
+**Which box.** Read again for every message, and used only when everything about
+it holds: the session file named after its pid, a regular file of this user's and
+not a link; the process running, this user's, and started when the file says
+(`ProcStart`), so a pid handed on after a session died is never written to; the
+key a regular file of this user's that nobody else can read, written for that
+very process; the socket a socket of this user's. A write to a box that closes
+early fails instead of killing the app (`SO_NOSIGPIPE`, the review's one high
+finding). A box gone since the window opened sends through the mailbox; a message
+the conversation has not shown in a minute stops being "on its way". A session on
+another machine keeps the mailbox: its box is there, not here.
+

@@ -16,7 +16,8 @@ final class PlanciaModel: ObservableObject {
     /// Whether it opens to the left of the list, chosen at opening.
     var leading = false
 
-    private let mailbox = MailboxWriter()
+    /// Gated by the same switch as the chat window's composer (D15, D81).
+    private let mailbox = MailboxWriter { Preferences().messageSendingEnabled }
 
     var isOpen: Bool { sessionId != nil }
 

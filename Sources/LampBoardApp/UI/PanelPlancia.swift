@@ -71,6 +71,20 @@ extension PanelController {
 
     /// `⌘⇧L`: the column, the panel, the Plancia on what is most urgent, and
     /// back to the column.
+    /// What the composer's Send does, for `--plancia-send` on a fake home:
+    /// waits for a row and its Plancia, up to a minute, then sends once.
+    func sendFromPlancia(_ text: String, attempts: Int = 30) {
+        guard let thread = plancia.thread else {
+            guard attempts > 0 else { return Diagnostics.log("plancia-send: no Plancia open") }
+            if !store.state.sessions.isEmpty { cycleDepth() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.sendFromPlancia(text, attempts: attempts - 1) }
+            return
+        }
+        // Pinned, so it stays to be photographed once the queue empties.
+        plancia.pinned = true
+        Diagnostics.log("plancia-send: \(thread.send(text) ? "sent" : "refused")")
+    }
+
     func cycleDepth() {
         if isCompact {
             toggleCompact()

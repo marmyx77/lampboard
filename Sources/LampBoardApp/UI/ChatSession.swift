@@ -49,14 +49,21 @@ final class ChatSession: ObservableObject {
     private let store: StateStore
     private let reader: TranscriptReader
     private let mailbox: MailboxWriter
+    private let box: PeerSender
+    /// The session has Claude Code's own box (D81): a message goes there, at
+    /// once, and the mailbox of D15 stays for sessions without one.
+    private var hasBox = false
     private var timer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     /// When the user last had this window in front of them.
     private var lastRead: Date?
 
-    init(session: SessionState, store: StateStore, mailbox: MailboxWriter = MailboxWriter()) {
+    init(session: SessionState, store: StateStore, mailbox: MailboxWriter = MailboxWriter(), box: PeerSender = PeerSender()) {
         self.mailbox = mailbox
+        self.box = box
+        // A session on another machine has its box there, not here.
+        self.hasBox = session.workspace.host == nil && box.hasBox(sessionId: session.id)
         self.sessionId = session.id
         self.workspace = session.workspace
         self.store = store
@@ -92,7 +99,7 @@ final class ChatSession: ObservableObject {
     // MARK: - Lifecycle
 
     func start() {
-        listening = mailbox.isListening(sessionId: sessionId)
+        listening = hasBox || mailbox.isListening(sessionId: sessionId)
         guard hasTranscript else { return }
         loadEverything()
         followStatus()
@@ -115,6 +122,11 @@ final class ChatSession: ObservableObject {
     @discardableResult
     func send(_ text: String) -> Bool {
         sendError = nil
+        if hasBox { return sendThroughBox(text) }
+        return sendThroughMailbox(text)
+    }
+
+    private func sendThroughMailbox(_ text: String) -> Bool {
         switch mailbox.send(text, to: sessionId) {
         case .success:
             pending = text.trimmed
@@ -124,6 +136,58 @@ final class ChatSession: ObservableObject {
             sendError = error.description
             Diagnostics.log("chat \(sessionId): send refused: \(error.description)")
             return false
+        }
+    }
+
+    /// How long a message through the box may stay unseen in the conversation
+    /// before the composer stops saying it is on its way.
+    static let boxReceiptWithin: TimeInterval = 60
+
+    /// Through Claude Code's box: idle, the session starts a turn on it; busy,
+    /// it takes it into the running one. Pending until the conversation shows it.
+    /// A box gone since the window opened sends it through the mailbox instead.
+    private func sendThroughBox(_ text: String) -> Bool {
+        guard mailbox.isSendingEnabled else {
+            sendError = MailboxError.disabled.description
+            return false
+        }
+        let typed = text.trimmed
+        let id = sessionId
+        let box = self.box
+        pending = typed
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = box.send(typed, to: id)
+            // Unwrapped before the hop, as `loadEverything` does: inside it,
+            // Swift 6 rejects the capture.
+            guard let self else { return }
+            await MainActor.run {
+                switch result {
+                case .success:
+                    Diagnostics.log("chat \(id): \(typed.count) chars into the session's box")
+                    self.expectReceipt(of: typed)
+                case .failure(.noBox):
+                    if self.pending == typed { self.pending = nil }
+                    self.hasBox = false
+                    Diagnostics.log("chat \(id): its box is gone, through the mailbox")
+                    _ = self.sendThroughMailbox(typed)
+                case .failure(let failure):
+                    if self.pending == typed { self.pending = nil }
+                    self.sendError = failure.description
+                    self.hasBox = box.hasBox(sessionId: id)
+                    Diagnostics.log("chat \(id): box refused: \(failure.description)")
+                }
+            }
+        }
+        return true
+    }
+
+    /// The box says nothing back: if the conversation has not shown the message
+    /// within a minute, the composer says so instead of waiting forever.
+    private func expectReceipt(of typed: String) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.boxReceiptWithin) { [weak self] in
+            guard let self, self.pending == typed else { return }
+            self.pending = nil
+            self.sendError = "sent to the session's box, but not in its conversation after a minute"
         }
     }
 
@@ -197,12 +261,16 @@ final class ChatSession: ObservableObject {
         // message off disk seconds before the turn produces anything to read, and
         // behind that guard the composer would keep saying "waiting" for a message
         // that had already gone.
-        if pending != nil, !mailbox.hasPending(sessionId: sessionId) {
+        if pending != nil, !hasBox, !mailbox.hasPending(sessionId: sessionId) {
             pending = nil
         }
-        listening = mailbox.isListening(sessionId: sessionId)
+        listening = hasBox || mailbox.isListening(sessionId: sessionId)
 
         let fresh = reader.readNewEntries()
+        // Through the box, a message has gone when the conversation shows it.
+        if let pending, hasBox, fresh.contains(where: { $0.kind == .human && $0.text == pending }) {
+            self.pending = nil
+        }
         guard !fresh.isEmpty || reader.title != conversation.title else { return }
 
         conversation = conversation

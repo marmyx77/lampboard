@@ -1,13 +1,13 @@
 # Code map
 
-~57,000 lines of Swift across five targets. For each file: what it contains, why
+~57,600 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  17,069 lines · 134 files  pure logic, zero AppKit
-  LampBoardApp/    21,545 lines · 122 files   shell: AppKit, network, windows
-  LampBoardTests/  14,129 lines · 83 files   1027 cases, instantaneous
+  LampBoardCore/  17,218 lines · 135 files  pure logic, zero AppKit
+  LampBoardApp/    21,761 lines · 123 files   shell: AppKit, network, windows
+  LampBoardTests/  14,259 lines · 84 files   1035 cases, instantaneous
   LampBoardE2E/    4,103 lines · 18 files   140 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -938,10 +938,14 @@ thing: one assistant record holds an answer *and* six tool calls.
 > "N earlier messages not shown". A reader has to be able to tell a short
 > conversation from a truncated one.
 
-### `TranscriptDecoder.swift` · 257
+### `TranscriptDecoder.swift` · 293
 Record → entries. The point where a second stream of external data enters the
 domain, and it fails **quietly**: an unrecognized record yields nothing rather
-than an error, because Claude Code adds record types between releases.
+than an error, because Claude Code adds record types between releases. A message
+through Claude Code's box (D81) — a user record of origin `peer`, or a
+`queued_command` attachment when it was taken mid-turn — is the user's words only
+when it says it is from `lampboard` and starts with the panel's preamble — both the
+sender's own word; any other is "a message from another session".
 
 > **Read the comment on `isHuman` before touching it.** A record of type `user` is
 > usually *not* a message — the protocol files tool results and injected context
@@ -1075,6 +1079,16 @@ The bar's shortcut from any application (D77): off, `⌥⌘K` or `⌃⌘K`, with
 and Carbon modifier mask each one registers; a stored value nobody recognises is off.
 A short list rather than a recorder, because every entry on it leaves `⌘K` to the
 editor.
+
+## `Peer/`
+
+### `PeerBox.swift` · 113
+Claude Code's own message box (D81), as rules: the box a session file under
+`~/.claude/sessions/` names (protocol 1, an absolute `.sock` path short enough for
+`sun_path`), the key file `<pid>.<hex>.key` for that pid and no other, its token
+only when written for that very process (`procStart`), the two lines a message is
+— the key, then the user's words under the panel's preamble, from `lampboard` — and
+the words read back out of Claude Code's envelope, or bare when taken mid-turn.
 
 ## `Permission/`
 
@@ -1302,7 +1316,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 418
+### `main.swift` · `AppDelegate.swift` · 427
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1410,7 +1424,7 @@ there, the hooks are registered — and it names the link that broke.
 | `Preferences.swift` | 518 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `PermissionDesk.swift` | 152 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog |
-| `PlanciaModel.swift` | 49 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it, the pin |
+| `PlanciaModel.swift` | 50 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
 | `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 198 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
@@ -1430,6 +1444,7 @@ there, the hooks are registered — and it names the link that broke.
 | `ContextReader.swift` | 110 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
+| `PeerSender.swift` | 122 | the panel's end of Claude Code's message box (D81): the session's file and key under `~/.claude/sessions/`, read again for every message, used only when the process is running, this user's and the one the file was written for, the files regular, this user's and not links, the key private, the socket this user's; the two lines written down the socket, our half closed, and the box's end of file taken as the receipt; no SIGPIPE |
 | `MailboxWriter.swift` | 206 | the panel's end of the mailbox; carries out the reaper's verdict; counts the views holding a session's marker, so the chat window and the Plancia do not take it from each other |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
@@ -1462,7 +1477,7 @@ there, the hooks are registered — and it names the link that broke.
 ## `Server/`
 
 ### `SignalServer.swift` · 570
-Thirteen routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC of the token rather than the token, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80). A **concurrent** queue: with a serial one, a `/next` waiting on the
+Thirteen routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80). A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1578,11 +1593,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 745 | holds everything together; row and panel actions |
+| `PanelController.swift` | 749 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 68 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow and Deny handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
-| `PanelPlancia.swift` | 124 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard |
+| `PanelPlancia.swift` | 138 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 80 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go |
 | `WaitingQueueSection.swift` | 156 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
@@ -1613,7 +1628,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 197 | the two columns, and one row of the list |
-| `ChatSession.swift` | 245 | one conversation: transcript on disk + status from the hooks + the composer's state |
+| `ChatSession.swift` | 317 | one conversation: transcript on disk + status from the hooks + the composer's state; a message goes into the session's own box when it has one (D81), off the main actor, pending until the conversation shows it, and through the mailbox otherwise, or when the box has gone since; a message unseen after a minute stops being on its way |
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
@@ -1638,7 +1653,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1027 cases
+## `LampBoardTests/` — 1035 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1689,7 +1704,9 @@ script, before it was split. The most important ones:
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
-| `PermissionGateSuite` | HMAC-SHA256 against RFC 4231; an ask genuine only with its token's proof for its call; the signed answer; answers by session and call; an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
+| `PermissionGateSuite` | HMAC-SHA256 against RFC 4231; an ask genuine only with its key's proof for its call; the same call id from another session another ask; the signed answer; answers by session and call; an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
+| `PeerBoxSuite` | the box, the session and its busy state read from a session file as 2.1.289 writes it; no box before 2.1.224, on a relative path or another protocol; the key file for that pid only, and its token only for that process; the two lines sent, nothing empty, nothing past 64 KB; the user's words read out of the envelope, and never from another sender |
+| `PeerTranscriptSuite` | a message from the panel taken idle, and one taken mid-turn as a `queued_command`, shown as the user's; another session's, even with the preamble copied, a note |
 | `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the mod's reports read into it; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
@@ -1748,13 +1765,13 @@ in this repository because the repository is its marketplace
 Five hooks, `session.start`, `session.measure`, `tool.call`, `tool.check` and
 `session.end`, each passing the event on first and then posting to `/mod` on
 `127.0.0.1` with the token — `tool.check` only for a real call the engine would
-put to its dialog, asking `/check` with a nonce and its HMAC made with the token (never the token itself),
+put to its dialog, asking `/check` with a nonce and its HMAC made with the permission key (never the key itself, and never the token),
 and returning the panel's `allow` or `deny` only when the answer is signed back,
 the engine's own `ask` otherwise (D80);
 and `/lampmaster <question>`, registered at the start, which posts the typed
 question to `/lampmaster/tool` and prints the answer to the person only (D71). It reads
 the home (`HOME`, absolute only — never `LAMPBOARD_HOME`, which a project's settings
-can set, D80), the token and the port, and nothing else; it sends nothing until that port answers `/health` as LampBoard, since
+can set, D80), the token, the port and the permission key, and nothing else; it sends nothing until that port answers `/health` as LampBoard, since
 a project's settings can set environment variables for its sessions and a cloned
 repository could point the mod at a port of its choosing:
 no conversation, no file of the project, no command. When the panel is not there,

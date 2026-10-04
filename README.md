@@ -578,8 +578,20 @@ sessions*. Until you do, the window reads and nothing else — no listener, no
 mailbox, nothing that can start a turn in your name. The dialog says why before
 you agree to it.
 
-With it on, there is a composer, and it writes into the session you are looking at — the real
-one, running in VS Code, that you have been talking to all along.
+With it on, there is a composer — in this window and in the Plancia — and it
+writes into the session you are looking at, the real one you have been talking to
+all along.
+
+**Through Claude Code's own message box**, when the session has one (Claude Code
+2.1.224 or later, on this Mac): every session listens on a socket named in its
+file under `~/.claude/sessions/`, and LampBoard puts your message there
+([D81](docs/04-decisions.md)). An idle session starts a turn on it at once; a busy
+one takes it into the turn it is running. Claude Code tells the session the
+message came from another program, not typed in its own terminal, and holds it to
+the session's own permissions: it can ask for work, never grant itself more. It
+appears in the conversation as yours.
+
+**Through the mailbox** for a session without a box:
 
 ```
 you type  →  a file in ~/.lampboard/inbox
@@ -590,7 +602,7 @@ you type  →  a file in ~/.lampboard/inbox
 
 Measured end to end: **one second** from writing to the turn starting.
 
-Three things you should know before relying on it, all of which the window tells
+Three things you should know about the mailbox, all of which the window tells
 you as well:
 
 - **It is not instant when Claude is working.** The message waits on disk until
@@ -1422,7 +1434,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1027 domain tests, instantaneous
+swift run LampBoardTests              # 1035 domain tests, instantaneous
 swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

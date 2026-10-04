@@ -706,10 +706,14 @@ final class PanelController {
             guard Alerts.confirm(
                 title: "Let the panel answer your sessions?",
                 message: """
-                You will be able to type and dictate into the conversation window, \
-                and the message will reach the session at the end of its next turn.
+                You will be able to type and dictate into the conversation window \
+                and the Plancia. A session of Claude Code 2.1.224 or later takes the \
+                message at once through its own message box; an older one at the end \
+                of its next turn. Either way the session acts on it with every \
+                permission it already has: one that runs without asking will run \
+                its tools at once.
 
-                What it costs: delivery works through a file in ~/.lampboard/inbox, \
+                What it costs: for older sessions, delivery works through a file in ~/.lampboard/inbox, \
                 and the reader cannot tell who wrote it. While this is on, anything \
                 running under your account can start a turn that speaks with your \
                 voice and your tools. Other accounts on this Mac are kept out; \
