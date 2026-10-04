@@ -255,6 +255,18 @@ enum Layout {
     /// A row in the wide panel, with its second line (D76): what the session is
     /// doing now. Twelve points more, for a ten-point line and its leading.
     static let wideRowHeight: CGFloat = 36
+
+    /// The bar's field, one of its results, and LampMaster's answer under it
+    /// (D77). The answer scrolls inside its fixed height: the panel cannot
+    /// measure text it has not drawn.
+    static let barField: CGFloat = 24
+    static let barResult: CGFloat = 22
+    static let barAnswer: CGFloat = 96
+
+    static func barHeight(results: Int, answer: Bool) -> CGFloat {
+        PanelMetrics.barHeight(field: barField, results: results, resultRow: barResult,
+                               answer: answer ? barAnswer : 0, sizes: sizes)
+    }
     static let rowSpacing: CGFloat = 2
     static let panelPadding: CGFloat = 8
     static let cornerRadius: CGFloat = 12
@@ -388,12 +400,13 @@ enum Layout {
 
     static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
-        showsLampMaster: Bool = false, tourLines: Int = 0, queueCards: Int = 0, queueMore: Bool = false
+        showsLampMaster: Bool = false, tourLines: Int = 0, queueCards: Int = 0, queueMore: Bool = false,
+        bar: CGFloat = 0
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
             allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines,
-            queueCards: queueCards, queueMore: queueMore, sizes: sizes
+            queueCards: queueCards, queueMore: queueMore, bar: bar, sizes: sizes
         )
     }
 

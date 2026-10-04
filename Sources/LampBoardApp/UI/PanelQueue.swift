@@ -27,7 +27,7 @@ extension PanelController {
         // key acting on a card nobody can see would be a review finding twice.
         queue.holdsKeyboard = { [weak self] in
             guard let self else { return false }
-            return self.panel.isKeyWindow && !self.isCompact
+            return self.panel.isKeyWindow && !self.isCompact && !self.bar.isEditing
         }
         queue.startListening()
         for (name, active) in [(NSWindow.didBecomeKeyNotification, true), (NSWindow.didResignKeyNotification, false)] {

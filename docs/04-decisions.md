@@ -2951,3 +2951,32 @@ and what its hidden children did is offered as actions (open, move up and down, 
 in Finder). It also found an answer opening with a blank line leaving the line
 empty, and a tab gluing two words; both fixed, with `+N` for a project of several.
 
+## D77 · The bar answers ⌘K inside the panel; a global shortcut is the user's to choose
+
+**Decided.** The wide panel gets one box at its top (UX §2) that finds a live
+session by name or by what it is doing, runs one of the panel's actions, or puts a
+`?question` to LampMaster. Inside the panel, `⌘K` focuses it. A shortcut that
+reaches it from any application exists, and is **off** until somebody picks one in
+Settings from a short list.
+
+**Why off.** The UX asked for `⌘K` everywhere, and `⌘K` everywhere would take
+every chord VS Code begins with it — `⌘K ⌘S`, `⌘K ⌘0` and the rest — from the editor
+the panel exists beside, silently, the moment the app is updated. A global
+shortcut is a claim on the whole Mac; like the features of D8 that ask for
+something, it starts off and is asked for.
+
+**At rest a button, not a field.** The first version drew a text field, and the
+test Mac showed why not: a field takes the keyboard by itself the moment the panel
+becomes key, so every key the queue answers to would have typed into it instead,
+and its results repeated the queue below. So the bar is a button saying `⌘K` until
+it is clicked or `⌘K` is pressed, results appear only once something is typed, and
+an emptied field closes when it loses the keyboard. The global shortcut is the next
+step.
+
+A code review found the panel keeping the results' room after the text was erased,
+and a LampMaster answer landing under a bar already closed, or under a question
+already changed; the bar now asks the panel to remeasure on every change that can
+move its height, and an answer is dropped unless its bar is still open on its
+question. `⌘K` in an open bar gives its field the keyboard back, and a session's
+title reaches the results as one clean line.
+

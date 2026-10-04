@@ -88,10 +88,13 @@ struct PanelRootView: View {
     var tour: TourController? = nil
     /// "Waiting for you"; nil in the narrow panel.
     var queue: WaitingQueueModel? = nil
+    /// The bar at the top; nil in the narrow panel.
+    var bar: CommandBarModel? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             if let tour { TourBand(tour: tour, compact: flags.compact) }
+            if let bar { CommandBarView(model: bar) }
             if let queue { WaitingQueueSection(model: queue) }
             TrafficLightColumn(
                 store: store,

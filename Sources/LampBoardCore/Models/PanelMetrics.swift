@@ -103,7 +103,7 @@ public enum PanelMetrics {
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
         allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0,
-        queueCards: Int = 0, queueMore: Bool = false, sizes: Sizes
+        queueCards: Int = 0, queueMore: Bool = false, bar: CGFloat = 0, sizes: Sizes
     ) -> CGFloat {
         let queue = queueCards > 0
             ? CGFloat(queueCards) * sizes.queueCard + CGFloat(queueCards - 1) * sizes.spacing
@@ -120,6 +120,16 @@ public enum PanelMetrics {
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
             + (showsLampMaster ? sizes.issueStrip : 0)
             + CGFloat(tourLines) * sizes.issueStrip
-            + queue
+            + queue + bar
+    }
+
+    /// The bar at the top of the wide panel (D77): a padding above it, its field,
+    /// and under it, while something is typed, the results and LampMaster's
+    /// answer, each after a gap. The answer has a fixed height and scrolls: the
+    /// panel cannot measure text it has not drawn.
+    public static func barHeight(field: CGFloat, results: Int, resultRow: CGFloat, answer: CGFloat, sizes: Sizes) -> CGFloat {
+        sizes.padding + field
+            + (results > 0 ? sizes.spacing + CGFloat(results) * resultRow : 0)
+            + (answer > 0 ? sizes.spacing + answer : 0)
     }
 }

@@ -80,7 +80,11 @@ guard let wanted = CommandLine.arguments.dropFirst().first.flatMap(Int.init) els
 // A borderless NSPanel owned by an accessory app is absent from
 // `.optionOnScreenOnly`, the list most examples reach for. `.optionAll` finds it.
 let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
-let mine = list.filter { ($0[kCGWindowOwnerPID as String] as? Int) == wanted }
+let all = list.filter { ($0[kCGWindowOwnerPID as String] as? Int) == wanted }
+// The visible ones, when there are any: a text field leaves an off-screen window
+// of its own behind, wider than the column, and a picture of it is a grey square.
+let shown = all.filter { ($0[kCGWindowIsOnscreen as String] as? Bool) == true }
+let mine = shown.isEmpty ? all : shown
 
 // The widest: the column itself, never a tooltip or the legend that may be up.
 let widest = mine.max {

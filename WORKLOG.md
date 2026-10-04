@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **993**, instantaneous |
+| Domain tests | **1003**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2395,3 +2395,14 @@ picture the README had been showing. The README has six projects again, and a `G
 Every row now says what its session is doing (D76), on a second line in the wide
 panel: the ask, the tool it is on, why it died, the answer's first line, what holds
 it. Twelve points a row, which is what reading the column without hovering costs.
+
+The bar's logic (D77): text finds a session by its name, then by what it is doing;
+`@` names one, `?` asks LampMaster, `/` runs an action; empty, it lists what needs
+you. `⌘K` will reach it inside the panel; a shortcut from anywhere stays off until
+chosen, because a global `⌘K` would take VS Code's chords away from it.
+
+And drawn: the bar sits at the top of the wide panel as a button until it is
+opened, because a field there took the keyboard whenever the panel became key. The
+README's picture caught it in a first draft as a grey square: `make-screenshots.sh`
+took the widest window of the process, and the field had left a hidden one wider
+than the column; it now takes the widest visible one.

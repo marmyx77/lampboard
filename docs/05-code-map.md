@@ -1,13 +1,13 @@
 # Code map
 
-~54,900 lines of Swift across five targets. For each file: what it contains, why
+~55,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,475 lines · 129 files  pure logic, zero AppKit
-  LampBoardApp/    20,361 lines · 113 files   shell: AppKit, network, windows
-  LampBoardTests/  13,758 lines · 80 files   993 cases, instantaneous
+  LampBoardCore/  16,635 lines · 130 files  pure logic, zero AppKit
+  LampBoardApp/    20,681 lines · 116 files   shell: AppKit, network, windows
+  LampBoardTests/  13,854 lines · 81 files   1003 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -229,6 +229,9 @@ Nothing caps the column here. A ceiling of twelve rows was the first answer and 
 was wrong twice over: it hid the rows under an opened project, and there are
 people with twenty sessions open. The screen is what bounds it, and that is the
 caller's business.
+
+The bar at the top of the wide panel (D77) is counted too: a padding, its field,
+and while something is typed its results and LampMaster's answer.
 
 A wide row is taller than a narrow one by its second line (D76), and the block
 height uses it wherever the panel is wide.
@@ -561,7 +564,7 @@ included, which Foundation deliberately leaves alone.
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
 
-### `RowActivity.swift` · 67
+### `RowActivity.swift` · 73
 The row's second line in the wide panel (D76): what the session is doing now, in
 the fewest words — what it asks, the tool it is on and, past fifteen minutes on
 one, `stuck 16m on npm install`; why it died; the first line of the answer that
@@ -1049,6 +1052,19 @@ required field is ever inferred or filled in with a default.
 `ignoredEvent` is not a fault — the hook script forwards everything and the
 filter lives here.
 
+## `Bar/`
+
+### `CommandBar.swift` · 144
+The bar at the top of the wide panel (UX §2, D77), as logic: what was typed — text,
+`@name message`, `?question`, `/command` — and what it finds. Sessions by name first
+(exact, from the start, from a word, anywhere), then by what they say or are titled,
+ties to the more urgent, titles flattened to one clean line; then the panel's actions by their words; empty, what needs
+you. Eight results at most. A question becomes one result for LampMaster, or says
+it is switched off.
+
+> **Touching here** changes what a few keystrokes reach. A name typed exactly must
+> stay the first result, or the bar stops being faster than the column.
+
 ## `Queue/`
 
 ### `WaitingQueue.swift` · 221
@@ -1348,6 +1364,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 89 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 502 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `CommandBarModel.swift` | 127 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `WaitingQueueModel.swift` | 183 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E` and answers `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1513,9 +1530,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 714 | holds everything together; row and panel actions |
+| `PanelController.swift` | 721 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
+| `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
+| `PanelBar.swift` | 60 | the bar wired in: sessions open as a click on their row does, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the panel remeasured when its results come and go |
 | `WaitingQueueSection.swift` | 126 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
@@ -1526,7 +1545,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 475 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 478 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1536,7 +1555,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 400 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 413 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
@@ -1569,7 +1588,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 993 cases
+## `LampBoardTests/` — 1003 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1619,6 +1638,7 @@ script, before it was split. The most important ones:
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
+| `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
@@ -1697,7 +1717,7 @@ or answers anything, it does nothing and says nothing. `claude plugin validate
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
-| `Scripts/make-screenshots.sh` | the README's images, taken from the tutorial's trial: the real app on a temporary home playing `DemoScript`, the one place demo data lives (D64), with `--trial-fresh` so the band always shows step one and nobody's progress moves; `screencapture -l` reads the window's backing store, which works with the screen locked. `LAMPBOARD_BIN` points it at a build other than the bundle |
+| `Scripts/make-screenshots.sh` | the README's images, taken from the tutorial's trial: the real app on a temporary home playing `DemoScript`, the one place demo data lives (D64), with `--trial-fresh` so the band always shows step one and nobody's progress moves; `screencapture -l` reads the window's backing store, which works with the screen locked. `LAMPBOARD_BIN` points it at a build other than the bundle. The widest **visible** window of the process: a text field leaves a hidden, wider one behind |
 | `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
 | `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |

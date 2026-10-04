@@ -56,6 +56,12 @@ public enum RowActivity {
         return clean(parts.joined(separator: " · "))
     }
 
+    /// One line, control and format characters turned to spaces.
+    public static func flat(_ text: String) -> String {
+        String(text.unicodeScalars.map { CharacterSet.controlCharacters.contains($0) ? " " : Character($0) })
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
     private static func clean(_ text: String) -> String {
         // Control and format characters become spaces, not nothing: a tab
         // between two words must not glue them, and a bidi override must not

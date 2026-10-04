@@ -124,6 +124,16 @@ enum PanelMetricsSuite {
                           4 * 30 + 4 * 2 + 17 + 8, "four cards and a line saying how many more, a gap before it too")
         },
 
+        TestCase("The bar is its field, and its results and answer while something is typed") { t in
+            t.expectEqual(PanelMetrics.barHeight(field: 24, results: 0, resultRow: 22, answer: 0, sizes: sizes), 8 + 24)
+            t.expectEqual(PanelMetrics.barHeight(field: 24, results: 3, resultRow: 22, answer: 0, sizes: sizes), 8 + 24 + 2 + 66)
+            t.expectEqual(PanelMetrics.barHeight(field: 24, results: 1, resultRow: 22, answer: 90, sizes: sizes),
+                          8 + 24 + 2 + 22 + 2 + 90)
+            let blocks = [block()]
+            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, bar: 32, sizes: sizes)
+                - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes), 32, "added whole")
+        },
+
         TestCase("An empty column is still a panel") { t in
             // The chrome is 8 + 8 of padding and 25 of footer, and one row's worth
             // of room so the empty state has somewhere to be.

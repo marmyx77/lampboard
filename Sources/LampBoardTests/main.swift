@@ -22,6 +22,7 @@ let suites: [TestSuite] = [
     LampMasterQuickSuite.suite,
     WaitingQueueSuite.suite,
     RowActivitySuite.suite,
+    CommandBarSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

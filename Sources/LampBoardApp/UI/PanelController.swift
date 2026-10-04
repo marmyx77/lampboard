@@ -28,6 +28,10 @@ final class PanelController {
     let lamp = MenuBarLamp()
     /// "Waiting for you", above the rows (D74). Wired in `PanelQueue.swift`.
     let queue = WaitingQueueModel()
+    /// The bar at the top of the wide panel (D77). Wired in `PanelBar.swift`.
+    let bar = CommandBarModel()
+    /// The `⌘K` monitor, kept so it lives as long as the panel.
+    var barKeys: Any?
     var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.
@@ -92,6 +96,7 @@ final class PanelController {
         observeStore()
         observeAllowance()
         wireQueue()
+        wireBar()
         observeLampMaster()
         observePanelMoves()
     }
@@ -155,6 +160,7 @@ final class PanelController {
                 // so it has to be rebuilt to learn about it; every other change
                 // is a resize.
                 self.refreshQueue()
+                self.refreshBar()
                 if self.columnOptions != self.renderedOptions {
                     self.rebuildContent()
                 } else {
@@ -267,7 +273,7 @@ final class PanelController {
             rowActions: makeRowActions(),
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour,
-            queue: compact ? nil : queue
+            queue: compact ? nil : queue, bar: compact ? nil : bar
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -325,7 +331,8 @@ final class PanelController {
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
                 allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
                 tourLines: tour == nil ? 0 : TourBand.lines,
-                queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0
+                queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0,
+                bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil)
             )
         )
 
