@@ -19,6 +19,7 @@ let suites: [TestSuite] = [
     LampMasterFrameSuite.suite,
     LampMasterAdviceSuite.suite,
     LampMasterRoundSuite.suite,
+    LampMasterQuickSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

@@ -31,6 +31,9 @@ public enum LampMasterSchedule {
         case opened
         /// Asked for in so many words: a menu entry, or the local server.
         case asked
+        /// A session started repeating a failure or stopped moving
+        /// (`LampMasterQuick`, D72): a look now, with Sonnet.
+        case quick
     }
 
     public enum Skip: String, Sendable, Equatable, Codable {
@@ -65,6 +68,7 @@ public enum LampMasterSchedule {
         switch trigger {
         case .timer where since < clamp(interval): return .wait
         case .opened where since < openedRefresh: return .wait
+        case .quick where since < LampMasterQuick.spacing: return .wait
         default: break
         }
         if sessionCount == 0 { return .skip(.empty) }

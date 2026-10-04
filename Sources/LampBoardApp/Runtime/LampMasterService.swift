@@ -24,9 +24,17 @@ final class LampMasterService: ObservableObject {
     @Published private(set) var snapshot = Snapshot()
 
     /// The timer's tick. A round is due once an interval has passed; the tick
-    /// only has to notice within a few minutes, and each tick that finds one
-    /// due reads the transcripts.
+    /// only has to notice within a few minutes. A tick between two rounds
+    /// looks for a quick one (D72), since a session that stopped moving sends
+    /// no event to be noticed by.
     static let tick: TimeInterval = 5 * 60
+    /// The most often an event may look for a quick round: a turn that fails
+    /// three tools in a second is one look.
+    static let nudgeSpacing: TimeInterval = 60
+    /// The hook events after which a session may newly repeat a failure: the
+    /// end of a turn, and a tool that failed. The mod's end of a tool is the
+    /// third door, for sessions whose failures the hooks do not report.
+    static let nudgedBy: Set<HookEventKind> = [.stop, .stopFailure, .postToolUseFailure]
 
     let preferences: Preferences
     let rows: @MainActor () -> [SessionState]
@@ -40,6 +48,9 @@ final class LampMasterService: ObservableObject {
     /// The port this panel listens on, which the MCP server's entry must name.
     var port = AppConfig.listenPort
     private var timer: Timer?
+    private var lastNudge: Date?
+    /// A quick look reading the frame, before it knows whether to run.
+    private var looking = false
 
     init(
         preferences: Preferences, rows: @escaping @MainActor () -> [SessionState],
@@ -73,15 +84,34 @@ final class LampMasterService: ObservableObject {
     /// because the running one already answers it, and `false` says so.
     @discardableResult
     func request(_ trigger: LampMasterSchedule.Trigger) -> Bool {
-        guard !snapshot.running else { return false }
+        guard !snapshot.running, !looking else { return false }
         // A disabled timer reads nothing: the cheapest round is the one never
         // prepared.
-        if trigger == .timer, !preferences.lampMasterEnabled { return true }
+        if trigger == .timer || trigger == .quick, !preferences.lampMasterEnabled { return true }
         // Published, not only set: the server reads the box, and a round in
         // flight that `GET /lampmaster` reported as idle was a review finding.
-        publish(running: true)
-        Task { await round(trigger) }
+        // A quick look is not a round until the frame says one is due: shown as
+        // running, every turn's end would flicker the line (a review finding).
+        if trigger == .quick {
+            looking = true
+        } else {
+            publish(running: true)
+        }
+        Task {
+            await round(trigger)
+            looking = false
+        }
         return true
+    }
+
+    /// A turn ended or a tool failed somewhere: a quick round may be due (D72).
+    /// The frame decides whether it is; this only keeps the looks to one a minute.
+    func nudge(now: Date = Date()) {
+        guard preferences.lampMasterEnabled else { return }
+        if let lastNudge, now.timeIntervalSince(lastNudge) < Self.nudgeSpacing { return }
+        // Spent only on a look that starts: an event during a round would
+        // otherwise hold the next one back for a minute.
+        if request(.quick) { lastNudge = now }
     }
 
     /// The switch, from Settings. Published at once: the panel's line comes and
@@ -105,12 +135,13 @@ final class LampMasterService: ObservableObject {
 
     // MARK: - The round
 
-    private func round(_ trigger: LampMasterSchedule.Trigger) async {
+    private func round(_ asked: LampMasterSchedule.Trigger) async {
         let now = Date()
         let rounds = files.rounds()
         let last = LampMasterLedger.lastRun(rounds)
+        var trigger = asked
         if trigger == .timer, let at = last?.at, now.timeIntervalSince(at) < LampMasterSchedule.clamp(preferences.lampMasterInterval) {
-            return publish(running: false)
+            trigger = .quick
         }
 
         let found = await cards.sessions(live: rows().compactMap(Self.live), now: now)
@@ -123,6 +154,19 @@ final class LampMasterService: ObservableObject {
         let ids = Set(frame.sessions.map(\.id))
         shown = LampMasterLedger.settle(shown, present: ids, now: now)
         files.save(shown)
+
+        // Not due is not a skip: nothing is written, or every turn's end would.
+        // A round from before quick rounds kept no pairs: what is urgent now
+        // counts as seen by it, or the first look after an update would run
+        // for sessions the hourly round already knew (a review finding).
+        let urgent = LampMasterQuick.urgent(in: frame)
+        let seen = last.map { $0.urgent.map(Set.init) ?? urgent } ?? []
+        if trigger == .quick, !LampMasterQuick.due(
+            urgent: urgent, seen: seen, lastRun: last?.at,
+            quickToday: LampMasterQuick.count(on: now, in: rounds), now: now
+        ) {
+            return publish(running: false)
+        }
 
         let digest = LampMasterSchedule.digest(frame)
         let decision = LampMasterSchedule.decide(
@@ -140,11 +184,11 @@ final class LampMasterService: ObservableObject {
             }
             return publish(running: false)
         case .run:
-            break
+            if !snapshot.running { publish(running: true) }
         }
 
         let text = frame.json()
-        let model = preferences.lampMasterModel
+        let model = trigger == .quick ? LampMasterQuick.model : preferences.lampMasterModel
         let system = LampMasterPrompt.system(language: Self.language)
         let timeout = preferences.lampMasterTimeout
         let directory = files.directory
@@ -168,7 +212,7 @@ final class LampMasterService: ObservableObject {
             model: model, seconds: run.seconds, tokens: run.tokens, costUSD: run.costUSD,
             sessions: frame.sessions.count, frameTokens: frame.estimatedTokens,
             proposed: run.advice?.suggestions.count ?? 0, rejected: LampMasterLedger.rejections(verdict),
-            shown: verdict.shown.count, digest: digest
+            shown: verdict.shown.count, digest: digest, urgent: urgent.sorted()
         ), now: now)
         publish(running: false)
     }
@@ -176,12 +220,13 @@ final class LampMasterService: ObservableObject {
     /// A skip asked for is recorded, except a second "too soon" in a row: a
     /// loop of requests must not grow the file either. The timer's skips only
     /// once an interval, or a quiet day would write a line every five minutes,
-    /// and "off" from the timer never: switched off is not a round.
+    /// and "off" from the timer never: switched off is not a round. A quick
+    /// round's skips are the timer's: an event, not a person, asked for it.
     static func records(
         skip: LampMasterSchedule.Skip, trigger: LampMasterSchedule.Trigger, rounds: [LampMasterRound],
         interval: TimeInterval, now: Date
     ) -> Bool {
-        guard trigger == .timer else { return skip != .tooSoon || rounds.last?.skip != .tooSoon }
+        guard trigger == .timer || trigger == .quick else { return skip != .tooSoon || rounds.last?.skip != .tooSoon }
         guard skip != .off, let latest = rounds.last else { return skip != .off }
         return now.timeIntervalSince(latest.at) >= LampMasterSchedule.clamp(interval)
     }

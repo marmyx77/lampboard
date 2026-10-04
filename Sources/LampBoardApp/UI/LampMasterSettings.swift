@@ -25,8 +25,9 @@ struct LampMasterSettings: View {
             ))
 
             Text("""
-            Once an hour LampMaster reads this Mac's Claude Code sessions — the last prompts \
-            and answers, the files written, what failed and what was saved — and asks Claude, \
+            Once an hour — and at once, up to six times a day, when a session starts repeating \
+            a failure or stops moving — LampMaster reads this Mac's Claude Code sessions — the \
+            last prompts and answers, the files written, what failed and what was saved — and asks Claude, \
             with your own Claude Code sign-in, for at most three suggestions: a session that \
             knows what another needs, one that waits or is stuck, two on the same work, work \
             done and saved, a problem solved before. That sends pieces of your conversations \

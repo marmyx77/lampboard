@@ -226,8 +226,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let server = SignalServer(
             port: port,
             token: token,
-            onSignal: { [store] signal in
-                Task { @MainActor in store.handle(signal) }
+            onSignal: { [store, lampMaster] signal in
+                Task { @MainActor in
+                    store.handle(signal)
+                    if LampMasterService.nudgedBy.contains(signal.event) { lampMaster.nudge() }
+                }
             },
             onError: { [store] message in
                 Task { @MainActor in store.reportError(message) }
@@ -259,8 +262,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Self.onMain(timeout: 2) { self?.lampMaster.request(.asked) } ?? false
             },
             onLampMasterTool: { [lampMaster] body in lampMaster.answer(body) },
-            onMod: { [mod] report in
-                Task { @MainActor in mod.receive(report) }
+            onMod: { [mod, lampMaster] report in
+                Task { @MainActor in
+                    mod.receive(report)
+                    if case .tool(_, let run) = report, run.finished { lampMaster.nudge() }
+                }
             },
             onWatch: { [store] report in
                 Task { @MainActor in store.apply(.watched(report), now: Date()) }

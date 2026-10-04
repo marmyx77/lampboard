@@ -28,13 +28,17 @@ public struct LampMasterRound: Codable, Sendable, Equatable {
     public let rejected: [String: Int]
     public let shown: Int
     public let digest: String?
+    /// The urgent pairs the frame held (`LampMasterQuick.urgent`): a quick
+    /// round runs only for one this list lacks. Absent from rounds written
+    /// before quick rounds, and from skips.
+    public let urgent: [String]?
 
     public init(
         at: Date, trigger: LampMasterSchedule.Trigger, outcome: Outcome,
         skip: LampMasterSchedule.Skip? = nil, failure: LampMasterRun.Failure? = nil,
         model: String? = nil, seconds: Double? = nil, tokens: Int = 0, costUSD: Double? = nil,
         sessions: Int = 0, frameTokens: Int? = nil, proposed: Int = 0,
-        rejected: [String: Int] = [:], shown: Int = 0, digest: String? = nil
+        rejected: [String: Int] = [:], shown: Int = 0, digest: String? = nil, urgent: [String]? = nil
     ) {
         self.at = at
         self.trigger = trigger
@@ -51,6 +55,7 @@ public struct LampMasterRound: Codable, Sendable, Equatable {
         self.rejected = rejected
         self.shown = shown
         self.digest = digest
+        self.urgent = urgent
     }
 }
 

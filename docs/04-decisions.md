@@ -2803,3 +2803,33 @@ characters, since another session's transcript could have put an escape sequence
 there; the question to forward is cut to 200 characters and quoted; and the mod
 strips control characters again and cuts the answer to 4,000 characters, trusting
 nothing that answered on the port.
+
+## D72 · A failure repeated, or a turn stuck, brings LampMaster's round now
+
+**Decided.** Besides the hourly round, LampMaster runs a quick one when its frame
+holds an urgent pair — a session and a repeated failure, or a session stuck in a
+turn — that the last round to reach `claude` did not see. Ten minutes at least after
+any round, six a day at most, inside the same daily ceiling and behind the same
+switch. It is looked for after a turn ends, after a tool fails (the `Stop`,
+`StopFailure` and `PostToolUseFailure` hooks, and the mod's end of a tool), at most
+once a minute, and on the five-minute tick, since a stuck session sends nothing. A
+look that finds nothing new writes nothing. The round records the pairs it saw.
+The quick round runs Sonnet, whatever the hourly round is set to.
+
+**Why.** A session repeating a failure is spending its owner's time and allowance
+now, and the hour is when another session's fix stops mattering; a stuck turn is the
+same. The other signals keep: a full context already shows on the row's ring and
+its remedy needs no model, overlaps and finished work are as true in an hour.
+Sonnet, though the plan said a small model: on the test Mac, on one frame of two
+invented sessions, Haiku took 36 to 56 seconds — 5,600 tokens of thinking before its
+first word — for 0.020 to 0.037 dollars, and Sonnet 6.5 seconds for 0.016. Each
+Haiku answer was right: the session that had fixed the same missing script, offered
+as a precedent to the one failing on it. A minute is too late for a quick round.
+
+A code review asked for three things, all done: a look shows LampMaster as running
+only once it decides to run, since every turn's end flickered the line and turned
+a request away as busy; the one-a-minute allowance is spent only by a look that
+starts; and a round written before quick rounds counts as having seen what is urgent
+now, so an update does not buy a round. Accepted: each look reads the transcripts,
+at most once a minute and on the five-minute tick, tokens never.
+

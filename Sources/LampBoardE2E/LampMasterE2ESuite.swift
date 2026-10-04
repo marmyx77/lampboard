@@ -32,6 +32,7 @@ enum LampMasterE2ESuite {
     )
 
     static let editorId = "f00dcafe-0000-4000-8000-0000000000ed"
+    static let failingId = "badc0de0-0000-4000-8000-0000000000fa"
 
     static let askReply = envelope("").replacingOccurrences(
         of: #""structured_output":{"notebook":"watching the docs build","suggestions":[]}"#,
@@ -116,6 +117,35 @@ enum LampMasterE2ESuite {
                 .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
             try? text.write(to: folder.appendingPathComponent("\(LampMasterE2ESuite.editorId).jsonl"),
                             atomically: true, encoding: .utf8)
+        }
+
+        /// A session whose `npm run deploy` failed three times in the last
+        /// minutes, the same way: a repeated failure, so a quick round (D72).
+        func writeFailing() {
+            let folder = app.home.appendingPathComponent(".claude/projects/-home-dev-api")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let asked = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-6 * 60))
+            var records: [[String: Any]] = [
+                ["type": "user", "timestamp": asked, "cwd": "/home/dev/api", "entrypoint": "cli", "origin": ["kind": "human"],
+                 "message": ["role": "user", "content": "deploy the api"]],
+            ]
+            for attempt in 1...3 {
+                let stamp = ISO8601DateFormatter().string(from: Date().addingTimeInterval(Double(attempt - 5) * 60))
+                records.append(["type": "assistant", "timestamp": stamp, "cwd": "/home/dev/api", "entrypoint": "cli",
+                                "message": ["role": "assistant", "model": "claude-sonnet-5-5", "content": [
+                                    ["type": "tool_use", "id": "d\(attempt)", "name": "Bash", "input": ["command": "npm run deploy"]]]]])
+                records.append(["type": "user", "timestamp": stamp, "cwd": "/home/dev/api", "entrypoint": "cli",
+                                "message": ["role": "user", "content": [
+                                    ["type": "tool_result", "tool_use_id": "d\(attempt)", "is_error": true,
+                                     "content": "npm ERR! missing script: deploy"]]]])
+            }
+            let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+                .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
+            try? text.write(to: failingTranscript, atomically: true, encoding: .utf8)
+        }
+
+        var failingTranscript: URL {
+            app.home.appendingPathComponent(".claude/projects/-home-dev-api/\(LampMasterE2ESuite.failingId).jsonl")
         }
 
         /// `lampboard mcp` as Claude Code starts it: the session's id in the
@@ -223,6 +253,28 @@ enum LampMasterE2ESuite {
                     let again = bench.round()
                     t.expectEqual(again?["outcome"] as? String, "skipped", "skipped")
                     t.expectEqual(again?["skip"] as? String, "unchanged", "because nothing changed")
+                    t.expectEqual(bench.calls(), 1, "claude was called once")
+                }
+            },
+
+            TestCase("a failure repeated three times brings a quick round with Sonnet at the turn's end") { t in
+                bench(t) { bench in
+                    bench.writeFailing()
+                    let stop = HookPayloads.stop(sessionId: LampMasterE2ESuite.failingId, cwd: "/home/dev/api")
+                        .merging(["transcript_path": bench.failingTranscript.path]) { _, new in new }
+                    bench.app.sendHook(stop)
+                    let ran = bench.app.waitUntil(timeout: 15) {
+                        (bench.lastRound?["trigger"] as? String) == "quick" && bench.state()?["running"] as? Bool == false
+                    }
+                    t.expect(ran, "a quick round, without anybody asking: \(String(describing: bench.lastRound))")
+                    t.expectEqual(bench.lastRound?["model"] as? String, "sonnet", "the quick round's model")
+                    t.expect(bench.read("args.txt").contains("sonnet"), "claude was told so")
+                    let urgent = bench.lastRound?["urgent"] as? [String] ?? []
+                    t.expect(urgent.contains { $0.hasPrefix("badc0de0 failure") }, "the pair it looked at is kept: \(urgent)")
+
+                    // A second turn's end within the minute is not a second look.
+                    bench.app.sendHook(stop)
+                    Thread.sleep(forTimeInterval: 2)
                     t.expectEqual(bench.calls(), 1, "claude was called once")
                 }
             },

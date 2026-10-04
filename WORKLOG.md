@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **959**, instantaneous |
-| End-to-end tests | **133**, about a minute |
+| Domain tests | **965**, instantaneous |
+| End-to-end tests | **134**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2352,3 +2352,10 @@ with a throwaway session: the invented session that renamed an endpoint, named w
 its source, in 6 seconds; off, empty and with the panel closed, one line saying why.
 `claude plugin validate` lists a hook with its matcher (`command.run{command=…}`),
 which the contract check now reads as the hook's name.
+
+LampMaster no longer waits for the hour when a session starts repeating a failure
+or stops moving (D72): a quick round runs at the turn's end, ten minutes after any
+other at least and six a day at most, only for a session and signal the last round
+had not seen. The plan said a small model; measured on the test Mac, Haiku thought
+for up to 56 seconds before answering, Sonnet answered the same frame in 6.5 for
+less. Both found the invented session that had fixed the same missing script.
