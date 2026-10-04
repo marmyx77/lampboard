@@ -216,6 +216,13 @@ always on screen, and if you're at the Mac you're active. What remains are three
 checks the user chooses and can see: the memory that avoids duplicates, the
 per-project silence, and the timed one.
 
+**Revisited, 4 October 2026.** A turn that **fails** is notified too: red, like
+amber, is a session nothing will move but you, and *Getting started* had been
+promising it while the code did not. Finished turns stay out unless asked for, with
+*Also notify when a turn finishes*, off by default — the reason above still holds
+for everybody who has not asked. Both are announced on the transition only, so a
+column already red at launch is not a burst.
+
 ---
 
 ## D10 · Failures get stated
@@ -2832,4 +2839,38 @@ a request away as busy; the one-a-minute allowance is spent only by a look that
 starts; and a round written before quick rounds counts as having seen what is urgent
 now, so an update does not buy a round. Accepted: each look reads the transcripts,
 at most once a minute and on the five-minute tick, tokens never.
+
+## D73 · The panel acts on sessions, and every act is a click
+
+**Decided.** From 0.6 the panel does not only show and raise sessions: it answers
+a permission (Allow, Deny), answers a question, sends a message, and puts one
+session's question to another. Every one of these is a click by the user on
+something the panel shows; nothing writes into a session on its own, LampMaster
+included, whose cards copy a question and open the session rather than send it
+(D61). Each capability that can start
+a turn in the user's name is off until switched on, and says what it does before it
+is, as the composer's dialog already does (D15).
+
+**Why now, when N7 said no.** N7 recorded that a running session could not be
+written to: the editor's deep link refuses a prompt to an open panel, and that is
+still true. Two doors have opened since, both Claude Code's own. Every session of
+Claude Code 2.1.224 or later has a message box — a socket named in
+`CLAUDE_CODE_MESSAGING_SOCKET`, with its token — which throwaway sessions in tmux
+accepted from outside, and through which a question went from one session to
+another and its answer came back in 14 seconds (4 October 2026). And mods (2.1.287) can decide a permission before Claude Code
+asks for it, through `tool.check`; that one is **not yet tried**, and is measured
+before anything is built on it. The composer of D15 stays as the fallback for sessions without
+either.
+
+**Why it matters more than it looks.** A click on a session of the Claude
+application raises the application, where the conversation is (D36), not the
+conversation itself; a link to the exact conversation is still unverified. For those sessions, and for any session on
+another machine, acting from the panel is the only way to act without hunting for
+the window. Marco approved the direction on 4 October 2026 — "everything else is
+great and should be done" — with the standing rule that no message reaches a real
+session of his without his yes.
+
+**What stays as it was.** The chat window reads everything whether or not anything
+is switched on. A session with its own panel open in an editor is still not typed
+into through the editor (N7).
 

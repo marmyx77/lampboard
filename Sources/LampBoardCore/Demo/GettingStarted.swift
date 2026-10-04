@@ -48,7 +48,7 @@ public enum GettingStarted {
                  done: facts.accessibility, optional: false),
             Item(id: "notifications", title: "Notifications, if you want them",
                  detail: "A notification when a session asks for permission, asks you a question, or fails — "
-                    + "never for a session that simply finished.",
+                    + "and for a finished turn only if you ask for it in Settings.",
                  done: facts.notifications, optional: true),
             Item(id: "lampmaster", title: "LampMaster, if you want it",
                  detail: "Once an hour a model reads your sessions and suggests at most three things. It sends "

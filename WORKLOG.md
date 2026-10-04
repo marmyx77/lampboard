@@ -2359,3 +2359,11 @@ other at least and six a day at most, only for a session and signal the last rou
 had not seen. The plan said a small model; measured on the test Mac, Haiku thought
 for up to 56 seconds before answering, Sonnet answered the same frame in 6.5 for
 less. Both found the invented session that had fixed the same missing script.
+
+0.5.0 is out: LampMaster, the companion mod, `/lampmaster`, quick rounds,
+`lampboard watch`, notifications that say what happened, the menu bar count,
+Getting started and the trial tour. The next version acts on sessions rather than
+only showing them, and D73 says so before any code does: every act is a click, each
+capability that can start a turn is off until switched on, and the one door not yet
+tried — deciding a permission from a mod — is the first thing measured. D9, which
+still said only amber is ever notified, now says what 0.5 changed.

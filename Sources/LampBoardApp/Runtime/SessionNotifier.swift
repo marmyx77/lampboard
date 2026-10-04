@@ -4,9 +4,10 @@ import Combine
 import Foundation
 import UserNotifications
 
-/// Sends a system notification when a session gets **blocked**.
+/// Sends a system notification when a session gets **blocked**, or a turn
+/// fails; a finished turn only when asked for (D9, revisited for 0.5).
 ///
-/// Only `awaiting`, never `ready`. That distinction is the whole feature: a ready
+/// Amber and red, not green, unless asked. That distinction is the whole feature: a ready
 /// answer can wait until you look at it, a permission cannot — until you answer,
 /// that work is stopped. Notifying on green as well, with a dozen sessions open,
 /// would produce tens of alerts a day, and a channel that alerts too often gets
