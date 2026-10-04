@@ -458,10 +458,10 @@ final class PanelController {
     // MARK: - Updates
 
     func checkForUpdates() {
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
             await UpdateFlow.run(
-                report: { [weak self] in self?.store.reportError($0) },
-                clear: { [weak self] in self?.store.clearError() }
+                report: { self?.store.reportError($0) },
+                clear: { self?.store.clearError() }
             )
         }
     }
