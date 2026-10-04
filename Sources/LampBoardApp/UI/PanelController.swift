@@ -377,7 +377,9 @@ final class PanelController {
         panel.setFrame(
             Preferences.placed(
                 size: size,
-                anchor: PanelPlacement.anchor(of: panel.frame),
+                // A new width keeps the edge nearest the side of the screen.
+                anchor: PanelPlacement.anchor(widening: panel.frame, to: size.width,
+                                              in: (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame),
                 on: panel.screen
             ),
             display: true, animate: false

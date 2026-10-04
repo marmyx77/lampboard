@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,780 lines · 133 files  pure logic, zero AppKit
-  LampBoardApp/    20,775 lines · 117 files   shell: AppKit, network, windows
-  LampBoardTests/  13,940 lines · 82 files   1011 cases, instantaneous
+  LampBoardCore/  16,789 lines · 133 files  pure logic, zero AppKit
+  LampBoardApp/    20,781 lines · 117 files   shell: AppKit, network, windows
+  LampBoardTests/  13,951 lines · 82 files   1012 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -243,7 +243,7 @@ the last project off the end.
 ### `ShortSpan.swift`
 How long ago, in one number and one letter, and **never more than two digits**.
 
-The ceiling is the design. This field shares a 240 point line with the name and
+The ceiling is the design. This field shares one line with the name (240 points when it was set, 340 since 0.6) and
 holds layout priority over it, so every character it takes comes off the name on
 that row alone. It replaced a clock time, `14:49`, and a date, `22/07`, and width
 was only half the reason: a clock time has to be **computed** against the current
@@ -531,6 +531,9 @@ where the rows that mattered were the ones underneath it.
 The frame is clamped whole into the visible area rather than merely checked for
 overlap — the old rule asked whether the frame touched a screen at all, which a
 panel hanging one pixel over the edge passes.
+
+A change of width keeps the edge nearest the side of the screen (D78): a panel on
+the right half grows to the left, toward the middle.
 
 ### `Seat/TerminalTitle.swift`
 Setting a terminal's title by writing to the tty a session runs on, which is how
@@ -1551,7 +1554,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 723 | holds everything together; row and panel actions |
+| `PanelController.swift` | 725 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 58 | "Waiting for you" wired in (D74): its cards from the store and LampMaster's open suggestions, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 110 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
@@ -1576,7 +1579,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 413 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 417 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 354 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
@@ -1609,7 +1612,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1011 cases
+## `LampBoardTests/` — 1012 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

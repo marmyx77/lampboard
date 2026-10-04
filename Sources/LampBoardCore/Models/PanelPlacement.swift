@@ -38,6 +38,15 @@ public enum PanelPlacement {
         CGPoint(x: frame.minX, y: frame.maxY)
     }
 
+    /// The anchor for the same panel at a new width: the edge nearest the side
+    /// of the screen stays where it is, so a panel kept at the right grows to
+    /// the left, toward the middle (UX §1), instead of off the screen.
+    public static func anchor(widening frame: CGRect, to width: CGFloat, in visible: CGRect) -> CGPoint {
+        guard width != frame.width else { return anchor(of: frame) }
+        let x = frame.midX > visible.midX ? frame.maxX - width : frame.minX
+        return CGPoint(x: x, y: frame.maxY)
+    }
+
     /// Where the panel goes when nothing has been remembered: hung from the menu
     /// bar, at the right.
     public static func defaultAnchor(size: CGSize, in visible: CGRect) -> CGPoint {

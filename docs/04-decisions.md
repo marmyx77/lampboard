@@ -2987,3 +2987,18 @@ it brings the panel up holding the keyboard with the bar open, without activatin
 the app. On the test Mac both combinations registered; the press itself was not
 tried, since ssh cannot press keys there.
 
+## D78 · The panel is 340 points wide, the column 44, and it grows toward the middle
+
+**Decided.** The wide panel goes from 240 points to 340, and the narrow one from 35
+to 44 — the widths the UX settled on for the Panel and the Column (§1). A width
+change keeps the edge nearest the side of the screen where it is: a panel kept on
+the right half grows to the left, toward the middle, instead of off the screen and
+back by the clamp.
+
+**Why.** The second line of a row (D76) and the bar (D77) are sentences, and at
+240 points a sentence was three words and an ellipsis; at 340 the answer a session
+holds fits whole, as the test Mac's picture shows. It costs a hundred points of
+screen beside the editor, which is the trade the UX made for a panel that can be
+read without hovering. The Plancia, at 780, is the next step and comes only when
+asked for.
+

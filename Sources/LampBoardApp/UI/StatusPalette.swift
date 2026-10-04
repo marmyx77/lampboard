@@ -277,11 +277,15 @@ enum Layout {
     /// last said — and a preview truncated to three words is not a preview.
     static let sidebarWidth: CGFloat = 260
 
-    static let compactWidth: CGFloat = 35
+    /// The column of the UX (§1): forty-four points, enough for a light with room
+    /// around it to read as a column rather than a stripe.
+    static let compactWidth: CGFloat = 44
     /// Wide enough for a readable workspace name plus the timestamp.
     /// Long but common names ("internal-admin-console") fit almost entirely:
     /// below this threshold, middle truncation makes them indistinguishable.
-    static let expandedWidth: CGFloat = 240
+    /// The panel of the UX (§1), 340 since 0.6: the second line of a row (D76)
+    /// and the bar (D77) need room a 240 point column did not have.
+    static let expandedWidth: CGFloat = 340
 
     static func width(compact: Bool) -> CGFloat {
         compact ? compactWidth : expandedWidth

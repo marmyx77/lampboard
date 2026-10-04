@@ -38,6 +38,17 @@ enum PanelPlacementSuite {
             t.expectEqual(grown, atQuit, "and the panel comes back exactly where it was")
         },
 
+        TestCase("Widening keeps the edge nearest the side of the screen: the panel grows toward the middle") { t in
+            let right = CGRect(x: 2300, y: 600, width: 240, height: 400)
+            t.expectEqual(PanelPlacement.anchor(widening: right, to: 340, in: visible), CGPoint(x: 2200, y: 1000),
+                          "on the right half it grows to the left")
+            let left = CGRect(x: 16, y: 600, width: 240, height: 400)
+            t.expectEqual(PanelPlacement.anchor(widening: left, to: 340, in: visible), CGPoint(x: 16, y: 1000),
+                          "on the left half it grows to the right")
+            t.expectEqual(PanelPlacement.anchor(widening: right, to: 240, in: visible), PanelPlacement.anchor(of: right),
+                          "the same width moves nothing")
+        },
+
         TestCase("Nothing hangs below the bottom of the screen") { t in
             // What the old rule allowed: it asked whether the frame touched a
             // screen at all, and a panel hanging one pixel over the edge passes

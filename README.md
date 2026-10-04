@@ -14,7 +14,7 @@ The two questions it answers that a list of sessions does not: *how much context
 is left in there*, and *has it really finished* — a turn can hand back control
 while three background agents keep working for another forty minutes.
 
-<img src="docs/images/panel.png" width="240" alt="The panel: six projects, six
+<img src="docs/images/panel.png" width="340" alt="The panel: six projects, six
 states, and a ring on each row showing how full its context window is.">
 
 A project in each state, a ring on every row, and under each name what that
@@ -389,7 +389,7 @@ the same:
 
 The time thresholds reason in calendar days: at 00:30 an event from 23:50 is
 yesterday — `1d` — and not "40 minutes ago". The labels are terse because this
-field and the project's name share one line of 240 points and the timestamp has
+field and the project's name share one line (240 points then, 340 now) and the timestamp has
 priority: `yesterday` measured 49.83 points against `1d`'s 13.04, all of it taken
 off the name of the row that had least to say. The full sentence — "last activity
 yesterday at 22:30" — is in the tooltip, in every case. The click does not update that timestamp: it records Claude's
@@ -1409,7 +1409,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1011 domain tests, instantaneous
+swift run LampBoardTests              # 1012 domain tests, instantaneous
 swift run LampBoardE2E                # 135 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

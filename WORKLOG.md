@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1011**, instantaneous |
+| Domain tests | **1012**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2413,3 +2413,7 @@ The bar can be reached from any application, once a shortcut is chosen in Settin
 The Plancia's groundwork, without a pixel: the three depths of the UX with their
 keys and widths, and a per-session log of what it has been doing — each tool with
 its duration, each turn with what it alone cost.
+
+The panel is 340 points wide now, the column 44 (D78): the widths the UX settled on,
+because a row's second line and the bar are sentences. A panel kept at the right
+of the screen grows to the left.
