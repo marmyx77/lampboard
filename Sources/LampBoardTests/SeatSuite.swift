@@ -152,6 +152,20 @@ enum SeatSuite {
             t.expect(!start.matches(processStartedAt: expected.addingTimeInterval(7200)), "two hours is the zone trap, or another process")
             t.expect(ProcStart.ticks(1).matches(processStartedAt: expected), "ticks cannot be checked here and do not refuse")
         },
+
+        // A dead session's pid handed to another process kept its row alive for
+        // as long as the stranger ran: `kill(pid, 0)` asks only whether a pid
+        // exists, not whose it is.
+        TestCase("A recycled pid is no longer the session; what cannot be compared keeps it") { t in
+            let written = "Wed Aug 26 17:07:24 2026"
+            guard case .date(let at)? = ProcStart.parse(written) else { return t.fail("not parsed") }
+            t.expect(ProcStart.stillHolds(recorded: written, startedAt: at), "the same process")
+            t.expect(!ProcStart.stillHolds(recorded: written, startedAt: at.addingTimeInterval(300)), "a stranger on the pid")
+            t.expect(ProcStart.stillHolds(recorded: nil, startedAt: at), "no start in the file")
+            t.expect(ProcStart.stillHolds(recorded: "yesterday", startedAt: at), "a start this does not read")
+            t.expect(ProcStart.stillHolds(recorded: written, startedAt: nil), "a process that could not be asked")
+            t.expect(ProcStart.stillHolds(recorded: "5480393", startedAt: at), "ticks, checked on their own machine")
+        },
     ])
 }
 

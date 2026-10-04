@@ -2701,3 +2701,25 @@ a session could belong to an account other than the one the strip names; those a
 left out rather than drawn under the wrong name. Measured on the test Mac on 4
 October 2026: a throwaway session's measure carried two windows, and the panel,
 with the switch off and no row, grew from 65 to 86 points to draw the bar.
+
+## D68 · The local server refuses what a web page could send
+
+**Decided.** Before any route, the server refuses with 403 a request that carries
+an `Origin` header, whatever its value, and one whose `Host` is not `127.0.0.1`,
+`localhost` or `[::1]`, with or without a port. A missing `Host` passes. Separately,
+a session file whose pid is alive but whose process started at another moment than
+the file records is a dead session: the pid was handed to another process.
+
+**Why.** The socket is bound to loopback, so the network cannot reach it, but a page
+in a browser on the same Mac can: it can post to `127.0.0.1`, and `/signal` still
+takes a signal without a token for hooks installed before tokens existed; or it can
+rebind a name it owns to `127.0.0.1` and read the answers. Browsers mark both: they
+send `Origin` on every cross-site request that is not a plain read and on every
+POST, and a rebound name arrives as the `Host`. No client of ours sends either:
+measured on the test Mac, a throwaway Claude Code session's native hooks and the
+companion mod all went through, none refused, while a POST carrying `Origin` got
+403. What a page can still send without `Origin` is a blind `GET`, and the only
+route that answers one without the token, `/health`, says only that LampBoard is
+there. The pid check keeps what it cannot disprove — no start in the file, a form it
+does not read, a process it cannot ask — and allows two seconds, because a wrong
+answer here hides a live row.

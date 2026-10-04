@@ -24,6 +24,21 @@ public enum ProcStart: Sendable, Equatable {
         return formatter.date(from: text.replacingOccurrences(of: "  ", with: " ")).map(ProcStart.date)
     }
 
+    /// Whether the live process behind a session file's pid is still the one
+    /// the file was written for.
+    ///
+    /// Only what can be disproved is: a file without a start (older Claude
+    /// Code), one in a form this does not read, or a process whose start could
+    /// not be asked, all keep the session. A pid is recycled within minutes on a
+    /// busy Mac, and `kill(pid, 0)` alone then keeps a dead session's row alive
+    /// for as long as the stranger runs.
+    public static func stillHolds(recorded: String?, startedAt: Date?) -> Bool {
+        guard let recorded, let start = parse(recorded), let startedAt else { return true }
+        // Two seconds, not the one a click allows: here a wrong answer hides a
+        // live row, and a recycled pid is minutes away from the original.
+        return start.matches(processStartedAt: startedAt, tolerance: 2)
+    }
+
     /// `true` when a process started at `start` can be the one the file names.
     ///
     /// Ticks cannot be checked here — they count from another machine's boot —

@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **933**, instantaneous |
-| End-to-end tests | **127**, about a minute |
+| Domain tests | **937**, instantaneous |
+| End-to-end tests | **130**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2305,3 +2305,12 @@ Its first run on the test Mac failed, rightly: mod 1.1.0 reaches `$.env.get` fro
 functions, Claude Code writes that as "(via config, panel)", and splitting the list
 on commas before dropping the parenthesis made one call into three — the same split
 in the Settings card would have printed the fragments as calls the mod makes.
+
+The local server now refuses what a web page could send (D68): any request with an
+`Origin`, any `Host` that is not loopback. Against a page posting to `/signal`, which
+still takes a signal without a token for old hooks, and against DNS rebinding. Tried
+for real on the test Mac: a throwaway session's native hooks and the mod all went
+through, none refused, and a POST carrying `Origin` got 403. Each guard was seen
+failing its test with the guard taken out. And a session file whose pid now belongs
+to another process is a dead session: `kill(pid, 0)` asked only whether the pid
+existed, so a recycled pid kept a dead row alive for as long as the stranger ran.

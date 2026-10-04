@@ -1,14 +1,14 @@
 # Code map
 
-~52,000 lines of Swift across five targets. For each file: what it contains, why
+~52,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,535 lines · 123 files  pure logic, zero AppKit
-  LampBoardApp/    19,550 lines · 106 files   shell: AppKit, network, windows
-  LampBoardTests/  13,028 lines · 73 files   933 cases, instantaneous
-  LampBoardE2E/    3,748 lines · 15 files   127 cases, the real binary
+  LampBoardCore/  15,594 lines · 124 files  pure logic, zero AppKit
+  LampBoardApp/    19,567 lines · 106 files   shell: AppKit, network, windows
+  LampBoardTests/  13,076 lines · 74 files   937 cases, instantaneous
+  LampBoardE2E/    3,850 lines · 16 files   130 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -848,7 +848,9 @@ folder is the session's. Ghostty's ids are validated before they enter a script.
 ### `ProcStart.swift`
 The session file's `procStart` in its two forms — Linux ticks, macOS ctime **in
 UTC** — and whether a process that started at a given moment can be the one the
-file names. The guard against a reused pid.
+file names. The guard against a reused pid; `stillHolds` is the live sessions'
+version, which keeps what it cannot disprove and allows two seconds, since a wrong
+answer there hides a live row.
 
 ## `Transcript/`
 
@@ -1025,6 +1027,16 @@ the hook script sends.
 ### `SessionsPayload.swift` · 235
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
+
+### `LoopbackGuard.swift`
+What the server refuses before any route (D68): a request carrying `Origin`, which
+only a browser sends, and a `Host` that is not `127.0.0.1`, `localhost` or `[::1]`,
+which is a rebound name. A page on this Mac could otherwise post a signal — `/signal`
+still takes one without a token, for old hooks — or read the answers.
+
+> **Touching here** can turn every real client away: the hooks, the mod, the tunnel
+> from a node and `curl` send loopback hosts and no `Origin`, and a new client that
+> sends either will be refused, logged only under `LAMPBOARD_DEBUG`.
 
 ### `AccessToken.swift`
 Generation and **constant-time** comparison. The comment at the top says what the
@@ -1285,7 +1297,7 @@ there, the hooks are registered — and it names the link that broke.
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
-| `LiveSessionReader.swift` | 126 | reads the live sessions; takes activity from the **transcript**, not the session file |
+| `LiveSessionReader.swift` | 135 | reads the live sessions; takes activity from the **transcript**, not the session file. A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 340 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
@@ -1308,8 +1320,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 471
-Ten routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 478
+Ten routes, behind `LoopbackGuard`. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1477,7 +1489,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 933 cases
+## `LampBoardTests/` — 937 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1519,6 +1531,7 @@ script, before it was split. The most important ones:
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
 | `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
@@ -1543,11 +1556,12 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 127 cases
+## `LampBoardE2E/` — 130 cases
 
 | Suite | Covers |
 |---|---|
-| `TransportSuite` | **the socket via `lsof`**, token, methods, refusals |
+| `TransportSuite` | **the socket via `lsof`**, token, methods, refusals; a POST with `Origin` and a rebound `Host` refused, through `curl` since URLSession will not send a Host of the caller's choosing |
+| `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |

@@ -834,7 +834,9 @@ with no zone marker** at second resolution — `"Wed Aug 26 17:07:24 2026"` for 
 process `ps -o lstart` shows at `19:07:24` local. Measured on two live sessions.
 
 **Depends at** [ProcStart.swift:22](../Sources/LampBoardCore/Seat/ProcStart.swift#L22) ·
-[SeatResolver.swift:34](../Sources/LampBoardApp/Focus/SeatResolver.swift#L34)
+[SeatResolver.swift:34](../Sources/LampBoardApp/Focus/SeatResolver.swift#L34) ·
+[LiveSessionReader.swift](../Sources/LampBoardApp/Runtime/LiveSessionReader.swift), where a
+live pid whose start differs is a recycled one and its session is dead
 
 **How verified** — `runtime`, against the kernel's `p_starttime` for the same pid.
 

@@ -154,6 +154,22 @@ enum TransportSuite {
                 ])
                 a.expectEqual(status, 400, "status")
             },
+
+            // What a web page on this Mac could send: a POST carrying Origin,
+            // and a rebound name arriving as Host. `curl`, because URLSession
+            // will not send a Host of the caller's choosing.
+            TestCase("a request carrying Origin is refused, a signal included") { a in
+                let id = "e2e-from-a-page"
+                let result = curl(app, path: AppConfig.signalPath, headers: ["Origin: https://evil.example"],
+                                  body: signalBody(id: id))
+                a.expectEqual(result, "403")
+                a.expectEqual(app.status(of: id), "absent", "no row from a page")
+            },
+
+            TestCase("a Host that is not loopback is refused; a loopback one passes") { a in
+                a.expectEqual(curl(app, path: AppConfig.healthPath, headers: ["Host: rebind.example:\(app.port)"]), "403")
+                a.expectEqual(curl(app, path: AppConfig.healthPath, headers: ["Host: localhost:\(app.port)"]), "200")
+            },
         ])
     }
 
@@ -161,6 +177,22 @@ enum TransportSuite {
 
     /// A payload the decoder accepts, so that a case about the token fails for the
     /// token and never for a missing field.
+    /// The status code `curl` got, as text.
+    private static func curl(_ app: AppUnderTest, path: String, headers: [String], body: String? = nil) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
+        process.arguments = ["-s", "-o", "/dev/null", "-w", "%{http_code}", "-m", "5"]
+            + headers.flatMap { ["-H", $0] }
+            + (body.map { ["-X", "POST", "-H", "Content-Type: application/json", "--data", $0] } ?? [])
+            + ["http://127.0.0.1:\(app.port)\(path)"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        guard (try? process.run()) != nil else { return "curl did not start" }
+        let out = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        process.waitUntilExit()
+        return out
+    }
+
     private static func signalBody(id: String) -> String {
         """
         {"session_id":"\(id)","hook_event_name":"Stop","cwd":"/tmp"}

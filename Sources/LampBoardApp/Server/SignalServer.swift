@@ -170,6 +170,14 @@ final class SignalServer {
 
     /// Translates a request into a response, emitting the signal when it is valid.
     private func handle(_ request: HTTPRequest) -> Data {
+        // Before any route, health included: what a web page sends is refused
+        // whatever it asks for (`LoopbackGuard`).
+        if let refusal = LoopbackGuard.refusal(host: request.header("Host"), origin: request.header("Origin")) {
+            // Under LAMPBOARD_DEBUG only: a client of ours refused here would turn
+            // the column grey with nothing anywhere saying why.
+            Diagnostics.log("refused \(request.method) \(request.path): \(refusal)")
+            return HTTPRequestParser.response(status: 403, reason: "Forbidden", body: refusal)
+        }
         switch request.path {
         case AppConfig.signalPath:
             return handleSignal(request)

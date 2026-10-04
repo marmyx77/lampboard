@@ -875,7 +875,9 @@ what the app does is a permission you have no reason to grant.
 | **Microphone and speech** *(optional)* | Dictation, only while you hold the button. Transcribed on this Mac by the on-device model. | The dictation button does nothing. |
 
 Everything stays on this Mac. The panel's server listens on `127.0.0.1` and is
-never exposed; nothing is sent anywhere. Every switch above can be turned off
+never exposed, and it refuses anything a web page in your browser could send it —
+a request carrying `Origin`, or a `Host` that is not loopback
+([D68](docs/04-decisions.md)); nothing is sent anywhere. Every switch above can be turned off
 again in the same place, and lampboard keeps working with less precision
 rather than failing.
 
@@ -1381,8 +1383,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 933 domain tests, instantaneous
-swift run LampBoardE2E                # 127 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 937 domain tests, instantaneous
+swift run LampBoardE2E                # 130 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

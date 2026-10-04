@@ -34,7 +34,7 @@ struct LiveSessionReader {
         return entries
             .filter { $0.pathExtension == "json" }
             .compactMap(read)
-            .filter { isRunning(pid: $0.pid) }
+            .filter { isRunning(pid: $0.pid) && isSameProcess($0) }
     }
 
     // MARK: - Internal
@@ -112,6 +112,15 @@ struct LiveSessionReader {
 
         return TranscriptActivity.lastTimestamp(
             inTailChunk: String(decoding: data, as: UTF8.self), isWholeFile: wholeFile
+        )
+    }
+
+    /// The pid's process started when the file says: otherwise the pid was
+    /// handed to somebody else after the session died (`ProcStart.stillHolds`).
+    private func isSameProcess(_ session: LiveSession) -> Bool {
+        ProcStart.stillHolds(
+            recorded: session.procStart,
+            startedAt: ProcessTree.info(of: pid_t(session.pid))?.startedAt
         )
     }
 
