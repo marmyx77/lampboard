@@ -24,3 +24,7 @@ __pycache__/
 # repository instead: what survives a plan is the decision it produced, and that
 # has a home of its own.
 docs/plans/
+
+# Where the test Mac is (Scripts/run-remote.sh). Host names and accounts are
+# personal and this repository is public.
+.env.machines

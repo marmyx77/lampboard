@@ -23,6 +23,26 @@ pkill -x lampboard; sleep 1; open dist/LampBoard.app
 process, and a build that is an hour old is indistinguishable from a revoked
 permission. It has already cost one wasted diagnosis.
 
+## On another Mac
+
+```bash
+./Scripts/run-remote.sh                 # the current branch, on the test Mac
+./Scripts/run-remote.sh fix/x Allowance # a branch, with a filter for test.sh
+./Scripts/run-remote.sh --clean fix/x   # remove that branch's worktree there
+```
+
+The machine you work on is not where the gate should run: a full run builds the
+package twenty-eight times, and the person using that Mac is often in a call.
+`run-remote.sh` pushes the branch to a bare repository on a second Mac, checks
+it out in a worktree of its own and runs `test.sh` there, one run at a time
+(they would share the end-to-end port), under `caffeinate` and an hour's limit.
+It tests the commit, not the working tree, and says so when they differ.
+
+Which Mac, which account and which repository live in `.env.machines` at the
+root, which git ignores: three lines, documented at the top of the script. The
+account that runs the gate needs a logged-in session, its own clone with a
+remote named `hub` pointing at that repository, and nothing else from this one.
+
 ## The two suites
 
 ```bash

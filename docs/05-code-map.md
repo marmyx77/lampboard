@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  12,236 lines · 99 files   pure logic, zero AppKit
-  LampBoardApp/    16,937 lines · 88 files   shell: AppKit, network, windows
+  LampBoardApp/    16,939 lines · 88 files   shell: AppKit, network, windows
   LampBoardTests/  11,542 lines · 61 files   812 cases, instantaneous
   LampBoardE2E/    3,188 lines · 12 files   109 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -1291,6 +1291,7 @@ the realignment is asynchronous.
 | `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
 | `Scripts/test.sh` | both suites, then the documentation check |
+| `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
