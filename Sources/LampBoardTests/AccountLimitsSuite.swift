@@ -154,7 +154,7 @@ enum AccountLimitsSuite {
             let account = ClaudeAccount.decode(Data(#"""
             {"oauthAccount": {"emailAddress": "design@example.com",
              "accountUuid": "99d4b700-e85a-4135-a4fd-c3b7ac021ec5",
-             "organizationName": "AWorld"}}
+             "organizationName": "Acme"}}
             """#.utf8))
             t.expectEqual(account?.email, "design@example.com", "address")
             t.expectEqual(account?.uuid, "99d4b700-e85a-4135-a4fd-c3b7ac021ec5", "uuid")

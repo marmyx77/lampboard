@@ -18,20 +18,20 @@ enum DesktopWorktreeSuite {
     }
 
     private static let worktree = GitIdentity(
-        repo: "Exit", branch: "claude/vigilant-ramanujan-790712", isWorktree: true
+        repo: "Ledger", branch: "claude/vigilant-ramanujan-790712", isWorktree: true
     )
 
     static let suite = TestSuite("Rows of the Claude application's worktrees", [
 
         TestCase("A worktree row reads as its project and the worktree, without the serial") { t in
             t.expectEqual(session(folder: "vigilant-ramanujan-790712", git: worktree).displayName,
-                          "Exit · vigilant-ramanujan")
+                          "Ledger · vigilant-ramanujan")
         },
 
         TestCase("Both spellings of the application are recognised") { t in
             t.expectEqual(
                 session(folder: "vigilant-ramanujan-790712", git: worktree, entrypoint: ClaudeDesktop.entrypoint).displayName,
-                "Exit · vigilant-ramanujan"
+                "Ledger · vigilant-ramanujan"
             )
         },
 
@@ -45,19 +45,19 @@ enum DesktopWorktreeSuite {
         },
 
         TestCase("A row that is not in a worktree keeps its folder's name") { t in
-            let plain = GitIdentity(repo: "Exit", branch: "main", isWorktree: false)
-            t.expectEqual(session(folder: "Exit", git: plain).displayName, "Exit")
+            let plain = GitIdentity(repo: "Ledger", branch: "main", isWorktree: false)
+            t.expectEqual(session(folder: "Ledger", git: plain).displayName, "Ledger")
         },
 
         TestCase("A worktree whose folder is the repository's name adds nothing") { t in
-            let same = GitIdentity(repo: "Exit", branch: "x", isWorktree: true)
-            t.expectNil(DesktopWorktree.label(folder: "Exit", git: same))
+            let same = GitIdentity(repo: "Ledger", branch: "x", isWorktree: true)
+            t.expectNil(DesktopWorktree.label(folder: "Ledger", git: same))
         },
 
         TestCase("Only a numeric tail is trimmed") { t in
-            t.expectEqual(DesktopWorktree.label(folder: "fix-login", git: worktree), "Exit · fix-login")
-            t.expectEqual(DesktopWorktree.label(folder: "790712", git: worktree), "Exit · 790712")
-            t.expectEqual(DesktopWorktree.label(folder: "calm-hopper-12", git: worktree), "Exit · calm-hopper")
+            t.expectEqual(DesktopWorktree.label(folder: "fix-login", git: worktree), "Ledger · fix-login")
+            t.expectEqual(DesktopWorktree.label(folder: "790712", git: worktree), "Ledger · 790712")
+            t.expectEqual(DesktopWorktree.label(folder: "calm-hopper-12", git: worktree), "Ledger · calm-hopper")
         },
 
         // A name the person gave still wins over this one.

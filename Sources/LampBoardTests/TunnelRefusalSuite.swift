@@ -13,7 +13,7 @@ enum TunnelRefusalSuite {
 
     /// What `ps -ax -o pid=,ppid=,command=` really looks like on this Mac.
     private static let listing = """
-        64151     1 /usr/bin/ssh -N -a -x -o ExitOnForwardFailure=yes -R 127.0.0.1:31000:127.0.0.1:9877 minisforum
+        64151     1 /usr/bin/ssh -N -a -x -o ExitOnForwardFailure=yes -R 127.0.0.1:31000:127.0.0.1:9877 devmachine
         24376     1 /Applications/LampBoard.app/Contents/MacOS/lampboard
         94563 24376 /usr/bin/ssh -N -a -x -R 127.0.0.1:31002:127.0.0.1:9877 other
         """
@@ -36,7 +36,7 @@ enum TunnelRefusalSuite {
             t.expectEqual(processes.count, 3, "three usable lines")
             t.expectEqual(processes.first?.pid, 64151, "pid")
             t.expectEqual(processes.first?.parent, 1, "parent")
-            t.expect(processes.first?.command.contains("minisforum") == true, "the command survives whole")
+            t.expect(processes.first?.command.contains("devmachine") == true, "the command survives whole")
         },
 
         TestCase("An orphan is the one reparented to pid 1") { t in

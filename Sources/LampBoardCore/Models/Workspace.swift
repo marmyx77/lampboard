@@ -66,7 +66,7 @@ public struct Workspace: Sendable, Equatable, Hashable {
     ///
     /// It is also the only name there is. There used to be a second one, `label`,
     /// that appended ` @host` for the column to draw, and on a machine called
-    /// `minisforum` it ate the name it was meant to qualify: eleven characters of
+    /// `devmachine` it ate the name it was meant to qualify: eleven characters of
     /// a field about a hundred points wide, on every row of that machine, saying
     /// the same word every time. The row shows a mark instead and the host is
     /// spelled out in the tooltip, where there is room for the word "on" — see

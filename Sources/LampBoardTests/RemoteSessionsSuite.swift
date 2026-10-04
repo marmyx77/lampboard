@@ -249,27 +249,27 @@ enum RemoteSessionsSuite {
         },
 
         TestCase("A row on another machine reads like any other, and says where in its card") { t in
-            // Reported from use, on a node called `minisforum`: the rows of that
-            // machine all read `AWeve…isforum`, because the host was appended to
+            // Reported from use, on a node called `devmachine`: the rows of that
+            // machine all read `Acme …machine`, because the host was appended to
             // every one of them and the middle of the name was what got truncated.
             // The fix is not a wider panel — it is that the machine was never a
             // name, and belongs in the layer with room for a sentence.
             let moment = Date(timeIntervalSince1970: 1_788_000_000)
             let remote = ColumnRow(
-                id: "minisforum:/srv/aworld-events",
-                workspace: Workspace(path: "/srv/aworld-events", host: "minisforum"),
+                id: "devmachine:/srv/acme-events",
+                workspace: Workspace(path: "/srv/acme-events", host: "devmachine"),
                 sessions: [SessionState(
                     id: "s1", status: .working,
-                    workspace: Workspace(path: "/srv/aworld-events", host: "minisforum"),
+                    workspace: Workspace(path: "/srv/acme-events", host: "devmachine"),
                     updatedAt: moment, statusSince: moment
                 )]
             )
 
-            t.expectEqual(remote.displayName, "aworld-events", "the folder, and nothing appended")
-            t.expect(!remote.displayName.contains("minisforum"), "the host is not in the name")
+            t.expectEqual(remote.displayName, "acme-events", "the folder, and nothing appended")
+            t.expect(!remote.displayName.contains("devmachine"), "the host is not in the name")
             t.expect(remote.workspace.isRemote, "which is what the row's mark reads")
             t.expectEqual(
-                RowSummary.of(remote, now: moment).subtitle, "on minisforum",
+                RowSummary.of(remote, now: moment).subtitle, "on devmachine",
                 "and the card is where the machine is spelled out"
             )
         },
@@ -336,9 +336,9 @@ enum RemoteSessionsSuite {
         TestCase("The decoder reads the node's windows, and still reads a bare array") { t in
             let now = Date(timeIntervalSince1970: 1_790_000_000)
             let answer = """
-            {"sessions": [{"pid": 7, "sessionId": "aaaaaaaa-2222", "cwd": "/home/dev/simululator", "activityEpoch": 1}],
+            {"sessions": [{"pid": 7, "sessionId": "aaaaaaaa-2222", "cwd": "/home/dev/simlab", "activityEpoch": 1}],
              "windows": [
-               {"workspaceFolders": ["/home/dev/simululator"], "ideName": "Visual Studio Code", "pid": 40, "alive": true, "mtimeEpoch": 1},
+               {"workspaceFolders": ["/home/dev/simlab"], "ideName": "Visual Studio Code", "pid": 40, "alive": true, "mtimeEpoch": 1},
                {"workspaceFolders": ["/home/dev/gone"], "ideName": "Visual Studio Code", "pid": 41, "alive": false, "mtimeEpoch": 1},
                {"workspaceFolders": ["relative/path"], "ideName": "Visual Studio Code", "pid": 42, "alive": true, "mtimeEpoch": 1},
                {"workspaceFolders": ["/home/dev/young"], "ideName": "Visual Studio Code", "pid": 0, "alive": false, "mtimeEpoch": 1789999990}
@@ -349,7 +349,7 @@ enum RemoteSessionsSuite {
             }
             t.expectEqual(report.sessions.count, 1, "the sessions")
             t.expectEqual(
-                report.windows.flatMap(\.workspaceFolders).sorted(), ["/home/dev/simululator", "/home/dev/young"],
+                report.windows.flatMap(\.workspaceFolders).sorted(), ["/home/dev/simlab", "/home/dev/young"],
                 "alive by pid, or young by lock age; a dead editor and a relative folder are dropped"
             )
 

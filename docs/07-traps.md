@@ -621,7 +621,7 @@ With that build, the same synthetic click gave:
 
 ```
 05:54:23  panel became key
-05:54:24  window chosen out of 10: “… — awevents — …”
+05:54:24  window chosen out of 10: “… — eventsapp — …”
 ```
 
 And the double-click: `sendEvent` drops the second click of a double-click, both
@@ -632,7 +632,7 @@ the second — AppKit reads `clickCount` from the event, it does not recompute i
 opened one window and logged `second click of a double-click dropped`.
 
 **What the verification itself showed.** The first delivered click opened
-**awevents**, not the row photographed fifty seconds earlier: in between, the
+**eventsapp**, not the row photographed fifty seconds earlier: in between, the
 node had answered and three remote rows had joined, and a session had changed
 state; the column re-sorted, and the click went to whatever was at that height.
 The instrument reproduced the user's accident without meaning to. The panel's
@@ -722,7 +722,7 @@ window of the folder. Hosts moved from a hidden file to a Settings window and a
 `remote` verb in the CLI.
 
 **Verified.** From the node, `curl` to `127.0.0.1:9877/signal` with the host
-header: `absent -> working host=minisforum`, `working -> ready`, and the row
+header: `absent -> working host=devmachine`, `working -> ready`, and the row
 carried the message; `lampboard remote check` reports python, curl, hooks and
 whether the tunnel answers — asked *from* the node, the only place the question
 means anything.

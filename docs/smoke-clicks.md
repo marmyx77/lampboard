@@ -11,8 +11,8 @@ rests on.
 
 | Slot | Row | Should lead to | Result | Window |
 |---|---|---|---|---|
-| 2 | AW events | an editor window | raised | situazione? — awevents — Claude Minimal |
-| 4 | sito-aworld | an editor window | raised | analizza il progetto — sito-aworld — Claude Minimal |
+| 2 | Events app | an editor window | raised | status? — eventsapp — Claude Minimal |
+| 4 | acme-site | an editor window | raised | review the project — acme-site — Claude Minimal |
 | 5 | Virgilio | an editor window | raised | Progetto unificato in cl… — marmyx-virgilio — Claude Minimal |
 | 6 | Clawd Light X | the ChatGPT app | raised | ChatGPT |
 | 7 | AI literacy | an editor window | raised | Documentazione progetto … — ai-act-literacy — Claude Minimal |
@@ -28,7 +28,7 @@ rests on.
 command line does:
 
 - Exit — an editor window
-- aworld-os-platform — an editor window
+- acme-os-platform — an editor window
 - turing — an editor window
 
 Anything named above is something this run says nothing about.

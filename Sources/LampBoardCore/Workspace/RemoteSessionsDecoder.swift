@@ -18,7 +18,7 @@ public enum RemoteSessionsDecoder {
     ///
     /// The windows are what put a remote row in the right folder. A hook's `cwd`
     /// follows every `cd` the session makes, so a session that started in
-    /// `simululator` and stepped into `simululator/esperimento` reported the
+    /// `simlab` and stepped into `simlab/experiment` reported the
     /// second — and with nothing to resolve it against, the row took that name
     /// and the click looked for a window nobody had open (D51).
     public struct Report: Equatable, Sendable {

@@ -189,9 +189,9 @@ struct TrafficLightRow: View {
     /// unclaimed-folder branch that makes a row terminal.
     ///
     /// `R` and not the machine's name. The name was on the row until today and it
-    /// was the loudest thing on it: `@minisforum` is eleven characters out of a
+    /// was the loudest thing on it: `@devmachine` is eleven characters out of a
     /// field a project name has to fit in, identical on every row of that node,
-    /// and `AWorld Events @minisforum` reached the screen as `AWeve…isforum`. A
+    /// and `Acme Events @devmachine` reached the screen as `Acme …machine`. A
     /// letter says *not here* in the width of a glyph; **which** machine is a
     /// question one person asks at a time, and the card answers it in words.
     private var place: some View {

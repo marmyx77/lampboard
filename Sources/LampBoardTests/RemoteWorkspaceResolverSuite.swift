@@ -4,9 +4,9 @@ import TestKit
 
 /// Which folder a row on another machine belongs to (D51).
 ///
-/// The case that made this: a session started in `simululator` whose Claude had
-/// stepped into `simululator/esperimento`. Every hook said the second, the row
-/// was called "esperimento", the window was `simululator [SSH: minisforum]`, and
+/// The case that made this: a session started in `simlab` whose Claude had
+/// stepped into `simlab/experiment`. Every hook said the second, the row
+/// was called "experiment", the window was `simlab [SSH: devmachine]`, and
 /// the click found nothing.
 enum RemoteWorkspaceResolverSuite {
 
@@ -36,41 +36,41 @@ enum RemoteWorkspaceResolverSuite {
 
         TestCase("The node's window that contains the cwd is the folder, whatever the cwd says") { t in
             let resolved = resolve(
-                cwd: "/home/dev/simululator/esperimento",
-                windows: [window("/home/dev/simululator"), window("/home/dev/awevents")]
+                cwd: "/home/dev/simlab/experiment",
+                windows: [window("/home/dev/simlab"), window("/home/dev/eventsapp")]
             )
-            t.expectEqual(resolved, Workspace(path: "/home/dev/simululator", host: host), "the window's folder")
-            t.expectEqual(resolved.name, "simululator", "and its name, which is what the title carries")
+            t.expectEqual(resolved, Workspace(path: "/home/dev/simlab", host: host), "the window's folder")
+            t.expectEqual(resolved.name, "simlab", "and its name, which is what the title carries")
         },
 
         TestCase("Nested windows: the deepest one that contains the cwd wins") { t in
             let resolved = resolve(
-                cwd: "/home/dev/simululator/esperimento/run",
-                windows: [window("/home/dev/simululator"), window("/home/dev/simululator/esperimento")]
+                cwd: "/home/dev/simlab/experiment/run",
+                windows: [window("/home/dev/simlab"), window("/home/dev/simlab/experiment")]
             )
-            t.expectEqual(resolved.path, "/home/dev/simululator/esperimento", "deepest")
+            t.expectEqual(resolved.path, "/home/dev/simlab/experiment", "deepest")
         },
 
         // Written once at start and never moved by a `cd`: the second-best record
         // of where the session lives, when the node has no window for it.
         TestCase("Without a window, the session file's folder stands in — if it contains the cwd") { t in
             let resolved = resolve(
-                cwd: "/home/dev/simululator/esperimento", id: "s1",
-                sessions: [file("s1", cwd: "/home/dev/simululator")]
+                cwd: "/home/dev/simlab/experiment", id: "s1",
+                sessions: [file("s1", cwd: "/home/dev/simlab")]
             )
-            t.expectEqual(resolved.path, "/home/dev/simululator", "the file's folder")
+            t.expectEqual(resolved.path, "/home/dev/simlab", "the file's folder")
 
             let elsewhere = resolve(
                 cwd: "/home/dev/other", id: "s1",
-                sessions: [file("s1", cwd: "/home/dev/simululator")]
+                sessions: [file("s1", cwd: "/home/dev/simlab")]
             )
             t.expectEqual(elsewhere.path, "/home/dev/other", "a cwd outside the file's folder is not folded into it")
 
             let another = resolve(
-                cwd: "/home/dev/simululator/esperimento", id: "s1",
-                sessions: [file("s2", cwd: "/home/dev/simululator")]
+                cwd: "/home/dev/simlab/experiment", id: "s1",
+                sessions: [file("s2", cwd: "/home/dev/simlab")]
             )
-            t.expectEqual(another.path, "/home/dev/simululator/esperimento", "somebody else's file says nothing about s1")
+            t.expectEqual(another.path, "/home/dev/simlab/experiment", "somebody else's file says nothing about s1")
         },
 
         TestCase("With neither, the cwd itself is the folder, as it always was") { t in
@@ -80,10 +80,10 @@ enum RemoteWorkspaceResolverSuite {
 
         TestCase("A window of an editor nobody can raise does not claim the row") { t in
             let resolved = resolve(
-                cwd: "/home/dev/simululator/esperimento",
-                windows: [window("/home/dev/simululator", ide: "SomeEditor")]
+                cwd: "/home/dev/simlab/experiment",
+                windows: [window("/home/dev/simlab", ide: "SomeEditor")]
             )
-            t.expectEqual(resolved.path, "/home/dev/simululator/esperimento", "unsupported window ignored")
+            t.expectEqual(resolved.path, "/home/dev/simlab/experiment", "unsupported window ignored")
         },
 
         // The probe answers after the row exists — the first hooks arrived before
@@ -94,11 +94,11 @@ enum RemoteWorkspaceResolverSuite {
             let moment = Date(timeIntervalSince1970: 1_788_000_000)
             let row = SessionState(
                 id: "s1", status: .ready,
-                workspace: Workspace(path: "/home/dev/simululator/esperimento", host: host),
+                workspace: Workspace(path: "/home/dev/simlab/experiment", host: host),
                 updatedAt: moment, statusSince: moment
             )
             let state = TrafficLightState(sessions: ["s1": row])
-            let better = Workspace(path: "/home/dev/simululator", host: host)
+            let better = Workspace(path: "/home/dev/simlab", host: host)
 
             let moved = StateReducer.reduce(state, action: .rehome(sessionId: "s1", workspace: better), now: now)
             t.expectEqual(moved.sessions["s1"]?.workspace, better, "the folder")

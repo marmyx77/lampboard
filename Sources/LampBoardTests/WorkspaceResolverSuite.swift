@@ -56,22 +56,22 @@ enum WorkspaceResolverSuite {
         // name, which is what its title says and what the click looks for.
         TestCase("A session under the folder a window's link points at is that window's") { t in
             let linked = IDEWindow(
-                workspaceFolders: ["/Users/dev/Development/livetranscribe"],
+                workspaceFolders: ["/Users/dev/Development/livenotes"],
                 ideName: "Visual Studio Code", pid: 5501, lockModifiedAt: now,
-                resolvedFolders: ["/Users/dev/Development/callduo"]
+                resolvedFolders: ["/Users/dev/Development/voicedesk"]
             )
             let result = WorkspaceResolver.resolve(
-                cwd: "/Users/dev/Development/callduo/engine", in: [linked], at: now
+                cwd: "/Users/dev/Development/voicedesk/engine", in: [linked], at: now
             )
-            t.expectEqual(result, Workspace(path: "/Users/dev/Development/livetranscribe"))
+            t.expectEqual(result, Workspace(path: "/Users/dev/Development/livenotes"))
         },
 
         // The same, on a real disk: the link is followed when the window is read.
         TestCase("A window read from disk follows the link its folder is") { t in
             let root = URL(fileURLWithPath: CanonicalPath.of(NSTemporaryDirectory()))
                 .appendingPathComponent("lampboard-link-\(UUID().uuidString)")
-            let real = root.appendingPathComponent("callduo")
-            let link = root.appendingPathComponent("livetranscribe")
+            let real = root.appendingPathComponent("voicedesk")
+            let link = root.appendingPathComponent("livenotes")
             defer { try? FileManager.default.removeItem(at: root) }
             do {
                 try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
@@ -89,8 +89,8 @@ enum WorkspaceResolverSuite {
 
         TestCase("A window nobody resolved matches exactly as before") { t in
             t.expectNil(WorkspaceResolver.resolve(
-                cwd: "/Users/dev/Development/callduo",
-                in: [window(["/Users/dev/Development/livetranscribe"])], at: now
+                cwd: "/Users/dev/Development/voicedesk",
+                in: [window(["/Users/dev/Development/livenotes"])], at: now
             ))
         },
 

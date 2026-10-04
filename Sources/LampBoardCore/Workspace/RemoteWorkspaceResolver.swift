@@ -10,10 +10,10 @@ import Foundation
 /// a `cd`. Failing that, the `cwd` itself, which is what every remote row got
 /// before this existed.
 ///
-/// Found on 21 September 2026: a session started in `simululator`, whose Claude
-/// had stepped into `simululator/esperimento`, reported the second in every hook.
-/// The row was called "esperimento", the window was called `simululator [SSH:
-/// minisforum]`, and the click found nothing. The session beside it worked
+/// Found on 21 September 2026: a session started in `simlab`, whose Claude
+/// had stepped into `simlab/experiment`, reported the second in every hook.
+/// The row was called "experiment", the window was called `simlab [SSH:
+/// devmachine]`, and the click found nothing. The session beside it worked
 /// because it had never left its root (D51).
 public enum RemoteWorkspaceResolver {
 

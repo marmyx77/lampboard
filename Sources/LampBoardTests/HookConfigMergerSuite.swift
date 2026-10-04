@@ -212,10 +212,10 @@ enum HookConfigMergerSuite {
 
         TestCase("A remote endpoint names its host and its own port") { t in
             let endpoint = HookConfigMerger.endpoint(
-                port: 31000, token: "abc", harness: .claudeCode, host: "minisforum"
+                port: 31000, token: "abc", harness: .claudeCode, host: "devmachine"
             )
             t.expectEqual(endpoint.url, "http://127.0.0.1:31000/signal", "the far side's loopback")
-            t.expectEqual(endpoint.headers[AppConfig.remoteHostHeader], "minisforum", "host header")
+            t.expectEqual(endpoint.headers[AppConfig.remoteHostHeader], "devmachine", "host header")
         },
 
         TestCase("A native hook without the token is seen as stale") { t in
@@ -346,7 +346,7 @@ enum HookConfigMergerSuite {
                 into: after, scriptPath: "/home/dev/.lampboard/hook.sh",
                 rewakeScriptPath: nil, registerMessageDelivery: false,
                 endpoint: HookConfigMerger.endpoint(
-                    port: 31000, token: "abc", harness: .claudeCode, host: "minisforum"
+                    port: 31000, token: "abc", harness: .claudeCode, host: "devmachine"
                 )
             )
 

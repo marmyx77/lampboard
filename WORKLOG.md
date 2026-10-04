@@ -1316,7 +1316,7 @@ refusal was reported against a machine that had done nothing wrong.
 SIGTERM and SIGINT now go through `NSApp.terminate`, so the cleanup that already
 existed finally runs. Proven with the real command rather than argued: panel
 1964 with child ssh 3279, `pkill -x lampboard`, and the child died with it —
-zero orphans, and a `tunnel minisforum: off` in the log that had never appeared
+zero orphans, and a `tunnel devmachine: off` in the log that had never appeared
 before.
 
 And when the port is taken anyway — a crash, a `kill -9`, a second panel — the
@@ -1521,8 +1521,8 @@ of it measured rather than estimated:
 | `22/07` | 101.74 | 99.25 |
 
 Two points lost on the rows that were already fine, thirty-seven gained on the
-ones that were not. On screen: `AWorld Governance` and `aworld-os-platform` now
-fit whole, where an hour ago they were `AWorld…vernance` and `aworl…latform`.
+ones that were not. On screen: `Acme Governance` and `acme-os-platform` now
+fit whole, where an hour ago they were `Acme…vernance` and `acme-…latform`.
 
 This trade only existed because of the morning's other work. The row can afford to
 say `1d` because the tooltip says "last activity yesterday at 22:30" — and until
@@ -1565,8 +1565,8 @@ adding it took `PanelController` to 787 lines against a self-imposed limit of 80
 
 **The folder appears under the pointer.** 18 points, measured, is what a
 permanent glyph would take off every name for ever — 100.87 back to 82.87, which
-is exactly where the names were this morning when `aworld-os-platform` read
-`aworl…latform`. So it is drawn only while the pointer is on the row, with
+is exactly where the names were this morning when `acme-os-platform` read
+`acme-…latform`. So it is drawn only while the pointer is on the row, with
 ⇧+click and a menu entry for whoever prefers not to hunt for it. The cost was
 stated before it was built and it is real: under the pointer a long name
 re-truncates while you look at it, softened by a 120 ms ease. On a row that lives
@@ -1927,7 +1927,7 @@ since, `PostToolUseFailure`, comes along.
 Two things were verified without touching the node. A domain case rehearses the
 whole repair through the real Python scripts against a home laid out like it —
 inspect, judge, merge, apply, inspect again — and `lampboard remote check
-minisforum`, which is read-only, now says *hooks installed; carry no token; the
+devmachine`, which is read-only, now says *hooks installed; carry no token; the
 panel rewrites them when it connects*. The write itself happens at the next
 launch.
 
@@ -1986,11 +1986,11 @@ Released as 0.4.3 the same morning.
 
 ### A row named after the last `cd`
 
-A remote row called "esperimento" that the click could not raise, beside one
-called "AWevents" that raised fine. The session file on the node said the first
-had started in `simululator`; its hooks said `simululator/esperimento`, because a
+A remote row called "experiment" that the click could not raise, beside one
+called "EventsApp" that raised fine. The session file on the node said the first
+had started in `simlab`; its hooks said `simlab/experiment`, because a
 hook's `cwd` follows every `cd` Claude makes, and the window over there was
-titled `simululator [SSH: minisforum]`. Locally this never showed: the resolver
+titled `simlab [SSH: devmachine]`. Locally this never showed: the resolver
 folds a `cwd` into the editor window that contains it, read from the lock files.
 Remotely there was nothing to fold it into, and the row took the last hook's word.
 
@@ -2038,7 +2038,7 @@ itself was not caught; the next time it happens the log will say.
 
 Sessions opened from the Claude application reached the column, and the click on
 one did nothing. The row said `entrypoint: claude-desktop`, on a node: the
-application had opened the session on the minisforum over ssh, and Claude Code
+application had opened the session on the devmachine over ssh, and Claude Code
 2.1.281 there wrote `claude-desktop` into the session file and into every hook.
 The panel knew the application by one name only, `local-agent`, read off a local
 session file when the surface was built. The comparison failed, the row went
@@ -2088,8 +2088,8 @@ before launch, here and in `Command.run`; the command now returns in one to two
 seconds. Debugging it cost this Mac's token a 429 of its own, which is exactly the
 case the carried-over readings exist for.
 
-**A row that raised nothing for five days.** A session in `callduo` shown as a
-terminal row: its editor window had opened `livetranscribe`, a link to `callduo`,
+**A row that raised nothing for five days.** A session in `voicedesk` shown as a
+terminal row: its editor window had opened `livenotes`, a link to `voicedesk`,
 and the kernel reports the resolved folder as the session's `cwd`. Windows are now
 resolved on disk when read, and a session under either spelling is the window's
 (D55). The same row also said "waiting on background work", and that part was
@@ -2121,11 +2121,11 @@ its own piece of work.
 
 ## 30 September — a row called `vigilant-ramanujan-790712`
 
-A conversation from the Claude application, on the node, in the `Exit` repository:
+A conversation from the Claude application, on the node, in the `Ledger` repository:
 the application had given it its own worktree, `.claude/worktrees/
 vigilant-ramanujan-790712` on branch `claude/vigilant-ramanujan-790712`, still at
 `main`'s commit. The row carried the generated name. Rows of the application's
-worktrees now read `Exit · vigilant-ramanujan` (D57); seven domain cases, among
+worktrees now read `Ledger · vigilant-ramanujan` (D57); seven domain cases, among
 them an editor's worktree row that must keep its folder's name.
 
 ## 4 October — LampMaster, the part that decides

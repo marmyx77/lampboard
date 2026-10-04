@@ -760,7 +760,7 @@ Remote-SSH window's title ends in `[SSH: <what the user typed to connect>]`.
 no `hooks` key; after `lampboard remote install` it registered the nine events
 with the script at `~/.lampboard/hook.sh`, a dated backup was written, and a
 `curl` **from the node** to `127.0.0.1:<per-user port>/signal` — the port `remotePort(forUID:)` derives and `remote install` prints — with the `X-LampBoard-Host` header
-produced `absent -> working host=minisforum` here. Two Remote-SSH windows were
+produced `absent -> working host=devmachine` here. Two Remote-SSH windows were
 open on this Mac at the time, titled `resume — <folder> [SSH: 100.x.x.x]` and
 `<folder> [SSH: <alias>]` — the label is whatever was typed, hence the matcher
 accepts the configured name, the `HostName` ssh resolves it to, and their

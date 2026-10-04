@@ -8,9 +8,9 @@ import Foundation
 /// — on a branch `claude/` of the same name. The row is named after its folder,
 /// like every row, so the column filled with names nobody chose and that say
 /// nothing about which project they belong to: met on 30 September 2026, a
-/// conversation on the `Exit` repository read as `vigilant-ramanujan-790712`.
+/// conversation on the `Ledger` repository read as `vigilant-ramanujan-790712`.
 ///
-/// So such a row reads `Exit · vigilant-ramanujan`: the project first, because
+/// So such a row reads `Ledger · vigilant-ramanujan`: the project first, because
 /// that is what a person looks for, then the worktree without its numeric tail,
 /// which is what tells two of the same project apart. Only the application's
 /// rows: an editor row's name is its window's title, and changing it there would

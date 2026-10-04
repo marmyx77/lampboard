@@ -90,10 +90,10 @@ enum RowSummarySuite {
         TestCase("The machine and the folder go under the name") { t in
             // A row on another machine, renamed: both facts, and nowhere else on
             // screen do either of them appear.
-            let remote = row([session(host: "minisforum")], alias: "Fatturazione")
-            t.expectEqual(summary(remote).title, "Fatturazione", "the name the user chose")
+            let remote = row([session(host: "devmachine")], alias: "Invoicing")
+            t.expectEqual(summary(remote).title, "Invoicing", "the name the user chose")
             t.expectEqual(
-                summary(remote).subtitle, "on minisforum · in billing-gateway",
+                summary(remote).subtitle, "on devmachine · in billing-gateway",
                 "where it is, and what it really is"
             )
         },
@@ -201,7 +201,7 @@ enum RowSummarySuite {
             let here = summary(row([session()]))
             t.expect(here.keys.contains("⇧ folder"), "a local row can be revealed")
 
-            let elsewhere = summary(row([session(host: "minisforum")]))
+            let elsewhere = summary(row([session(host: "devmachine")]))
             t.expect(!elsewhere.keys.contains("folder"),
                      "a folder on another machine is not a folder here")
 

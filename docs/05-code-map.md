@@ -585,7 +585,7 @@ session that is readable from a cloud one that leaves nothing here at all.
 ### `DesktopWorktree.swift`
 The name of a row the Claude application runs in a worktree of its own. The
 application can give each conversation a linked worktree under
-`.claude/worktrees/` with a generated name; such a row reads `Exit ·
+`.claude/worktrees/` with a generated name; such a row reads `Ledger ·
 vigilant-ramanujan` — the main repository, then the worktree without its numeric
 tail — instead of the generated folder alone. Only the application's rows: an
 editor row's name is its window's title (D57).
@@ -1068,7 +1068,7 @@ the session file, which is the frozen one.
 Which folder a row on another machine belongs to: the node's editor window that
 contains the hook's `cwd`, resolved by the same function as a local row; failing
 that the session file's folder, written once; failing that the `cwd` itself. Born
-from a row called "esperimento" whose window was called `simululator` (D51).
+from a row called "experiment" whose window was called `simlab` (D51).
 
 ### `RemoteSessionsDecoder.swift` · 128
 The other machine's answer, entering the domain. Validates like

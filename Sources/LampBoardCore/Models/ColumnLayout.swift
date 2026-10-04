@@ -109,8 +109,8 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
     /// be a lie about two of them.
     ///
     /// The machine is **not** part of it. A row on another machine used to read
-    /// `AWorld Events @minisforum`, and in a field that fits about twenty
-    /// characters the host took half of them and left `AWeve…isforum` — a name
+    /// `Acme Events @devmachine`, and in a field that fits about twenty
+    /// characters the host took half of them and left `Acme …machine` — a name
     /// nobody can pick out of a column, repeated identically on every row of that
     /// node. Where it is has one mark on the row and a sentence in the tooltip;
     /// what it is called gets the whole line back.

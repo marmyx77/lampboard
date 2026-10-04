@@ -24,8 +24,8 @@ public struct IDEWindow: Sendable, Equatable {
     /// window's folders are what the editor was asked to open, and a folder opened
     /// through a link keeps the link's name; the session's `cwd` is the process's
     /// working directory, which the kernel hands back resolved. Measured on 29
-    /// September 2026: a window on `~/Development/livetranscribe`, a link to
-    /// `~/Development/callduo`, hosted a session reporting `callduo`; nothing
+    /// September 2026: a window on `~/Development/livenotes`, a link to
+    /// `~/Development/voicedesk`, hosted a session reporting `voicedesk`; nothing
     /// matched, the row fell back to being a terminal session, and its click
     /// raised nothing for five days. The match now accepts either spelling, and
     /// the row keeps the **window's** one — it is the name in the title the click

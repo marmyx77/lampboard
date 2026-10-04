@@ -1419,7 +1419,7 @@ three appears on a row that lives on another machine.
 **Why not always visible.** Measured: the glyph and its spacing are 18 points,
 taken off the name of every row for ever. The name is 100.87 points on a plain
 row — it would go back to 82.87, which is exactly where it was this morning, when
-`aworld-os-platform` was reading `aworl…latform`. An action taken a few times a
+`acme-os-platform` was reading `acme-…latform`. An action taken a few times a
 day does not get permanent tenancy in the field that is short.
 
 **What it costs instead, and this was said before it was built.** Under the
@@ -2293,9 +2293,9 @@ before its host had ever answered is **moved** when the answer comes, colour and
 history untouched.
 
 **Why.** A hook's `cwd` follows every `cd` the session makes. Found on 21
-September 2026: a session started in `simululator` whose Claude had stepped into
-`simululator/esperimento` reported the second in every hook, the row was called
-"esperimento", the window was called `simululator [SSH: minisforum]`, and the
+September 2026: a session started in `simlab` whose Claude had stepped into
+`simlab/experiment` reported the second in every hook, the row was called
+"experiment", the window was called `simlab [SSH: devmachine]`, and the
 click found nothing to raise. The session beside it worked because it had never
 left its root. Locally this never showed, because the local resolver has always
 folded a `cwd` into the window that contains it; remotely there was nothing to
@@ -2418,8 +2418,8 @@ to that window. The row keeps the window's spelling.
 **Why.** The window's folders are what the editor was asked to open, and a folder
 opened through a symbolic link keeps the link's name; the session's `cwd` is the
 process's working directory, which the kernel hands back resolved. Measured on 29
-September 2026: a window on `~/Development/livetranscribe`, a link to
-`~/Development/callduo`, hosted a session reporting `callduo`. Nothing matched, the
+September 2026: a window on `~/Development/livenotes`, a link to
+`~/Development/voicedesk`, hosted a session reporting `voicedesk`. Nothing matched, the
 session fell back to being a terminal row, and clicking it raised nothing for five
 days. The window's spelling is kept because it is the name in the title the click
 looks for.
@@ -2452,12 +2452,12 @@ renew every few hours; nothing per poll.
 
 **Decided.** A row whose session the Claude application runs inside a linked
 worktree reads as the main repository and the worktree, without the worktree's
-numeric tail: `Exit · vigilant-ramanujan`. A name given to the row still wins.
+numeric tail: `Ledger · vigilant-ramanujan`. A name given to the row still wins.
 Editor rows are left alone.
 
 **Why.** The application can give each conversation its own worktree, created
 under `.claude/worktrees/` with a generated name on a `claude/` branch of the same
-name. Named after its folder like every row, the conversation on the `Exit`
+name. Named after its folder like every row, the conversation on the `Ledger`
 repository read `vigilant-ramanujan-790712` (30 September 2026): a name nobody
 chose, saying nothing about the project, and one more of them for every
 conversation. The repository name was already known — the card said "a linked
