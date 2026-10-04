@@ -3038,3 +3038,20 @@ the total the mod reported, the recent turns. Both come from the companion mod a
 the hooks, folded per session in memory; without the mod they say so rather than
 showing zeros.
 
+## D80 · A permission waits 55 seconds for the panel, then goes back to its dialog
+
+**Decided.** When the panel answers permissions (D73, switched on by the user), the
+companion mod asks it only about calls Claude Code would put to its dialog — the
+engine's own verdict is `ask` — and waits for an answer. The panel has 55 seconds;
+past them, and whenever an ask is malformed, one too many (eight waiting at once),
+or already being asked, the answer is `ask`, and the session shows the dialog it
+would have shown anyway. An answer counts once.
+
+**Why these numbers, and why only `ask`.** Measured on the test Mac with throwaway
+sessions (5 October 2026): a mod's `tool.check` may wait on the panel for about a
+minute — at 20 seconds its `deny` held, at 65 the command ran on the engine's own
+verdict — and a mod answering `ask` in an interactive session brings back the
+ordinary "Do you want to proceed?" dialog. A mod can also overturn the engine's
+verdict either way, which is why it asks only where the engine would have asked:
+the panel answers what the person would have been asked, and nothing else.
+

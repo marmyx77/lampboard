@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1014**, instantaneous |
+| Domain tests | **1020**, instantaneous |
 | End-to-end tests | **135**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2427,3 +2427,10 @@ eight characters, and every lookup wanted the whole id.
 And its tabs: Activity, each tool and how long it ran and each turn and what it
 cost; Cost, the context and what the session has cost. Both from the mod's reports
 and the hooks' turn ends, kept in memory for the sessions seen most recently.
+
+Allow and Deny from the panel start with a measurement and its rules (D80). On the
+test Mac a mod's `tool.check` waited twenty seconds for a listener and its `deny`
+held; at sixty-five the engine went ahead on its own; answering `ask` in an
+interactive session brought the ordinary dialog back. So the panel gets 55 seconds,
+asks are only the ones the engine would have put to the dialog, and anything the
+panel does not answer goes back to that dialog.

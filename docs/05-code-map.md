@@ -1,13 +1,13 @@
 # Code map
 
-~56,400 lines of Swift across five targets. For each file: what it contains, why
+~56,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,816 lines · 133 files  pure logic, zero AppKit
+  LampBoardCore/  16,900 lines · 134 files  pure logic, zero AppKit
   LampBoardApp/    21,236 lines · 121 files   shell: AppKit, network, windows
-  LampBoardTests/  13,977 lines · 82 files   1014 cases, instantaneous
+  LampBoardTests/  14,055 lines · 83 files   1020 cases, instantaneous
   LampBoardE2E/    3,965 lines · 17 files   135 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1076,6 +1076,18 @@ and Carbon modifier mask each one registers; a stored value nobody recognises is
 A short list rather than a recorder, because every entry on it leaves `⌘K` to the
 editor.
 
+## `Permission/`
+
+### `PermissionGate.swift` · 84
+Allow and Deny from the panel (D73, D80), as rules: the ask a session's mod posts —
+session, call, tool, and one masked line, read with the mod's own validators and
+refused rather than guessed when malformed; the verdict, one of `allow`, `deny`,
+`ask`; the book of asks waiting, one per call and eight at most, each answered once,
+each sent back to its session's dialog at 55 seconds.
+
+> **Touching here** changes who decides what a session may run. A refused or
+> expired ask must always end as `ask`: the dialog the session would have had.
+
 ## `Plancia/`
 
 ### `PanelDepth.swift` · 43
@@ -1619,7 +1631,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1014 cases
+## `LampBoardTests/` — 1020 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1670,6 +1682,7 @@ script, before it was split. The most important ones:
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
+| `PermissionGateSuite` | an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
 | `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the mod's reports read into it; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
