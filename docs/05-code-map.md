@@ -1,13 +1,13 @@
 # Code map
 
-~47,900 lines of Swift across five targets. For each file: what it contains, why
+~48,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  13,766 lines · 110 files  pure logic, zero AppKit
+  LampBoardCore/  14,224 lines · 113 files  pure logic, zero AppKit
   LampBoardApp/    18,052 lines · 95 files   shell: AppKit, network, windows
-  LampBoardTests/  12,266 lines · 67 files   871 cases, instantaneous
+  LampBoardTests/  12,428 lines · 68 files   884 cases, instantaneous
   LampBoardE2E/    3,417 lines · 13 files   116 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -684,6 +684,31 @@ found"), the heading and glyph of each kind, and the button of each action. Aski
 and replying copy the text and open the session, and the button says so: the panel
 cannot write into a session until 0.6.
 
+### `LampMasterMCP.swift`
+The `lampmaster` MCP server's side of the conversation, one line in and at most one
+out, pure: the tool itself is a closure. Claude Code 2.1.289 opens with
+`server/discover`, from a newer revision of the protocol, and only then sends
+`initialize` (measured, 4 October 2026); so every method it does not know is
+answered "method not found" and the conversation carries on. The tools'
+descriptions are written for the calling model, which decides by itself when to
+call them.
+
+### `LampMasterLookup.swift`
+`overlaps`, `who_knows`, `precedents`: what a session can ask without a model
+running. They answer with facts about sessions — id, project, title, state, files,
+times, which words matched — and **never with another session's prompts or
+replies**, because the answer goes into the asking session's context, which acts
+with the user's tools, and a conversation can contain sentences that read like
+orders (D62).
+
+### `LampMasterAsk.swift`
+The question that does run a model: its schema, its prompt, the screening of its
+sources and the limits. A source survives only when its whole quote is in the
+frame — stricter than the round's evidence, because a real clause could otherwise
+carry an invented one into another session. Twenty questions an hour, five per
+session, and the same question within ten minutes gets the answer already given:
+a session's model calls tools on its own, and a loop in one must not spend the day.
+
 ### `LampMasterLedger.swift`
 The records of `rounds.jsonl` and `suggestions.jsonl`, and what is read back from
 them: the last run, today's tokens, the open suggestions, what the next frame is
@@ -1308,7 +1333,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 871 cases
+## `LampBoardTests/` — 884 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1332,6 +1357,7 @@ script, before it was split. The most important ones:
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
+| `LampMasterMCPSuite` | the protocol line by line, `server/discover` refused without ending the conversation, each lookup on invented sessions, no lookup carrying another session's words, sources quoted in full or dropped, the limits |
 | `LampMasterRoundSuite` | the flags that keep the round invisible and cheap, the frame kept off the command line, the envelope read even when it failed, every skip and its order, suggestions that expire or settle |
 | `BackgroundTaskSuite` | pending work is work; only terminal statuses are not |
 | `MailboxReapSuite` | an undelivered message keeps its conversation armed |

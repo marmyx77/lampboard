@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **871**, instantaneous |
+| Domain tests | **884**, instantaneous |
 | End-to-end tests | **116**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2161,4 +2161,16 @@ cards in a window of their own, and a section in Settings with the sentence that
 says what it sends and spends (D61). Its actions are the rows' own. Measured on the
 test Mac against invented sessions: the round showed both suggestions of a fake
 `claude`, and the panel grew by exactly the line, from 65 to 82 points.
+
+A first real round in the app, on the test Mac with Opus and four invented
+conversations, found both links hidden in them — a session stuck on a 404 and
+another that had renamed the endpoint, a third about to ship the old path — and one
+session done and saved: 13.6 s, 3,898 tokens, $0.047, nothing dropped by the
+validator.
+
+Then LampMaster became something a session can call (D62): the MCP protocol, three
+lookups that run no model and never hand one session another's words, and the
+question that does run one, with its sources screened and its limits. Measured
+first with a throwaway server: Claude Code tells it the calling session's id, and
+opens with a method of a newer protocol revision before `initialize`.
 

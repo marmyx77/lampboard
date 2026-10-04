@@ -2564,3 +2564,30 @@ never do what a click on a row could not, and the confirmation before ending a
 process is written once. Writing into a session from the panel is the "hands" of
 0.6; until then a copied sentence one paste away is honest about what the panel
 can do.
+
+## D62 · A session can ask LampMaster, and never receives another session's words
+
+**Decided.** LampMaster is reachable from any Claude Code session as an MCP server,
+`lampmaster`, with four tools. Three run no model and cost nothing: `overlaps` (who
+else wrote these files in the last two hours, or is live on the same branch),
+`who_knows` (which sessions worked on a topic), `precedents` (who hit the same
+error, and whether they saved work after). The fourth, `ask_lampmaster`, runs the
+round's isolated `claude -p` on a question. The lookups answer with facts about
+sessions — id, project, title, state, files, times, matched words — and never with
+what another session wrote; the question answers in LampMaster's words, with
+sources whose whole quote is in the frame. Searching the conversations themselves
+waits for the index of the next stage.
+
+**Why.** Whatever a tool returns enters the context of the session that called it,
+and that session acts with the user's tools. A conversation can contain a sentence
+that reads like an order, and a lookup that pasted it would carry it from one
+session into another — the injection a panel of many sessions makes possible. The
+round's evidence passes when some clause of it is real; a source shown to another
+session is held to all of it, because a real clause could otherwise carry an
+invented one.
+
+Measured on 4 October 2026 with a throwaway server on the test Mac: Claude Code
+2.1.289 hands the server `CLAUDE_CODE_SESSION_ID`, so LampMaster knows who asks and
+leaves the asker out of its own answers; and it opens with `server/discover`, from
+a newer protocol revision, before `initialize` — a server that did not answer
+"method not found" to what it does not know would never have been initialised.
