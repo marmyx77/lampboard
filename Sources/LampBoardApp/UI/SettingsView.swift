@@ -1,10 +1,11 @@
 import LampBoardCore
 import SwiftUI
 
-/// The Settings window's content. One section today — the remote machines —
-/// built as a form so the next setting has a place to go.
+/// The Settings window's content: LampMaster, then the remote machines, as
+/// one form.
 struct SettingsView: View {
     @ObservedObject var fleet: RemoteFleet
+    let lampMaster: LampMasterService
     var preferences = Preferences()
 
     @State private var showsTerminalSessions = Preferences().showsTerminalSessions
@@ -16,6 +17,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            LampMasterSettings(service: lampMaster)
             Section {
                 Text("""
                 Sessions running on another machine reach the panel through an ssh \

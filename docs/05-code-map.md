@@ -1,18 +1,18 @@
 # Code map
 
-~47,300 lines of Swift across five targets. For each file: what it contains, why
+~47,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  13,680 lines · 109 files  pure logic, zero AppKit
-  LampBoardApp/    17,593 lines · 91 files   shell: AppKit, network, windows
-  LampBoardTests/  12,230 lines · 67 files   868 cases, instantaneous
+  LampBoardCore/  13,766 lines · 110 files  pure logic, zero AppKit
+  LampBoardApp/    18,052 lines · 95 files   shell: AppKit, network, windows
+  LampBoardTests/  12,266 lines · 67 files   871 cases, instantaneous
   LampBoardE2E/    3,417 lines · 13 files   116 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 790 lines. The limit the project sets itself is 800.
+No file exceeds 794 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -677,6 +677,13 @@ The digest leaves out the minutes, which change by themselves; a threshold cross
 shows up as a signal, and signals are in it. A failed round counts as a run, or a
 broken `claude` would be called every minute.
 
+### `LampMasterLine.swift`
+What LampMaster's line and cards say: never a blank line, the reason when there is
+nothing ("Today's tokens spent · signals only", "Last round failed: claude was not
+found"), the heading and glyph of each kind, and the button of each action. Asking
+and replying copy the text and open the session, and the button says so: the panel
+cannot write into a session until 0.6.
+
 ### `LampMasterLedger.swift`
 The records of `rounds.jsonl` and `suggestions.jsonl`, and what is read back from
 them: the last run, today's tokens, the open suggestions, what the next frame is
@@ -1042,7 +1049,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 342
+### `main.swift` · `AppDelegate.swift` · 349
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1118,7 +1125,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
-| `LampMasterService.swift` | 302 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time. Also `LampMasterRunner`, which finds `claude` — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; and `RunningProcess`, the pid of the round's `claude` held only while it runs, so quitting mid-round stops it instead of leaving it spending the allowance |
+| `LampMasterService.swift` | 310 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time. Also `LampMasterRunner`, which finds `claude` — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; and `RunningProcess`, the pid of the round's `claude` held only while it runs, so quitting mid-round stops it instead of leaving it spending the allowance |
 | `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
 | `LampMasterFiles.swift` | 127 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames. The folder is `0700` because the frames quote conversations |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
@@ -1252,7 +1259,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 789 | holds everything together; row and panel actions |
+| `PanelController.swift` | 794 | holds everything together; row and panel actions |
 | `PanelActivation.swift` | 149 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -1262,7 +1269,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 447 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 464 | the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1272,7 +1279,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
-| `StatusPalette.swift` | 364 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
+| `StatusPalette.swift` | 389 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 348 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
 | `MenuBarLamp.swift` | 229 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all |
@@ -1284,8 +1291,12 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 164 | the Settings form: remote machines, their state, the buttons; the "Show terminal sessions" switch |
-| `SettingsWindowController.swift` | 57 | owns the Settings window; activates the app so it comes up in front |
+| `SettingsView.swift` | 166 | the Settings form: LampMaster first, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
+| `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
+| `LampMasterSettings.swift` | 66 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); how often, which model, the kinds switched off |
+| `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
+| `LampMasterWindow.swift` | 180 | the cards, in a window of their own (D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the action, *Ignore*, *Wrong*, *Don't suggest this kind*. Opening it asks for a round if the last is older than fifteen minutes |
+| `PanelLampMaster.swift` | 101 | what a card does to the panel, by reusing what a row does: the same raise, the same confirmation before ending a process, the same dismissal. A card can never do something a row could not |
 | `Alerts.swift` | | dialogs |
 
 > **`StatusPalette.timeColor`** is `Color.primary.opacity(0.62)` and not
@@ -1297,7 +1308,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 868 cases
+## `LampBoardTests/` — 871 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

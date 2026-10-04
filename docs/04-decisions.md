@@ -2546,3 +2546,21 @@ asked for a signature check before handing it the frame; it is not done, because
 the installation through npm is a script with no signature to check, and because
 a process able to plant a file there runs as the user and can read every
 transcript directly — the frame would tell it nothing it could not read.
+
+## D61 · LampMaster's cards open in a window, and act only as a row would
+
+**Decided.** The panel gets one line for LampMaster while it is switched on; the
+cards open in a window of their own. A card's action is carried out by what the
+rows already do — raise a session, end its process after the same confirmation,
+take its row off — and asking or replying copies the text and opens the session
+rather than writing into it.
+
+**Why.** The panel's height is a formula over things of known size; a card holds a
+sentence of any length, and text the formula has not measured takes its room from
+the last rows (the allowance strip did exactly that when it first shipped). One
+line of the issue strip's height is counted, measured on the test Mac: 65 points
+with LampMaster off, 82 with it on. Reusing the rows' actions means a card can
+never do what a click on a row could not, and the confirmation before ending a
+process is written once. Writing into a session from the panel is the "hands" of
+0.6; until then a copied sentence one paste away is honest about what the panel
+can do.

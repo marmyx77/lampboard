@@ -83,9 +83,12 @@ public enum PanelMetrics {
     ///   panel taller — it takes the room from the rows, and the projects at the
     ///   bottom of the column simply go off the end. Reported in exactly those
     ///   terms the first time the strip shipped.
+    /// - Parameter showsLampMaster: LampMaster's line, drawn while it is
+    ///   switched on. One line the height of the issue strip, counted for the
+    ///   same reason as the allowance: uncounted, it takes the last row's room.
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
-        allowanceLines: Int = 0, sizes: Sizes
+        allowanceLines: Int = 0, showsLampMaster: Bool = false, sizes: Sizes
     ) -> CGFloat {
         let all = blocks + Array(repeating: sizes.row, count: extras)
         let content = all.reduce(0, +) + CGFloat(max(all.count - 1, 0)) * sizes.spacing
@@ -96,5 +99,6 @@ public enum PanelMetrics {
             : 0
         return max(content, sizes.row)
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
+            + (showsLampMaster ? sizes.issueStrip : 0)
     }
 }

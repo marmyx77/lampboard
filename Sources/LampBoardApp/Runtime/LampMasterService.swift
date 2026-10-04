@@ -78,6 +78,14 @@ final class LampMasterService: ObservableObject {
         return true
     }
 
+    /// The switch, from Settings. Published at once: the panel's line comes and
+    /// goes with it. The first round follows within a tick, since none has run.
+    func setEnabled(_ enabled: Bool) {
+        preferences.lampMasterEnabled = enabled
+        if !enabled { LampMasterRunner.running.stop() }
+        publish(running: enabled && snapshot.running)
+    }
+
     /// The user's reaction to a suggestion on screen.
     func react(to id: String, with outcome: LampMasterShown.Outcome) {
         let shown = files.suggestions()

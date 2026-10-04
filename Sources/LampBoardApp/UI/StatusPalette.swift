@@ -133,6 +133,9 @@ enum StatusPalette {
     /// needs you". As a fill it says the row *is* that; as a ring it says the row
     /// *also* is that, without taking the colour that carries the news.
     static let listeningTint = Color(red: 0.42, green: 0.66, blue: 0.98)
+    /// LampMaster's sea green: none of the six states uses it, so its line can
+    /// never be read as a session's colour.
+    static let lampMasterTint = Color(red: 0.25, green: 0.78, blue: 0.72)
 
     /// Text of the badge carrying the session or subagent count.
     static let badgeForeground = Color.primary.opacity(0.80)
@@ -374,11 +377,12 @@ enum Layout {
     }
 
     static func height(
-        ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0
+        ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
+        showsLampMaster: Bool = false
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
-            allowanceLines: allowanceLines, sizes: sizes
+            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, sizes: sizes
         )
     }
 

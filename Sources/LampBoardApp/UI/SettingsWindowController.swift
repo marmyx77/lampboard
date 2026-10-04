@@ -13,9 +13,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private var window: NSWindow?
     private let fleet: RemoteFleet
+    private let lampMaster: LampMasterService
 
-    init(fleet: RemoteFleet) {
+    init(fleet: RemoteFleet, lampMaster: LampMasterService) {
         self.fleet = fleet
+        self.lampMaster = lampMaster
     }
 
     func show() {
@@ -25,14 +27,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 380),
+            contentRect: NSRect(x: 0, y: 0, width: 620, height: 560),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "lampboard Settings"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView(fleet: fleet))
+        window.contentView = NSHostingView(rootView: SettingsView(fleet: fleet, lampMaster: lampMaster))
         window.delegate = self
         window.center()
 

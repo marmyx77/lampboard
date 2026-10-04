@@ -80,6 +80,15 @@ enum PanelMetricsSuite {
             )
         },
 
+        TestCase("LampMaster's line is counted while it is switched on") { t in
+            let blocks = [block()]
+            t.expectEqual(
+                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, showsLampMaster: true, sizes: sizes)
+                    - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes),
+                17, "one strip's height"
+            )
+        },
+
         TestCase("An empty column is still a panel") { t in
             // The chrome is 8 + 8 of padding and 25 of footer, and one row's worth
             // of room so the empty state has somewhere to be.

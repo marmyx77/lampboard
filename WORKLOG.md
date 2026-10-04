@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **868**, instantaneous |
+| Domain tests | **871**, instantaneous |
 | End-to-end tests | **116**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 790 lines, `StateStore.swift` (limit the project sets itself: 800) |
+| Longest file | 794 lines, `PanelController.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -2155,4 +2155,10 @@ down what it was given: the frame arrives on standard input and never as an
 argument, an invented quote is dropped, nothing new means no call. One of them
 caught two rounds in the same second tying on their stamp, and the older one
 winning; the ledger now goes by the order of the file.
+
+LampMaster then reached the panel: one line under the column while it is on, its
+cards in a window of their own, and a section in Settings with the sentence that
+says what it sends and spends (D61). Its actions are the rows' own. Measured on the
+test Mac against invented sessions: the round showed both suggestions of a fake
+`claude`, and the panel grew by exactly the line, from 65 to 82 points.
 

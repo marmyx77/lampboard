@@ -81,7 +81,9 @@ struct PanelRootView: View {
     /// than a field on the store: it is the one figure here that belongs to the
     /// account instead of to a session, and it comes from a different place.
     @ObservedObject var allowance: AllowanceMonitor
-
+    /// LampMaster's line draws itself only while it is switched on.
+    let lampMaster: LampMasterService?
+    let openLampMaster: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -96,6 +98,9 @@ struct PanelRootView: View {
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain
             )
+            if let lampMaster {
+                LampMasterStrip(service: lampMaster, compact: flags.compact, open: openLampMaster)
+            }
             AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
             issueStrip
             footer

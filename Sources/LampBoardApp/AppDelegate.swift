@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
-    private lazy var settingsWindow = SettingsWindowController(fleet: fleet)
+    private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster)
     /// Built with the panel, because it counts what the panel is showing.
     private var legendWindow: LegendWindowController?
     private var notifier: SessionNotifier?
@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// LampMaster's round. Started in every mode: the end-to-end suite drives
     /// it headless, and its timer does nothing while it is switched off.
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
+    private var lampMasterWindow: LampMasterWindowController?
 
     init(port: UInt16, skipSetupPrompt: Bool = false, headless: Bool = false) {
         self.port = port
@@ -80,6 +81,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startInterface() {
         let controller = PanelController(store: store, installer: installer)
         controller.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        controller.lampMaster = lampMaster
+        let lampMasterWindow = LampMasterWindowController(
+            service: lampMaster, actions: controller.lampMasterActions(for: lampMaster)
+        )
+        self.lampMasterWindow = lampMasterWindow
+        controller.onOpenLampMaster = { lampMasterWindow.show() }
         let legend = LegendWindowController(
             store: store,
             rendering: { [weak controller] in controller?.currentRendering ?? .empty }

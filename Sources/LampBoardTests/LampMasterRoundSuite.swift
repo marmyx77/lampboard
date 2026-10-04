@@ -186,6 +186,33 @@ enum LampMasterRoundSuite {
             t.expectEqual(LampMasterLedger.records(shownLine, as: LampMasterShown.self), [shown])
         },
 
+        TestCase("The panel's line says why there is nothing, never a blank") { t in
+            let time: (Date) -> String = { _ in "14:00" }
+            let ran = LampMasterRound(at: F.at(0), trigger: .timer, outcome: .ran)
+            t.expectEqual(LampMasterLine.text(open: 2, last: ran, running: false, time: time), "2 suggestions · round at 14:00")
+            t.expectEqual(LampMasterLine.text(open: 1, last: ran, running: false, time: time), "1 suggestion · round at 14:00")
+            t.expectEqual(LampMasterLine.text(open: 0, last: ran, running: false, time: time), "Nothing to report · round at 14:00")
+            t.expectEqual(LampMasterLine.text(open: 3, last: ran, running: true, time: time), "LampMaster is looking…")
+            t.expectEqual(LampMasterLine.text(open: 0, last: nil, running: false, time: time), "LampMaster · no round yet")
+            let capped = LampMasterRound(at: F.at(0), trigger: .timer, outcome: .skipped, skip: .dailyCap)
+            t.expectEqual(LampMasterLine.text(open: 0, last: capped, running: false, time: time), "Today's tokens spent · signals only")
+            let failed = LampMasterRound(at: F.at(0), trigger: .timer, outcome: .failed, failure: .notLaunched)
+            t.expectEqual(LampMasterLine.text(open: 0, last: failed, running: false, time: time),
+                          "Last round failed: claude was not found")
+        },
+
+        TestCase("A card's button says what the click does; nothing to do, no button") { t in
+            typealias A = S.Action
+            t.expectEqual(LampMasterLine.button(A(kind: .ask, target: "bbbbbbbb", question: "Which port?")), "Copy question and open")
+            t.expectEqual(LampMasterLine.button(A(kind: .ask, target: "bbbbbbbb")), "Open", "no question to copy")
+            t.expectEqual(LampMasterLine.button(A(kind: .close)), "End session…")
+            t.expectNil(LampMasterLine.button(A(kind: .none)))
+            let aimed = S(kind: .cross, sessions: ["aaaaaaaa"], text: "t", evidence: "e",
+                          action: A(kind: .ask, target: "bbbbbbbb"), confidence: 0.8, key: "k")
+            t.expectEqual(LampMasterLine.subject(of: aimed), "bbbbbbbb", "the target before the first session")
+            t.expectEqual(LampMasterLine.subject(of: suggestion("k")), "aaaaaaaa")
+        },
+
         TestCase("Rejections are counted by reason") { t in
             let verdict = LampMasterValidator.Verdict(
                 shown: [], rejected: [(suggestion("a"), .noEvidence), (suggestion("b"), .noEvidence), (suggestion("c"), .muted)])

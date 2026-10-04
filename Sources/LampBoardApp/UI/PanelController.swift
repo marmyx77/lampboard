@@ -42,6 +42,9 @@ final class PanelController {
     /// Opens the Settings window; set by whoever owns it.
     var onOpenSettings: (() -> Void)?
     var onOpenLegend: (() -> Void)?
+    /// LampMaster's round and the opening of its window, set by whoever owns them.
+    var lampMaster: LampMasterService?
+    var onOpenLampMaster: (() -> Void)?
 
     var onNotificationToggle: ((Bool) -> Void)?
 
@@ -83,6 +86,7 @@ final class PanelController {
         logPanelState()
         observeStore()
         observeAllowance()
+        observeLampMaster()
         observePanelMoves()
     }
 
@@ -254,7 +258,8 @@ final class PanelController {
             expandedRows: preferences.expandedRows,
             actions: makeActions(),
             rowActions: makeRowActions(),
-            allowance: allowance
+            allowance: allowance,
+            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
@@ -310,7 +315,7 @@ final class PanelController {
             width: Layout.width(compact: compact),
             height: Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
-                allowanceLines: allowance.reports.count
+                allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster
             )
         )
 
