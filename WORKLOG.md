@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **957**, instantaneous |
+| Domain tests | **959**, instantaneous |
 | End-to-end tests | **133**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2344,3 +2344,11 @@ no window to raise. Photographed on the test Mac with three commands; the first
 capture was an empty panel, because the sweep that forgets terminal sessions while
 they are switched off took the watched commands with them, and a dashed ring said
 "nothing read yet" about something that will never have a reading.
+
+`/lampmaster <question>` now works inside any session with the mod, 1.3.0 (D71): the
+question goes to the route the MCP tool uses, under the same limits, and the answer
+is printed for the person, never left in the model's context. Tried on the test Mac
+with a throwaway session: the invented session that renamed an endpoint, named with
+its source, in 6 seconds; off, empty and with the panel closed, one line saying why.
+`claude plugin validate` lists a hook with its matcher (`command.run{command=…}`),
+which the contract check now reads as the hook's name.

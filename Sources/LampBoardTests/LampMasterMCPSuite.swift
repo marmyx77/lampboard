@@ -143,6 +143,22 @@ enum LampMasterMCPSuite {
             t.expect(text.contains("Sources:\n- session aaaaaaaa:"), text)
         },
 
+        TestCase("No field of an answer reaches a terminal with a control character, and the referral is short and quoted") { t in
+            // From 1.3.0 of the mod the answer is printed in a person's terminal
+            // (D71), where an escape sequence could retitle it, link or copy.
+            let esc = "\u{1B}]52;c;cm0gLXJm\u{07}"
+            let answer = LampMasterAnswer(
+                answer: "Renamed\(esc) it.",
+                sources: [.init(session: "aaaaaaaa-1", quote: "Renamed /api/v2/slots\(esc)\nthere")],
+                askSession: .init(id: "aaaaaaaa-1", question: "Paste this\(esc)\n" + String(repeating: "x", count: 400)),
+                confidence: 0.8)
+            let text = LampMasterAsk.render(answer)
+            t.expect(!text.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) && $0 != "\n" }, text.debugDescription)
+            let referral = text.components(separatedBy: "can send: ").last ?? ""
+            t.expect(referral.hasPrefix("\u{201C}") && referral.hasSuffix("\u{201D}"), "quoted: \(referral)")
+            t.expect(referral.count <= LampMasterAsk.referralLength + 3, "short: \(referral.count)")
+        },
+
         TestCase("The question is fenced and the asker named; the schema parses") { t in
             let message = LampMasterAsk.message(question: "who renamed slots?", asker: "bbbbbbbb-2", frame: "{}")
             t.expect(message.contains("asking session is bbbbbbbb.") && message.contains("<question>\nwho renamed slots?\n</question>"), message)

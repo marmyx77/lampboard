@@ -82,7 +82,8 @@ extension LampMasterService {
         defer { questionsRunning -= 1 }
 
         // No notebook: it is the one text a past round wrote unchecked, and this
-        // answer goes to a session's model rather than past a person's eyes.
+        // answer may go to a session's model rather than past a person's eyes
+        // (from the MCP tool; from `/lampmaster` it is printed for the person).
         let frame = LampMasterFrameBuilder.build(sessions: sessions, now: now)
         let text = frame.json()
         let ids = Set(frame.sessions.map(\.id))

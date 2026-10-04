@@ -941,8 +941,9 @@ notes = [n for c in reading.get("contents", []) for n in c.get("notes", [])]
 def listed(label):
     for note in notes:
         if note.split(": ", 1)[0].endswith(label):
-            # The "(via a, b)" first: it can hold commas of its own.
-            bare = re.sub(r"\s*\(via [^)]*\)", "", note.split(": ", 1)[1])
+            # The "(via a, b)" first: it can hold commas of its own. The matcher
+            # of a hook ("command.run{command=lampmaster}") is not part of its name.
+            bare = re.sub(r"\s*\(via [^)]*\)|\{[^}]*\}", "", note.split(": ", 1)[1])
             return {x.strip() for x in bare.split(",")}
     return set()
 problems = []

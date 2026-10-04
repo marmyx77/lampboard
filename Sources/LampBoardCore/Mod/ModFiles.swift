@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.2.0"
+    public static let version = "1.3.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,8 +44,8 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.2.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits. Talks only to 127.0.0.1.",
+  "version": "1.3.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, and asks LampMaster with /lampmaster. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"
@@ -69,6 +69,10 @@ public enum ModFiles {
 // the panel wrote, both under ~/.lampboard (or $LAMPBOARD_HOME/.lampboard).
 // When the panel is not there it does nothing, silently: a session must never
 // wait on, or hear about, a dashboard.
+//
+// One exception, asked for by the person: `/lampmaster <question>` sends the
+// question they typed, and the session's folder, to the same address, and
+// prints LampMaster's answer (D71).
 //
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
@@ -96,7 +100,7 @@ async function panel($) {
       if (!health.ok || health.text.trim() !== 'lampboard') return null
       confirmed = base
     }
-    return { url: `${base}/mod`, token }
+    return { base, url: `${base}/mod`, token }
   } catch (_) {
     return null
   }
@@ -138,9 +142,53 @@ async function model($) {
   try { return await $.session.model() } catch (_) { return undefined }
 }
 
+// `/lampmaster <question>` (D71): the person's question to LampMaster, through
+// the route the `lampmaster` MCP server uses, so the limits, the daily ceiling
+// and the off switch are the same ones. The answer is shown to the person and
+// is not handed to the model: it summarises other sessions' work, and what of
+// it this session should act on is the person's call. The model has the MCP
+// tools for its own questions.
+const USAGE = 'Ask LampMaster what your other sessions know: /lampmaster <question>'
+// Claude Code empties a box above 10,000 characters; LampBoard's answers stay
+// near 2,000.
+const MAX_ANSWER = 4000
+
+async function ask($, question) {
+  const target = await panel($)
+  if (!target) return 'LampBoard is not running on this Mac, so LampMaster cannot answer.'
+  try {
+    const reply = await $.http.fetch(`${target.base}/lampmaster/tool`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-LampBoard-Token': target.token },
+      body: JSON.stringify({
+        tool: 'ask_lampmaster',
+        arguments: { question },
+        session: await $.session.id(),
+        cwd: await $.session.cwd(),
+      }),
+    })
+    if (!reply.ok) return `LampBoard did not take the question (HTTP ${reply.status}).`
+    const answer = JSON.parse(reply.text)
+    if (typeof answer.text !== 'string' || !answer.text.trim()) return 'LampMaster gave no answer.'
+    // LampBoard sends it clean already; the mod does not take a terminal's
+    // safety on trust from whatever answered on that port. Line breaks stay.
+    return Array.from(answer.text.trim().replace(/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/g, ''))
+      .slice(0, MAX_ANSWER).join('')
+  } catch (_) {
+    return 'LampMaster could not be reached.'
+  }
+}
+
 export function register(on) {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    try {
+      // Immediate: a question about the other sessions does not depend on this
+      // one's turn, and is most useful while that turn is still running.
+      await $.command.register({ name: 'lampmaster', description: 'Ask LampMaster what your other sessions know', argumentHint: '<question>', immediate: true })
+    } catch (_) {
+      // An older Claude Code without commands: the MCP tools still answer.
+    }
     await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($) })
     return result
   })
@@ -168,6 +216,14 @@ export function register(on) {
     } finally {
       if (id) void post($, 'tool', { id, tool: e.tool, phase: 'end' })
     }
+  })
+
+  on('command.run', { command: 'lampmaster' }, async ($, e) => {
+    // LampBoard cuts the question to its own limit; this only trims it.
+    const question = (e.args || '').trim()
+    if (!question) return { text: USAGE }
+    // Claude Code prints the plugin's name before the text: no label of our own.
+    return { text: await ask($, question) }
   })
 
   // `session.end` has 1.5 s in all: one short post, and no model lookup.

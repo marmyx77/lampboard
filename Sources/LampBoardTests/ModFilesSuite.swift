@@ -39,6 +39,17 @@ enum ModFilesSuite {
             t.expect(!code.contains("https://"), "no address beyond this Mac")
         },
 
+        TestCase("/lampmaster asks through the MCP tool's route and name, and hands the model nothing") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("name: 'lampmaster'"), "registers /lampmaster")
+            t.expect(code.contains("{ command: 'lampmaster' }"), "answers its own command only")
+            t.expect(code.contains("${target.base}\(AppConfig.lampMasterToolPath)"), "the route the server serves")
+            t.expect(code.contains("tool: '\(LampMasterMCP.Tool.askLampMaster.rawValue)'"), "the tool the server knows")
+            // An answer is the person's to read (D71): a `context` entry would be
+            // a hidden message to the model, made of other sessions' work.
+            t.expect(!code.contains("context: ["), "no note left for the model")
+        },
+
         TestCase("Installed through Claude Code's own commands, and taken out with its marketplace") { t in
             t.expectEqual(ModRegistration.installSteps(folder: "/x/mod-marketplace"), [
                 ["plugin", "marketplace", "add", "/x/mod-marketplace"],

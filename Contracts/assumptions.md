@@ -892,8 +892,11 @@ whose title carries the session name, which zellij writes there.
 with `kind` (`five_hour`, `seven_day`), `percentUsed` and `resetsAt`, and `cost.usd`;
 that `session.start` carries `surface` and `isInteractive`, `session.end` carries
 `sessionId` and `reason`, `tool.call` carries `tool`, `tool_use_id` and the tool's
-own arguments beside them (`command`, `file_path`, `path`) and wraps the run; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
-`$.session.id` and `$.session.model` exist.
+own arguments beside them (`command`, `file_path`, `path`) and wraps the run;
+that a command registered with `$.command.register` in `session.start` runs as
+`/lampmaster` through `command.run`, with what was typed after it in `args`, and
+prints the `text` its hook returns; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
+`$.session.id`, `$.session.model` and `$.session.cwd` exist.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·
 [ModReport.swift](../Sources/LampBoardCore/Mod/ModReport.swift) ·

@@ -413,14 +413,17 @@
       "session.start",
       "session.measure",
       "session.end",
-      "tool.call"
+      "tool.call",
+      "command.run"
     ],
     "calls": [
       "$.env.get",
       "$.fs.read",
       "$.http.fetch",
       "$.session.id",
-      "$.session.model"
+      "$.session.model",
+      "$.session.cwd",
+      "$.command.register"
     ],
     "binaryStrings": [
       "session.measure",

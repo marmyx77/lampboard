@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  16,033 lines · 126 files  pure logic, zero AppKit
-  LampBoardApp/    19,821 lines · 109 files   shell: AppKit, network, windows
-  LampBoardTests/  13,332 lines · 77 files   957 cases, instantaneous
+  LampBoardCore/  16,099 lines · 126 files  pure logic, zero AppKit
+  LampBoardApp/    19,822 lines · 109 files   shell: AppKit, network, windows
+  LampBoardTests/  13,359 lines · 77 files   959 cases, instantaneous
   LampBoardE2E/    3,897 lines · 17 files   133 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1522,7 +1522,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 957 cases
+## `LampBoardTests/` — 959 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1563,7 +1563,7 @@ script, before it was split. The most important ones:
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
-| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
 | `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
 | `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |
@@ -1622,8 +1622,10 @@ in this repository because the repository is its marketplace
 `lampboard@lampboard`).
 
 ### `mod/hooks/register.js`
-Three hooks, `session.start`, `session.measure` and `session.end`, each passing the
-event on first and then posting to `/mod` on `127.0.0.1` with the token. It reads
+Four hooks, `session.start`, `session.measure`, `tool.call` and `session.end`, each
+passing the event on first and then posting to `/mod` on `127.0.0.1` with the token;
+and `/lampmaster <question>`, registered at the start, which posts the typed
+question to `/lampmaster/tool` and prints the answer to the person only (D71). It reads
 the home (`LAMPBOARD_HOME`, else `HOME`, absolute only), the token and the port, and
 nothing else; it sends nothing until that port answers `/health` as LampBoard, since
 a project's settings can set environment variables for its sessions and a cloned

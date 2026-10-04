@@ -63,6 +63,8 @@ public enum LampMasterAsk {
 
     /// A quote longer than this is cut: a source is a pointer, not a transcript.
     public static let quoteLength = 160
+    /// The question LampMaster suggests sending to another session, at most.
+    public static let referralLength = 200
 
     public static func system(language: String) -> String {
         """
@@ -130,16 +132,24 @@ public enum LampMasterAsk {
         var text = String(answer.answer.unicodeScalars.filter {
             !CharacterSet.controlCharacters.contains($0) || $0 == "\n"
         }.map(Character.init).prefix(1_200))
+        // Every field flat and free of control characters: since the mod's
+        // `/lampmaster` (D71) this text is printed in a person's terminal, and
+        // the quotes and the referral are words another session's transcript
+        // could have put there — an escape sequence would retitle, link or copy.
         if !answer.sources.isEmpty {
             text += "\n\nSources:"
             for source in answer.sources {
-                let quote = source.quote.count > quoteLength ? String(source.quote.prefix(quoteLength)) + "…" : source.quote
-                text += "\n- session \(source.session.prefix(8)): \u{201C}\(quote)\u{201D}"
+                let quote = LampMasterLookup.clean(source.quote, to: quoteLength + 1)
+                let shown = quote.count > quoteLength ? String(quote.prefix(quoteLength)) + "…" : quote
+                text += "\n- session \(LampMasterLookup.clean(String(source.session.prefix(8)), to: 8)): \u{201C}\(shown)\u{201D}"
             }
         }
         if let referral = answer.askSession {
-            text += "\n\nSession \(referral.id.prefix(8)) would know better. A question for it, which only the user "
-                + "can send: \(referral.question)"
+            // Short and in quotes: a suggestion to forward, in LampMaster's
+            // voice, is the one place injected words would read as advice.
+            text += "\n\nSession \(LampMasterLookup.clean(String(referral.id.prefix(8)), to: 8)) would know better. "
+                + "A question for it, which only the user can send: "
+                + "\u{201C}\(LampMasterLookup.clean(referral.question, to: referralLength))\u{201D}"
         }
         return text
     }

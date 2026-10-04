@@ -2775,3 +2775,31 @@ the oldest finished one making room; a running command is never pruned; the defa
 name is the program's, never its arguments; SIGTERM and SIGHUP reach the command and
 its end is still reported; and a click on a project row whose most urgent member is
 a command goes to the project's first real session.
+
+## D71 · `/lampmaster` answers the person, not the model
+
+**Decided.** The companion mod, from 1.3.0, registers `/lampmaster <question>` in
+each session. The question goes to `POST /lampmaster/tool` as an `ask_lampmaster`
+call, with the session's id and folder, behind the token; LampBoard answers it with
+the same switch, limits, cache and daily ceiling as the MCP tool (D62). The answer
+is printed as the command's output and nothing is left in the model's context. The
+command is `immediate`: it runs while a turn is still going. With the panel closed
+or LampMaster switched off, it prints why, in one line.
+
+**Why.** The MCP server already lets a session's model ask; the command is for the
+person, who often wants to know what another session did without spending a turn of
+this one on it. One route for both, so a question counts against the same limits
+whichever door it came through. Not in the model's context, because the answer is
+made of other sessions' work: whether this session should act on it is the person's
+call, and a hidden note would carry one session's words into another's prompt. On
+the test Mac a throwaway session asked who renamed an endpoint and got the invented
+session that did it, with its source, in 6 seconds and 1,911 tokens of LampMaster's
+run; the same command with LampMaster off, with no question and with the panel
+closed printed the reason, and the session spent no turn on any of them.
+
+A security review asked for the terminal: every field of an answer, the sources'
+quotes and the suggested question included, now reaches it flat and without control
+characters, since another session's transcript could have put an escape sequence
+there; the question to forward is cut to 200 characters and quoted; and the mod
+strips control characters again and cuts the answer to 4,000 characters, trusting
+nothing that answered on the port.
