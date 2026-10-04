@@ -240,8 +240,9 @@ The panel draws its own tooltips, because AppKit's only appear in a window that
 is key and this one never is. Resting on a row opens a card: the name, the state,
 the machine and the folder underneath a name you chose, the exact figure with the
 tokens behind it, the model with its version, what the row is waiting on, its
-slot and the command that opens it, and — on a group — what each session in it is
-doing.
+slot and the command that opens it, what the conversation has cost when the
+companion mod is installed (summed over a project's conversations, at list price),
+and — on a group — what each session in it is doing.
 
 While the pointer is on a row, a folder glyph appears between the timestamp and
 the drag handle: it opens a Finder window inside that project. ⇧+click does the
@@ -1380,7 +1381,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 931 domain tests, instantaneous
+swift run LampBoardTests              # 933 domain tests, instantaneous
 swift run LampBoardE2E                # 127 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

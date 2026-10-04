@@ -60,6 +60,9 @@ public enum ReducerAction: Sendable, Equatable {
     /// for one poll would blank the ring on a session that was still working.
     /// A read that fails is not an observation, so it cannot be spelled here.
     case observed(sessionId: String, context: ContextReading)
+    /// What the session has cost so far, as it counted it and the companion mod
+    /// passed it on (D65: a figure, never a colour).
+    case costed(sessionId: String, usd: Double)
     /// Moves a row to the folder it turns out to belong to, colour and history
     /// untouched. Used when a node's probe answers after the row already exists:
     /// the first hooks named a `cwd` nobody could resolve, and now the window
@@ -116,6 +119,7 @@ extension ReducerAction {
         case .reconcile(let alive, let harness, _):
             return "reconcile \(harness.rawValue) keeping \(alive.count)"
         case .observed: return "observed"
+        case .costed: return "costed"
         case .rehome: return "rehome"
         case .adopt: return "adopt"
         case .dismiss: return "dismiss"
@@ -184,6 +188,10 @@ public enum StateReducer {
             // figure (a floor, or one resting on our window table) is older news.
             if session.context?.confidence == .reported, context.confidence != .reported { return state }
             return state.upserting(session.with(context: context))
+
+        case .costed(let sessionId, let usd):
+            guard let session = state.sessions[sessionId] else { return state }
+            return state.upserting(session.with(costUSD: usd))
 
         case .rehome(let sessionId, let workspace):
             guard let session = state.sessions[sessionId], session.workspace != workspace else { return state }

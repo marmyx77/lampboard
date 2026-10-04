@@ -118,6 +118,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// rather than as an empty space.
     public let context: ContextReading?
 
+    /// What the session has cost so far, in dollars at list price, as Claude
+    /// Code counts it. Only the companion mod knows it; `nil` without it.
+    public let costUSD: Double?
+
     /// When this session first appeared to the panel.
     ///
     /// The one moment about a session that never moves: `updatedAt` follows every
@@ -147,8 +151,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         origin: SessionOrigin = .editor,
         title: String? = nil,
         context: ContextReading? = nil,
+        costUSD: Double? = nil,
         firstSeenAt: Date? = nil
     ) {
+        self.costUSD = costUSD
         self.firstSeenAt = firstSeenAt ?? updatedAt
         self.context = context
         self.waitingOn = waitingOn
@@ -279,6 +285,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     public func with(context reading: ContextReading) -> SessionState {
         guard reading != context else { return self }
         return replacing(context: .some(reading))
+    }
+
+    /// Copy carrying the session's cost; the same value is the same session.
+    public func with(costUSD usd: Double) -> SessionState {
+        guard usd != costUSD else { return self }
+        return replacing(costUSD: .some(usd))
     }
 
     /// Copy belonging to the harness the hook says it does.
@@ -447,7 +459,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         entrypoint: String?? = nil,
         origin: SessionOrigin? = nil,
         title: String?? = nil,
-        context: ContextReading?? = nil
+        context: ContextReading?? = nil,
+        costUSD: Double?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -467,6 +480,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             origin: origin ?? self.origin,
             title: title ?? self.title,
             context: context ?? self.context,
+            costUSD: costUSD ?? self.costUSD,
             firstSeenAt: firstSeenAt
         )
     }

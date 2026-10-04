@@ -930,7 +930,7 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **931**, instantaneous |
+| Domain tests | **933**, instantaneous |
 | End-to-end tests | **127**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
@@ -2290,3 +2290,9 @@ needs no request and no switch; the request, when on, stays the reserve and the 
 source of a model's own weekly cap. On the test Mac a throwaway session's measure
 carried two windows, and the panel, switch off and no row, grew from 65 to 86 points
 to draw the bar. An installed 1.0.0 is replaced at the next launch.
+
+And what a session has cost, which only the session knows: with the mod, the
+row's card says it, summed over the project's conversations, at list price — a
+line that is simply absent without the mod rather than a zero, and never `$0.00`
+for a session that has cost under a cent. It reaches the row the way the context
+does, as a figure the reducer adds and no colour.

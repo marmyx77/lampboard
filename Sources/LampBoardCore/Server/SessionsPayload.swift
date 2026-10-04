@@ -46,6 +46,10 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let contextModel: String?
     public let contextConfidence: String?
 
+    /// What the session has cost so far, in dollars at list price, as Claude
+    /// Code counts it; absent without the companion mod.
+    public let costUSD: Double?
+
     public let failureReason: String?
     public let lastMessage: String?
     public let muted: Bool
@@ -111,6 +115,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         contextWindow: Int? = nil,
         contextModel: String? = nil,
         contextConfidence: String? = nil,
+        costUSD: Double? = nil,
         failureReason: String? = nil,
         lastMessage: String? = nil,
         muted: Bool = false,
@@ -128,6 +133,7 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         self.contextWindow = contextWindow
         self.contextModel = contextModel
         self.contextConfidence = contextConfidence
+        self.costUSD = costUSD
         self.id = id
         self.status = status
         self.workspace = workspace
@@ -212,6 +218,7 @@ public enum SessionsCodec {
             contextWindow: session.context?.window,
             contextModel: session.context?.model,
             contextConfidence: session.context?.confidence.rawValue,
+            costUSD: session.costUSD,
             failureReason: session.failureReason?.rawValue,
             lastMessage: session.lastMessage,
             muted: muted,

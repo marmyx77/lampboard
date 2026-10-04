@@ -78,6 +78,16 @@ public struct RowSummary: Sendable, Equatable {
             fields.append(Field("context", "—", detail: "nothing read from this session yet"))
         }
 
+        // Only the companion mod knows it, so a row without it has no line here
+        // rather than a zero. Summed over the project's conversations: the row is
+        // the project.
+        let costs = row.members.compactMap(\.session.costUSD)
+        if !costs.isEmpty {
+            fields.append(Field("cost", spelled(dollars: costs.reduce(0, +)),
+                                detail: "counted by Claude Code at list price"
+                                    + (costs.count > 1 ? " · \(costs.count) conversations" : "")))
+        }
+
         // The question itself, right under the figure, because an amber row is the
         // only kind anybody is reading this card in a hurry to resolve.
         if let ask = row.primary.pendingAsk {
@@ -145,6 +155,13 @@ public struct RowSummary: Sendable, Equatable {
     }
 
     // MARK: - Pieces
+
+    /// `$0.10`, `$12.40`; under a cent is `<$0.01`, never `$0.00`, which would
+    /// read as free.
+    public static func spelled(dollars: Double) -> String {
+        guard dollars >= 0.01 else { return "<$0.01" }
+        return String(format: "$%.2f", dollars)
+    }
 
     /// What sits beside the figure, and what sits there instead of one.
     ///

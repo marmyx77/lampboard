@@ -150,6 +150,29 @@ enum ModReportSuite {
             t.expectEqual(after.sessions[id]?.context, transcript)
         },
 
+        TestCase("The cost lands on the row, and the card sums the project's conversations") { t in
+            let other = "6a1d3b8f-2c4e-4d9a-8b7f-3e5c9d2a1b80"
+            var state = TrafficLightState(sessions: [id: session(context: nil)])
+            state = StateReducer.reduce(state, action: .costed(sessionId: id, usd: 0.0968), now: at)
+            t.expectEqual(state.sessions[id]?.costUSD, 0.0968)
+            t.expectEqual(StateReducer.reduce(state, action: .costed(sessionId: other, usd: 1), now: at).sessions.count, 1,
+                          "a cost never makes a row")
+            var second = session(context: nil)
+            second = SessionState(id: other, status: .idle, workspace: second.workspace, updatedAt: at, statusSince: at, costUSD: 1.5)
+            state = state.upserting(second)
+            let row = ColumnRow(id: "r", workspace: second.workspace, sessions: [state.sessions[id]!, second])
+            let cost = RowSummary.of(row, now: at).fields.first { $0.label == "cost" }
+            t.expectEqual(cost?.value, "$1.60")
+            t.expect(cost?.detail?.contains("2 conversations") == true, "detail: \(cost?.detail ?? "")")
+        },
+
+        TestCase("A row without the mod has no cost line, and a cent is never a zero") { t in
+            let row = ColumnRow(id: "r", workspace: session(context: nil).workspace, sessions: [session(context: nil)])
+            t.expect(!RowSummary.of(row, now: at).fields.contains { $0.label == "cost" }, "no line")
+            t.expectEqual(RowSummary.spelled(dollars: 0.002), "<$0.01")
+            t.expectEqual(RowSummary.spelled(dollars: 12.4), "$12.40")
+        },
+
         TestCase("The row says the figure was counted by the session") { t in
             let reported = ContextReading(tokens: 47_162, model: "claude-opus-5-5", window: 200_000, confidence: .reported, at: at)
             t.expectEqual(reported.label, "24%", "never a floor sign")

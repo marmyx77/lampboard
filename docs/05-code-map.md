@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,486 lines · 123 files  pure logic, zero AppKit
-  LampBoardApp/    19,547 lines · 106 files   shell: AppKit, network, windows
-  LampBoardTests/  13,004 lines · 73 files   931 cases, instantaneous
-  LampBoardE2E/    3,747 lines · 15 files   127 cases, the real binary
+  LampBoardCore/  15,532 lines · 123 files  pure logic, zero AppKit
+  LampBoardApp/    19,550 lines · 106 files   shell: AppKit, network, windows
+  LampBoardTests/  13,027 lines · 73 files   933 cases, instantaneous
+  LampBoardE2E/    3,748 lines · 15 files   127 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -66,7 +66,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 444
+### `SessionState.swift` · 487
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -537,7 +537,7 @@ included, which Foundation deliberately leaves alone.
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
 
-### `RowSummary.swift` · 227
+### `RowSummary.swift` · 244
 Everything a row can say about itself, as **fields** rather than as a paragraph:
 title, state, subtitle, an ordered grid of label/value/detail, the per-session
 list of a group, the last message, the help line. It used to be a `private var`
@@ -1002,7 +1002,7 @@ filter lives here.
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 651
+### `StateReducer.swift` · 673
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1022,7 +1022,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 206
+### `SessionsPayload.swift` · 235
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -1259,7 +1259,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `ModReceiver.swift` | 81 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
+| `ModReceiver.swift` | 84 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `LampMasterService.swift` | 237 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1477,7 +1477,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 931 cases
+## `LampBoardTests/` — 933 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

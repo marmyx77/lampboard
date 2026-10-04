@@ -58,6 +58,7 @@ enum ModE2ESuite {
                 a.expectEqual(row?.contextTokens, 47_162)
                 a.expectEqual(row?.contextPercent, 24)
                 a.expectEqual(row?.status, "working", "the mod adds a figure, never a colour")
+                a.expectEqual(row?.costUSD, 0.0968, "and the cost")
                 app.sendHook(HookPayloads.sessionEnd(sessionId: sessionId, cwd: LifecycleSuite.workspace))
             },
 

@@ -34,6 +34,9 @@ final class ModReceiver {
         if case .measure(_, let measure) = report, measure.defaultAccount, !measure.rateLimits.isEmpty {
             onWindows(ledger.latestRateLimits)
         }
+        if case .measure(let id, let measure) = report, let usd = measure.costUSD {
+            store.apply(.costed(sessionId: id, usd: usd), now: now)
+        }
         guard case .measure(let id, let measure) = report,
               let reading = measure.reading(previous: store.state.sessions[id]?.context, at: now)
         else { return }
