@@ -91,6 +91,7 @@ public enum Command {
     ///     must not be an argument: arguments are readable by any process on the
     ///     Mac with `ps`, standard input is not.
     ///   - directory: the tool's working directory.
+    ///   - environment: variables set over the inherited ones; `nil` takes one away.
     ///   - launched: told the process id once the tool is running, so a caller
     ///     that is itself shutting down can stop it instead of leaving it behind.
     public static func run(
@@ -100,12 +101,18 @@ public enum Command {
         capturingStandardError: Bool = true,
         input: Data? = nil,
         directory: URL? = nil,
+        environment: [String: String?] = [:],
         launched: ((pid_t) -> Void)? = nil
     ) throws -> Result {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
         if let directory { process.currentDirectoryURL = directory }
+        if !environment.isEmpty {
+            var merged = ProcessInfo.processInfo.environment
+            environment.forEach { merged[$0.key] = $0.value }
+            process.environment = merged
+        }
         let inputPipe = input.map { _ in Pipe() }
         if let inputPipe { process.standardInput = inputPipe }
 

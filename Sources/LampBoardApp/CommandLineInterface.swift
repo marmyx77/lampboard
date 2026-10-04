@@ -19,6 +19,8 @@ enum CommandLineInterface {
         /// `mcp install`, `mcp uninstall`, `mcp status`: the server's entry in
         /// Claude Code's user settings.
         case mcpSetup(verb: String, port: UInt16)
+        /// `mod install`, `mod uninstall`, `mod status`: the companion mod (D66).
+        case modSetup(verb: String)
         /// The tutorial's trial panel on invented sessions, or with `--json` the
         /// script it plays (D64).
         case tour(json: Bool)
@@ -63,6 +65,8 @@ enum CommandLineInterface {
                 return .mcpSetup(verb: verb, port: port)
             }
             return .mcp(port: port)
+        case "mod":
+            return .modSetup(verb: args.dropFirst().first ?? "status")
         case "selftest", "doctor":
             return .selfTest(port: port)
         case "focus":
@@ -145,6 +149,9 @@ enum CommandLineInterface {
 
         case .mcpSetup(let verb, let port):
             return LampMasterBridge.setup(verb, port: port)
+
+        case .modSetup(let verb):
+            return ModSetup.command(verb)
 
         case .tour(let json):
             return TrialLauncher.run(json: json)
@@ -534,6 +541,8 @@ enum CommandLineInterface {
                                             the lampmaster MCP server: with no verb, the server
                                               itself, as Claude Code starts it; install registers
                                               it for every session, uninstall removes it
+          lampboard mod [install|uninstall|status]
+                                            the companion mod, in every Claude Code session
           lampboard tour [--json]           a trial panel on invented sessions, beside yours;
                                               --json prints the script it plays
           lampboard help                    show this text
@@ -545,7 +554,7 @@ enum CommandLineInterface {
                                 single tool call.
           --skip-setup-prompt   don't offer to install the hooks at startup.
                                 Useful when launching the app automatically at login.
-          --getting-started     open the Getting started window at launch.
+          --getting-started, --settings   open that window at launch.
           --headless            start without the panel: server and realignment only.
                                 Used by the end-to-end tests.
 

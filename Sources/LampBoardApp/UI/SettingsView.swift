@@ -1,8 +1,8 @@
 import LampBoardCore
 import SwiftUI
 
-/// The Settings window's content: LampMaster, then the remote machines, as
-/// one form.
+/// The Settings window's content: LampMaster, the companion mod, then the
+/// remote machines, as one form.
 struct SettingsView: View {
     @ObservedObject var fleet: RemoteFleet
     let lampMaster: LampMasterService
@@ -18,6 +18,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             LampMasterSettings(service: lampMaster)
+            ModSettings()
             Section {
                 Text("""
                 Sessions running on another machine reach the panel through an ssh \

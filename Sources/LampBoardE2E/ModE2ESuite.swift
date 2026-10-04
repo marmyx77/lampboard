@@ -66,6 +66,82 @@ enum ModE2ESuite {
                 Thread.sleep(forTimeInterval: 0.3)
                 a.expectEqual(app.status(of: stranger), "absent")
             },
+
+            // A fake `claude` that writes down what it was asked, and with which
+            // home, and writes what the real one wrote when measured on the test
+            // Mac: `enabledPlugins` in the settings, the version in its records.
+            TestCase("mod install goes through claude in the fake home, uninstall-hooks takes it out") { a in
+                let bench = AppUnderTest(binaryURL: binaryURL, port: port &+ 1)
+                let home = bench.home
+                defer { try? FileManager.default.removeItem(at: home) }
+                let bin = home.appendingPathComponent(".local/bin")
+                try? FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+                let script = """
+                    #!/bin/sh
+                    [ "$1" = "--version" ] && { echo "2.1.289 (Claude Code)"; exit 0; }
+                    echo "$HOME | $*" >> "$HOME/claude-calls.txt"
+                    mkdir -p "$HOME/.claude/plugins"
+                    case "$1 $2" in
+                      "plugin install") [ -f "$HOME/fail-install" ] && { echo "install refused"; exit 1; }
+                         echo '{"enabledPlugins":{"lampboard@lampboard":true}}' > "$HOME/.claude/settings.json"
+                        echo '{"version":2,"plugins":{"lampboard@lampboard":[{"version":"\(ModFiles.version)"}]}}' \
+                          > "$HOME/.claude/plugins/installed_plugins.json" ;;
+                      "plugin uninstall") echo '{"enabledPlugins":{}}' > "$HOME/.claude/settings.json"
+                        rm -f "$HOME/.claude/plugins/installed_plugins.json" ;;
+                    esac
+                    exit 0
+                    """
+                let fake = bin.appendingPathComponent("claude")
+                try? script.write(to: fake, atomically: true, encoding: .utf8)
+                try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fake.path)
+                let calls = { (try? String(contentsOf: home.appendingPathComponent("claude-calls.txt"), encoding: .utf8)) ?? "" }
+
+                let install = bench.runCommand(["mod", "install"])
+                a.expectEqual(install.status, 0, "installed: \(install.output)")
+                let folder = home.appendingPathComponent(".lampboard/mod-marketplace")
+                a.expectEqual(calls().split(separator: "\n").map(String.init), [
+                    "\(home.path) | plugin marketplace add \(folder.path)",
+                    "\(home.path) | plugin install lampboard@lampboard --scope user",
+                ], "claude's own commands, with the fake home as HOME")
+                for file in ModFiles.all {
+                    let written = try? String(contentsOf: folder.appendingPathComponent(file.path), encoding: .utf8)
+                    a.expectEqual(written, file.content, file.path)
+                }
+                a.expect(bench.runCommand(["mod", "status"]).output.contains("is installed (\(ModFiles.version))"), "status")
+
+                // Again over an installed one, as the launch refresh does: out
+                // first, then the files, then in.
+                try? FileManager.default.removeItem(at: home.appendingPathComponent("claude-calls.txt"))
+                a.expectEqual(bench.runCommand(["mod", "install"]).status, 0, "reinstalled")
+                a.expectEqual(calls().split(separator: "\n").map { String($0.split(separator: " ")[3]) },
+                              ["uninstall", "marketplace", "marketplace", "install"], "out, then in")
+                a.expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("mod/hooks/register.js").path),
+                         "the files are there after a reinstall")
+
+                // A refused install leaves nothing half in: the next try starts
+                // clean instead of tripping on a declared marketplace.
+                let refusal = home.appendingPathComponent("fail-install")
+                FileManager.default.createFile(atPath: refusal.path, contents: Data())
+                try? FileManager.default.removeItem(at: home.appendingPathComponent("claude-calls.txt"))
+                let refused = bench.runCommand(["mod", "install"])
+                a.expectEqual(refused.status, 1, "refused: \(refused.output)")
+                a.expect(refused.output.contains("install refused"), "says why: \(refused.output)")
+                a.expectEqual(calls().split(separator: "\n").map { String($0.split(separator: " ")[3]) },
+                              ["uninstall", "marketplace", "marketplace", "install", "uninstall", "marketplace"],
+                              "out, in, refused, out again")
+                a.expect(!FileManager.default.fileExists(atPath: folder.path), "no folder left behind")
+                try? FileManager.default.removeItem(at: refusal)
+                a.expectEqual(bench.runCommand(["mod", "install"]).status, 0, "and the next try works")
+
+                try? FileManager.default.removeItem(at: home.appendingPathComponent("claude-calls.txt"))
+                let uninstall = bench.runCommand(["uninstall-hooks"])
+                a.expect(uninstall.output.contains("LampBoard mod removed"), "uninstall-hooks: \(uninstall.output)")
+                a.expectEqual(calls().split(separator: "\n").map(String.init), [
+                    "\(home.path) | plugin uninstall lampboard@lampboard --scope user",
+                    "\(home.path) | plugin marketplace remove lampboard",
+                ])
+                a.expect(!FileManager.default.fileExists(atPath: folder.path), "the carried copy is gone too")
+            },
         ])
     }
 }

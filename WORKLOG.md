@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **915**, instantaneous |
-| End-to-end tests | **126**, about a minute |
+| Domain tests | **926**, instantaneous |
+| End-to-end tests | **127**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2255,3 +2255,28 @@ below 1024, and sends nothing until the port answers `/health` as LampBoard:
 tried against an impostor on the test Mac, which saw three health checks and no
 token. A model name is held to an allowlist, and the port file is written under
 a fresh name opened exclusively.
+
+And the way in. The app carries the mod's files and installs them from a folder of
+its own, `~/.lampboard/mod-marketplace`, through Claude Code's `claude plugin`
+commands (D66): `lampboard mod install`, `uninstall`, `status`, and
+`uninstall-hooks` takes it out with the rest. Tried with the real `claude` on the
+test Mac, in a fake home: installed, a throwaway session reported 20,844 tokens of
+context through it, uninstalled clean, and the account's real
+`~/.claude/settings.json` hashed the same before and after. That last check found
+something worth fixing: under `LAMPBOARD_HOME` the app's `claude` inherited the real
+`HOME`, and `claude` writes its settings from `HOME`; it is now handed the fake one,
+for the MCP server's registration too.
+
+The mod has its place in Settings: a switch, what the mod does said before it is
+pressed, and a button that asks Claude Code what it reads in the version this app
+carries — `claude plugin validate`, put into four sentences, an unknown call shown
+as Claude Code spelled it so that a changed mod looks changed. Getting started
+lists it among the optional items. A code review of the installer found what two
+entry points at once would do — the launch refresh re-enabling a mod somebody had
+just switched off — and what a refused step left behind: a declared marketplace
+that made every later attempt fail. Installs now take turns under a lock the
+command line shares, always start from a clean slate, and take out again whatever
+a refused step left half in; an end-to-end case refuses one on purpose and checks
+the next try works. Tried again with the real `claude` on the test Mac: installed,
+20,844 tokens reported from a throwaway session, uninstalled, the folder gone, the
+account's real settings unchanged.

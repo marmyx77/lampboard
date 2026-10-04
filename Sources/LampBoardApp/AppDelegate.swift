@@ -70,6 +70,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         startServer(token: token)
 
+        // An installed mod of another version than the one carried here is
+        // replaced, off the main thread: it runs `claude` up to four times.
+        if trial == nil {
+            DispatchQueue.global(qos: .utility).async { ModSetup.refreshIfStale() }
+        }
+
         if !headless {
             startInterface()
         }
@@ -119,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Opens the window at launch: for the screenshots, and for a check on a
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
+        if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
         panelController = controller
 
         startNotifier(for: controller)

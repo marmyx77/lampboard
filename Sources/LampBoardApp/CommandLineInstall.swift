@@ -120,6 +120,17 @@ extension CommandLineInterface {
             }
         }
 
+        // The mod too, for the same reason: a plugin left enabled posts into
+        // every session to a panel that is gone.
+        if ModSetup.isPresent {
+            switch ModSetup.uninstall() {
+            case .done: print("The LampBoard mod removed from Claude Code.")
+            case .failed(let reason):
+                FileHandle.standardError.write(Data("The LampBoard mod: NOT removed: \(reason)\n".utf8))
+                failed = true
+            }
+        }
+
         return failed ? 1 : 0
     }
 

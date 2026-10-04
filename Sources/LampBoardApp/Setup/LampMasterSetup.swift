@@ -42,7 +42,7 @@ enum LampMasterSetup {
         do {
             // An empty, closed standard input: otherwise the child inherits ours,
             // and a `claude` that reads it would wait on a terminal nobody types in.
-            let result = try Command.run(tool, arguments, deadline: 30, input: Data())
+            let result = try Command.run(tool, arguments, deadline: 30, input: Data(), environment: ModSetup.claudeEnvironment)
             return result.succeeded ? .done : .failed(result.output.trimmingCharacters(in: .whitespacesAndNewlines))
         } catch let failure as Command.Failure {
             return .failed(failure.explanation)

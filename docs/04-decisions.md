@@ -2663,3 +2663,23 @@ would have to be proved again against duplicates. Kept apart, a row reads the sa
 whether its session has the mod or not, and the mod adds only what nobody else
 could: the session's own count, against which the transcript's sum is a floor or a
 guess at the window.
+
+## D66 · The app carries the mod and installs it from a folder of its own
+
+**Decided.** The companion mod's files are compiled into the app (`ModFiles`),
+and `lampboard mod install` writes them to `~/.lampboard/mod-marketplace` and hands
+that folder to Claude Code's own `claude plugin marketplace add` and `claude plugin
+install --scope user`. `uninstall` and `uninstall-hooks` take out the plugin and
+the marketplace both. At launch an installed mod of another version than the one
+carried is replaced. The same files sit in the repository, which is therefore a
+marketplace as well, and a test holds the two copies to the same bytes.
+
+**Why.** Pointing Claude Code at the repository on GitHub would install whatever
+`main` holds that day, not what this panel reads: the two ends of one wire format
+would drift apart with every release. A folder written by the app needs no
+network, survives the app being moved (Claude Code remembers the path), and is
+what a node will be sent over ssh. Claude Code's own commands, because they write
+`~/.claude/settings.json` and records of their own, and a second writer of those is
+the race D63 refused. Under `LAMPBOARD_HOME`, `claude` is run with that home as its
+`HOME`: measured on the test Mac, `claude plugin` honours `HOME`, and a child
+inheriting the real one would install into the real Claude Code from a test.

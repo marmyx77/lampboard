@@ -1,0 +1,78 @@
+import LampBoardCore
+import Foundation
+import TestKit
+
+/// The mod the app installs, and the mod the repository publishes.
+///
+/// The only domain suite that reads a file: the repository's own copy of the
+/// mod, found from this source file's path. Two copies of one program drift the
+/// first time somebody edits one of them, and this is where that is caught.
+enum ModFilesSuite {
+
+    private static let root = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    private static let records = Data(#"""
+        {"version":2,"plugins":{"lampboard@lampboard":[{"scope":"user","version":"1.0.0",
+        "installedAt":"2026-10-04T17:22:02.311Z"}]}}
+        """#.utf8)
+
+    static let suite = TestSuite("The companion mod's files and installation", [
+
+        TestCase("The files the app writes are the repository's, byte for byte") { t in
+            for file in ModFiles.all {
+                let onDisk = try? String(contentsOf: root.appendingPathComponent(file.path), encoding: .utf8)
+                t.expectEqual(onDisk, file.content, file.path)
+            }
+        },
+
+        TestCase("The version in the plugin's manifest is the one the panel compares") { t in
+            t.expect(ModFiles.plugin.contains("\"version\": \"\(ModFiles.version)\""), "plugin.json says \(ModFiles.version)")
+        },
+
+        TestCase("The mod talks to loopback only, and writes and runs nothing") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("http://127.0.0.1:"), "posts to loopback")
+            for call in ["$.fs.write", "$.process", "$.prompt", "$.tool", "$.model", "$.session.messages"] {
+                t.expect(!code.contains(call), "the mod must not use \(call)")
+            }
+            t.expect(!code.contains("https://"), "no address beyond this Mac")
+        },
+
+        TestCase("Installed through Claude Code's own commands, and taken out with its marketplace") { t in
+            t.expectEqual(ModRegistration.installSteps(folder: "/x/mod-marketplace"), [
+                ["plugin", "marketplace", "add", "/x/mod-marketplace"],
+                ["plugin", "install", "lampboard@lampboard", "--scope", "user"],
+            ])
+            t.expectEqual(ModRegistration.uninstallSteps.last, ["plugin", "marketplace", "remove", "lampboard"])
+        },
+
+        TestCase("Enabled is read from the settings Claude Code wrote") { t in
+            let on = Data(#"{"enabledPlugins":{"lampboard@lampboard":true}}"#.utf8)
+            let off = Data(#"{"enabledPlugins":{"lampboard@lampboard":false}}"#.utf8)
+            t.expect(ModRegistration.isEnabled(settings: on), "on")
+            t.expect(!ModRegistration.isEnabled(settings: off), "off")
+            t.expect(!ModRegistration.isEnabled(settings: nil), "no file")
+            t.expect(!ModRegistration.isEnabled(settings: Data("{".utf8)), "unreadable")
+        },
+
+        TestCase("A marketplace still declared is seen in either of Claude Code's files") { t in
+            let settings = Data(#"{"extraKnownMarketplaces":{"lampboard":{"source":{"source":"directory","path":"/x"}}}}"#.utf8)
+            let known = Data(#"{"lampboard":{"installLocation":"/x"}}"#.utf8)
+            t.expect(ModRegistration.isMarketplaceDeclared(settings: settings, known: nil), "settings")
+            t.expect(ModRegistration.isMarketplaceDeclared(settings: nil, known: known), "list")
+            t.expect(!ModRegistration.isMarketplaceDeclared(settings: Data("{}".utf8), known: Data(#"{"other":{}}"#.utf8)), "neither")
+        },
+
+        TestCase("The installed version is found in Claude Code's records") { t in
+            t.expectEqual(ModRegistration.installedVersion(records: records), "1.0.0")
+            t.expectNil(ModRegistration.installedVersion(records: Data(#"{"version":2,"plugins":{}}"#.utf8)))
+        },
+
+        TestCase("Mods from 2.1.287; an unreadable version is given the benefit") { t in
+            t.expect(!ModRegistration.isSupported(by: ReleaseVersion("2.1.286")), "2.1.286")
+            t.expect(ModRegistration.isSupported(by: ReleaseVersion("2.1.287")), "2.1.287")
+            t.expect(ModRegistration.isSupported(by: nil), "unknown")
+        },
+    ])
+}

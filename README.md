@@ -84,6 +84,10 @@ Codex writes `model_context_window` into the same record as the token count, so 
 Codex percentage rests on nothing of ours — no table, no calibration, nothing a
 vendor can invalidate without telling anybody. The card says so.
 
+With the companion mod installed (below), a Claude Code session counts its own
+context and the mod passes the figure on: **`reported`**, the number Claude Code's
+status line shows. Nothing read from the transcript afterwards replaces it.
+
 ## Two harnesses, one row
 
 LampBoard watches **Claude Code** and **Codex**. Both get the same row: the same
@@ -701,6 +705,22 @@ Rows can be **renamed** (right-click → Rename…, or `lampboard rename <folder
 the window is still found by its title, `/sessions` still says the folder. Leave
 the name empty to go back to the original.
 
+## The companion mod
+
+Claude Code 2.1.287 and later run plugins of function hooks inside each session,
+and LampBoard carries one: `lampboard mod install` puts it into every Claude Code on
+this Mac, through Claude Code's own `claude plugin` commands. From then on each
+session tells the panel its context as Claude Code counts it, what it has cost, the
+account's rate-limit windows, and why it ended.
+
+It reads the home, LampBoard's token and port, and nothing else — no conversation,
+no file of your projects — writes nothing, runs nothing, and talks only to
+`127.0.0.1`, and only once that port answers as LampBoard. `claude plugin validate
+--strict ~/.lampboard/mod-marketplace/mod` lists exactly that. The colours of the
+rows still come from the hooks, with or without the mod
+([D65](docs/04-decisions.md)). `lampboard mod uninstall` takes it out, and
+`uninstall-hooks` takes it out with the hooks.
+
 ## Installation
 
 ```bash
@@ -1006,7 +1026,8 @@ tccutil reset AppleEvents com.lampboard.app
 Then drag the app to the Trash. `uninstall-hooks` reaches both configurations —
 `~/.claude/settings.json` and `~/.codex/hooks.json` — and removes only the
 registrations it added, leaving the rest of each file alone; the `tccutil` lines
-take the authorizations back, which the Trash does not do on its own, and a
+take the authorizations back, which the Trash does not do on its own, and the
+companion mod and the `lampmaster` MCP server go with the hooks, and a
 record left behind is what makes a later reinstall behave strangely.
 
 ## How it works
@@ -1240,6 +1261,7 @@ lampboard new <n>                  open a new conversation in slot n's project
 lampboard chat <n>                 open the extended view on slot n
 lampboard focus <workspace>        reproduce the click and explain what happens
 lampboard focus <workspace> --dry-run    diagnose without activating anything
+lampboard mod install|uninstall|status   the companion mod in every Claude Code session
 lampboard help
 ```
 
@@ -1347,8 +1369,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 915 domain tests, instantaneous
-swift run LampBoardE2E                # 126 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 926 domain tests, instantaneous
+swift run LampBoardE2E                # 127 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

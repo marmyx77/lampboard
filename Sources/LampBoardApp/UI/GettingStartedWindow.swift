@@ -61,6 +61,7 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
         facts.notifications = preferences.notificationsEnabled
         facts.lampMaster = preferences.lampMasterEnabled
         facts.lampMasterCallable = LampMasterSetup.isRegistered
+        facts.mod = ModSetup.isInstalled
         facts.tourFinished = (UserDefaults(suiteName: TourController.domain)?.data(forKey: "progress"))
             .flatMap { try? JSONDecoder().decode(TourProgress.self, from: $0) }?.status == .finished
         facts.renamed = !preferences.rowNames.isEmpty
@@ -86,6 +87,10 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
         case "callable":
             let port = port
             if case .failed(let reason) = await Task.detached(operation: { LampMasterSetup.register(port: port) }).value {
+                return reason
+            }
+        case "mod":
+            if case .failed(let reason) = await Task.detached(operation: { ModSetup.install() }).value {
                 return reason
             }
         case "tour":
@@ -129,7 +134,7 @@ struct GettingStartedView: View {
         .onReceive(refresh) { _ in facts = controller.facts() }
     }
 
-    private static let verb = ["hooks": "Install", "accessibility": "Grant…", "tour": "Start"]
+    private static let verb = ["hooks": "Install", "accessibility": "Grant…", "mod": "Install", "tour": "Start"]
 
     private func section(_ title: String, _ items: [GettingStarted.Item], actions: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {

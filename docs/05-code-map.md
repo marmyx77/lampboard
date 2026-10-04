@@ -1,14 +1,14 @@
 # Code map
 
-~51,000 lines of Swift across five targets. For each file: what it contains, why
+~52,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,071 lines · 119 files  pure logic, zero AppKit
-  LampBoardApp/    19,146 lines · 104 files   shell: AppKit, network, windows
-  LampBoardTests/  12,797 lines · 70 files   915 cases, instantaneous
-  LampBoardE2E/    3,671 lines · 15 files   126 cases, the real binary
+  LampBoardCore/  15,415 lines · 122 files  pure logic, zero AppKit
+  LampBoardApp/    19,515 lines · 106 files   shell: AppKit, network, windows
+  LampBoardTests/  12,934 lines · 72 files   926 cases, instantaneous
+  LampBoardE2E/    3,747 lines · 15 files   127 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -745,6 +745,29 @@ replace it.
 > one side only is a figure that silently stops arriving. A new version number is
 > refused by an older panel, on purpose.
 
+### `ModFiles.swift`
+The mod's four files, compiled in (D66): the app installs what it reads, word for
+word, with no network. `ModFilesSuite` holds them to the bytes of `mod/` and
+`.claude-plugin/` in the repository, the one domain suite that reads a file.
+
+> **Touching here** without bumping `version` leaves installed copies as they were:
+> the launch refresh compares versions, not contents.
+
+### `ModRegistration.swift`
+The `claude plugin` steps that install and remove the mod, the marketplace with it;
+whether `settings.json` has it enabled; the version in Claude Code's records, which
+are searched rather than walked because their shape is unannounced; 2.1.287 as the
+first release with mods.
+
+### `ModTrust.swift`
+What the mod does in sentences, built from `claude plugin validate --strict --json`:
+Claude Code's own static reading of the module, not a description of ours (5.10).
+The phrases say the capability and no more — which files, which address, is the
+claim the text beside the switch makes, not dressed up as Claude Code's. A hook or
+call the table has no words for is shown as Claude Code spelled it, and a valid
+reading that lists nothing is unreadable rather than reassuring: a changed mod
+must look changed.
+
 ### `ModLedger.swift`
 Per session: surface, interactive, model, cost, the last rate-limit windows and
 when they were read, why it ended. An empty list of windows keeps the last figures
@@ -1051,7 +1074,7 @@ The Python that runs on another machine to inspect it, write the hook script and
 
 ## `System/`
 
-### `Command.swift` · 179
+### `Command.swift` · 186
 Running an outside tool without being taken hostage by it. The obvious three
 lines have two failure modes and both are silence: `waitUntilExit` waits
 forever, so a hung `spctl` took the updater with it and nothing was ever going
@@ -1208,7 +1231,7 @@ same start serves the menus' *Take the tour…* and the offer made right after t
 hooks are installed; neither appears inside a trial, where a tour would stack
 panels.
 
-### `CommandLineInterface.swift` · 786
+### `CommandLineInterface.swift` · 795
 Thirteen commands: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
@@ -1363,6 +1386,17 @@ they had. The first version reinstalled at its own port with fresh defaults, and
 test instance on another port turned the whole shared installation towards a
 process that then exited.
 
+### `ModSetup.swift`
+Writes the carried mod into `~/.lampboard/mod-marketplace` (owner-only) and runs
+the `claude plugin` steps, one change at a time under an `flock` that the command
+line shares, always from a clean slate and taking out again whatever a refused
+step left half in; uninstalling is judged by what Claude Code still lists, and the
+folder goes only once no marketplace points at it; `lampboard mod install|uninstall|status`; the launch
+refresh of a mod of another version; removal by `uninstall-hooks`. Under
+`LAMPBOARD_HOME` it gives `claude` that home as `HOME`, as `LampMasterSetup` now
+does too: `claude` writes its settings from `HOME`, and a child inheriting the real
+one would install into the real Claude Code from inside a test.
+
 ### `LampMasterSetup.swift` · 53
 Puts the `lampmaster` MCP server into Claude Code with `claude mcp add --scope user`
 and takes it out with `remove` — Claude Code's own writer, never a second one on
@@ -1416,10 +1450,11 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `ChatView.swift` | 306 | bubbles, activity lines, the composer |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `SettingsView.swift` | 166 | the Settings form: LampMaster first, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
+| `SettingsView.swift` | 166 | the Settings form: LampMaster first, the companion mod, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
-| `GettingStartedWindow.swift` | 164 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
+| `ModSettings.swift` | 92 | the companion mod's switch, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
+| `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
 | `LampMasterWindow.swift` | 180 | the cards, in a window of their own (D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the action, *Ignore*, *Wrong*, *Don't suggest this kind*. Opening it asks for a round if the last is older than fifteen minutes |
@@ -1435,7 +1470,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 915 cases
+## `LampBoardTests/` — 926 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1476,6 +1511,8 @@ script, before it was split. The most important ones:
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
+| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |
 | `CommandSuite` | a tool that hangs is killed at the deadline; 200 KB of output does not deadlock; a refusal keeps its exit code and its reason |
 
@@ -1498,7 +1535,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 126 cases
+## `LampBoardE2E/` — 127 cases
 
 | Suite | Covers |
 |---|---|
@@ -1507,7 +1544,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
-| `ModE2ESuite` | the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
+| `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
 | `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
