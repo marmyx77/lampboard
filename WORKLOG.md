@@ -2220,3 +2220,8 @@ button — what the hooks write, what the Accessibility permission is for, what
 LampMaster sends and spends — and the first steps with one's own sessions, ticked
 from what the panel already knows. Photographed on the test Mac.
 
+The README's picture now comes from the same script: `make-screenshots.sh` starts
+the trial and photographs it, so demo data lives in one place. The script grew to six
+sessions, one per state, the last a Codex one; the blue row needed a shell left
+running, because the panel rightly does not count a monitor as work.
+

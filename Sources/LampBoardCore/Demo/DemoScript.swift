@@ -16,18 +16,27 @@ public struct DemoScript: Codable, Sendable, Equatable {
         public let folder: String
         public let title: String
         public let model: String
+        /// `claude` or `codex`: which agent's hooks and files the trial imitates.
+        public let agent: String
 
-        public init(id: String, folder: String, title: String, model: String) {
+        public init(id: String, folder: String, title: String, model: String, agent: String = "claude") {
             self.id = id
             self.folder = folder
             self.title = title
             self.model = model
+            self.agent = agent
         }
+
+        public var isCodex: Bool { agent == "codex" }
     }
 
     public struct Beat: Codable, Sendable, Equatable {
         public enum Kind: String, Codable, Sendable, Equatable {
             case start, prompt, answer, permission, failure
+            /// The turn ended with a shell still running: blue, not green. A
+            /// monitor would not do: it only listens, and the panel rightly does
+            /// not count it as work.
+            case background
         }
         /// Seconds from the start of the script.
         public let at: Double
@@ -67,8 +76,11 @@ public struct DemoScript: Codable, Sendable, Equatable {
 
     /// The hook payload a beat stands for, as the installed hook would post it.
     ///
-    /// - Parameter work: the trial home's `work/` folder.
-    public func payload(for beat: Beat, work: String) -> [String: Any] {
+    /// - Parameters:
+    ///   - work: the trial home's `work/` folder.
+    ///   - rollouts: where the trial keeps Codex's rollouts; a Codex session's
+    ///     start names its file, as Codex's own hook does.
+    public func payload(for beat: Beat, work: String, rollouts: String? = nil) -> [String: Any] {
         let session = sessions.first { $0.id == beat.session }
         var payload: [String: Any] = [
             "session_id": beat.session,
@@ -77,6 +89,9 @@ public struct DemoScript: Codable, Sendable, Equatable {
         switch beat.kind {
         case .start:
             payload["hook_event_name"] = "SessionStart"
+            if session?.isCodex == true, let rollouts {
+                payload["transcript_path"] = rollouts + "/rollout-" + beat.session + ".jsonl"
+            }
         case .prompt:
             payload["hook_event_name"] = "UserPromptSubmit"
         case .answer:
@@ -89,6 +104,9 @@ public struct DemoScript: Codable, Sendable, Equatable {
         case .failure:
             payload["hook_event_name"] = "StopFailure"
             payload["reason"] = beat.text ?? "unknown"
+        case .background:
+            payload["hook_event_name"] = "Stop"
+            payload["background_tasks"] = [["type": "shell", "status": "running"]]
         }
         return payload
     }
@@ -115,19 +133,27 @@ public struct DemoScript: Codable, Sendable, Equatable {
 
 extension DemoScript {
 
-    /// The tour's script: four invented projects, a minute of work.
+    /// The tour's script, and the README's picture: six invented projects, one
+    /// in each of the panel's six states, the last one a Codex session.
     public static let standard = DemoScript(
         sessions: [
             .init(id: "demo-docs-0001", folder: "docs-site", title: "Docs site build", model: "claude-sonnet-5-5"),
             .init(id: "demo-api-00002", folder: "api", title: "Retry policy", model: "claude-opus-5-5"),
             .init(id: "demo-events-03", folder: "events", title: "Event calendar", model: "claude-opus-5-5"),
             .init(id: "demo-mobile-04", folder: "mobile-client", title: "Booking screen", model: "claude-haiku-4-5"),
+            .init(id: "demo-search-05", folder: "search-index", title: "Reindex the catalogue", model: "claude-sonnet-5-5"),
+            .init(id: "demo-billing-6", folder: "billing-worker", title: "Invoice retries", model: "gpt-5.6-sol",
+                  agent: "codex"),
         ],
         beats: [
             .init(at: 0, session: "demo-docs-0001", kind: .start, text: nil),
             .init(at: 0, session: "demo-api-00002", kind: .start, text: nil),
             .init(at: 0, session: "demo-events-03", kind: .start, text: nil),
             .init(at: 0, session: "demo-mobile-04", kind: .start, text: nil),
+            .init(at: 0, session: "demo-search-05", kind: .start, text: nil),
+            .init(at: 0, session: "demo-billing-6", kind: .start, text: nil),
+            .init(at: 2, session: "demo-search-05", kind: .prompt, text: nil),
+            .init(at: 9, session: "demo-search-05", kind: .background, text: nil),
             .init(at: 1, session: "demo-docs-0001", kind: .prompt, text: nil),
             .init(at: 1, session: "demo-events-03", kind: .prompt, text: nil),
             .init(at: 6, session: "demo-docs-0001", kind: .answer, text: "The docs build is ready: 42 pages, no broken links."),

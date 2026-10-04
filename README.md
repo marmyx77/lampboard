@@ -18,11 +18,13 @@ while three background agents keep working for another forty minutes.
 states, and a ring on each row showing how full its context window is.">
 
 Six projects, six states, and a ring on every row. The letter in the ring is the
-model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT family on the Codex row at
-the bottom. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
-runs the real app against a temporary home full of invented projects and captures
-its window, so the image can never contain anybody's real work and never falls
-behind the panel it shows.
+model — `S`onnet, `O`pus, `H`aiku; the Codex row at the bottom draws its ring dashed
+until it has read a turn. Under the rows, LampMaster's line and the account's
+allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
+starts the tutorial's trial — the real app on a temporary home, playing a script of
+invented projects — and captures its window, so the image can never contain
+anybody's real work and never falls behind the panel it shows. The band at the top
+says so on the picture itself.
 
 > **Need to get your hands dirty?** The complete technical documentation lives in
 > **[docs/](docs/)**. If you only have time for one file, read

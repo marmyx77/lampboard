@@ -15,7 +15,8 @@ enum TrialE2ESuite {
                 defer { trial.stop() }
                 do { try trial.start() } catch { return t.fail("the trial did not start: \(error)") }
                 let expected = ["demo-docs-0001": "ready", "demo-api-00002": "awaiting",
-                                "demo-events-03": "working", "demo-mobile-04": "failed"]
+                                "demo-events-03": "working", "demo-mobile-04": "failed",
+                                "demo-search-05": "waiting", "demo-billing-6": "idle"]
                 let reached = trial.waitUntil(timeout: 15) {
                     expected.allSatisfy { trial.status(of: $0.key) == $0.value }
                 }
@@ -33,7 +34,7 @@ enum TrialE2ESuite {
                 let sessions = home.appendingPathComponent(".claude/sessions")
                 let holders = ((try? FileManager.default.contentsOfDirectory(atPath: sessions.path)) ?? [])
                     .compactMap { Int32($0.replacingOccurrences(of: ".json", with: "")) }
-                t.expectEqual(holders.count, 4, "one stand-in per session")
+                t.expectEqual(holders.count, 6, "one stand-in per session")
                 trial.stopKeepingHome()
                 let gone = trial.waitUntil(timeout: 5) { !FileManager.default.fileExists(atPath: home.path) }
                 t.expect(gone, "the trial's home is deleted")
@@ -46,7 +47,7 @@ enum TrialE2ESuite {
                 let printed = trial.runCommand(["tour", "--json"])
                 t.expectEqual(printed.status, 0)
                 let script = try? JSONDecoder().decode(DemoScript.self, from: Data(printed.output.utf8))
-                t.expectEqual(script?.sessions.count, 4, "the four invented sessions")
+                t.expectEqual(script?.sessions.count, 6, "the six invented sessions")
                 t.expectEqual(script.map(DemoScriptCheck.problems), [], "nothing real")
             },
         ])

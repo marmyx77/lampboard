@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  14,709 lines · 117 files  pure logic, zero AppKit
-  LampBoardApp/    19,010 lines · 103 files   shell: AppKit, network, windows
+  LampBoardCore/  14,735 lines · 117 files  pure logic, zero AppKit
+  LampBoardApp/    19,039 lines · 103 files   shell: AppKit, network, windows
   LampBoardTests/  12,573 lines · 69 files   898 cases, instantaneous
-  LampBoardE2E/    3,598 lines · 14 files   122 cases, the real binary
+  LampBoardE2E/    3,599 lines · 14 files   122 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -1209,7 +1209,7 @@ there, the hooks are registered — and it names the link that broke.
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 128 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws |
 | `LampMasterFiles.swift` | 159 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames, the last day's questions. The folder is `0700` because the frames quote conversations |
-| `TrialStage.swift` | 133 | the trial: an editor lock per invented project, a stand-in process per session, a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
+| `TrialStage.swift` | 156 | the trial: an editor lock per invented project, a stand-in process per session, a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1389,7 +1389,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
 | `GettingStartedWindow.swift` | 164 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
-| `TourBand.swift` | 107 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
+| `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
 | `LampMasterWindow.swift` | 180 | the cards, in a window of their own (D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the action, *Ignore*, *Wrong*, *Don't suggest this kind*. Opening it asks for a round if the last is older than fifteen minutes |
 | `PanelLampMaster.swift` | 101 | what a card does to the panel, by reusing what a row does: the same raise, the same confirmation before ending a process, the same dismissal. A card can never do something a row could not |
@@ -1492,7 +1492,7 @@ the realignment is asynchronous.
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
-| `Scripts/make-screenshots.sh` | the README's images, taken from the real app against a temporary home of invented projects, so they never carry anybody's real work and never fall behind the panel; `screencapture -l` reads the window's backing store, which works with the screen locked |
+| `Scripts/make-screenshots.sh` | the README's images, taken from the tutorial's trial: the real app on a temporary home playing `DemoScript`, the one place demo data lives (D64), with `--trial-fresh` so the band always shows step one and nobody's progress moves; `screencapture -l` reads the window's backing store, which works with the screen locked. `LAMPBOARD_BIN` points it at a build other than the bundle |
 | `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
 | `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |

@@ -94,8 +94,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             port: port, lampMaster: lampMaster,
             toggleNotifications: { [weak controller] in controller?.toggleNotifications() }
         )
-        if TrialStage.mode != nil {
-            let tour = TourController()
+        if let trial = TrialStage.mode {
+            let tour = TourController(fresh: trial.fresh)
             controller.tour = tour
             store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
             lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }

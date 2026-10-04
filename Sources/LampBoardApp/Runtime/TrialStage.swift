@@ -19,6 +19,10 @@ enum TrialStage {
         /// How much faster than written the script plays: 1 for a person,
         /// more for the end-to-end suite and the screenshots.
         let pace: Double
+        /// Start the tour from its first step and keep nothing: for the
+        /// screenshots, which must look the same whoever takes them, and must
+        /// not move anybody's own progress.
+        let fresh: Bool
     }
 
     static var mode: Mode? {
@@ -27,7 +31,7 @@ enum TrialStage {
         let pace = arguments.firstIndex(of: "--trial-pace").flatMap { index in
             index + 1 < arguments.count ? Double(arguments[index + 1]) : nil
         }
-        return Mode(pace: max(1, min(pace ?? 1, 100)))
+        return Mode(pace: max(1, min(pace ?? 1, 100)), fresh: arguments.contains("--trial-fresh"))
     }
 
     /// A process standing in for each session's `claude`: the sweep keeps only
@@ -52,7 +56,7 @@ enum TrialStage {
             guard let holder = hold() else { continue }
             write(["pid": Int(holder), "sessionId": session.id, "cwd": path, "entrypoint": "claude-vscode", "kind": "interactive"],
                   to: claude.appendingPathComponent("sessions/\(holder).json"))
-            writeTranscript(session, at: path, now: now)
+            if session.isCodex { writeRollout(session, now: now) } else { writeTranscript(session, at: path, now: now) }
         }
         seedLampMaster(script, preferences: preferences, files: files, now: now)
     }
@@ -83,6 +87,23 @@ enum TrialStage {
         try? text.write(to: folder.appendingPathComponent("\(session.id).jsonl"), atomically: true, encoding: .utf8)
     }
 
+    static var rollouts: URL { AppConfig.codexSessionsDirectory.appendingPathComponent("2026/01/01", isDirectory: true) }
+
+    /// Codex keeps its own shape: a turn context naming the model, and a token
+    /// count that carries the window, as `make-screenshots.sh` wrote it before.
+    private static func writeRollout(_ session: DemoScript.Session, now: Date) {
+        try? FileManager.default.createDirectory(at: rollouts, withIntermediateDirectories: true)
+        let stamp = ISO8601DateFormatter().string(from: now)
+        let records: [[String: Any]] = [
+            ["timestamp": stamp, "type": "turn_context", "payload": ["turn_id": "t1", "model": session.model]],
+            ["timestamp": stamp, "type": "event_msg", "payload": ["type": "token_count", "info": [
+                "last_token_usage": ["input_tokens": 17_002], "model_context_window": 258_400]]],
+        ]
+        let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+            .map { String(decoding: $0, as: UTF8.self) + "\n" }.joined()
+        try? text.write(to: rollouts.appendingPathComponent("rollout-\(session.id).jsonl"), atomically: true, encoding: .utf8)
+    }
+
     private static func hold() -> pid_t? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
@@ -101,18 +122,20 @@ enum TrialStage {
     /// Posts every beat to this app's own `/signal`, at its time.
     static func play(_ script: DemoScript, port: UInt16, pace: Double) {
         for beat in script.beats {
-            let payload = script.payload(for: beat, work: work.path)
+            let payload = script.payload(for: beat, work: work.path, rollouts: rollouts.path)
+            let codex = script.sessions.first { $0.id == beat.session }?.isCodex == true
             DispatchQueue.main.asyncAfter(deadline: .now() + beat.at / pace) {
-                post(payload, port: port)
+                post(payload, port: port, codex: codex)
             }
         }
     }
 
-    private static func post(_ payload: [String: Any], port: UInt16) {
+    private static func post(_ payload: [String: Any], port: UInt16, codex: Bool) {
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
         var request = URLRequest(url: URL(string: "http://\(AppConfig.listenHost):\(port)\(AppConfig.signalPath)")!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if codex { request.setValue("codex", forHTTPHeaderField: AppConfig.harnessHeader) }
         request.httpBody = body
         URLSession.shared.dataTask(with: request).resume()
     }

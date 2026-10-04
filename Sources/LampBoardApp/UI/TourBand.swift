@@ -17,8 +17,13 @@ final class TourController: ObservableObject {
     @Published private(set) var progress: TourProgress
     private let defaults = UserDefaults(suiteName: TourController.domain)
 
-    init() {
-        let stored = (defaults?.data(forKey: Self.key))
+    /// Kept nowhere when `fresh`: the screenshots start at step one and leave
+    /// the person's own progress where it was.
+    private let keeps: Bool
+
+    init(fresh: Bool = false) {
+        keeps = !fresh
+        let stored = fresh ? TourProgress() : (defaults?.data(forKey: Self.key))
             .flatMap { try? JSONDecoder().decode(TourProgress.self, from: $0) } ?? TourProgress()
         progress = stored.resumed(in: steps)
         save()
@@ -39,6 +44,7 @@ final class TourController: ObservableObject {
     func resume() { progress = progress.resumed(in: steps); save() }
 
     private func save() {
+        guard keeps else { return }
         defaults?.set(try? JSONEncoder().encode(progress), forKey: Self.key)
     }
 }
