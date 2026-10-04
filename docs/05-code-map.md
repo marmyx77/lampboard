@@ -1,14 +1,14 @@
 # Code map
 
-~50,800 lines of Swift across five targets. For each file: what it contains, why
+~51,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  15,049 lines · 119 files  pure logic, zero AppKit
-  LampBoardApp/    19,039 lines · 103 files   shell: AppKit, network, windows
-  LampBoardTests/  12,775 lines · 70 files   913 cases, instantaneous
-  LampBoardE2E/    3,599 lines · 14 files   122 cases, the real binary
+  LampBoardCore/  15,071 lines · 119 files  pure logic, zero AppKit
+  LampBoardApp/    19,146 lines · 104 files   shell: AppKit, network, windows
+  LampBoardTests/  12,797 lines · 70 files   915 cases, instantaneous
+  LampBoardE2E/    3,671 lines · 15 files   126 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 559
+### `AppConfig.swift` · 569
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -1229,6 +1229,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
+| `ModReceiver.swift` | 73 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported`. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 485 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `LampMasterService.swift` | 237 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 122 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
@@ -1277,8 +1278,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 442
-Nine routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 471
+Ten routes. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1292,6 +1293,10 @@ which quotes conversations, and `POST` asks for a round, which spends the user's
 allowance. The `POST` answers 202 at once and the round runs on its own; a
 connection held for the two minutes a round may take would be one more way to tie
 the server up.
+
+`/mod` takes what the companion mod reports (D65). Its token is required, unlike
+`/signal`'s: no copy of the mod predates it, so there is no installed base to keep
+working.
 
 `/lampmaster/tool` is a session's tool call, forwarded by `lampboard mcp`. Unlike a
 round, the caller waits for the answer, which is the tool's result; the wait is
@@ -1430,7 +1435,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 913 cases
+## `LampBoardTests/` — 915 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1493,7 +1498,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 122 cases
+## `LampBoardE2E/` — 126 cases
 
 | Suite | Covers |
 |---|---|
@@ -1502,6 +1507,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
+| `ModE2ESuite` | the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own |
 | `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments: the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token |
@@ -1509,6 +1515,30 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 `AppUnderTest` is the harness: it starts the binary against a fake home, knows
 how to run the commands and the hook script, and waits with `waitUntil` because
 the realignment is asynchronous.
+
+---
+
+# The companion mod
+
+Not Swift: a Claude Code plugin of function hooks (Claude Code 2.1.287 and later),
+in this repository because the repository is its marketplace
+(`.claude-plugin/marketplace.json`, plugin `lampboard`, installed as
+`lampboard@lampboard`).
+
+### `mod/hooks/register.js`
+Three hooks, `session.start`, `session.measure` and `session.end`, each passing the
+event on first and then posting to `/mod` on `127.0.0.1` with the token. It reads
+the home (`LAMPBOARD_HOME`, else `HOME`, absolute only), the token and the port, and
+nothing else; it sends nothing until that port answers `/health` as LampBoard, since
+a project's settings can set environment variables for its sessions and a cloned
+repository could point the mod at a port of its choosing:
+no conversation, no file of the project, no command. When the panel is not there,
+or answers anything, it does nothing and says nothing. `claude plugin validate
+--strict` lists exactly that, and is what the panel will show (5.10).
+
+> **Touching here** changes the wire format `ModReport.swift` reads: version 1 on
+> both sides, or the panel refuses it. Anything added to what the mod reads or
+> where it posts changes what people agreed to install.
 
 ---
 

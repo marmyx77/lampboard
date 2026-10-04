@@ -1,0 +1,14 @@
+{
+  "name": "lampboard",
+  "description": "LampBoard's own plugins, installed by the LampBoard app.",
+  "owner": {
+    "name": "LampBoard"
+  },
+  "plugins": [
+    {
+      "name": "lampboard",
+      "source": "./mod",
+      "description": "LampBoard's companion mod: context, cost and rate limits of each session, for the LampBoard panel."
+    }
+  ]
+}

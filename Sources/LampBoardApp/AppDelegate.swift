@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var presence: PresenceFile?
     /// LampMaster's round. Started in every mode: the end-to-end suite drives
     /// it headless, and its timer does nothing while it is switched off.
+    private lazy var mod = ModReceiver(store: store)
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
     private var lampMasterWindow: LampMasterWindowController?
 
@@ -248,12 +249,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onLampMasterRound: { [weak self] in
                 Self.onMain(timeout: 2) { self?.lampMaster.request(.asked) } ?? false
             },
-            onLampMasterTool: { [lampMaster] body in lampMaster.answer(body) }
+            onLampMasterTool: { [lampMaster] body in lampMaster.answer(body) },
+            onMod: { [mod] report in
+                Task { @MainActor in mod.receive(report) }
+            }
         )
 
         do {
             try server.start()
             self.server = server
+            ModReceiver.publishPort(port)
         } catch {
             let message = (error as? LocalizedError)?.errorDescription
                 ?? error.localizedDescription

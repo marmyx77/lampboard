@@ -123,12 +123,14 @@ public enum ModReport: Equatable, Sendable {
             let limits = (wire.rateLimits ?? []).prefix(maxRateLimits).compactMap { limit -> RateLimit? in
                 guard let kind = limit.kind.flatMap(word), let percent = limit.percentUsed,
                       percent.isFinite else { return nil }
-                return RateLimit(kind: kind, percent: Int(percent.rounded()),
+                // Clamped as a Double first: `Int(1e300)` is not a large number,
+                // it is a crash of the whole panel.
+                return RateLimit(kind: kind, percent: Int(min(max(percent, 0), 100).rounded()),
                                  resetsAt: limit.resetsAt.flatMap(Self.date))
             }
             return .measure(session: session, measure: Measure(
-                tokens: wire.context?.tokens.flatMap { (0...maxTokens).contains($0) ? $0 : nil },
-                window: wire.context?.window.flatMap { (1...maxTokens).contains($0) ? $0 : nil },
+                tokens: wire.context?.tokens.flatMap { count($0, from: 0) },
+                window: wire.context?.window.flatMap { count($0, from: 1) },
                 model: wire.model.flatMap(model),
                 rateLimits: Array(limits),
                 costUSD: wire.cost?.usd.flatMap { $0.isFinite && (0...maxCostUSD).contains($0) ? $0 : nil }
@@ -154,11 +156,21 @@ public enum ModReport: Equatable, Sendable {
     }
 
     /// A model id (`claude-opus-5-5`, `claude-sonnet-5-5[1m]`), or nothing.
+    /// An allowlist, not a blocklist: an escape or a control character in a
+    /// model name would reach the row, the tooltips and LampMaster's frame.
     static func model(_ raw: String) -> String? {
         guard (1...maxModelLength).contains(raw.count),
-              raw.allSatisfy({ $0.isASCII && !$0.isWhitespace && !$0.isNewline && $0 != "\"" })
+              raw.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "._:-[]/".contains($0)) })
         else { return nil }
         return raw
+    }
+
+    /// A token count: read as a number of any spelling (`47162`, `4.7162e4`),
+    /// kept only when it is a whole count in range. Decoding it as `Int` would
+    /// have lost the whole report to a float.
+    static func count(_ raw: Double, from lower: Int) -> Int? {
+        guard raw.isFinite, raw >= Double(lower), raw <= Double(maxTokens) else { return nil }
+        return Int(raw.rounded())
     }
 
     static func date(_ raw: String) -> Date? {
@@ -179,7 +191,7 @@ public enum ModReport: Equatable, Sendable {
         let cost: Cost?
         let reason: String?
 
-        struct Context: Decodable { let tokens: Int?; let window: Int? }
+        struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }
         struct Cost: Decodable { let usd: Double? }
     }

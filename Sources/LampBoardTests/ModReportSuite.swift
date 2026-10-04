@@ -99,6 +99,28 @@ enum ModReportSuite {
             t.expectNil(s.surface)
         },
 
+        // Found by the security review: `Int(1e300)` traps, and one report
+        // would have taken the panel down with it.
+        TestCase("A huge or negative figure is clamped, never a crash") { t in
+            let huge = """
+                {"v":1,"kind":"measure","session":"\(id)","context":{"tokens":1e300,"window":4.7e4},\
+                "rateLimits":[{"kind":"a","percentUsed":1e300},{"kind":"b","percentUsed":-1e308},{"kind":"c","percentUsed":1e308}]}
+                """
+            guard case .measure(_, let m) = try? decode(huge) else { return t.fail("not read") }
+            t.expectNil(m.tokens)
+            t.expectEqual(m.window, 47_000, "a count spelled as a float is still a count")
+            t.expectEqual(m.rateLimits.map(\.percent), [100, 0, 100])
+        },
+
+        TestCase("A model name with a control character is not kept") { t in
+            let escape = #"{"v":1,"kind":"start","session":"\#(id)","model":"claude-\u001b[2J"}"#
+            guard case .start(_, let s) = try? decode(escape) else { return t.fail("not read") }
+            t.expectNil(s.model)
+            let real = #"{"v":1,"kind":"start","session":"\#(id)","model":"claude-sonnet-5-5[1m]"}"#
+            guard case .start(_, let r) = try? decode(real) else { return t.fail("not read") }
+            t.expectEqual(r.model, "claude-sonnet-5-5[1m]")
+        },
+
         TestCase("No more rate-limit windows than a plan has") { t in
             let many = (0..<50).map { #"{"kind":"k\#($0)","percentUsed":1}"# }.joined(separator: ",")
             guard case .measure(_, let m) = try? decode(#"{"v":1,"kind":"measure","session":"\#(id)","rateLimits":[\#(many)]}"#)

@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **913**, instantaneous |
-| End-to-end tests | **122**, about a minute |
+| Domain tests | **915**, instantaneous |
+| End-to-end tests | **126**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2232,3 +2232,26 @@ account's windows, its surface, why it ended — read and bounded on the way in,
 kept per session beside the column. The colours stay with the hooks. A figure the
 session counted itself outranks the transcript's arithmetic, and nothing the
 transcript reader finds later replaces it.
+
+Then the mod itself, and its door in the panel. `mod/` holds the plugin and the
+repository is its marketplace; it posts to `POST /mod`, whose token is required
+from the first day, since no copy of the mod predates it. It finds the port in a
+file the panel now writes beside the token: the hooks carry the port in their
+script, the mod is the same file everywhere. Tried for real on the test Mac: a
+throwaway Claude Code 2.1.289 session with the mod loaded from its folder, against
+the panel on a fake home — `start`, then `measure` with 21,140 tokens of context,
+then `end`, all received, in a five-second run that cost $0.0023. `claude plugin
+validate --strict` reads the module and lists what it does: three hooks, the calls
+`$.env.get`, `$.fs.read`, `$.http.fetch`, `$.session.id` and `$.session.model`, the
+environment it reads, `HOME` and `LAMPBOARD_HOME`, and nothing it writes.
+
+A security review of the route and the mod found one way to stop the panel: a
+rate-limit figure of `1e300` is a finite number, and turning it into an integer
+traps, so one report would have killed the app; figures are now clamped before
+they are converted. It also found that a project's settings can set environment
+variables for its sessions, so a cloned repository could point the mod at a home
+and a port of its choosing. The mod now takes only an absolute home, no port
+below 1024, and sends nothing until the port answers `/health` as LampBoard:
+tried against an impostor on the test Mac, which saw three health checks and no
+token. A model name is held to an allowlist, and the port file is written under
+a fresh name opened exclusively.

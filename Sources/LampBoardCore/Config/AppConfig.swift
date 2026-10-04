@@ -46,6 +46,10 @@ public enum AppConfig {
     /// Behind the token: the lookups read every session's card.
     public static let lampMasterToolPath = "/lampmaster/tool"
 
+    /// Where the companion mod posts what a session reports (D65). Behind the
+    /// token, always: the mod is new, so no installed copy predates it.
+    public static let modPath = "/mod"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without
@@ -277,6 +281,12 @@ public enum AppConfig {
     /// Mode `0600`: its contents authorize reading workspace names.
     public static var tokenURL: URL {
         supportDirectory.appendingPathComponent("token")
+    }
+
+    /// The port the server listens on, for the companion mod: the hooks carry
+    /// it in their script, the mod is the same file everywhere and reads it here.
+    public static var portURL: URL {
+        supportDirectory.appendingPathComponent("port")
     }
 
     /// Hook script installed at `~/.lampboard/hook.sh` and referenced from `~/.claude/settings.json`.

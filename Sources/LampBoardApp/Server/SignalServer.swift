@@ -56,6 +56,7 @@ final class SignalServer {
     private let onLampMaster: () -> Data
     private let onLampMasterRound: () -> Bool
     private let onLampMasterTool: (Data) -> Data
+    private let onMod: (ModReport) -> Void
     private let token: String?
 
     private var listener: NWListener?
@@ -72,7 +73,8 @@ final class SignalServer {
         onChatInSlot: @escaping (Int) -> String? = { _ in nil },
         onLampMaster: @escaping () -> Data = { Data("{}".utf8) },
         onLampMasterRound: @escaping () -> Bool = { false },
-        onLampMasterTool: @escaping (Data) -> Data = { _ in Data("{}".utf8) }
+        onLampMasterTool: @escaping (Data) -> Data = { _ in Data("{}".utf8) },
+        onMod: @escaping (ModReport) -> Void = { _ in }
     ) {
         self.port = port
         self.token = token
@@ -86,6 +88,7 @@ final class SignalServer {
         self.onLampMaster = onLampMaster
         self.onLampMasterRound = onLampMasterRound
         self.onLampMasterTool = onLampMasterTool
+        self.onMod = onMod
     }
 
     // MARK: - Lifecycle
@@ -192,6 +195,9 @@ final class SignalServer {
         case AppConfig.lampMasterToolPath:
             return handleLampMasterTool(request)
 
+        case AppConfig.modPath:
+            return handleMod(request)
+
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")
@@ -289,6 +295,29 @@ final class SignalServer {
         return HTTPRequestParser.response(
             status: 200, reason: "OK", body: onLampMasterTool(request.body), contentType: "application/json"
         )
+    }
+
+    /// `POST /mod` — what the companion mod reports from inside a session.
+    ///
+    /// The token is required, unlike `/signal`: no copy of the mod predates it,
+    /// so there is no installed base to keep working. A report that does not
+    /// read is a 400 with the reason, and changes nothing.
+    private func handleMod(_ request: HTTPRequest) -> Data {
+        guard request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        guard let token else {
+            return HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+        }
+        guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        do {
+            onMod(try ModReport.decode(request.body))
+            return HTTPRequestParser.response(status: 204, reason: "No Content")
+        } catch {
+            return HTTPRequestParser.response(status: 400, reason: "Bad Request", body: "\(error)")
+        }
     }
 
     /// `POST /next` — raises the window of the next waiting session.
