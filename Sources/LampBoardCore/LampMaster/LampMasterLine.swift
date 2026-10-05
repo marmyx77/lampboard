@@ -66,8 +66,8 @@ public enum LampMasterLine {
     public static func button(_ action: LampMasterAdvice.Suggestion.Action) -> String? {
         switch action.kind {
         case .open, .handoff: return "Open"
-        case .ask: return action.question == nil ? "Open" : "Copy question and open"
-        case .reply: return action.question == nil ? "Open" : "Copy reply and open"
+        case .ask: return action.question == nil ? "Open" : "Open with the question"
+        case .reply: return action.question == nil ? "Open" : "Open with the reply"
         case .close: return "End session…"
         case .archive: return "Remove row"
         case .none: return nil

@@ -19,7 +19,8 @@ extension PanelController {
                 if self.carryOut(shown.suggestion) { service.react(to: shown.id, with: .accepted) }
             },
             open: { [weak self] id in self?.openLampMasterSession(id) },
-            name: { [weak self] id in self?.lampMasterName(of: id) ?? id }
+            name: { [weak self] id in self?.lampMasterName(of: id) ?? id },
+            askQuietly: { [weak self] shown in self?.quietQuestion(shown.suggestion) }
         )
     }
 
@@ -57,7 +58,18 @@ extension PanelController {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
             }
-            activate(session: member)
+            // Into the Plancia's composer, to read, change and send: LampMaster
+            // proposes, the person sends (D61, D73, D85). A session on another
+            // machine has no Plancia here: raised, with the text copied.
+            guard let text = suggestion.action.question, !member.session.workspace.isRemote else {
+                activate(session: member)
+                return true
+            }
+            openPlancia(sessionId: member.session.id)
+            // Only into that session's Plancia: one that did not open leaves the
+            // text where the person can see it, on the clipboard.
+            guard plancia.sessionId == member.session.id else { return true }
+            plancia.thread?.proposed = text
             return true
         case .close:
             guard let member = rowSession(id) else { return tellGone(id) }
@@ -70,6 +82,20 @@ extension PanelController {
         case .none:
             return false
         }
+    }
+
+    /// The card's question put to its session as a side question (D82): only
+    /// when the action asks something, that session's mod can answer, and
+    /// sending is on — the switch every word into a session goes behind.
+    private func quietQuestion(_ suggestion: LampMasterAdvice.Suggestion) -> (@MainActor () async -> String)? {
+        guard suggestion.action.kind == .ask || suggestion.action.kind == .reply,
+              let question = suggestion.action.question,
+              preferences.messageSendingEnabled,
+              let id = LampMasterLine.subject(of: suggestion), let member = rowSession(id),
+              let desk = askDesk, desk.askable.contains(member.session.id) else { return nil }
+        let host = member.session.workspace.host
+        let session = member.session.id
+        return { await desk.ask(sessionId: session, question: question, host: host) }
     }
 
     /// Raises the session if it has a row; a closed one has nothing to raise,

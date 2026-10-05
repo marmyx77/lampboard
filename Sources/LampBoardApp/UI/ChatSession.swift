@@ -25,6 +25,10 @@ final class ChatSession: ObservableObject {
     /// disk until that turn ends, which can be minutes.
     @Published private(set) var pending: String?
 
+    /// Text put into the composer for the person to read, change and send —
+    /// LampMaster's proposed question or reply (D85). Never sent by itself.
+    @Published var proposed: String?
+
     /// Why the last send failed, if it did.
     @Published private(set) var sendError: String?
 

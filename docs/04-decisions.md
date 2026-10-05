@@ -3348,3 +3348,31 @@ hold several; and the labels share the terminal's width. Measured again in the t
 throwaway sessions: the band drawn, the digit opening the panel, and the band's text
 in neither transcript.
 
+## D85 · LampMaster's cards propose; the person sends
+
+**Decided.** A LampMaster card whose action asks a session something, or answers
+one, now opens the Plancia on that session with the proposed text in its composer —
+"Open with the question", "Open with the reply" — to be read, changed and sent by
+the person; the text is copied too, as before, for a composer that is off or a
+session on another machine. Beside it, when that session's mod can answer and
+sending is on, *Ask without disturbing* puts the question to the session as a side
+question (D82) and shows the answer in the card: the session gets no turn, and the
+click costs a fork's tokens, so it is a click every time.
+
+**Why not send it.** D61 and D73 keep LampMaster from writing into a session, and a
+card's text is the model's: sent through the composer it would arrive under the
+panel's preamble, "Typed by the user" (D81), which it was not. Proposed in the
+composer, it becomes the person's when they send it. A side question writes nothing
+into the session, so it can be asked from the card.
+
+**What the plan had and no longer needs.** "Ask" was to go through a switchboard,
+with the answer brought back into the asking session; Claude Code's own
+`SendMessage` between sessions does that now (D82), and the person, through the
+composer, can tell a session to ask another. The handoff (*Testimone*) is 0.7's.
+
+**What a review changed.** The card now shows the words a click would propose or
+ask, before the click; the answer says it is the session's, from its conversation,
+and scrolls past a few lines. A proposal is taken once — it cannot come back when
+the Plancia redraws — goes only into the Plancia of the session it is for, and
+never replaces or takes the focus from what the person was typing.
+

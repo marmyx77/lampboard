@@ -22,6 +22,8 @@ struct ChatView: View {
     let openInEditor: () -> Void
 
     @State private var draft = ""
+    /// LampMaster's proposal arrives into an empty composer only: what the
+    /// person was typing is theirs.
     @FocusState private var composerFocused: Bool
 
     /// Dictation. `nil` below macOS 26, which is what keeps the button off the
@@ -260,6 +262,16 @@ struct ChatView: View {
                     .font(.system(size: 12))
                     .focused($composerFocused)
                     .onSubmit(submit)
+                    .onReceive(session.$proposed.compactMap { $0 }) { proposal in
+                        // Taken once, after the delivery: cleared inside it, the
+                        // value would be stored over the nil and come back on the
+                        // next mount (a review finding).
+                        DispatchQueue.main.async { if session.proposed == proposal { session.proposed = nil } }
+                        // What the person was typing stays theirs, and keeps the focus where it was.
+                        guard draft.trimmed.isEmpty else { return }
+                        draft = proposal
+                        composerFocused = true
+                    }
 
                 Button(action: submit) {
                     Image(systemName: "arrow.up.circle.fill")

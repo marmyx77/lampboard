@@ -203,7 +203,7 @@ enum LampMasterRoundSuite {
 
         TestCase("A card's button says what the click does; nothing to do, no button") { t in
             typealias A = S.Action
-            t.expectEqual(LampMasterLine.button(A(kind: .ask, target: "bbbbbbbb", question: "Which port?")), "Copy question and open")
+            t.expectEqual(LampMasterLine.button(A(kind: .ask, target: "bbbbbbbb", question: "Which port?")), "Open with the question")
             t.expectEqual(LampMasterLine.button(A(kind: .ask, target: "bbbbbbbb")), "Open", "no question to copy")
             t.expectEqual(LampMasterLine.button(A(kind: .close)), "End session…")
             t.expectNil(LampMasterLine.button(A(kind: .none)))

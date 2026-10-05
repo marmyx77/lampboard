@@ -11,6 +11,9 @@ struct LampMasterActions {
     let open: (String) -> Void
     /// What to call a session, by its short id.
     let name: (String) -> String
+    /// A suggested question put to its session without disturbing it (D82,
+    /// D85): `nil` when that session's mod cannot answer, or sending is off.
+    var askQuietly: (LampMasterShown) -> (@MainActor () async -> String)? = { _ in nil }
 }
 
 /// Owns LampMaster's window: the open suggestions, one card each.
@@ -129,6 +132,8 @@ struct LampMasterCard: View {
     let service: LampMasterService
     let actions: LampMasterActions
     @State private var showsEvidence = false
+    @State private var quietAnswer: String?
+    @State private var asking = false
 
     private var suggestion: LampMasterAdvice.Suggestion { shown.suggestion }
 
@@ -140,6 +145,16 @@ struct LampMasterCard: View {
 
             Text(suggestion.text)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // The words a click would propose or ask, read before they go (D85).
+            if let question = suggestion.action.question {
+                Text("“\(question)”")
+                    .font(.callout)
+                    .italic()
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             DisclosureGroup(isExpanded: $showsEvidence) {
                 Text(suggestion.evidence)
@@ -165,6 +180,17 @@ struct LampMasterCard: View {
                         .buttonStyle(.borderedProminent)
                         .tint(StatusPalette.lampMasterTint)
                 }
+                // Costs a fork's tokens, so a click, every time; the session sees nothing.
+                if let ask = actions.askQuietly(shown) {
+                    Button(asking ? "Asking…" : "Ask without disturbing") {
+                        asking = true
+                        Task { @MainActor in
+                            quietAnswer = await ask()
+                            asking = false
+                        }
+                    }
+                    .disabled(asking)
+                }
                 Button("Ignore") { service.react(to: shown.id, with: .ignored) }
                 Spacer()
                 Menu("More") {
@@ -175,6 +201,23 @@ struct LampMasterCard: View {
                 .fixedSize()
             }
             .controlSize(.small)
+
+            if let quietAnswer {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Its answer, from its conversation:").font(.caption).foregroundStyle(.secondary)
+                    ScrollView {
+                        Text(quietAnswer)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 180)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Answer: \(quietAnswer)")
+                    .padding(8)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(StatusPalette.lampMasterTint.opacity(0.08)))
+            }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
