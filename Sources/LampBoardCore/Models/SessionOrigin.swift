@@ -14,4 +14,7 @@ import Foundation
 public enum SessionOrigin: String, Sendable, Equatable, Codable {
     case editor
     case terminal
+    /// Started with `claude --bg` (§5.14): no tab and no window. Its place is
+    /// the panel's own Plancia, whatever editor has its folder open.
+    case background
 }

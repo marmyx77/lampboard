@@ -16,6 +16,29 @@ import Foundation
 /// gone, and a state nobody reported is never dressed up as one that was.
 extension StateStore {
 
+    // MARK: - Where a hook from an unclaimed folder belongs (moved from StateStore at 800 lines)
+
+    /// The folder a terminal row is anchored on, for a signal nothing claims:
+    /// the `cwd` of the session's live file, or `nil` when there is no such
+    /// file, the feature is off, the signal names a host, or nobody is in front
+    /// of the session (`sdk`, `print`).
+    func terminalHome(for signal: HookSignal) -> Workspace? {
+        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight else { return nil }
+        guard let file = liveSessionReader.readLiveSessions()
+            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.deservesTrafficLight })
+        else { return nil }
+        return Workspace(path: file.cwd)
+    }
+
+    /// The folder of a background session's live file, when the signal is from one.
+    func backgroundHome(for signal: HookSignal) -> Workspace? {
+        guard signal.host == nil, signal.deservesTrafficLight else { return nil }
+        guard let file = liveSessionReader.readLiveSessions()
+            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.isBackground && $0.deservesTrafficLight })
+        else { return nil }
+        return Workspace(path: file.cwd)
+    }
+
     /// Adopts the Claude Desktop conversations running on this Mac, and returns
     /// their ids so the sweep does not take them straight back.
     ///
@@ -55,13 +78,16 @@ extension StateStore {
             guard conversations.hasConversation(sessionId: session.sessionId, cwd: session.cwd) else {
                 continue
             }
-            let resolved = WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
+            // A background session's place is the panel, whatever window has its
+            // folder open (AV1); its file's folder is its row's.
+            let resolved = session.isBackground ? nil : WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
             // Unclaimed and terminal sessions on: the file's own folder is the
             // row's (D25) — the file is the anchor, so no `cd` can move it.
-            guard let workspace = resolved ?? (showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
+            guard let workspace = resolved
+                ?? (session.isBackground || showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
                 continue
             }
-            let origin: SessionOrigin = resolved == nil ? .terminal : .editor
+            let origin: SessionOrigin = session.isBackground ? .background : resolved == nil ? .terminal : .editor
             let known = state.sessions[session.sessionId] != nil
             // State `idle`: the app does not know what a session it has never seen
             // is doing, and this is where it says so.

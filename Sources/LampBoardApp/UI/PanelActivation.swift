@@ -38,6 +38,13 @@ extension PanelController {
             return
         }
 
+        // A background session has no tab and no window (AV1): its conversation
+        // opens in the Plancia, where its box takes a message as any other's.
+        if session.origin == .background {
+            openPlancia(sessionId: session.id)
+            return
+        }
+
         // A Claude Desktop session lives in Claude Desktop, whatever folder it is
         // working on. Without this it went to the folder's VS Code window, which
         // is the convincing wrong answer: the folder really is open there, and

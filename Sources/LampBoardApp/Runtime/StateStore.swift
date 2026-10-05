@@ -25,7 +25,7 @@ final class StateStore: ObservableObject {
     var onSeen: ((String) -> Void)?
 
     private let windowReader: IDEWindowReader
-    private let liveSessionReader: LiveSessionReader
+    let liveSessionReader: LiveSessionReader
     private let clock: () -> Date
     private let snapshots: SnapshotBox?
     private let preferences: Preferences
@@ -133,18 +133,6 @@ final class StateStore: ObservableObject {
     private var contextReadsInFlight: Set<String> = []
 
     // MARK: - Terminal sessions
-
-    /// The folder a terminal row is anchored on, for a signal nothing claims:
-    /// the `cwd` of the session's live file, or `nil` when there is no such
-    /// file, the feature is off, the signal names a host, or nobody is in front
-    /// of the session (`sdk`, `print`).
-    private func terminalHome(for signal: HookSignal) -> Workspace? {
-        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight else { return nil }
-        guard let file = liveSessionReader.readLiveSessions()
-            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.deservesTrafficLight })
-        else { return nil }
-        return Workspace(path: file.cwd)
-    }
 
     /// What "Show terminal sessions" turning off does, at once.
     func forgetTerminalSessions() {
@@ -433,7 +421,14 @@ final class StateStore: ObservableObject {
         // host header treated as local, a path from another machine, and a
         // process already gone.
         var origin = SessionOrigin.editor
-        if workspace == nil, let home = terminalHome(for: signal) {
+        // A background session (`claude --bg`, AV1) is in no window, even one with
+        // its folder open: its live file says `kind: bg`, and its place is the
+        // panel. Admitted with or without terminal sessions shown, by the same
+        // evidence a terminal row needs — the file, and its process alive.
+        if let home = backgroundHome(for: signal) {
+            workspace = home
+            origin = .background
+        } else if workspace == nil, let home = terminalHome(for: signal) {
             workspace = home
             origin = .terminal
         }
@@ -470,7 +465,9 @@ final class StateStore: ObservableObject {
         // does move it there (D25). A Codex or Claude Desktop row may not: its
         // folder came from a rollout or an index before any hook existed, and a
         // hook can only move its colour.
-        if let known = state.sessions[signal.sessionId], known.wasFound || workspace == nil {
+        // A background row stays one: a file read in the middle of being written
+        // must not move it into an editor window for a poll (a review finding).
+        if let known = state.sessions[signal.sessionId], known.wasFound || workspace == nil || known.origin == .background {
             workspace = known.workspace
             origin = known.origin
         }

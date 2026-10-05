@@ -15,7 +15,7 @@ public enum RowActivity {
 
     public static func line(for row: ColumnRow, now: Date) -> String {
         let session = row.primary
-        let place = session.workspace.host.map { "@" + $0 }
+        let place = session.workspace.host.map { "@" + $0 } ?? (session.origin == .background ? "background" : nil)
         let doing: String?
         switch row.status {
         case .awaiting:

@@ -40,6 +40,7 @@ let suites: [TestSuite] = [
     LampMasterQuotaSuite.suite,
     LampMasterAutoMuteSuite.suite,
     LampMasterBenchSuite.suite,
+    BackgroundSessionSuite.suite,
     RemoteTranscriptScriptSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

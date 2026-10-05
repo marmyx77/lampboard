@@ -551,6 +551,9 @@ public enum AppConfig {
     /// Value of the `kind` field marking a session with a user in front of it.
     /// Present in the files under `~/.claude/sessions/`.
     public static let interactiveSessionKind = "interactive"
+    /// What `claude --bg` writes: a session of the Agent View, run by its daemon
+    /// with nobody at a terminal, and still somebody's session (§5.14).
+    public static let backgroundSessionKind = "bg"
 
     /// A lock file older than this interval is considered orphaned.
     /// Locks are not always removed when the window closes.

@@ -411,7 +411,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
            let named = DesktopWorktree.label(folder: workspace.name, git: git) {
             return named
         }
-        guard origin == .terminal, let title else { return workspace.name }
+        guard origin == .terminal || origin == .background, let title else { return workspace.name }
         return title
     }
 

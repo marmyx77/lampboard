@@ -82,6 +82,10 @@ public struct LiveSession: Sendable, Equatable {
         self.modifiedAt = modifiedAt
     }
 
+    /// Started with `claude --bg`: no terminal tab and no window, its place is
+    /// the Agent View — and here a row of its own (AV1).
+    public var isBackground: Bool { kind == AppConfig.backgroundSessionKind }
+
     /// `true` when the session deserves a row in the column.
     ///
     /// As with hook signals, the criterion is *where* it runs — which the
@@ -102,7 +106,9 @@ public struct LiveSession: Sendable, Equatable {
         // claims `~/.claude-mem/observer-sessions`, so the workspace resolver
         // dropped it. Reading another machine removed that accidental filter and
         // the observer turned up in the column, which is how this was found.
-        if let kind, !kind.isEmpty, kind != AppConfig.interactiveSessionKind {
+        // A background session (`claude --bg`) is somebody's session too: it
+        // works unseen, and that is when a lamp is worth the most (§5.14).
+        if let kind, !kind.isEmpty, kind != AppConfig.interactiveSessionKind, kind != AppConfig.backgroundSessionKind {
             return false
         }
         guard let entrypoint, !entrypoint.isEmpty else { return true }

@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,022 lines · 149 files  pure logic, zero AppKit
-  LampBoardApp/    23,367 lines · 130 files   shell: AppKit, network, windows
-  LampBoardTests/  15,506 lines · 97 files   1111 cases, instantaneous
-  LampBoardE2E/    4,411 lines · 20 files   149 cases, the real binary
+  LampBoardCore/  19,035 lines · 149 files  pure logic, zero AppKit
+  LampBoardApp/    23,399 lines · 130 files   shell: AppKit, network, windows
+  LampBoardTests/  15,544 lines · 98 files   1113 cases, instantaneous
+  LampBoardE2E/    4,441 lines · 20 files   151 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 794 lines. The limit the project sets itself is 800.
+No file exceeds 791 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 598
+### `AppConfig.swift` · 601
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -453,7 +453,7 @@ instead of propagating as a free-form string all the way to the row.
 is merely incomplete, so the row is green rather than red.
 
 ### `SessionOrigin.swift`
-`.editor` or `.terminal`: the kind of place a row lives in, set by whoever
+`.editor`, `.terminal` or `.background` (`claude --bg`, D103): the kind of place a row lives in, set by whoever
 resolves the workspace and read by everything that treats a terminal row
 differently (D25). Not on `Workspace`, which is the row's identity.
 
@@ -1546,8 +1546,8 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 794 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 221 | the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStore.swift` | 791 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStoreAdoption.swift` | 247 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
@@ -1740,7 +1740,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 189 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingQueueSection.swift` | 191 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
-| `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
+| `PanelActivation.swift` | 165 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
@@ -1793,7 +1793,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1111 cases
+## `LampBoardTests/` — 1113 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1821,6 +1821,7 @@ script, before it was split. The most important ones:
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
 | `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
+| `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103) |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
 | `LampMasterAutoMuteSuite` | under a fifth over two weeks off, with why; too few or too young not; what counts and what does not; a kind off left alone, one asked back counting from then |
 | `LampMasterQuotaSuite` | the pace's forecast, none too early or without a reset; one line per account, the window most at risk; the round skipped when this Mac's account is tight, not another machine's or a model's own cap, and the line saying so |
@@ -1884,7 +1885,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 149 cases
+## `LampBoardE2E/` — 151 cases
 
 | Suite | Covers |
 |---|---|
@@ -1892,7 +1893,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `WatchE2ESuite` | `lampboard watch` run for real: a failing command red with the command's own exit code and output, a succeeding one green with its own `--port`, `/watch` behind the token, the command left alone when no panel hears |
 | `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
-| `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a renamed row, a signal from another machine, subagents |
+| `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a background session a row of its own in a folder an editor claims (D103), a renamed row, a signal from another machine, subagents |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `NodeTranscriptE2ESuite` | the node's program run with `python3` in a fake home: the tail first, then only what was added, a shrunk file read again, a link and a path out of the projects not read (D94) |

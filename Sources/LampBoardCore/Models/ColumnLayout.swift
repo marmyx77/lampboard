@@ -90,12 +90,13 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
 
     /// `true` when "New conversation here" is a thing this row can honestly do.
     ///
-    /// Three ways it cannot: the folder is on another machine, the place is a
-    /// terminal with no tab to open one in, or the surface does not host a
+    /// Four ways it cannot: the folder is on another machine, the place is a
+    /// terminal with no tab to open one in, it runs in the background with no
+    /// window at all (AV1), or the surface does not host a
     /// Claude Code conversation at all. See `DeepLinkPolicy.opensNewConversation`
     /// for what the third one did before anybody asked it.
     public var hostsNewConversation: Bool {
-        guard !workspace.isRemote, !isTerminal else { return false }
+        guard !workspace.isRemote, !isTerminal, primary.origin != .background else { return false }
         return DeepLinkPolicy.opensNewConversation(
             harness: primary.harness, entrypoint: primary.entrypoint
         )

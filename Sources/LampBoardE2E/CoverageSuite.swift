@@ -132,6 +132,35 @@ enum CoverageSuite {
                 a.expect(app.waitUntil { app.status(of: id) == "absent" }, "off takes its rows with it")
             },
 
+            TestCase("a background session (`claude --bg`) is a row of its own, terminal sessions on or off (AV1)") { a in
+                let id = "e2e-background-row"
+                let folder = LifecycleSuite.workspace
+                // In a folder an editor window claims: a background session is in
+                // no window all the same. Terminal sessions stay off.
+                app.writeLiveSession(sessionId: id, cwd: folder, entrypoint: "cli", pid: 1, kind: "bg")
+                let transcript = HookPayloads.transcriptPath(id)
+                app.writeTranscript(sessionId: id, cwd: folder, title: "Check the digest link", at: transcript)
+                defer {
+                    app.removeLiveSessions()
+                    try? FileManager.default.removeItem(atPath: transcript)
+                }
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: folder), entrypoint: "cli")
+                a.expect(app.waitUntil { app.status(of: id) == "working" }, "status: \(app.status(of: id))")
+                a.expectEqual(app.session(id: id)?.origin, "background", "its own origin, not the editor's")
+                let listing = app.runCommand(["sessions", "--port", String(app.port)]).output
+                a.expect(listing.contains("[background]"), "and the listing says so: \(listing)")
+            },
+
+            TestCase("a hook claiming a background session with no live file behind it is still nothing (AV1)") { a in
+                let id = "e2e-background-forged"
+                // A live file for another session: the hook's own id has none.
+                app.writeLiveSession(sessionId: "e2e-background-other", cwd: "/tmp/e2e-bg-elsewhere", entrypoint: "cli", pid: 1, kind: "bg")
+                defer { app.removeLiveSessions() }
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: "/tmp/e2e-bg-elsewhere"), entrypoint: "cli")
+                Thread.sleep(forTimeInterval: 1)
+                a.expectEqual(app.status(of: id), "absent", "no file of its own, no row")
+            },
+
             // MARK: - 1.3 row names
 
             // The name the user gives a row is what the panel and its readers

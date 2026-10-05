@@ -3716,3 +3716,28 @@ each frame costs a round's tokens.
 `claude`, then answers the replay with no suggestion: `lampboard lampmaster bench`
 replays the one saved round, names the lost card, does not count the one the validator
 had refused, and calls `claude` once for it.
+
+## D103 · A background session is a row of its own
+
+**Decided.** A session started with `claude --bg` — the Agent View's, run by its
+daemon with nobody at a terminal — is a row, as the plan's §5.14 asks: a session
+working unseen is the one a lamp is worth most for. Its live file says `kind: "bg"`,
+which the rule for "someone is in front of it" used to refuse along with every other
+kind that is not `interactive`; `bg` is now admitted, the SDK's entrypoints still
+are not. Its row comes from that file, its process alive, with terminal sessions
+shown or not — it is in no terminal — and its origin is its own, `background`,
+whatever editor has its folder open: it is in no window either. Its name is its
+conversation's, its second line says "background", and a click opens its Plancia,
+where its box takes a message like any session's (D81).
+
+**Measured on the test Mac.** A throwaway `claude --bg` with Haiku in a fake home:
+its hooks reached the panel and were dropped before this — "no editor window claims
+that folder" — even with terminal sessions on, because the file's `kind` was `bg`.
+After it, with terminal sessions off, the panel showed it as a row, named by Claude
+Code's own title, "background · OK", green once it answered, its answer in "Waiting
+for you". Photographed. The end-to-end suite admits a background file's session in a
+folder an editor claims, with terminal sessions off, and lists it `[background]`.
+
+**What waits (AV2).** The Agent View keeps more in `~/.claude/jobs/<id>/state.json`:
+the one-line summary it generates (`detail`), what a blocked session needs (`needs`).
+Using them, and adopting jobs started before the panel, is the next step.

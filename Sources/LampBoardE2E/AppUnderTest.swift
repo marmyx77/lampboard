@@ -299,14 +299,15 @@ final class AppUnderTest {
         entrypoint: String = "claude-vscode",
         name: String? = nil,
         pid: Int32? = nil,
-        procStart: String? = nil
+        procStart: String? = nil,
+        kind: String = "interactive"
     ) {
         var payload: [String: Any] = [
             "pid": pid ?? ProcessInfo.processInfo.processIdentifier,
             "sessionId": sessionId,
             "cwd": cwd,
             "entrypoint": entrypoint,
-            "kind": "interactive",
+            "kind": kind,
         ]
         if let name { payload["name"] = name }
         if let procStart { payload["procStart"] = procStart }
