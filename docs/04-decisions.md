@@ -3537,3 +3537,36 @@ conversations, "week" typed in the bar showed the same paragraph the terminal pr
 `api` are two projects, named with the folder above. The bar reads the week once at a
 time and never while a message is on its way. Only conversations active in the week
 are scanned for its prompts.
+
+## D91 · The baton: one session writes, the person hands it over
+
+**Decided.** `/handoff @from @to` in the bar asks the first session, as a side
+question (D82) — no turn, nothing added to its conversation — for the handoff the
+second will read: what it understood, what it decided and why, what is left, the
+files it touched, thirty lines at most and no secret values. The answer, headed
+"Handoff from <name>, through LampBoard", is put in the second session's Plancia
+composer and waits there to be read, changed and sent: LampBoard proposes, the
+person sends (D85). It is never sent by itself.
+
+**Where it cannot wait.** A session on another machine has no Plancia here: the
+handoff is copied and the bar says so. The same when the second session went away
+while the first wrote, or its Plancia did not open. An answer that is not the
+session's — no answer within the minute, nothing to answer from yet, a mod that
+cannot answer — is said in the bar and never proposed as a handoff.
+
+**What the plan had and this leaves.** The plan also wanted `/handoff @x` typed
+inside a session, through the mod, and a new session opened already briefed. The
+first is the next step (T2); the second waits for a way to start a session that
+the panel can see and write into from its first second.
+
+**Measured on the test Mac.** Two throwaway Haiku sessions in a fake home, one told
+that the slots endpoint was renamed and the tests are left; `/handoff` typed in the
+bar: the handoff came back four seconds later, 770 characters, and waited in the
+other session's composer. Neither transcript gained a turn. A session that has
+not answered anything yet says "nothing to answer from" and nothing is proposed.
+
+**What a review changed.** A composer with the person's own words is not
+overwritten and does not swallow the handoff: it is copied, and the bar says so. A
+handoff called off — the bar closed or retyped while the first session wrote —
+opens nothing and takes no clipboard. An empty answer is no handoff. `/h` keeps
+finding the action it found before, the handoff's hint after it.

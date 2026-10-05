@@ -28,6 +28,9 @@ final class ChatSession: ObservableObject {
     /// Text put into the composer for the person to read, change and send —
     /// LampMaster's proposed question or reply (D85). Never sent by itself.
     @Published var proposed: String?
+    /// The person has words of their own in the composer: a proposal would not
+    /// take their place, so whoever proposes knows it would not land.
+    var hasDraft = false
 
     /// Why the last send failed, if it did.
     @Published private(set) var sendError: String?

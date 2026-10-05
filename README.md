@@ -606,6 +606,12 @@ Measured on the test Mac: about two seconds to an answer, idle or mid-turn. Each
 question costs the session's account the conversation read again from cache —
 some tens of thousands of cached tokens on a long session.
 
+**Handing over**: `/handoff @from @to` asks the first session, the same way and
+without a turn, for what the second needs — what it understood, decided and left,
+the files it touched — and puts it in the second session's composer, to read, change
+and send. It is never sent by itself; to a session on another machine it is copied
+([D91](docs/04-decisions.md)).
+
 **Through the mailbox** for a session without a box:
 
 ```
@@ -1490,7 +1496,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1081 domain tests, instantaneous
+swift run LampBoardTests              # 1086 domain tests, instantaneous
 swift run LampBoardE2E                # 144 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

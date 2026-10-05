@@ -262,6 +262,7 @@ struct ChatView: View {
                     .font(.system(size: 12))
                     .focused($composerFocused)
                     .onSubmit(submit)
+                    .onChange(of: draft) { _, now in session.hasDraft = !now.trimmed.isEmpty }
                     .onReceive(session.$proposed.compactMap { $0 }) { proposal in
                         // Taken once, after the delivery: cleared inside it, the
                         // value would be stored over the nil and come back on the

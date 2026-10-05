@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  18,401 lines · 143 files  pure logic, zero AppKit
-  LampBoardApp/    22,969 lines · 128 files   shell: AppKit, network, windows
-  LampBoardTests/  15,059 lines · 91 files   1081 cases, instantaneous
+  LampBoardCore/  18,452 lines · 144 files  pure logic, zero AppKit
+  LampBoardApp/    23,036 lines · 128 files   shell: AppKit, network, windows
+  LampBoardTests/  15,134 lines · 92 files   1086 cases, instantaneous
   LampBoardE2E/    4,248 lines · 19 files   144 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1096,12 +1096,12 @@ and the versioned wire the mod reads.
 
 ## `Bar/`
 
-### `CommandBar.swift` · 209
+### `CommandBar.swift` · 238
 The bar at the top of the wide panel (UX §2, D77), as logic: what was typed — text,
 `@name message`, `?question`, `/command` — and what it finds. Sessions by name first
 (exact, from the start, from a word, anywhere), then by what they say or are titled,
 ties to the more urgent, titles flattened to one clean line; then the panel's actions by their words, then the conversations the index found
-that are not rows (D88); empty, what needs
+that are not rows (D88); `/handoff @from @to`, the best match of each, never a session to itself, a hint when half typed and never above an action a short prefix also names (D91); empty, what needs
 you. `@name` with words after it makes each session found a "Send to" result, which
 says where to switch sending on while it is off, and for a session on another
 machine names the machine it goes to (D81, D83). `@name ?question` makes each one an "Ask
@@ -1134,6 +1134,11 @@ A side question without disturbing (D82): the line the mod can prove — the hea
 the nonce, an HMAC with the permission key over nonce, session and question — then
 the question, at most 2,000 characters; the feature a mod announces, and the
 minute the panel waits.
+
+### `Handoff.swift` · 22
+The baton (D91): the question a session is asked when another takes over — what it
+understood, decided, left and touched, thirty lines, no secrets — within a side
+question's size, and the brief proposed to the other: whose it is, then the text.
 
 ### `RemotePeerScripts.swift` · 112
 A message into the box of a session on another machine (D83, B3): the payload —
@@ -1514,7 +1519,7 @@ there, the hooks are registered — and it names the link that broke.
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `PermissionDesk.swift` | 218 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86) |
 | `PlanciaModel.swift` | 50 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
-| `CommandBarModel.swift` | 225 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
+| `CommandBarModel.swift` | 245 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 210 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, a digit for a held question's option, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
@@ -1534,7 +1539,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
 | `PeerSender.swift` | 130 | the panel's end of Claude Code's message box (D81): the session's file and key under `~/.claude/sessions/`, read again for every message, used only when the process is running, this user's and the one the file was written for, the files regular, this user's and not links, the key private, the socket this user's; the two lines written down the socket, our half closed, and the box's end of file taken as the receipt; no SIGPIPE; a content of the panel's own, for a side question |
-| `PeerAskDesk.swift` | 84 | side questions (D82): which sessions can be asked, from their mods' `start` and `end`; a question through the box — over ssh for a session on a node — with the permission key's proof, and the answer report it waits for — registered before it is sent — a minute at most, put in words when there is no text |
+| `PeerAskDesk.swift` | 94 | side questions (D82): which sessions can be asked, from their mods' `start` and `end`; a question through the box — over ssh for a session on a node — with the permission key's proof, and the answer report it waits for — registered before it is sent — a minute at most, put in words when there is no text; whether what came back is the session's answer or what went wrong, so a handoff proposes only an answer |
 | `RemotePeerSender.swift` | 22 | into the box of a session on another machine, over ssh, with `RemotePeerScripts` (B3) |
 | `SearchIndex.swift` | 358 | every conversation of this Mac, searchable (D88): SQLite FTS5 in `~/.lampboard/index.sqlite`, owner-only, the file itself never a link; each transcript read on from its last offset to its last complete line, 8 MB at most a pass, a shrunk one read again, a budgeted pass newest first within ninety days, only regular files in real project folders; a chunk kept whole or not at all, its offset read under the write lock, two writers waiting for each other; conversations whose transcript is gone pruned; excluded from backups, removable (`--reset`); the hits grouped after `bm25()`; the serial queue taken per file; the prompts since a date, only of conversations active since, for the week's summary (D90) |
 | `MailboxWriter.swift` | 206 | the panel's end of the mailbox; carries out the reaper's verdict; counts the views holding a session's marker, so the chat window and the Plancia do not take it from each other |
@@ -1691,10 +1696,10 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelController.swift` | 754 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 71 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow, Deny and a question's choice handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
-| `CommandBarView.swift` | 113 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
+| `CommandBarView.swift` | 114 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
 | `PanelPlancia.swift` | 150 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
-| `PanelBar.swift` | 171 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
+| `PanelBar.swift` | 203 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and putting its answer in the second's composer, unsent, or copying it where no Plancia or an empty composer can take it, and nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingQueueSection.swift` | 191 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
@@ -1723,8 +1728,8 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
 | `ChatShellView.swift` | 197 | the two columns, and one row of the list |
-| `ChatSession.swift` | 321 | one conversation: transcript on disk + status from the hooks + the composer's state; a message goes into the session's own box when it has one (D81), off the main actor, pending until the conversation shows it, and through the mailbox otherwise, or when the box has gone since; a message unseen after a minute stops being on its way |
-| `ChatView.swift` | 318 | bubbles, activity lines, the composer, which takes LampMaster's proposed text, once, when it is empty |
+| `ChatSession.swift` | 324 | one conversation: transcript on disk + status from the hooks + the composer's state; a message goes into the session's own box when it has one (D81), off the main actor, pending until the conversation shows it, and through the mailbox otherwise, or when the box has gone since; a message unseen after a minute stops being on its way; whether the person has words in the composer, so a proposal that would not land is known |
+| `ChatView.swift` | 319 | bubbles, activity lines, the composer, which takes LampMaster's proposed text, once, when it is empty |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
 | `AlertSettings.swift` | 56 | the menu bar counter and the notification for a finished turn, both off until asked for (5.6), and the bar's shortcut from any app, off until chosen (D77) |
@@ -1748,7 +1753,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1081 cases
+## `LampBoardTests/` — 1086 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1803,6 +1808,7 @@ script, before it was split. The most important ones:
 | `BandSuite` | what stops work, the most urgent first, three at most, answers to read left to the panel; never the asking session's own; one clean line each, cut with an ellipsis; a secret masked and a bidi override gone; only the kind for a node; the versioned wire |
 | `IndexRecordsSuite` | the person's words and Claude's answers kept, context and tool calls not; the conversation's folder, title, first and last, prompts; a later chunk adding to an earlier; 4,000 characters at most; a search quoted word by word, the last a prefix |
 | `WeekSummarySuite` | the last seven days counted per project and day, the week's first second in and the one before out, midnight across the change of hour, the busiest day by prompts before recency, two folders of one name kept apart, untitled conversations counted and not named, the paragraph, a quiet week, more than three titles and eight projects, a title or folder on its line |
+| `HandoffSuite` | `/handoff @from @to` naming both, the `@` optional; a hint half typed, never to itself or to no session; needing the mod and sending on and saying which; a session on another machine copied for, one there asked there; the question's size and parts, the brief's head |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions, and with words after the name a send, saying how to switch it on while it is off; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone ; `@name ?question` asked without disturbing only a session whose mod can answer; what was said found after what is open, a row's own conversation not repeated |
 | `PermissionImpactSuite` | the destructive commands named by what they do, in many spellings, a secret's mask not hiding the next command; anything else said nothing about, `git restore --staged` and `git rm --cached` included; a command that goes on said so; an edit's and a write's counts, out-of-range counts refused; the card carrying it from the mod's ask and from a hook's; a warning drawn as one, a count not |
 | `QuestionGateSuite` | a question read with its session, call, words and two to four distinct options, others refused; one clean line and short options; proven under its own prefix, a permission's proof refused; the signed choice; a question back to its dialog at 20 seconds and a permission at 55; a held question as a question card, a digit choosing, Allow not answering it |

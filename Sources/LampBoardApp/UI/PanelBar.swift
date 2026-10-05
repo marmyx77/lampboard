@@ -59,6 +59,38 @@ extension PanelController {
             }
             return thread.send(message) ? nil : (thread.sendError ?? "It did not go.")
         }
+        // The baton (5.4): the first session writes the handoff without a turn,
+        // and it waits in the second's composer to be read and sent — never
+        // sent by itself (D85). Where no Plancia can take it, it is copied.
+        bar.onHandoff = { [weak self] from, to in
+            guard let self, let source = self.session(named: from), self.session(named: to) != nil else {
+                return "That session is gone."
+            }
+            guard let desk = self.askDesk else { return "Asking is not available." }
+            let reply = await desk.reply(sessionId: from, question: Handoff.question, host: source.workspace.host)
+            // Called off meanwhile: no Plancia opened and no clipboard taken behind the person's back.
+            guard !Task.isCancelled else {
+                Diagnostics.log("handoff \(from.prefix(8)): written after the bar moved on, dropped")
+                return nil
+            }
+            guard reply.answered else { return "Handoff not written: " + reply.text }
+            let brief = Handoff.brief(from: source.displayName, text: reply.text)
+            func copied(_ why: String) -> String {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(brief, forType: .string)
+                return why + ": the handoff is copied, to paste where it goes."
+            }
+            // It may have gone while the first one wrote.
+            guard let target = self.session(named: to) else { return copied("That session is gone") }
+            if let host = target.workspace.host { return copied("\(target.displayName) is on \(host)") }
+            self.openPlancia(sessionId: to)
+            guard let thread = self.plancia.thread, thread.sessionId == to else { return copied("Its Plancia did not open") }
+            // The person's own words stay: the handoff is not dropped on them, it is copied.
+            guard !thread.hasDraft else { return copied("\(target.displayName)'s composer already has your text") }
+            thread.proposed = brief
+            Diagnostics.log("handoff \(from.prefix(8)) → \(to.prefix(8)): \(reply.text.count) chars proposed")
+            return nil
+        }
         bar.onAskSession = { [weak self] id, question in
             guard let desk = self?.askDesk else { return "Asking is not available." }
             return await desk.ask(sessionId: id, question: question, host: self?.session(named: id)?.workspace.host)

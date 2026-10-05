@@ -39,6 +39,9 @@ final class CommandBarModel: ObservableObject {
     var onSearch: @Sendable (String) -> [CommandBar.Found] = { _ in [] }
     /// A conversation found: what to say in the bar about reaching it.
     var onConversation: @MainActor (String, String?) -> String = { _, _ in "" }
+    /// `/handoff @from @to` (5.4): what the bar says, or `nil` when the handoff
+    /// waits in the second session's Plancia.
+    var onHandoff: @MainActor (String, String) async -> String? = { _, _ in "Handing over is not available." }
     /// The week in a paragraph, from the search index, off the main actor.
     var onWeek: @Sendable () -> String = { "The search index is not available." }
     var onLayoutChange: () -> Void = {}
@@ -85,6 +88,23 @@ final class CommandBarModel: ObservableObject {
         case .session:
             if let id = result.sessionId { onOpenSession(id) }
             clear()
+        case .handoff:
+            // A hint chooses nothing; switched off, the result says how to switch it on.
+            guard sendingEnabled, let from = result.sessionId, let to = result.targetId, !asking else { return }
+            let typed = text
+            asking = true
+            answer = "Writing the handoff, without a turn…"
+            onLayoutChange()
+            question = Task { [weak self] in
+                guard let self else { return }
+                let said = await self.onHandoff(from, to)
+                // Asked, so it lands in the Plancia whatever the bar does now.
+                guard !Task.isCancelled, self.isEditing, self.text == typed else { return }
+                self.asking = false
+                guard let said else { return self.clear() }
+                self.answer = said
+                self.onLayoutChange()
+            }
         case .action where result.action == .week:
             // Said in the bar, like an answer: read off the main actor, once at a time.
             guard !asking else { return }

@@ -10,7 +10,10 @@ final class PeerAskDesk: ObservableObject {
     /// The sessions whose mod can answer, by full id.
     @Published private(set) var askable: Set<String> = []
 
-    private var waiting: [String: CheckedContinuation<String, Never>] = [:]
+    /// What came back, and whether it was the session's answer or what went wrong.
+    struct Reply { let text: String; let answered: Bool }
+
+    private var waiting: [String: CheckedContinuation<Reply, Never>] = [:]
     private let sender = PeerSender()
 
     /// Every mod report passes here: a start or an end says who can be asked,
@@ -22,7 +25,7 @@ final class PeerAskDesk: ObservableObject {
         case .end(let session, _):
             askable.remove(session)
         case .answer(_, let answer):
-            waiting.removeValue(forKey: answer.id)?.resume(returning: Self.said(answer))
+            waiting.removeValue(forKey: answer.id)?.resume(returning: Reply(text: Self.said(answer), answered: answer.text?.trimmed.isEmpty == false))
         case .measure, .tool:
             break
         }
@@ -32,18 +35,25 @@ final class PeerAskDesk: ObservableObject {
     /// on another machine (B3), the answer coming back through its tunnel; the
     /// reply, or what went wrong.
     func ask(sessionId: String, question: String, host: String? = nil) async -> String {
-        guard askable.contains(sessionId) else { return "This session's LampBoard mod cannot answer yet." }
-        guard let key = TokenStore(url: AppConfig.checkKeyURL).read() else { return "LampBoard has no key to ask with." }
+        await reply(sessionId: sessionId, question: question, host: host).text
+    }
+
+    /// The same, saying whether the text is the session's answer: a handoff
+    /// (5.4) proposes only an answer, never what went wrong.
+    func reply(sessionId: String, question: String, host: String? = nil) async -> Reply {
+        func refused(_ text: String) -> Reply { Reply(text: text, answered: false) }
+        guard askable.contains(sessionId) else { return refused("This session's LampBoard mod cannot answer yet.") }
+        guard let key = TokenStore(url: AppConfig.checkKeyURL).read() else { return refused("LampBoard has no key to ask with.") }
         let nonce = UUID().uuidString
         guard let content = PeerAsk.message(question: question, nonce: nonce, session: sessionId, key: key) else {
-            return "Nothing to ask, or too long for a side question."
+            return refused("Nothing to ask, or too long for a side question.")
         }
         let sender = self.sender
         // Waiting before it is sent, so an answer can never arrive to nobody.
         return await withCheckedContinuation { continuation in
             waiting[nonce] = continuation
             DispatchQueue.main.asyncAfter(deadline: .now() + PeerAsk.answerWithin) { [weak self] in
-                self?.waiting.removeValue(forKey: nonce)?.resume(returning: "No answer within a minute.")
+                self?.waiting.removeValue(forKey: nonce)?.resume(returning: Reply(text: "No answer within a minute.", answered: false))
             }
             Task.detached(priority: .userInitiated) { [weak self] in
                 let failed: String? = if let host {
@@ -59,7 +69,7 @@ final class PeerAskDesk: ObservableObject {
                     guard let failed else {
                         return Diagnostics.log("ask \(sessionId.prefix(8)): \(question.count) chars, without a turn")
                     }
-                    self.waiting.removeValue(forKey: nonce)?.resume(returning: failed)
+                    self.waiting.removeValue(forKey: nonce)?.resume(returning: Reply(text: failed, answered: false))
                 }
             }
         }

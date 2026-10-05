@@ -45,7 +45,7 @@ public enum CommandBar {
     }
 
     public struct Result: Sendable, Equatable, Identifiable {
-        public enum Kind: Sendable, Equatable { case session, action, ask, send, askSession, conversation }
+        public enum Kind: Sendable, Equatable { case session, action, ask, send, askSession, conversation, handoff }
         public let id: String
         public let kind: Kind
         public let title: String
@@ -53,6 +53,8 @@ public enum CommandBar {
         public let sessionId: String?
         public let action: Action?
         public let status: SessionStatus?
+        /// The session a handoff goes to (5.4).
+        public var targetId: String? = nil
     }
 
     /// A conversation the search index found (0.7): which session, what it is
@@ -125,8 +127,11 @@ public enum CommandBar {
                 return Result(id: "send:" + session.id, kind: .send, title: "Send to \(session.title): \(said)",
                               detail: detail, sessionId: session.sessionId, action: nil, status: session.status)
             }
-        case .command(let name, _):
-            return actions(matching: name)
+        case .command(let name, let argument):
+            guard !name.isEmpty, Handoff.command.hasPrefix(name) else { return actions(matching: name) }
+            let handoff = handoffs(argument, rows: rows, now: now, sendingEnabled: sendingEnabled, askable: askable)
+            // Its hint never above an action a short prefix also names (`/ho`, hooks).
+            return name == Handoff.command || !argument.isEmpty ? handoff + actions(matching: name) : actions(matching: name) + handoff
         case .ask(let question):
             guard !question.isEmpty else { return [] }
             return [Result(id: "ask", kind: .ask, title: "Ask LampMaster: " + question,
@@ -153,6 +158,30 @@ public enum CommandBar {
                           title: "Ask \(session.title) without disturbing it: \(asked)", detail: detail,
                           sessionId: can ? session.sessionId : nil, action: nil, status: session.status)
         }
+    }
+
+    /// `/handoff @from @to` (5.4): the first session, asked without a turn, writes
+    /// what the second needs. Half typed, or naming no two sessions, a hint.
+    private static func handoffs(_ argument: String, rows: [ColumnRow], now: Date,
+                                 sendingEnabled: Bool, askable: Set<String>) -> [Result] {
+        let names = argument.split(whereSeparator: \.isWhitespace).map { String($0.drop { $0 == "@" }).lowercased() }
+        func best(_ name: String) -> Result? { sessions(matching: name, rows: rows, now: now, namesOnly: true).first }
+        func hint(_ detail: String) -> [Result] {
+            [Result(id: "handoff", kind: .handoff, title: "Hand a session over: /handoff @from @to",
+                    detail: detail, sessionId: nil, action: nil, status: nil)]
+        }
+        guard names.count >= 2, let from = best(names[0]), let to = best(names[1]) else {
+            return hint("the first writes what the second needs; you send it")
+        }
+        guard from.sessionId != to.sessionId else { return hint("two different sessions: one hands over to another") }
+        let host = rows.first { "session:" + $0.id == to.id }?.workspace.host
+        let can = from.sessionId.map(askable.contains) == true
+        let detail = !can ? askNeedsMod : !sendingEnabled ? sendingOff
+            : "\(from.title) writes it from its conversation, with no turn; "
+                + (host.map { "copied for \(to.title) on \($0)" } ?? "you send it from \(to.title)'s Plancia")
+        return [Result(id: "handoff:\(from.id):\(to.id)", kind: .handoff, title: "Hand \(from.title) over to \(to.title)",
+                       detail: detail, sessionId: can && sendingEnabled ? from.sessionId : nil, action: nil,
+                       status: from.status, targetId: to.sessionId)]
     }
 
     static let sendingOff = "Turn on \"Let the panel answer your sessions\" in the panel menu first"
