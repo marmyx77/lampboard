@@ -116,5 +116,28 @@ enum WeekSummarySuite {
             let nowhere = WeekSummary.summarize([prompt("n", nil, "Somewhere", at(daysAgo: 1))], now: now, calendar: utc)
             t.expectEqual(nowhere.projects.map(\.name), ["no folder"])
         },
+        TestCase("The hours sessions waited on the person: answer to next prompt, an absence over four hours left out (R5)") { t in
+            let answers = [
+                WeekSummary.Answer(sessionId: "s1", at: at(daysAgo: 0, hour: -1.5)),   // 30 min before the next prompt
+                WeekSummary.Answer(sessionId: "s1", at: at(daysAgo: 0, hour: -1.4)),   // a later line of the same turn
+                WeekSummary.Answer(sessionId: "s2", at: at(daysAgo: 2, hour: -6)),     // six hours: away, not waiting
+                WeekSummary.Answer(sessionId: "s1", at: at(daysAgo: 2, hour: -0.25)),  // 15 min
+            ]
+            let summary = WeekSummary.summarize(week, answers: answers, now: now, calendar: utc)
+            // s1: −1.4h → −1h is 24 min; s1 day 2: 15 min; s2: 6h, left out.
+            t.expectEqual(Int(summary.waitingOnYou.rounded()), 39 * 60)
+            t.expect(WeekSummary.text(summary, calendar: utc).contains("Sessions waited on you 39m."),
+                     WeekSummary.text(summary, calendar: utc))
+            t.expectEqual(WeekSummary.summarize(week, now: now, calendar: utc).waitingOnYou, 0)
+        },
+
+        TestCase("The week as tiles: the figures, the busiest day and the waiting, in that order (R5)") { t in
+            let answers = [WeekSummary.Answer(sessionId: "s1", at: at(daysAgo: 0, hour: -3))]
+            let tiles = WeekSummary.tiles(WeekSummary.summarize(week, answers: answers, now: now, calendar: utc), calendar: utc)
+            t.expectEqual(tiles.map(\.label), ["prompts", "conversations", "projects", "days", "busiest", "waited on you"])
+            t.expectEqual(tiles.map(\.value), ["5", "3", "2", "3", "Sunday", "2h"])
+            t.expect(WeekSummary.tiles(WeekSummary.summarize([], now: now, calendar: utc), calendar: utc).isEmpty,
+                     "nothing this week, no tiles")
+        },
     ])
 }

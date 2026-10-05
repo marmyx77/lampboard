@@ -41,6 +41,7 @@ struct CommandBarView: View {
 
             if let answer = model.shownAnswer {
                 ScrollView {
+                    if !model.weekTiles.isEmpty { WeekTiles(tiles: model.weekTiles) }
                     Text(answer)
                         .font(.system(size: 10))
                         .foregroundStyle(Color.primary.opacity(0.8))
@@ -112,3 +113,33 @@ struct CommandBarView: View {
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
     }
 }
+
+/// The week's figures as tiles (UX §7, R5): a number large, its label small,
+/// three to a line.
+private struct WeekTiles: View {
+    let tiles: [WeekSummary.Tile]
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
+            ForEach(tiles, id: \.label) { tile in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(tile.value)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(tile.label)
+                        .font(.system(size: 9))
+                        .foregroundStyle(StatusPalette.timeColor)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 5)
+                .background(RoundedRectangle(cornerRadius: 6).fill(StatusPalette.badgeBackground))
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(.bottom, 6)
+    }
+}
+

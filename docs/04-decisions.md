@@ -4112,3 +4112,26 @@ The photograph needed the test Mac's display awake: `screencapture -l` fails on 
 sleeping display ("could not create image from window"), and `caffeinate -u` wakes
 it for the moment needed. Noted in the traps.
 
+## D109 · The week in tiles, with the time sessions waited on you
+
+**Decided.** The interface plan draws the week as tiles, with the hours spent
+waiting on you (§7). "This week" in the bar now opens on six tiles: prompts,
+conversations, projects, active days, the busiest day, and the time sessions
+waited on you. The projects follow as before, in the same scrolling space.
+`lampboard week` stays a paragraph, with the waiting as one more sentence.
+
+**How the waiting is counted.** It comes from the search index, which already holds
+when each prompt was typed and when each answer was written; no new record is kept
+and only times are read, never words. For every prompt of the week, the wait is the
+time since the last answer that came after the prompt before it, in the same
+conversation. A gap over four hours counts as nothing, because that is you away,
+not a session waiting on you. Answers from the four hours before the week are read
+too, since one of them may be what the week's first prompt answered.
+
+**Measured on the test Mac.** Four invented conversations over five days, each
+answer twelve minutes after its prompt, gave "11 prompts in 4 conversations,
+3 projects, 5 days. Busiest: Sunday, 4 prompts. Sessions waited on you 3h 50m."
+The trial panel with `--bar-type "this week"` showed the six tiles and was
+photographed. The end-to-end suite runs `lampboard week` on one answer and the
+prompt 25 minutes after it, and checks for "waited on you 25m".
+

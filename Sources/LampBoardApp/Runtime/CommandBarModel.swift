@@ -16,6 +16,8 @@ final class CommandBarModel: ObservableObject {
     @Published private(set) var results: [CommandBar.Result] = []
     @Published private(set) var selected = 0
     @Published private(set) var answer: String?
+    /// The week's figures, drawn as tiles above its projects (R5); empty otherwise.
+    @Published private(set) var weekTiles: [WeekSummary.Tile] = []
     @Published private(set) var asking = false
     /// Whether the field is open. At rest the bar is a button, not a field: a
     /// field takes the keyboard by itself the moment the panel becomes key, and
@@ -43,7 +45,8 @@ final class CommandBarModel: ObservableObject {
     /// waits in the second session's Plancia.
     var onHandoff: @MainActor (String, String) async -> String? = { _, _ in "Handing over is not available." }
     /// The week in a paragraph, from the search index, off the main actor.
-    var onWeek: @Sendable () -> String = { "The search index is not available." }
+    /// The week counted, or `nil` when the search index cannot be read.
+    var onWeek: @Sendable () -> WeekSummary.Summary? = { nil }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
@@ -113,9 +116,17 @@ final class CommandBarModel: ObservableObject {
             onLayoutChange()
             let typed = text, week = onWeek
             question = Task { [weak self] in
-                let said = await Task.detached { week() }.value
+                let summary = await Task.detached { week() }.value
                 guard let self, !Task.isCancelled, self.isEditing, self.text == typed else { return }
-                self.answer = said
+                guard let summary else {
+                    self.answer = "The search index is not available."
+                    return self.onLayoutChange()
+                }
+                // The tiles say the paragraph's first line; the projects follow it.
+                self.weekTiles = WeekSummary.tiles(summary)
+                let lines = WeekSummary.text(summary).split(separator: "\n", omittingEmptySubsequences: false)
+                self.answer = self.weekTiles.isEmpty ? lines.joined(separator: "\n")
+                    : lines.dropFirst().joined(separator: "\n")
                 self.onLayoutChange()
             }
         case .action:
@@ -185,6 +196,7 @@ final class CommandBarModel: ObservableObject {
     func clear() {
         cancelQuestion()
         answer = nil
+        weekTiles = []
         text = ""
         selected = 0
         isEditing = false
@@ -199,6 +211,7 @@ final class CommandBarModel: ObservableObject {
     private func textChanged() {
         cancelQuestion()
         answer = nil
+        weekTiles = []
         selected = 0
         found = []
         refresh()

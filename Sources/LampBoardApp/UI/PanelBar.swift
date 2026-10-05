@@ -90,7 +90,7 @@ extension PanelController {
                                      cwd: hit.cwd, snippet: hit.snippet)
                 }
             }
-            bar.onWeek = { index.week() }
+            bar.onWeek = { index.weekSummary() }
         }
         bar.onConversation = { [weak self] id, foundCwd in
             if let self, let session = self.session(named: id) {

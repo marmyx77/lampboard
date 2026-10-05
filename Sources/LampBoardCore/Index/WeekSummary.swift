@@ -23,6 +23,24 @@ public enum WeekSummary {
         }
     }
 
+    /// One line of an answer: when a session last spoke before the person's
+    /// next prompt (R5).
+    public struct Answer: Sendable, Equatable {
+        public let sessionId: String
+        public let at: Date
+
+        public init(sessionId: String, at: Date) {
+            self.sessionId = sessionId
+            self.at = at
+        }
+    }
+
+    /// One figure of the week, for the bar's tiles.
+    public struct Tile: Sendable, Equatable {
+        public let label: String
+        public let value: String
+    }
+
     public struct Project: Sendable, Equatable {
         public let name: String
         public let prompts: Int
@@ -46,7 +64,14 @@ public enum WeekSummary {
         /// The busiest project first.
         public let projects: [Project]
         public let busiest: Day?
+        /// How long sessions waited on the person: from an answer to the next
+        /// prompt in that conversation, an absence over `awayAfter` left out.
+        public let waitingOnYou: TimeInterval
     }
+
+    /// Past this, a gap between an answer and the next prompt is the person
+    /// away, not the session waiting on them.
+    public static let awayAfter: TimeInterval = 4 * 3600
 
     /// Seven calendar days, today included.
     public static let days = 7
@@ -60,7 +85,8 @@ public enum WeekSummary {
         calendar.startOfDay(for: calendar.date(byAdding: .day, value: -(days - 1), to: now) ?? now)
     }
 
-    public static func summarize(_ all: [Prompt], now: Date, calendar: Calendar = .current) -> Summary {
+    public static func summarize(_ all: [Prompt], answers: [Answer] = [], now: Date,
+                                 calendar: Calendar = .current) -> Summary {
         let from = start(now: now, calendar: calendar)
         let prompts = all.filter { $0.at >= from && $0.at <= now }
         // By folder, not by name: two `api` folders are two projects.
@@ -78,7 +104,53 @@ public enum WeekSummary {
             .max { ($0.prompts, $0.day) < ($1.prompts, $1.day) }
         return Summary(from: from, to: now, prompts: prompts.count,
                        conversations: Set(prompts.map(\.sessionId)).count,
-                       activeDays: byDay.count, projects: projects, busiest: busiest)
+                       activeDays: byDay.count, projects: projects, busiest: busiest,
+                       waitingOnYou: waiting(prompts: all, answers: answers, from: from, now: now))
+    }
+
+    /// For each prompt of the week, the time since the last answer that came
+    /// after the prompt before it, in that conversation.
+    static func waiting(prompts: [Prompt], answers: [Answer], from: Date, now: Date) -> TimeInterval {
+        let answered = Dictionary(grouping: answers, by: \.sessionId).mapValues { $0.map(\.at).sorted() }
+        var total: TimeInterval = 0
+        for (sid, asked) in Dictionary(grouping: prompts, by: \.sessionId) {
+            guard let said = answered[sid] else { continue }
+            var previous = Date.distantPast
+            for prompt in asked.map(\.at).sorted() {
+                defer { previous = prompt }
+                guard prompt >= from, prompt <= now,
+                      let last = said.last(where: { $0 > previous && $0 < prompt }) else { continue }
+                let gap = prompt.timeIntervalSince(last)
+                if gap <= awayAfter { total += gap }
+            }
+        }
+        return total
+    }
+
+    /// The week's figures as tiles; none for an empty week.
+    public static func tiles(_ summary: Summary, calendar: Calendar = .current) -> [Tile] {
+        guard summary.prompts > 0 else { return [] }
+        var tiles = [
+            Tile(label: "prompts", value: "\(summary.prompts)"),
+            Tile(label: "conversations", value: "\(summary.conversations)"),
+            Tile(label: "projects", value: "\(summary.projects.count)"),
+            Tile(label: "days", value: "\(summary.activeDays)"),
+        ]
+        if let busiest = summary.busiest {
+            tiles.append(Tile(label: "busiest", value: formatter("EEEE", calendar).string(from: busiest.day)))
+        }
+        if summary.waitingOnYou >= 60 {
+            tiles.append(Tile(label: "waited on you", value: duration(summary.waitingOnYou)))
+        }
+        return tiles
+    }
+
+    /// `39m`, `2h`, `3h 20m`.
+    static func duration(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds / 60)
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(rest)m" }
+        return rest == 0 ? "\(hours)h" : "\(hours)h \(rest)m"
     }
 
     public static func text(_ summary: Summary, calendar: Calendar = .current) -> String {
@@ -89,6 +161,9 @@ public enum WeekSummary {
             + "\(count(summary.projects.count, "project")), \(count(summary.activeDays, "day"))."
         if summary.activeDays > 1, let busiest = summary.busiest {
             head += " Busiest: \(weekday.string(from: busiest.day)), \(count(busiest.prompts, "prompt"))."
+        }
+        if summary.waitingOnYou >= 60 {
+            head += " Sessions waited on you \(duration(summary.waitingOnYou))."
         }
         var lines = [head]
         for project in summary.projects.prefix(projectsShown) {

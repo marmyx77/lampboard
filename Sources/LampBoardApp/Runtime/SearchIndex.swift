@@ -218,9 +218,39 @@ final class SearchIndex: @unchecked Sendable {
         }
     }
 
+    /// When each conversation of the week answered: what the time sessions
+    /// waited on the person is measured from (R5). Times only, never the words.
+    func answers(since from: Date) -> [WeekSummary.Answer] {
+        guard open() else { return [] }
+        return queue.sync {
+            var statement: OpaquePointer?
+            let sql = """
+                SELECT msg.sid, msg.at FROM msg
+                WHERE msg.sid IN (SELECT sid FROM conv WHERE last_at >= ?1) AND msg.role = 'assistant' AND msg.at >= ?2
+                """
+            guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(statement) }
+            sqlite3_bind_double(statement, 1, from.timeIntervalSince1970)
+            // An answer just before the week can be what its first prompt answered.
+            sqlite3_bind_double(statement, 2, from.addingTimeInterval(-WeekSummary.awayAfter).timeIntervalSince1970)
+            var answers: [WeekSummary.Answer] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                answers.append(WeekSummary.Answer(sessionId: text(statement, 0) ?? "",
+                                                  at: Date(timeIntervalSince1970: sqlite3_column_double(statement, 1))))
+            }
+            return answers
+        }
+    }
+
+    /// The week, counted: what the paragraph and the bar's tiles say (0.7, R5).
+    func weekSummary(now: Date = Date()) -> WeekSummary.Summary {
+        let from = WeekSummary.start(now: now)
+        return WeekSummary.summarize(prompts(since: from), answers: answers(since: from), now: now)
+    }
+
     /// The week in a paragraph, for the person (0.7).
     func week(now: Date = Date()) -> String {
-        WeekSummary.text(WeekSummary.summarize(prompts(since: WeekSummary.start(now: now)), now: now))
+        WeekSummary.text(weekSummary(now: now))
     }
 
     /// Where a conversation ran, as its transcript said.

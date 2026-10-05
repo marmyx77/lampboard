@@ -70,6 +70,23 @@ enum SearchE2ESuite {
                 t.expect(!week.contains("Old work") && !week.contains("api ·"), "ten days ago is not this week")
                 t.expect(!week.contains("Rename the slots"), "counts, never the words")
             },
+
+            TestCase("lampboard week says how long sessions waited on you: answer to next prompt (R5)") { t in
+                let app = AppUnderTest(binaryURL: binaryURL, port: port)
+                try? FileManager.default.removeItem(at: app.home)
+                defer { try? FileManager.default.removeItem(at: app.home) }
+                let stamp = { (minutesAgo: Double) in ISO8601DateFormatter().string(from: Date().addingTimeInterval(-minutesAgo * 60)) }
+                transcript(app, folder: "-home-dev-events", session: "aaaaaaaa-0000-4000-8000-000000000003", [
+                    ["type": "user", "uuid": "u1", "timestamp": stamp(60), "cwd": "/home/dev/events", "origin": ["kind": "human"],
+                     "message": ["role": "user", "content": "Rename the slots endpoint"]],
+                    ["type": "assistant", "uuid": "a1", "timestamp": stamp(50),
+                     "message": ["role": "assistant", "content": [["type": "text", "text": "Done."]]]],
+                    ["type": "user", "uuid": "u2", "timestamp": stamp(25), "origin": ["kind": "human"],
+                     "message": ["role": "user", "content": "Now the tests"]],
+                ])
+                let week = app.runCommand(["week"]).output
+                t.expect(week.contains("Sessions waited on you 25m."), "the wait: \(week)")
+            },
         ])
     }
 }

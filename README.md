@@ -862,7 +862,11 @@ spent, left out of backups. `lampboard search <words>` answers from a terminal, 
 `lampboard search --reset` takes the index away ([D88](docs/04-decisions.md)).
 "This week" in the bar, or `lampboard week`, sums up the last seven days from the
 same index: prompts, conversations, projects, the busiest day, and per project the
-conversations' names, without a token ([D90](docs/04-decisions.md)).
+conversations' names, without a token ([D90](docs/04-decisions.md)). In the bar the figures are
+tiles, and one of them is how long your sessions waited on you: from an answer to
+your next prompt in that conversation, leaving out any gap over four hours, which
+is you away rather than a session waiting
+([D109](docs/04-decisions.md#d109--the-week-in-tiles-with-the-time-sessions-waited-on-you)).
 
 **A line above every session's prompt.** While another session waits for you — a
 permission, a question, a stuck or failed turn — the mod draws one line above the
@@ -1571,8 +1575,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1149 domain tests, instantaneous
-swift run LampBoardE2E                # 155 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1151 domain tests, instantaneous
+swift run LampBoardE2E                # 156 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
