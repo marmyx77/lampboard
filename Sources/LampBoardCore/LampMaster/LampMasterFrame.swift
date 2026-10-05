@@ -64,12 +64,42 @@ public struct LampMasterFrame: Encodable, Sendable, Equatable {
         }
     }
 
+    /// A failure of the last hour and the conversations elsewhere that said its
+    /// words (D3): candidates found by searching first, never recalled.
+    public struct Precedent: Encodable, Sendable, Equatable {
+        public struct Found: Encodable, Sendable, Equatable {
+            public let id: String
+            public let project: String?
+            public let date: String?
+            public let snippet: String
+
+            public init(id: String, project: String?, date: String?, snippet: String) {
+                self.id = id
+                self.project = project
+                self.date = date
+                self.snippet = snippet
+            }
+        }
+        public let session: String
+        public let error: String
+        public let found: [Found]
+
+        public init(session: String, error: String, found: [Found]) {
+            self.session = session
+            self.error = error
+            self.found = found
+        }
+    }
+
     public let now: String
     public let quota: [Quota]
     public var sessions: [Session]
     public let recent: [Recent]
     public let muted: [String]
     public let notebook: String
+    /// Only in the hourly round's frame: what it shows reaches a person, never
+    /// a session's context (an `ask_lampmaster` frame has none).
+    public var precedents: [Precedent]?
 
     /// The frame as the round sends it.
     public func json() -> String {
@@ -96,7 +126,7 @@ public enum LampMasterFrameBuilder {
     public static func build(
         sessions: [LampMasterSession], now: Date, quota: [LampMasterFrame.Quota] = [],
         recent: [LampMasterFrame.Recent] = [], muted: [String] = [], notebook: String = "",
-        budgetTokens: Int = budgetTokens
+        precedents: [LampMasterFrame.Precedent] = [], budgetTokens: Int = budgetTokens
     ) -> LampMasterFrame {
         let signals = LampMasterSignals.evaluate(sessions, now: now)
         let chosen = sessions
@@ -106,7 +136,8 @@ public enum LampMasterFrameBuilder {
 
         var frame = LampMasterFrame(
             now: stamp(now), quota: quota, sessions: chosen, recent: recent,
-            muted: muted.sorted(), notebook: String(notebook.prefix(1_500))
+            muted: muted.sorted(), notebook: String(notebook.prefix(1_500)),
+            precedents: precedents.isEmpty ? nil : precedents
         )
         fit(&frame, budgetTokens: budgetTokens)
         return frame
@@ -158,7 +189,19 @@ public enum LampMasterFrameBuilder {
 
     /// Gives up detail before sessions: first the prompts and answers of quiet,
     /// closed sessions with nothing to say, then whole sessions from the end.
+    /// The round's precedents (D3), added once it is known to run: only for
+    /// the sessions the frame kept, and gone again if they break the budget.
+    public static func add(_ precedents: [LampMasterFrame.Precedent], to frame: inout LampMasterFrame,
+                           budgetTokens: Int = budgetTokens) {
+        let kept = Set(frame.sessions.map(\.id))
+        let mine = precedents.filter { kept.contains($0.session) }
+        frame.precedents = mine.isEmpty ? nil : mine
+        if frame.estimatedTokens > budgetTokens { frame.precedents = nil }
+    }
+
     static func fit(_ frame: inout LampMasterFrame, budgetTokens: Int) {
+        // Candidates go before any session's detail: the sessions are the frame.
+        if frame.estimatedTokens > budgetTokens { frame.precedents = nil }
         var index = frame.sessions.count - 1
         while frame.estimatedTokens > budgetTokens, index >= 0 {
             if frame.sessions[index].signals.isEmpty, frame.sessions[index].compacted == nil {

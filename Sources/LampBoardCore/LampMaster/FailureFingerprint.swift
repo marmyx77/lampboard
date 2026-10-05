@@ -25,6 +25,34 @@ public enum FailureFingerprint {
         return normalise(chosen)
     }
 
+    /// The names on the same line, before they are taken out: what a search
+    /// for the same failure elsewhere needs (D3) — a path's parts, a module, an
+    /// endpoint — without the words every error has, numbers and hashes.
+    public static func terms(of text: String) -> [String] {
+        let lines = text.split(whereSeparator: \.isNewline).map { String($0).trimmed }.filter { !$0.isEmpty }
+        let chosen = (lines.first(where: isErrorLine) ?? lines.first ?? "").lowercased()
+        var seen = Set<String>()
+        return chosen
+            .split { !($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }
+            .map(String.init)
+            .filter { word in
+                word.count >= 3 && word.contains(where: \.isLetter) && !generic.contains(word)
+                    && word.range(of: #"^(?=[0-9a-f]*\d)[0-9a-f]{7,64}$"#, options: .regularExpression) == nil
+                    && seen.insert(word).inserted
+            }
+            .prefix(termsKept)
+            .map { $0 }
+    }
+
+    /// Every term is required by the search: past four, it finds nothing.
+    static let termsKept = 4
+    /// Words every error says: a search on them finds every error.
+    static let generic: Set<String> = [
+        "error", "errors", "failed", "failure", "fatal", "exception", "not", "found", "the", "and", "for", "with",
+        "from", "cannot", "could", "was", "are", "this", "that", "line", "returned", "true", "false", "null",
+        "undefined", "warning", "warn", "err", "npm", "while", "into", "has", "have", "been", "unable", "missing",
+    ]
+
     static func isErrorLine(_ line: String) -> Bool {
         let lower = line.lowercased()
         return ["error", "failed", "fatal", "exception", "not found", "denied", "panic"]

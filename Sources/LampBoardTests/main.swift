@@ -36,6 +36,7 @@ let suites: [TestSuite] = [
     WeekSummarySuite.suite,
     HandoffSuite.suite,
     LampMasterMCPSuite.suite,
+    LampMasterPrecedentsSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,

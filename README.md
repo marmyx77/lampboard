@@ -1498,8 +1498,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1089 domain tests, instantaneous
-swift run LampBoardE2E                # 145 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1096 domain tests, instantaneous
+swift run LampBoardE2E                # 146 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

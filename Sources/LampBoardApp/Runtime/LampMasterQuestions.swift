@@ -50,7 +50,14 @@ extension LampMasterService {
             return (LampMasterLookup.remembered(hits, asker: asker, named: named, now: now).map { cards + "\n\n" + $0 } ?? cards, false)
         case .precedents:
             guard !text("error").isEmpty else { return ("Paste the error.", true) }
-            return (LampMasterLookup.precedents(error: text("error"), asker: asker, sessions: sessions, now: now), false)
+            let cards = LampMasterLookup.precedents(error: text("error"), asker: asker, sessions: sessions, now: now)
+            // And the conversations of the index that said the failure's words (D3):
+            // named, never quoted, as `who_knows` names them (D89).
+            let terms = FailureFingerprint.terms(of: text("error"))
+            guard let remember, terms.count >= 2 else { return (cards, false) }
+            let hits = await Task.detached(priority: .userInitiated) { remember(terms.joined(separator: " ")) }.value
+            let named = Set(sessions.map(\.card.sessionId))
+            return (LampMasterLookup.remembered(hits, asker: asker, named: named, now: now).map { cards + "\n\n" + $0 } ?? cards, false)
         case .askLampMaster:
             return await ask(text("question"), asker: asker, sessions: sessions, now: now)
         }

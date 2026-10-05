@@ -44,6 +44,9 @@ final class LampMasterService: ObservableObject {
     /// What was said in earlier conversations, for `who_knows` (D89): the
     /// search index, set by whoever owns it.
     var remember: (@Sendable (String) -> [LampMasterLookup.Remembered])?
+    /// The search index's conversations for a failure's words, with what was
+    /// said around them: the round's precedents (D3).
+    var precedentsSearch: (@Sendable (String) -> [LampMasterPrecedents.Hit])?
 
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
@@ -151,7 +154,7 @@ final class LampMasterService: ObservableObject {
         let found = await cards.sessions(live: rows().compactMap(Self.live), now: now)
         let muted = preferences.lampMasterMuted
         var shown = files.suggestions()
-        let frame = LampMasterFrameBuilder.build(
+        var frame = LampMasterFrameBuilder.build(
             sessions: found, now: now, recent: LampMasterLedger.recent(shown, now: now),
             muted: muted.map(\.rawValue), notebook: files.notebook()
         )
@@ -191,6 +194,16 @@ final class LampMasterService: ObservableObject {
             if !snapshot.running { publish(running: true) }
         }
 
+        // Searched only for a round that runs, and only for the sessions the
+        // frame kept, off the main actor: candidates, not recollections (D3).
+        // The digest above is the sessions': a precedent alone is no reason to run.
+        if let search = precedentsSearch {
+            let kept = Set(frame.sessions.map(\.id))
+            let precedents = await Task.detached(priority: .utility) {
+                LampMasterPrecedents.frame(for: found.filter { kept.contains($0.shortId) }, now: now, search: search)
+            }.value
+            LampMasterFrameBuilder.add(precedents, to: &frame)
+        }
         let text = frame.json()
         let model = trigger == .quick ? LampMasterQuick.model : preferences.lampMasterModel
         let system = LampMasterPrompt.system(language: Self.language)

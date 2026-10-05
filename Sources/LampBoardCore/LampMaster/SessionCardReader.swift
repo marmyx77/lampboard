@@ -137,7 +137,8 @@ public struct SessionCardReader: Sendable, Equatable {
 
         if failed {
             let text = Self.text(of: block["content"])
-            card.failures.append(.init(tool: call.tool, fingerprint: FailureFingerprint.of(text), at: at))
+            card.failures.append(.init(tool: call.tool, fingerprint: FailureFingerprint.of(text), at: at,
+                                       terms: FailureFingerprint.terms(of: text)))
             card.failures = Array(card.failures.suffix(Self.failuresKept))
         }
         switch call.milestone {

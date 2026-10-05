@@ -3593,3 +3593,39 @@ LampBoard would receive the handoff's text, as it would a side question's answer
 told about the slots rename: "Handoff written: it waits in api's composer in
 LampBoard", 665 and then, proven, 748 characters in the other session's composer,
 unsent; neither transcript gained a turn.
+
+## D92 · LampMaster's precedents: searched first, then judged
+
+**Decided.** The fifth job of LampMaster's round — "a session faces a problem that
+another conversation already solved" — no longer rests on the cards alone, which
+cover a week. A session card keeps, beside each failure's fingerprint, the names on
+the error line that the fingerprint takes out: a path's parts, a module, an endpoint,
+four at most, without the words every error says. When a round is due to run, the
+failures of the last hour of the sessions in its frame — four at most, the most
+recent first, each searched once — are looked up in the search index (D88), and the
+conversations that said those words in another project, or in the same one a day or
+more before, enter the frame as `precedents`: three per failure, with project, day
+and the words around the match, three hundred characters at most. No token is spent
+finding them; the round judges whether they are worth a suggestion.
+
+**Where they go, and where not.** Only into the hourly round's frame, whose advice
+reaches a person. The frame of `ask_lampmaster`, whose answer can reach another
+session's context, carries none. The MCP tool `precedents` names the conversations
+of the index that said the failure's words, never their words, as `who_knows` does
+(D89). The frame drops them first when it is over budget, and they are searched only
+once the round is known to run: the digest that decides whether to run is the
+sessions', so a precedent alone is no reason to spend a round.
+
+**What the plan had and this leaves.** The plan wanted the round able to search up to
+three more times with a tool. The round runs without tools, isolated, and stays so.
+It also wanted D3 proven on a real case of the person's: that is theirs to see, on
+their Mac; on the test Mac, an invented failure and an invented older conversation.
+
+**Measured on the test Mac.** The end-to-end suite writes a session that failed three
+times on "missing script: deploy" and a three-day-old conversation in another project
+that fixed it; the round's frame, as the fake `claude` received it, carries that
+conversation under `precedents` with its project and the words around the match.
+
+**What a review changed.** The search moved after the decision to run, and to the
+sessions the frame kept; a failure two sessions share is searched once and picked for
+each, since each has its own project.

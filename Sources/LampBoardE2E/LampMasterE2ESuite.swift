@@ -279,6 +279,34 @@ enum LampMasterE2ESuite {
                 }
             },
 
+            TestCase("a failure another project met before reaches the round as a precedent, found in the index (D3)") { t in
+                bench(t) { bench in
+                    bench.writeFailing()
+                    let dir = bench.app.home.appendingPathComponent(".claude/projects/-home-dev-infra")
+                    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                    let then = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86_400 * 3))
+                    let lines: [[String: Any]] = [
+                        ["type": "user", "uuid": "u1", "timestamp": then, "cwd": "/home/dev/infra", "origin": ["kind": "human"],
+                         "message": ["role": "user", "content": "npm says missing script deploy in the infra repo"]],
+                        ["type": "assistant", "uuid": "a1", "timestamp": then,
+                         "message": ["role": "assistant", "content": [["type": "text", "text":
+                            "Added a deploy script to package.json: the script deploy now runs the pipeline."]]]],
+                    ]
+                    let text = lines.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+                        .map { String(decoding: $0, as: UTF8.self) }.joined(separator: "\n") + "\n"
+                    try? text.write(to: dir.appendingPathComponent("1f1f1f1f-0000-4000-8000-000000000001.jsonl"), atomically: true, encoding: .utf8)
+                    // The index built now, as the panel's own pass would within thirty seconds.
+                    _ = bench.app.runCommand(["search", "deploy"])
+                    let round = bench.round()
+                    t.expectEqual(round?["outcome"] as? String, "ran", "the round ran")
+                    let stdin = bench.read("stdin.txt")
+                    t.expect(stdin.contains("\"precedents\""), "the frame has precedents")
+                    t.expect(stdin.contains("\"1f1f1f1f\"") && stdin.contains("\"infra\""), "the other project's conversation, by id and project")
+                    t.expect(stdin.contains("«deploy»") || stdin.contains("«script»"), "with what was said around the match: \(stdin.suffix(600))")
+                    t.expect(stdin.contains("\"session\":\"badc0de0\""), "for the failing session")
+                }
+            },
+
             TestCase("past the day's ceiling no round reaches claude") { t in
                 bench(t) { bench in
                     let spent = LampMasterRound(at: Date(), trigger: .timer, outcome: .ran, tokens: 200_000, digest: "earlier")

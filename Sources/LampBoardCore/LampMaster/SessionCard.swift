@@ -26,6 +26,8 @@ public struct SessionCard: Sendable, Equatable {
         /// failure twice reads the same. See `FailureFingerprint`.
         public let fingerprint: String
         public let at: Date
+        /// The names the fingerprint takes out, for a search elsewhere (D3).
+        public var terms: [String] = []
     }
 
     /// Something the session saved or proved: the evidence that work is done.

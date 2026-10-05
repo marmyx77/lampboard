@@ -101,6 +101,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                             project: $0.cwd.map { ($0 as NSString).lastPathComponent }, lastAt: $0.lastAt)
             }
         }
+        lampMaster.precedentsSearch = { [searchIndex] words in
+            searchIndex.search(words, limit: 8).map {
+                LampMasterPrecedents.Hit(sessionId: $0.sessionId, project: $0.cwd.map { ($0 as NSString).lastPathComponent },
+                                         lastAt: $0.lastAt, snippet: $0.snippet)
+            }
+        }
         lampMaster.start()
         if let trial { TrialStage.play(.standard, port: port, pace: trial.pace) }
 
