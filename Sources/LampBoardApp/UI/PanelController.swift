@@ -293,7 +293,8 @@ final class PanelController {
             actions: makeActions(),
             rowActions: makeRowActions(),
             allowance: allowance,
-            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.onOpenLampMaster?() }, tour: tour,
+            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.openLampMasterPlancia() },
+            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), tour: tour,
             queue: compact ? nil : queue, bar: compact ? nil : bar,
             plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading, activity: activity,
             openInEditor: { [weak self] id in
@@ -357,6 +358,7 @@ final class PanelController {
             height: planciaHeight(Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
                 allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
+                lampMasterRow: compact ? nil : Layout.wideRowHeight,
                 tourLines: tour == nil ? 0 : TourBand.lines,
                 queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0,
                 bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil)

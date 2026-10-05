@@ -344,7 +344,8 @@ extension ModReport.Measure {
         guard let tokens else { return nil }
         return ContextReading(
             tokens: tokens, model: model ?? previous?.model ?? "",
-            window: window ?? previous?.window, confidence: .reported, at: now
+            window: window ?? previous?.window, confidence: .reported, at: now,
+            cacheLifetime: previous?.cacheLifetime, cacheAt: previous?.cacheAt
         )
     }
 }

@@ -47,7 +47,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let searchIndex = SearchIndex()
     private var indexClock: DispatchSourceTimer?
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
-    private var lampMasterWindow: LampMasterWindowController?
 
     init(port: UInt16, skipSetupPrompt: Bool = false, headless: Bool = false) {
         self.port = port
@@ -141,11 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
             lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }
         }
-        let lampMasterWindow = LampMasterWindowController(
-            service: lampMaster, actions: controller.lampMasterActions(for: lampMaster)
-        )
-        self.lampMasterWindow = lampMasterWindow
-        controller.onOpenLampMaster = { lampMasterWindow.show() }
+        // In the panel, beside the list (UX §4): no window of its own.
+        controller.onOpenLampMaster = { [weak controller] in controller?.openLampMasterPlancia() }
         let legend = LegendWindowController(
             store: store,
             rendering: { [weak controller] in controller?.currentRendering ?? .empty }
@@ -163,10 +159,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
         if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
-        // LampMaster's window on one of its sheets (D5): `--lampmaster today`.
+        // LampMaster's Plancia on one of its sheets (D96): `--lampmaster today`.
         if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
-           let sheet = LampMasterWindowView.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.lampMasterWindow?.show(sheet: sheet) }
+           let sheet = LampMasterPlanciaContent.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak controller] in controller?.openLampMasterPlancia(sheet: sheet) }
         }
         // The Plancia on the most urgent session, once the first rows are in.
         if CommandLine.arguments.contains("--plancia") {

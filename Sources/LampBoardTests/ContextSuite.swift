@@ -139,6 +139,11 @@ enum ContextSuite {
             t.expect(reading?.explanation.contains("no window recorded") == true, "and the tooltip says why")
         },
 
+        TestCase("The reply's time is read, milliseconds and all") { t in
+            let reading = ContextScanner.read(tail: reply(timestamp: "2026-08-29T08:08:07.456Z"))
+            t.expect(abs((reading?.at?.timeIntervalSince1970 ?? 0) - 1_787_990_887.456) < 0.001, "read: \(String(describing: reading?.at))")
+        },
+
         TestCase("A tail with nothing usable in it reads as nothing") { t in
             t.expectNil(ContextScanner.read(tail: ""), "empty")
             t.expectNil(ContextScanner.read(tail: prompt + "\n" + refusal), "no reply in it")

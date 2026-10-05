@@ -50,13 +50,30 @@ public struct ContextReading: Sendable, Equatable {
     public let confidence: Confidence
     /// The timestamp of the reply, not of the read: the panel says how old this is.
     public let at: Date?
+    /// How long the prompt cache lives after the last reply that used it, as
+    /// its usage said (`ephemeral_5m` or `ephemeral_1h`); `nil` when not known.
+    public let cacheLifetime: TimeInterval?
+    /// When that reply came: the cache's clock starts there. A measure from the
+    /// mod keeps the one the transcript gave.
+    public let cacheAt: Date?
 
-    public init(tokens: Int, model: String, window: Int?, confidence: Confidence, at: Date?) {
+    public init(tokens: Int, model: String, window: Int?, confidence: Confidence, at: Date?,
+                cacheLifetime: TimeInterval? = nil, cacheAt: Date? = nil) {
         self.tokens = tokens
         self.model = model
         self.window = window
         self.confidence = confidence
         self.at = at
+        self.cacheLifetime = cacheLifetime
+        self.cacheAt = cacheAt ?? (cacheLifetime == nil ? nil : at)
+    }
+
+    /// This reading with another's cache clock: what a reported count takes from
+    /// a transcript reading it otherwise outranks (D65).
+    public func withCache(of other: ContextReading) -> ContextReading {
+        guard let lifetime = other.cacheLifetime else { return self }
+        return ContextReading(tokens: tokens, model: model, window: window, confidence: confidence, at: at,
+                              cacheLifetime: lifetime, cacheAt: other.cacheAt)
     }
 
     /// `nil` when there is no denominator, or when the number is known to be wrong.

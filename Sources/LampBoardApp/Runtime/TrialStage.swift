@@ -79,7 +79,9 @@ enum TrialStage {
             ["type": "ai-title", "aiTitle": session.title, "sessionId": session.id],
             ["type": "assistant", "timestamp": stamp, "cwd": path, "entrypoint": "claude-vscode",
              "message": ["role": "assistant", "model": session.model, "content": [["type": "text", "text": "Ready."]],
-                         "usage": ["input_tokens": 1_000, "cache_read_input_tokens": 120_000, "cache_creation_input_tokens": 0,
+                         // As Claude Code writes it, with the cache's lifetime (R3b).
+                         "usage": ["input_tokens": 1_000, "cache_read_input_tokens": 120_000, "cache_creation_input_tokens": 2_000,
+                                   "cache_creation": ["ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 2_000],
                                    "output_tokens": 300]]],
         ]
         let text = records.compactMap { try? JSONSerialization.data(withJSONObject: $0) }

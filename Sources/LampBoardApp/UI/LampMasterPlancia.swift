@@ -1,10 +1,10 @@
 import LampBoardCore
 import SwiftUI
 
-/// LampMaster's window: its cards, and beside them what it did today, the
-/// frame its last round was given, and what the rounds cost (D5). Read from
-/// its files each time a sheet is chosen or a round ends.
-struct LampMasterWindowView: View {
+/// LampMaster's Plancia (UX §4, D96, D97): its cards, and beside them what it
+/// did today, the frame its last round was given, and what the rounds cost.
+/// Read from its files each time a sheet is drawn.
+struct LampMasterPlanciaContent: View {
     @ObservedObject var service: LampMasterService
     let actions: LampMasterActions
 

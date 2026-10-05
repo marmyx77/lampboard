@@ -10,6 +10,12 @@ struct PlanciaView: View {
     let activity: ActivityRecorder?
     let openInEditor: (String) -> Void
     let close: () -> Void
+    var lampMaster: LampMasterService? = nil
+    var lampMasterActions: LampMasterActions? = nil
+    /// What the header's buttons do (UX §5): go to its window, hand it over, mute it.
+    var actions: PlanciaActions? = nil
+    /// "Waiting for you", for the card of this session pinned at the top (UX §5).
+    var queue: WaitingQueueModel? = nil
 
     enum Tab: String, CaseIterable { case thread = "Thread", activity = "Activity", cost = "Cost" }
     @State private var tab: Tab = .thread
@@ -17,13 +23,18 @@ struct PlanciaView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Picker("", selection: $tab) {
-                    ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                if model.showsLampMaster {
+                    Image(systemName: "sparkle").font(.system(size: 11, weight: .semibold)).foregroundStyle(StatusPalette.lampMasterTint)
+                    Text("LampMaster").font(.system(size: 12, weight: .semibold, design: .rounded))
+                } else {
+                    Picker("", selection: $tab) {
+                        ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 230)
+                    .accessibilityLabel("Plancia tab")
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 230)
-                .accessibilityLabel("Plancia tab")
                 Spacer()
                 Button { model.pinned.toggle() } label: {
                     Image(systemName: model.pinned ? "pin.fill" : "pin").font(.system(size: 10))
@@ -43,11 +54,18 @@ struct PlanciaView: View {
             .padding(.horizontal, 10)
             .frame(height: 30)
 
-            if let id = model.sessionId {
+            if model.showsLampMaster, let lampMaster, let lampMasterActions {
+                LampMasterPlanciaContent(service: lampMaster, actions: lampMasterActions, sheet: model.lampMasterSheet)
+            } else if let id = model.sessionId {
+                if let session = store.state.session(named: id) {
+                    PlanciaHeaderView(session: session, actions: actions)
+                    if let queue { PlanciaPendingCard(queue: queue, sessionId: id) }
+                    Divider()
+                }
                 switch tab {
                 case .thread:
                     if let thread = model.thread {
-                        ChatView(session: thread) { openInEditor(id) }.id(id)
+                        ChatView(session: thread, openInEditor: { openInEditor(id) }, showsHeader: false).id(id)
                     }
                 case .activity:
                     PlanciaActivity(log: activityLog(id))
@@ -156,5 +174,89 @@ struct PlanciaNote: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// What the Plancia's header can ask of the panel (UX §5).
+struct PlanciaActions {
+    /// Raises the session's own window, as a click on its row does.
+    let go: (String) -> Void
+    /// Opens the bar on `/handoff @this @`, for the person to name who takes over (D91).
+    let handOver: (String) -> Void
+    /// Mutes or unmutes the session's project, as the row's menu does.
+    let toggleMuted: (String) -> Void
+    let isMuted: (String) -> Bool
+}
+
+/// The session in focus, above every tab (UX §5): its lamp, its name, the line of
+/// facts — machine, surface and agent, model, context, cost — and what can be done
+/// to it from here. Resume waits for closed conversations in the Plancia, Focus
+/// for the governor (0.8).
+struct PlanciaHeaderView: View {
+    let session: SessionState
+    let actions: PlanciaActions?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(StatusPalette.color(for: session.status))
+                    .frame(width: 9, height: 9)
+                    .opacity(StatusPalette.opacity(for: session.status))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(RowActivity.flat(session.displayName))
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                    Text(PlanciaHeader.facts(session))
+                        .font(.system(size: 10))
+                        .foregroundStyle(StatusPalette.timeColor)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                Spacer(minLength: 0)
+            }
+            if let actions {
+                HStack(spacing: 6) {
+                    button("Go", "arrow.up.forward.app", "Raise its window") { actions.go(session.id) }
+                    button("Hand over", "arrow.right.doc.on.clipboard", "Write a handoff for another session (/handoff)") {
+                        actions.handOver(session.id)
+                    }
+                    let muted = actions.isMuted(session.id)
+                    button(muted ? "Unmute" : "Mute", muted ? "bell" : "bell.slash",
+                           muted ? "Notify again for this project" : "No notifications for this project") {
+                        actions.toggleMuted(session.id)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func button(_ title: String, _ symbol: String, _ tip: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol).font(.system(size: 10, weight: .medium))
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .tooltip(tip)
+    }
+}
+
+/// The session's own card from "Waiting for you", pinned under its header (UX
+/// §5): the same card, the same armed buttons, answered from here as from the
+/// queue. Nothing when the session waits for nothing.
+struct PlanciaPendingCard: View {
+    @ObservedObject var queue: WaitingQueueModel
+    let sessionId: String
+
+    var body: some View {
+        if let card = queue.cards.first(where: { $0.sessionIds.contains(sessionId) }) {
+            WaitingCardView(card: card, selected: false, armed: queue.isArmed(card), resolved: false,
+                            onAnswer: { queue.answer(card, $0) }, onChoose: { queue.choose(card, $0) })
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+        }
     }
 }

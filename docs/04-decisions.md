@@ -3883,11 +3883,11 @@ place there is; where the board shows itself otherwise follows the interface
 realignment that opens 0.8 (Marco's answer to question 17). They were not
 photographed: a context menu needs a right click, which ssh cannot give.
 
-## D96 · LampMaster's window shows what it did, saw and cost
+## D96 · LampMaster's Plancia shows what it did, saw and cost
 
-**Decided.** LampMaster's window keeps its cards and gains three sheets beside them,
-as the plan's Plancia of LampMaster asks: *Today*, the day's suggestions with what
-became of each; *Frame*, what the last round was given — each session with its
+**Decided.** LampMaster's Plancia (D97) keeps its cards and has three sheets beside
+them, as the plan's Plancia of LampMaster asks: *Today*, the day's suggestions with
+what became of each; *Frame*, what the last round was given — each session with its
 project, machine, state, signals and the precedents found for it, and the allowance
 as the round saw it — so a suggestion can be trusted or a wrong one understood;
 *Cost*, the day's rounds that ran, were skipped or failed, the tokens against the
@@ -3897,14 +3897,13 @@ switched itself off, why (D95).
 
 **Where it comes from.** The files LampMaster already keeps — its rounds, its
 suggestions with their outcomes, the last two hundred frames — read when a sheet is
-drawn. Nothing new is recorded, nothing is spent, nothing leaves the Mac. A window
-and not the panel's Plancia: the cards already live in one (D61), and the panel's
-Plancia shows sessions.
+drawn. Nothing new is recorded, nothing is spent, nothing leaves the Mac.
 
 **Measured on the test Mac.** After one round against a fake `claude` on two
-invented conversations, `--lampmaster today`, `frame` and `cost` opened the window
-on each sheet and each was photographed: the open suggestion, the two sessions, one
-round of 5,632 tokens and the five kinds on.
+invented conversations each sheet was opened with `--lampmaster today`, `frame` and
+`cost` and photographed: the open suggestion, the two sessions, one round of 5,632
+tokens and the five kinds on. Released in 0.7.0 in LampMaster's own window; D97 moves
+it into the panel.
 
 ## D106 · Releases are signed on the test Mac, in a keychain of their own
 
@@ -3998,3 +3997,92 @@ is now resolved before it is listed.
 **Not done.** `claude://code/new?q=…&folder=…` starts a conversation, but it stops on
 the app's trust dialog for the folder, and nothing outside the app can answer that
 dialog, so the panel does not use it.
+
+## D97 · LampMaster is the panel's first row, with a Plancia of its own
+
+**Decided.** As the interface plan asks — more in the panel, no separate windows —
+LampMaster is the first row of the wide panel, fixed, with its teal star where a lamp
+would be and what the last round found on its second line; it never blinks. A click
+opens its Plancia beside the list, like a session's: its cards, Today, Frame and Cost
+(D96), pinned or closing by itself like any Plancia. The window of its own (D61) is
+gone; the narrow panel keeps its one line. `--lampmaster <sheet>` opens that Plancia.
+
+**What changes from D61.** D61 put the cards in a window because a sentence of any
+length cannot live in a panel whose height is a formula. The Plancia has a height of
+its own and scrolls, so that reason holds there no longer; the row itself is a
+measured height, counted with the gap under it.
+
+**Measured on the test Mac.** On the trial's panel: LampMaster the first row under
+"Waiting for you", one suggestion counted, the last row still whole above the
+allowance; its Plancia open on Suggestions with the card, its evidence and actions,
+and on Today. Photographed, invented sessions only. Marco chose to finish 0.7
+first and realign after it (question 17, answer (b)); this opens 0.8.
+
+## D98 · The Plancia says which session it is, where, and what can be done
+
+**Decided.** Above every tab of a session's Plancia, as the interface plan's §5 asks:
+its lamp, its name, and on one line what a person wants to know before acting on it —
+the machine, the surface and the agent, the model by its name ("Opus 5.5", not an id),
+how full its context is ("121k of 1.0M"), what it has cost. What is not known is left
+out, never guessed. Under it, what can be done from here, each the row's own action:
+*Go* raises its window, *Hand over* opens the bar on `/handoff @this @` for the person to
+name who takes over (D91), *Mute* silences its project's notifications. The thread's
+own title is not repeated under it. *Resume* waits for closed conversations in the
+Plancia, *Focus* for the governor (0.8).
+
+**Measured on the test Mac.** On the trial's panel, the Plancia open on "events":
+"this Mac · editor · Claude Code · Opus 5.5 · 121k of 1.0M" and the three buttons.
+Photographed, invented sessions only. Like D97, it waits for Marco's question 17.
+
+## D99 · Two sessions on one file show it on their rows
+
+**Decided.** When two live sessions have written the same file of the same checkout
+in the last two hours, both rows carry a red ⚠ beside the name, and its tooltip says
+which file and which session: "Two sessions on the same file: routes.ts also written
+by events". Today that is found at the merge; the interface plan's row (§4) wants it
+while it happens. It comes from what the companion mods already report — each
+`Edit`, `Write`, `MultiEdit` or `NotebookEdit` with its absolute path — so a session
+without the mod is not seen, and two worktrees of one repository are two checkouts,
+not a conflict. Nothing is stopped: the ⚠ says; the preventive radar that holds the
+second write is 0.8's (§4.4).
+
+**What waits.** The plan's other badges need data the panel does not have yet: the
+prompt cache's remaining minutes want a measurement of its lifetime on the test Mac,
+not a guess (R3b); unread messages in a session's thread need a count kept per
+session (R3c). The row's second line already says the machine and what the session
+is doing; the agent is the letter in its ring.
+
+**Measured on the test Mac.** On the trial's panel, two invented sessions reported
+an `Edit` of the same path through `/mod` as their mods would: both rows showed the
+⚠, the others none. Photographed. Like D97, it waits for Marco's question 17.
+
+## D100 · A waiting row says how long its prompt cache stays warm
+
+**Decided.** While a session waits for the person — an answer to read, a question, a
+failed turn, an idle prompt — its row shows the prompt cache's minutes, "⟳43m": answered
+before they run out, the next reply reads the conversation back cheaply; after, it is
+written again in full and the account pays for it. Nothing is guessed: each reply's
+usage in the transcript says how its cache was written, `ephemeral_1h` or
+`ephemeral_5m`, and a reply that only read it keeps that lifetime, refreshed; the clock
+starts at the last reply. Where no write is in sight, or once it has gone cold, nothing
+is shown. A count the mod reported (D65) is still not replaced by the transcript's, but
+takes its cache clock.
+
+**Measured.** This machine's own transcripts write the cache for an hour
+(`ephemeral_1h_input_tokens`), the reason the plan's measurement was not needed. On the
+trial's panel, whose transcripts now carry the same field, the waiting rows showed
+"⟳60m" and the working ones nothing. Writing the test found that the context reader
+could not parse Claude Code's millisecond timestamps (traps): fixed with it.
+
+## D101 · A session's Plancia carries its waiting card at the top
+
+**Decided.** When the session in a Plancia is waiting for something — a permission, a
+question, an answer to read — its card from "Waiting for you" is pinned under the
+header, as the interface plan's §5 asks: the same card, with the same buttons armed
+after the same delay, answered from here as from the queue. A session that waits for
+nothing shows nothing there.
+
+**Measured on the test Mac.** On the trial's panel, its Plancia opened on the session
+waiting for an answer through the band's own door (`/mod/band/open`, D84), the card
+showed under the header. Photographed, invented sessions only. Like D97, it waits for
+Marco's question 17.

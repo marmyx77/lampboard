@@ -199,7 +199,10 @@ public enum StateReducer {
             // The session's own count outranks any arithmetic on its transcript:
             // once the mod has spoken for a session, the transcript reader's
             // figure (a floor, or one resting on our window table) is older news.
-            if session.context?.confidence == .reported, context.confidence != .reported { return state }
+            // Its cache clock is the transcript's alone, and is still taken (R3b).
+            if let current = session.context, current.confidence == .reported, context.confidence != .reported {
+                return state.upserting(session.with(context: current.withCache(of: context)))
+            }
             return state.upserting(session.with(context: context))
 
         case .jobRead(let sessionId, let job):

@@ -48,8 +48,25 @@ public enum ContextScanner {
                 model: model,
                 window: ContextWindows.window(for: model),
                 confidence: confidence(after: index, in: lines),
-                at: timestamp(record["timestamp"])
+                at: timestamp(record["timestamp"]),
+                cacheLifetime: cacheLifetime(through: index, in: lines)
             )
+        }
+        return nil
+    }
+
+    /// How long the prompt cache lives, from the last reply at or before
+    /// `index` that wrote it: its usage says `ephemeral_1h` or `ephemeral_5m`.
+    /// A reply that only read it keeps that lifetime, refreshed. `nil` when no
+    /// write is in sight: not known, so not shown.
+    static func cacheLifetime(through index: Int, in lines: [Substring]) -> TimeInterval? {
+        for position in stride(from: index, through: 0, by: -1) {
+            guard let record = object(from: lines[position]),
+                  let usage = (record["message"] as? [String: Any])?["usage"] as? [String: Any],
+                  let creation = usage["cache_creation"] as? [String: Any]
+            else { continue }
+            if ((creation["ephemeral_1h_input_tokens"] as? NSNumber)?.intValue ?? 0) > 0 { return 3_600 }
+            if ((creation["ephemeral_5m_input_tokens"] as? NSNumber)?.intValue ?? 0) > 0 { return 300 }
         }
         return nil
     }
@@ -110,8 +127,12 @@ public enum ContextScanner {
         return parsed
     }
 
+    /// Claude Code writes milliseconds (`…08:07.456Z`), which the plain ISO 8601
+    /// reader refuses: found by R3b's test, every reading's time was `nil`.
     private static func timestamp(_ raw: Any?) -> Date? {
         guard let text = raw as? String else { return nil }
-        return ISO8601DateFormatter().date(from: text)
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: text) ?? ISO8601DateFormatter().date(from: text)
     }
 }

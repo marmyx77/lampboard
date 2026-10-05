@@ -20,6 +20,8 @@ struct ChatView: View {
 
     /// Raises the VS Code window holding this session.
     let openInEditor: () -> Void
+    /// The Plancia draws its own header above every tab (UX §5): here it is not repeated.
+    var showsHeader = true
 
     @State private var draft = ""
     /// LampMaster's proposal arrives into an empty composer only: what the
@@ -32,8 +34,10 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            if showsHeader {
+                header
+                Divider()
+            }
             transcript
             Divider()
             footer

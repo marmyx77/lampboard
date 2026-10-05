@@ -89,6 +89,15 @@ enum PanelMetricsSuite {
             )
         },
 
+        TestCase("In the wide panel LampMaster is a row at the top, counted with the gap under it") { t in
+            let blocks = [block()]
+            t.expectEqual(
+                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, showsLampMaster: true, lampMasterRow: 36, sizes: sizes)
+                    - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes),
+                36 + sizes.spacing, "a row and its gap"
+            )
+        },
+
         TestCase("The tutorial's band is counted line by line, and only in a trial") { t in
             let blocks = [block()]
             t.expectEqual(

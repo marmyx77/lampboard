@@ -22,7 +22,7 @@ session is doing now. The letter in the ring is the
 model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT model of the Codex row at the
 bottom. Above the rows, what waits for you, most urgent
 first: a session asking, a turn that failed, an answer to read, and LampMaster's
-suggestion last. Under the rows, LampMaster's line and the account's allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
+suggestion last. Then LampMaster, the first row, with what its last round found; under the rows, the account's allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
 starts the tutorial's trial — the real app on a temporary home, playing a script of
 invented projects — and captures its window, so the image can never contain
 anybody's real work and never falls behind the panel it shows. The band at the top
@@ -1554,7 +1554,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1132 domain tests, instantaneous
+swift run LampBoardTests              # 1145 domain tests, instantaneous
 swift run LampBoardE2E                # 154 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

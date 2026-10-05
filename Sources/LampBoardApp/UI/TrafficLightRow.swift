@@ -70,6 +70,9 @@ struct RowFlags {
     let notificationsEnabled: Bool
     /// `true` while this project's conversations are shown under it.
     let isExpanded: Bool
+    /// Another live session wrote a file this one wrote (UX §4, R3a): what to say
+    /// in the ⚠'s tooltip, or `nil`.
+    var conflict: String? = nil
 }
 
 /// One row of the column: a light and, in expanded mode, the project name with
@@ -148,6 +151,25 @@ struct TrafficLightRow: View {
                         }
 
                         blockBadge
+
+                        // The prompt cache's minutes while the session waits for you
+                        // (R3b): answered now, it reads the conversation back cheaply.
+                        if row.status.isWaitingOnPerson, let minutes = CacheClock.minutesLeft(row.context, now: now) {
+                            Text("⟳\(minutes)m")
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(StatusPalette.timeColor)
+                                .tooltip("The prompt cache stays warm \(minutes) more minutes: an answer now rereads this conversation cheaply")
+                                .fixedSize()
+                        }
+
+                        if let conflict = flags.conflict {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(StatusPalette.color(for: .failed))
+                                .tooltip(conflict)
+                                .accessibilityLabel(conflict)
+                        }
 
                         Spacer(minLength: 4)
 

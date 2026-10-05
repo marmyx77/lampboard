@@ -15,6 +15,8 @@ struct TrafficLightColumn: View {
     /// The projects whose conversations are shown under them.
     let expandedRows: Set<String>
     let onRevealHidden: () -> Void
+    /// Files two live sessions both wrote lately, by session (R3a).
+    var conflicts: [String: [FileConflicts.Conflict]] = [:]
 
     /// Reference moment for the time labels.
     ///
@@ -410,8 +412,23 @@ struct TrafficLightColumn: View {
             isMuted: mutedWorkspaces.contains(row.workspace.key),
             isCalm: calmWorkspaces.contains(row.workspace.key),
             notificationsEnabled: notificationsEnabled,
-            isExpanded: expanded
+            isExpanded: expanded,
+            conflict: conflictLine(for: row)
         )
+    }
+
+    /// "Also wrote routes.ts: api-gateway", for the row's sessions, or `nil`.
+    private func conflictLine(for row: ColumnRow) -> String? {
+        let mine = Set(row.sessions.map(\.id))
+        let shared = row.sessions.flatMap { conflicts[$0.id] ?? [] }.filter { !mine.contains($0.with) }
+        guard !shared.isEmpty else { return nil }
+        let lines = Dictionary(grouping: shared, by: \.file).sorted { $0.key < $1.key }.map { file, found in
+            let others = Set(found.map(\.with)).sorted().map { id in
+                store.state.sessions[id].map { RowActivity.flat($0.displayName) } ?? String(id.prefix(8))
+            }
+            return "\((file as NSString).lastPathComponent) also written by " + others.joined(separator: ", ")
+        }
+        return "Two sessions on the same file: " + lines.joined(separator: "; ")
     }
 
     /// How many sessions the filter is keeping out.

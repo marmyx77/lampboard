@@ -62,6 +62,43 @@ extension PanelController {
         rebuildContent()
     }
 
+    /// What the Plancia header's buttons do (UX §5): the row's own actions.
+    func planciaActions() -> PlanciaActions {
+        PlanciaActions(
+            go: { [weak self] id in
+                guard let self, let session = self.session(named: id) else { return }
+                self.activate(session: session)
+            },
+            handOver: { [weak self] id in
+                guard let self, let session = self.session(named: id),
+                      let name = RowActivity.flat(session.displayName).split(separator: " ").first else { return }
+                // The bar names this one; the person names who takes over (D91).
+                self.bar.focus()
+                self.bar.text = "/handoff @\(name) @"
+            },
+            toggleMuted: { [weak self] id in
+                guard let self, let session = self.session(named: id) else { return }
+                self.preferences.mutedWorkspaces = Preferences.toggling(session.workspace.key, in: self.preferences.mutedWorkspaces)
+                self.rebuildContent()
+            },
+            isMuted: { [weak self] id in
+                guard let self, let session = self.session(named: id) else { return false }
+                return self.preferences.mutedWorkspaces.contains(session.workspace.key)
+            }
+        )
+    }
+
+    /// LampMaster's Plancia (UX §4): beside the list, like a session's.
+    func openLampMasterPlancia(sheet: LampMasterPlanciaContent.Sheet = .suggestions) {
+        if isCompact { toggleCompact() }
+        if !plancia.isOpen { plancia.leading = planciaLeading }
+        widthKeepsRight = plancia.leading
+        plancia.openLampMaster(sheet: sheet)
+        lampMaster?.request(.opened)
+        planciaAwaySince = nil
+        rebuildContent()
+    }
+
     func closePlancia() {
         guard plancia.isOpen else { return }
         widthKeepsRight = plancia.leading

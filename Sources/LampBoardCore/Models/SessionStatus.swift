@@ -80,6 +80,15 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
         self == .awaiting
     }
 
+    /// The turn is over and the next move is the person's: where the prompt
+    /// cache's minutes matter (R3b). Not while it works or waits on its own work.
+    public var isWaitingOnPerson: Bool {
+        switch self {
+        case .ready, .awaiting, .failed, .idle: return true
+        case .working, .waiting: return false
+        }
+    }
+
     /// States representing something the user has not seen yet, and which
     /// therefore fall back to `idle` when they open the session.
     public var clearsOnFocus: Bool {

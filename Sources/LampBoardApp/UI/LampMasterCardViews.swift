@@ -1,4 +1,3 @@
-import AppKit
 import LampBoardCore
 import SwiftUI
 
@@ -14,57 +13,6 @@ struct LampMasterActions {
     /// A suggested question put to its session without disturbing it (D82,
     /// D85): `nil` when that session's mod cannot answer, or sending is off.
     var askQuietly: (LampMasterShown) -> (@MainActor () async -> String)? = { _ in nil }
-}
-
-/// Owns LampMaster's window: the open suggestions, one card each.
-///
-/// A window for the reason the legend is one: the panel never takes focus, and
-/// a card is something to read, think about and act on. Opening it asks for a
-/// fresh round when the last is more than fifteen minutes old — the moment the
-/// person looks is the moment a stale answer costs the most.
-@MainActor
-final class LampMasterWindowController: NSObject, NSWindowDelegate {
-
-    private var window: NSWindow?
-    private let service: LampMasterService
-    private let actions: LampMasterActions
-
-    init(service: LampMasterService, actions: LampMasterActions) {
-        self.service = service
-        self.actions = actions
-    }
-
-    /// A round is asked for only when the window opens, not when an open one is
-    /// brought forward: that would flash "looking" for a round that then waits.
-    func show(sheet: LampMasterWindowView.Sheet = .suggestions) {
-        if let window {
-            bringToFront(window)
-            return
-        }
-        service.request(.opened)
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "LampMaster"
-        window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: LampMasterWindowView(service: service, actions: actions, sheet: sheet))
-        window.delegate = self
-        window.center()
-        self.window = window
-        bringToFront(window)
-    }
-
-    private func bringToFront(_ window: NSWindow) {
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        window = nil
-    }
 }
 
 /// The cards, newest first, and what the last round did.

@@ -2086,3 +2086,12 @@ the forward, and exits 0. The tunnel reads as down while the forward lives on in
 the master; the next try finds its own port taken. A process that must own its
 forward runs with `ControlMaster=no` and `ControlPath=none`.
 
+
+## `ISO8601DateFormatter` refuses the milliseconds Claude Code writes
+
+A transcript's timestamps read `2026-08-29T08:08:07.456Z`. The formatter with its
+default options parses `…08:07Z` and returns `nil` for `…08:07.456Z`, without a word.
+The context reader used it, so every reading's time was `nil` for as long as it
+existed, and nothing noticed: nothing used the time until the prompt cache's minutes
+did (D100), and its test found it. Parse with `.withFractionalSeconds` first and the
+plain form after.

@@ -84,6 +84,10 @@ struct PanelRootView: View {
     /// LampMaster's line draws itself only while it is switched on.
     let lampMaster: LampMasterService?
     let openLampMaster: () -> Void
+    /// What LampMaster's cards do, for its Plancia.
+    var lampMasterActions: LampMasterActions? = nil
+    /// What the Plancia header's buttons do.
+    var planciaActions: PlanciaActions? = nil
     /// The tutorial, in a trial only.
     var tour: TourController? = nil
     /// "Waiting for you"; nil in the narrow panel.
@@ -115,7 +119,8 @@ struct PanelRootView: View {
     private func planciaColumn(_ model: PlanciaModel) -> some View {
         HStack(spacing: 0) {
             if !planciaLeading { Divider() }
-            PlanciaView(model: model, store: store, activity: activity, openInEditor: openInEditor, close: closePlancia)
+            PlanciaView(model: model, store: store, activity: activity, openInEditor: openInEditor, close: closePlancia,
+                        lampMaster: lampMaster, lampMasterActions: lampMasterActions, actions: planciaActions, queue: queue)
             if planciaLeading { Divider() }
         }
     }
@@ -125,6 +130,15 @@ struct PanelRootView: View {
             if let tour { TourBand(tour: tour, compact: flags.compact) }
             if let bar { CommandBarView(model: bar) }
             if let queue { WaitingQueueSection(model: queue) }
+            // LampMaster first, fixed, its own glyph (UX §4): a row in the wide
+            // panel, its line in the narrow one.
+            if let lampMaster {
+                if flags.compact {
+                    LampMasterStrip(service: lampMaster, compact: true, open: openLampMaster)
+                } else {
+                    LampMasterRow(service: lampMaster, selected: plancia?.showsLampMaster == true, open: openLampMaster)
+                }
+            }
             TrafficLightColumn(
                 store: store,
                 compact: flags.compact,
@@ -134,11 +148,9 @@ struct PanelRootView: View {
                 calmWorkspaces: calmWorkspaces,
                 actions: rowActions,
                 expandedRows: expandedRows,
-                onRevealHidden: actions.showHiddenAgain
+                onRevealHidden: actions.showHiddenAgain,
+                conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:]
             )
-            if let lampMaster {
-                LampMasterStrip(service: lampMaster, compact: flags.compact, open: openLampMaster)
-            }
             AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
                            reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
             issueStrip

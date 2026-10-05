@@ -60,3 +60,63 @@ struct LampMasterStrip: View {
         )
     }
 }
+
+/// LampMaster as the first row of the wide panel (UX §4): fixed, with its own
+/// glyph where a lamp would be, always ready, never blinking. Its second line
+/// says what the last round found; a click opens its Plancia beside the list.
+struct LampMasterRow: View {
+    @ObservedObject var service: LampMasterService
+    let selected: Bool
+    let open: () -> Void
+
+    var body: some View {
+        if service.snapshot.enabled {
+            Button(action: open) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(StatusPalette.lampMasterTint)
+                        .shadow(color: StatusPalette.lampMasterTint.opacity(0.6), radius: 4)
+                        .frame(width: Layout.dotSize + 4)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("LampMaster")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Text(line)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.primary.opacity(0.6))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Spacer(minLength: 4)
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.system(size: 10, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(StatusPalette.lampMasterTint)
+                    }
+                }
+                .padding(.horizontal, Layout.panelPadding + 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: Layout.wideRowHeight)
+                .background(selected ? Color.primary.opacity(0.06) : Color.clear)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, Layout.rowSpacing)
+            .tooltip(line + ". Click to open LampMaster beside the list.")
+            .accessibilityLabel("LampMaster: " + line)
+            .contextMenu {
+                Button("Ask LampMaster now") { service.request(.asked) }
+            }
+        }
+    }
+
+    private var count: Int { service.snapshot.open.count }
+
+    private var line: String {
+        LampMasterLine.text(
+            open: count, last: service.snapshot.lastRound, running: service.snapshot.running,
+            time: { $0.formatted(date: .omitted, time: .shortened) }
+        )
+    }
+}
