@@ -156,6 +156,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.tour = tour
             store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
             lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }
+            // What a mod or a model would answer, from the script (D120).
+            lampMaster.scripted = { _ in DemoScript.standard.lampMasterAnswer }
+            lampMaster.onAsked = { [weak tour] in tour?.handle(.lampMasterAsked) }
+            permissions.onAnswered = { [weak tour] id in tour?.handle(.permissionAnswered(session: id)) }
+            stageTrialPermission(tour: tour)
         }
         // In the panel, beside the list (UX §4): no window of its own.
         controller.onOpenLampMaster = { [weak controller] in controller?.openLampMasterPlancia() }
@@ -275,6 +280,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             }
         }
+    }
+
+    /// The trial's permission card (D120): put on the desk while the tour stands
+    /// on "allow" and api waits, again whenever it went back unanswered; the
+    /// decision is `Tour.trialPermission`'s.
+    private func stageTrialPermission(tour: TourController) {
+        let timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self, weak tour] timer in
+            MainActor.assumeIsolated {
+                guard let self, let tour, let held = DemoScript.standard.heldPermission(now: Date()) else {
+                    return timer.invalidate()
+                }
+                switch Tour.trialPermission(
+                    tour.progress, steps: tour.steps,
+                    waiting: self.store.state.sessions[held.sessionId]?.status == .awaiting,
+                    shown: self.permissions.pending.contains { $0.sessionId == held.sessionId }
+                ) {
+                case .stage: self.permissions.stage(held)
+                case .wait: break
+                case .stop: timer.invalidate()
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func startPresence() {

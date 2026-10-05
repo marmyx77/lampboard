@@ -987,9 +987,12 @@ listening on the port can put words in front of a model
 *Take the tour…*, in the panel's menu or the lamp's, opens a second panel on
 invented sessions: the real app on a temporary home, marked TRIAL at the top. A
 band says one thing at a time, and each step moves on only when you do it: click
-the green row, then the amber one; press `⌘⇧L` until the Plancia opens; right-click
-`events` › *Open in the Plancia*; `⌘K`, `@ev`, Return; point at the allowance; put a
-session in focus; say *I'm away* and come back; answer LampMaster's card. *Skip*
+the green row, then the amber one; allow its `npm publish` from the panel; press
+`⌘⇧L` until the Plancia opens; right-click `events` › *Open in the Plancia*; `⌘K`,
+`@ev`, Return; ask `@events` a side question; point at the allowance; put a session
+in focus; say *I'm away* and come back; answer LampMaster's card; ask LampMaster a
+question. Where a real panel would wait on the mod or a model, the trial plays an
+answer written in advance, and says so: a trial never runs a model. *Skip*
 leaves it, and it resumes where you stopped. Nothing in it touches your sessions
 ([D64](docs/04-decisions.md), [D119](docs/04-decisions.md#d119--the-tour-for-10-every-gesture-done-for-real)).
 
@@ -1655,7 +1658,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1186 domain tests, instantaneous
+swift run LampBoardTests              # 1189 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

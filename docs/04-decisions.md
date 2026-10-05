@@ -4543,3 +4543,39 @@ Plancia*, the gesture that is really there.
 opened the Plancia and the band moved to "plancia", 4 of 9. With `--tour-step
 command --bar-type "@ev"`, the bar's choice moved it to "allowance", 6 of 9.
 
+## D120 · The trial plays the answers no mod or model gives there
+
+**Decided.** The second part of the complete tutorial. Three of D119's twelve
+steps waited on answers the trial could not give, so they were hidden. They are now
+played from the script, and the tour shows all twelve.
+- **Allow from the panel.** No mod holds the demo's permission. So once `api` is
+  amber, the trial books the script's own ask on the permission desk: "Bash: npm
+  publish", the same request a mod would put, with nobody waiting on its
+  connection. It is booked only while the tour stands on "allow", where answering
+  it counts; before that an answer would do nothing. The card has Allow and Deny
+  like a real one, and answering it moves the tour on. If its 55 seconds run out
+  unanswered, it is booked again a few seconds later, without the notice that it
+  went back to a dialog, since there is none. A tour skipped on that step and
+  resumed gets its card back; past the step, or finished, never again
+  (`Tour.trialPermission`, tested).
+- **A side question.** `@events ?…` is answered with the script's line about the
+  calendar still calling `/api/v2/slots`. Every invented session is askable from
+  the bar in the trial. Asking any other one gets a plain sentence that only events answers
+  there.
+- **A question to LampMaster.** The bar and the Plancia's box get the script's
+  reply. That reply ends by saying that in the trial LampMaster's answers are
+  written in advance. A trial never runs a model: the script's answer stands in
+  for the run, and the question is recorded under `panel` like a real one, shown as
+"You".
+
+The trial switches on, in its own preferences only, answering from the panel and
+sending to sessions. The real panel's switches stay as they are. The answers are
+checked by the same rule as the rest of the script: nothing real.
+
+**Measured on the test Mac.** With `--tour-step allow`, the api card appeared with
+Deny and Allow, and an Allow through the fake-home test route moved the band to
+depths, 4 of 12. `@events ?what changed in the calendar` showed the script's answer
+and moved the band from squad to allowance. `?who renamed the slots endpoint`
+showed LampMaster's scripted reply, and the tour ended on "Done". The probe's
+`--bar-type` now also chooses a question to LampMaster.
+

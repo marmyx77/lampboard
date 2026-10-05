@@ -53,10 +53,40 @@ enum TourSuite {
             t.expectEqual(report.limits.limits.first?.resetsAt, Date(timeIntervalSince1970: 1_800_000_000 + 95 * 60))
         },
 
-        TestCase("Today's tour: every step whose gesture the trial can show, the scripted ones still out") { t in
-            t.expectEqual(today.map(\.id), ["colours", "amber", "depths", "plancia", "command", "allowance", "focus", "away",
-                                             "lampmaster"])
-            t.expectEqual(Tour.steps(available: Set(Tour.Feature.allCases)).count, 12, "every step once all is there")
+        TestCase("Today's tour: all twelve steps, the scripted answers included") { t in
+            t.expectEqual(today.map(\.id), ["colours", "amber", "allow", "depths", "plancia", "command", "squad", "allowance",
+                                             "focus", "away", "lampmaster", "ask"])
+        },
+
+        TestCase("The trial's permission is the script's own: api asking to run npm publish, with what it would do") { t in
+            let now = Date(timeIntervalSince1970: 1_800_000_000)
+            guard let held = DemoScript.standard.heldPermission(now: now) else { return t.fail("no permission in the script") }
+            t.expectEqual(held.sessionId, "demo-api-00002")
+            t.expectEqual(held.tool, "Bash")
+            t.expectEqual(held.line, "Bash: npm publish")
+            t.expectEqual(held.receivedAt, now)
+            t.expect(held.options.isEmpty, "a permission, not a question")
+        },
+
+        TestCase("The trial's card is put only on the allow step; a stopped tour waits; past it, never again") { t in
+            func at(_ id: String, _ status: TourProgress.Status = .inProgress) -> TourProgress { TourProgress(status: status, stepId: id) }
+            t.expectEqual(Tour.trialPermission(at("allow"), steps: today, waiting: true, shown: false), .stage)
+            t.expectEqual(Tour.trialPermission(at("allow"), steps: today, waiting: true, shown: true), .wait, "already there")
+            t.expectEqual(Tour.trialPermission(at("allow"), steps: today, waiting: false, shown: false), .wait, "api not amber yet")
+            t.expectEqual(Tour.trialPermission(at("amber"), steps: today, waiting: true, shown: false), .wait,
+                          "before its step: an answer would do nothing")
+            t.expectEqual(Tour.trialPermission(at("allow", .skipped), steps: today, waiting: true, shown: false), .wait,
+                          "skipped: it may resume")
+            t.expectEqual(Tour.trialPermission(at("depths"), steps: today, waiting: true, shown: false), .stop)
+            t.expectEqual(Tour.trialPermission(TourProgress(status: .finished), steps: today, waiting: true, shown: false), .stop)
+        },
+
+        TestCase("A side question to events and a question to LampMaster have the script's answers; nothing else does") { t in
+            let script = DemoScript.standard
+            t.expect(script.sideAnswer(for: "demo-events-03").contains("/api/v2/slots"), "events knows the calendar")
+            t.expect(script.sideAnswer(for: "demo-docs-0001").hasPrefix("In the trial"), "another session: said plainly")
+            t.expect(script.lampMasterAnswer.contains("api"), "LampMaster names who renamed it")
+            t.expect(DemoScriptCheck.problems(script).isEmpty, "the answers hold nothing real")
         },
 
         TestCase("Every step's sentence fits the band's two lines in the narrow panel") { t in
@@ -73,6 +103,10 @@ enum TourSuite {
             progress = progress.after(.rowOpened(session: "demo-docs-0001"), in: today)
             t.expectEqual(progress.stepId, "amber")
             progress = progress.after(.rowOpened(session: "demo-api-00002"), in: today)
+            t.expectEqual(progress.stepId, "allow")
+            progress = progress.after(.permissionAnswered(session: "demo-docs-0001"), in: today)
+            t.expectEqual(progress.stepId, "allow", "another session's answer is not this one")
+            progress = progress.after(.permissionAnswered(session: "demo-api-00002"), in: today)
             t.expectEqual(progress.stepId, "depths")
             progress = progress.after(.planciaOpened(session: "demo-events-03"), in: today)
             t.expectEqual(progress.stepId, "depths", "a Plancia opened some other way is not the depths")
@@ -82,11 +116,15 @@ enum TourSuite {
             t.expectEqual(progress.stepId, "plancia", "events, not another session")
             progress = progress.after(.planciaOpened(session: "demo-events-03"), in: today)
                 .after(.barChose, in: today)
+            t.expectEqual(progress.stepId, "squad")
+            progress = progress.after(.sideQuestionAnswered(session: "demo-events-03"), in: today)
                 .after(.allowanceInspected, in: today)
             t.expectEqual(progress.stepId, "focus")
             progress = progress.after(.focused, in: today).after(.awayToggled(on: true), in: today)
             t.expectEqual(progress.stepId, "away", "away is learnt by coming back")
             progress = progress.after(.awayToggled(on: false), in: today).after(.lampMasterAnswered, in: today)
+            t.expectEqual(progress.stepId, "ask")
+            progress = progress.after(.lampMasterAsked, in: today)
             t.expectEqual(progress.status, .finished)
         },
 

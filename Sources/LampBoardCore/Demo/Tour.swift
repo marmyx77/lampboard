@@ -53,10 +53,10 @@ public enum Tour {
     /// The longest sentence the band holds in two lines of the narrow panel.
     public static let longestText = 100
 
-    /// What the trial can show. The answer from the panel, the squad and a
-    /// question to LampMaster need scripted answers the trial does not have
-    /// yet: a step the trial cannot complete is not shown.
-    public static let available: Set<Feature> = [.rows, .depths, .plancia, .commandBar, .allowance, .focus, .away, .lampMaster]
+    /// What the trial can show: everything, the answers no model gives there
+    /// played from the script (D120). A step the trial could not complete
+    /// would stop the tour, so a new step comes with its gesture's answer.
+    public static let available = Set(Feature.allCases)
 
     /// Every step of the tour, in order, for every version. UX §13.3, and the
     /// 0.7 and 0.8 features after it.
@@ -88,6 +88,20 @@ public enum Tour {
             Step(id: "ask", text: "Ask LampMaster about all your sessions: ⌘K, then ?who renamed the slots endpoint.",
                  anchor: .bar, waitsFor: .lampMasterAsked, teaches: .lampMasterAsk),
         ]
+    }
+
+    public enum Staging: Equatable, Sendable { case stage, wait, stop }
+
+    /// Whether the trial puts the script's permission on the desk now (D120):
+    /// only while the tour stands on "allow", where answering it counts; a
+    /// tour skipped or not begun may come back to it, so it waits; past the
+    /// step, or finished, never again.
+    public static func trialPermission(_ progress: TourProgress, steps: [Step], waiting: Bool, shown: Bool) -> Staging {
+        guard let allow = steps.firstIndex(where: { $0.id == "allow" }), progress.status != .finished else { return .stop }
+        guard progress.status == .inProgress, let step = progress.current(in: steps),
+              let here = steps.firstIndex(of: step) else { return .wait }
+        if here > allow { return .stop }
+        return here == allow && waiting && !shown ? .stage : .wait
     }
 
     /// The steps this version shows.

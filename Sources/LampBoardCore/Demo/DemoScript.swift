@@ -175,6 +175,39 @@ extension DemoScript {
     )
 }
 
+/// The answers the trial plays where a real panel would wait on a mod or a
+/// model (D120): no mod holds the demo's permission, no fork answers for an
+/// invented session, and LampMaster must never run a model in a trial.
+extension DemoScript {
+
+    /// The permission the script's `.permission` beat stands for, as the
+    /// companion mod would put it to the panel.
+    public func heldPermission(now: Date) -> PermissionGate.Request? {
+        guard let beat = beats.first(where: { $0.kind == .permission }), let text = beat.text else { return nil }
+        let parts = text.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+        let tool = parts.first ?? "Bash", detail = parts.count > 1 ? parts[1] : ""
+        var request = PermissionGate.Request(sessionId: beat.session, callId: "toolu_trial_permission", tool: tool,
+                                             line: detail.isEmpty ? tool : "\(tool): \(detail)", receivedAt: now)
+        request.impact = PermissionImpact.of(tool: tool, line: detail)
+        return request
+    }
+
+    /// What a session answers a side question with, in the trial.
+    public func sideAnswer(for session: String) -> String {
+        session == sessions[2].id ? Self.eventsAnswer
+            : "In the trial only events answers a side question. Your own sessions answer from their conversation."
+    }
+
+    /// What LampMaster answers in the trial, whatever was asked.
+    public var lampMasterAnswer: String { Self.lampMasterReply }
+
+    static let eventsAnswer = "The calendar still calls /api/v2/slots in loadAvailability(). It has not been "
+        + "changed since the api session renamed the endpoint."
+    static let lampMasterReply = "The api session renamed /api/v2/slots to /api/v2/availability an hour ago. "
+        + "The events calendar still calls the old path: ask events to update it.\n\n(In the trial LampMaster's answers "
+        + "are written in advance; with your sessions it reads them.)"
+}
+
 /// Whether a script is fit to show: nothing in it may belong to anybody.
 ///
 /// The same rule as the repository's gate for personal data, applied to the
@@ -199,7 +232,7 @@ public enum DemoScriptCheck {
         for beat in script.beats where !ids.contains(beat.session) {
             problems.append("a beat at \(beat.at) s names session \(beat.session), which the script does not have")
         }
-        let text = script.json()
+        let text = script.json() + script.sideAnswer(for: script.sessions[2].id) + script.lampMasterAnswer
         for marker in ["/Users/", "/home/", "@gmail", "@icloud", "100.64.", "100.1"] where text.contains(marker) {
             problems.append("the script contains \(marker)")
         }

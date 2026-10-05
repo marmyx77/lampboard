@@ -166,9 +166,21 @@ final class PermissionDesk: ObservableObject {
               let reply = replies.removeValue(forKey: Self.key(session, callId)) else { return false }
         reply.verdict = given
         reply.done.signal()
-        if given == .ask { remember(returned: [WaitingQueue.heldKey(session: session, call: callId)]) }
+        if given == .ask { remember(returned: [WaitingQueue.heldKey(session: session, call: callId)]) } else { onAnswered?(session) }
         pending = book.pending
         return true
+    }
+
+    /// Told when an ask is answered from the panel, Allow or Deny: the
+    /// tour's "allow" step (D120).
+    var onAnswered: ((String) -> Void)?
+
+    /// The trial's permission (D120): booked like a mod's ask, with nobody
+    /// waiting on a connection for its answer.
+    func stage(_ request: PermissionGate.Request) {
+        // Booked again after its time ran out: it never went back to a dialog.
+        returned.remove(WaitingQueue.heldKey(session: request.sessionId, call: request.callId))
+        _ = admit(request)
     }
 
     private func withdraw(_ reply: Reply, session: String, call callId: String) {

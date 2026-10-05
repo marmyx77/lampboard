@@ -59,6 +59,10 @@ final class LampMasterService: ObservableObject {
     /// The conversation in LampMaster's Plancia (D118): kept while the panel
     /// runs, so a tab or the Plancia closing does not lose it.
     @Published var conversation: [LampMasterAsk.Exchange] = []
+    /// The trial's answer to any question (D120): a trial never runs a model.
+    var scripted: ((String) -> String)?
+    /// Told when the person's question was answered: the tour's last step.
+    var onAsked: (() -> Void)?
     /// A question of that conversation being answered, and why the last failed.
     @Published var conversing: String?
     @Published var conversationError: String?

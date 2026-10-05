@@ -1,13 +1,13 @@
 # Code map
 
-~67,300 lines of Swift across five targets. For each file: what it contains, why
+~67,600 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,705 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    25,072 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,626 lines · 113 files   1186 cases, instantaneous
+  LampBoardCore/  20,752 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    25,135 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,664 lines · 113 files   1189 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -970,13 +970,16 @@ The invented sessions and the tutorial's tour (D64). One place for demo data, so
 one place to check that it holds nothing real.
 
 ### `DemoScript.swift`
-The script the tutorial, the screenshots and the site's demo are played from: four
+The script the tutorial, the screenshots and the site's demo are played from: six
 invented projects, beats in time, each beat a hook payload exactly as the installed
 hook would post it, so the trial panel reaches its colours through the same server
 and reducer as the real one. `DemoScriptCheck` refuses an account outside
 `example.com`/`example.net`, a project outside the invented list, a home path or a
 private address: the same rule as the repository's gate, applied to the one file
 that is shown on screens.
+It also holds the answers the trial plays where a mod or a model would answer (D120):
+the permission api asks for, events' side answer and LampMaster's reply, checked
+by the same rule.
 
 ### `GettingStarted.swift`
 The two lists of *Getting started*: the real setup — hooks, the Accessibility
@@ -1658,7 +1661,7 @@ there, the hooks are registered — and it names the link that broke.
 | `Preferences.swift` | 582 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 61 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
-| `PermissionDesk.swift` | 218 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86) |
+| `PermissionDesk.swift` | 218 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
 | `PlanciaModel.swift` | 65 | the Plancia's state: the open session, or LampMaster's own Plancia and the sheet it opens on (D97), its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
 | `CommandBarModel.swift` | 258 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
@@ -1900,7 +1903,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1186 cases
+## `LampBoardTests/` — 1189 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

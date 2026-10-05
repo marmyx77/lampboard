@@ -76,6 +76,11 @@ extension PanelController {
             return self.propose(handoff: Handoff.brief(from: source.displayName, text: reply.text), to: to)
         }
         bar.onAskSession = { [weak self] id, question in
+            // The trial's sessions are invented: the script answers (D120).
+            if let tour = self?.tour {
+                tour.handle(.sideQuestionAnswered(session: id))
+                return DemoScript.standard.sideAnswer(for: id)
+            }
             guard let desk = self?.askDesk else { return "Asking is not available." }
             return await desk.ask(sessionId: id, question: question, host: self?.session(named: id)?.workspace.host)
         }
@@ -169,7 +174,8 @@ extension PanelController {
         } ?? "{first}"
         bar.focus()
         bar.text = text.replacingOccurrences(of: "{first}", with: first)
-        guard bar.shownResults.first?.sessionId != nil || bar.shownResults.first?.action != nil else {
+        guard bar.shownResults.first?.sessionId != nil || bar.shownResults.first?.action != nil
+                || bar.shownResults.first?.kind == .ask else {
             guard attempts > 0 else { return Diagnostics.log("bar-type: nothing found for it") }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.typeIntoBar(text, attempts: attempts - 1) }
             return
@@ -182,6 +188,7 @@ extension PanelController {
 
     func refreshBar() {
         bar.update(rows: currentRendering.rows, lampMasterEnabled: lampMaster?.snapshot.enabled ?? false,
-                   sendingEnabled: preferences.messageSendingEnabled, askable: askDesk?.askable ?? [])
+                   sendingEnabled: preferences.messageSendingEnabled,
+                   askable: tour != nil ? Set(DemoScript.standard.sessions.map(\.id)) : askDesk?.askable ?? [])
     }
 }

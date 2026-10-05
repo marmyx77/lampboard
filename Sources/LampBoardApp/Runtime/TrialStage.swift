@@ -65,6 +65,10 @@ enum TrialStage {
     /// preferences, with one round already run. No `claude` runs in a trial.
     private static func seedLampMaster(_ script: DemoScript, preferences: Preferences, files: LampMasterFiles, now: Date) {
         preferences.lampMasterEnabled = true
+        // The trial answers from the panel and asks without disturbing (D120),
+        // in its own preferences: the real panel's switches stay as they are.
+        preferences.permissionsFromPanel = true
+        preferences.messageSendingEnabled = true
         files.append(LampMasterRound(at: now, trigger: .timer, outcome: .ran, model: "opus", sessions: script.sessions.count,
                                      proposed: 1, shown: 1, digest: "trial"), now: now)
         files.save(LampMasterLedger.entries(for: [script.suggestion], at: now))
