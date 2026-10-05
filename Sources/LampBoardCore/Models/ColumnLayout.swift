@@ -102,6 +102,13 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
         )
     }
 
+    /// `✉n`, the answers nobody has read in this row's conversations, when there
+    /// are two or more (R3c): one is what green already says.
+    public var unreadBadge: String? {
+        let count = sessions.filter { $0.status == .ready }.map(\.unreadAnswers).reduce(0, +)
+        return count >= 2 ? "✉\(count)" : nil
+    }
+
     /// What a person reads on the row.
     ///
     /// The name the user gave it wins. Otherwise a row holding one session is

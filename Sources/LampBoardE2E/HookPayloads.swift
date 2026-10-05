@@ -30,6 +30,12 @@ enum HookPayloads {
             .merging(["last_assistant_message": message]) { _, new in new }
     }
 
+    /// A tool starting: a turn the session began on its own, with no prompt.
+    static func preToolUse(sessionId: String, cwd: String) -> [String: Any] {
+        base(sessionId: sessionId, cwd: cwd, event: "PreToolUse")
+            .merging(["tool_name": "Bash", "tool_input": ["command": "true"]]) { _, new in new }
+    }
+
     static func stopFailure(
         sessionId: String,
         cwd: String,

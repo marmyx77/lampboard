@@ -4086,3 +4086,29 @@ nothing shows nothing there.
 waiting for an answer through the band's own door (`/mod/band/open`, D84), the card
 showed under the header. Photographed, invented sessions only. Like D97, it waits for
 Marco's question 17.
+
+## D108 · A row counts the answers nobody has read
+
+**Decided.** The interface plan gives a row a teal ✉n for unread messages (§4). A
+row already turns green when there is an answer to read; what green cannot say is
+how many. A session can answer, be woken by its own background work or by another
+session's message, and answer again, all while nobody reads. Each `SessionState`
+now counts the turns that ended with something to read since the person last
+looked. Clicking the row clears the count, and so does a prompt, because the person
+was there to type it. A turn that failed, or that ended still waiting on work, adds
+nothing. "Mark as unread" brings back one answer, never more.
+
+The mark appears from two on, because one is what green already says. A project row
+sums the green conversations it holds. `GET /sessions` publishes `unreadAnswers`,
+optional on the wire, so an older panel's answer still decodes.
+
+**Measured on the test Mac.** On the trial panel (invented sessions), a resting
+session was sent two turns with no prompt, through `/signal`. Its row read
+`docs-site ⟳60m ✉3`: the trial's own answer plus the two new ones. The end-to-end
+suite drives the real binary through two wakings, then a prompt, and checks the
+count goes to 2 and then to 0.
+
+The photograph needed the test Mac's display awake: `screencapture -l` fails on a
+sleeping display ("could not create image from window"), and `caffeinate -u` wakes
+it for the moment needed. Noted in the traps.
+

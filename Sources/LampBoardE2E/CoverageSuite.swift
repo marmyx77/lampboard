@@ -195,6 +195,20 @@ enum CoverageSuite {
                 a.expect(app.status(of: id) != "absent", "and the row stays: its life is its live file's")
             },
 
+            TestCase("a session woken twice with nobody looking counts two unread answers; a prompt clears them (R3c)") { a in
+                let id = "e2e-unread-answers"
+                let folder = LifecycleSuite.workspace
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: folder))
+                app.sendHook(HookPayloads.stop(sessionId: id, cwd: folder))
+                app.sendHook(HookPayloads.preToolUse(sessionId: id, cwd: folder))
+                app.sendHook(HookPayloads.stop(sessionId: id, cwd: folder))
+                a.expect(app.waitUntil { app.session(id: id)?.unreadAnswers == 2 },
+                         "unread: \(String(describing: app.session(id: id)?.unreadAnswers))")
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: folder))
+                a.expect(app.waitUntil { app.session(id: id)?.unreadAnswers == 0 }, "a prompt clears them")
+                app.sendHook(HookPayloads.sessionEnd(sessionId: id, cwd: folder))
+            },
+
             // MARK: - 1.3 row names
 
             // The name the user gives a row is what the panel and its readers

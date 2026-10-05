@@ -44,6 +44,7 @@ let suites: [TestSuite] = [
     LampMasterAutoMuteSuite.suite,
     LampMasterBenchSuite.suite,
     BackgroundSessionSuite.suite,
+    UnreadAnswersSuite.suite,
     DecisionBoardSuite.suite,
     LampMasterSheetsSuite.suite,
     RemoteTranscriptScriptSuite.suite,

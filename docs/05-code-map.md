@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,796 lines · 157 files  pure logic, zero AppKit
-  LampBoardApp/    24,186 lines · 136 files   shell: AppKit, network, windows
-  LampBoardTests/  16,018 lines · 103 files   1145 cases, instantaneous
-  LampBoardE2E/    4,551 lines · 20 files   154 cases, the real binary
+  LampBoardCore/  19,831 lines · 157 files  pure logic, zero AppKit
+  LampBoardApp/    24,197 lines · 136 files   shell: AppKit, network, windows
+  LampBoardTests/  16,078 lines · 104 files   1149 cases, instantaneous
+  LampBoardE2E/    4,571 lines · 20 files   155 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -70,7 +70,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 526
+### `SessionState.swift` · 542
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -81,7 +81,7 @@ before changing anything here: it is the heart of the subagent correction.
 > **Touching the computation of `status`** risks reintroducing green during
 > background work. Coverage: `SubagentSuite`.
 
-### `ColumnLayout.swift` · 396
+### `ColumnLayout.swift` · 427
 From state to rows: grouping, filtering, slots, hidden summary. A pure function.
 
 `ColumnRow.sessionIdsToClear` is the delicate point — only the sessions in the
@@ -1302,7 +1302,7 @@ dialog (`returned`).
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 714
+### `StateReducer.swift` · 719
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1322,7 +1322,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 251
+### `SessionsPayload.swift` · 258
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -1806,7 +1806,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 560 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
+| `TrafficLightRow.swift` | 571 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 535 | the column, the drag in progress, the hidden summary, the filter note; the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
@@ -1856,7 +1856,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1145 cases
+## `LampBoardTests/` — 1149 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1885,6 +1885,7 @@ script, before it was split. The most important ones:
 | `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
+| `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
@@ -1953,7 +1954,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 154 cases
+## `LampBoardE2E/` — 155 cases
 
 | Suite | Covers |
 |---|---|

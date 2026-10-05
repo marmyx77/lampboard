@@ -90,6 +90,23 @@ With the companion mod installed (below), a Claude Code session counts its own
 context and the mod passes the figure on: **`reported`**, the number Claude Code's
 status line shows. Nothing read from the transcript afterwards replaces it.
 
+## The marks beside the name
+
+At most a few, and only when they say something:
+
+- **⟳43m**, on a row that waits for you: how many more minutes the prompt cache
+  stays warm. An answer given now rereads the conversation cheaply. The figure comes
+  from the transcript, which says whether the cache was written for five minutes or
+  an hour ([D100](docs/04-decisions.md#d100--a-waiting-row-says-how-long-its-prompt-cache-stays-warm)).
+- **⚠**, in red: two live sessions wrote the same file in the last two hours. The
+  tooltip names the file and the other session
+  ([D99](docs/04-decisions.md#d99--two-sessions-on-one-file-show-it-on-their-rows)).
+- **✉3**, in teal: three answers since you last looked. One answer is what green
+  already says, so the mark appears from two on, on a session woken again and again,
+  by its own background work or by another session's message, with nobody reading.
+  Clicking the row clears it, and so does typing a prompt into it
+  ([D108](docs/04-decisions.md#d108--a-row-counts-the-answers-nobody-has-read)).
+
 ## Two harnesses, one row
 
 LampBoard watches **Claude Code** and **Codex**. Both get the same row: the same
@@ -1554,8 +1571,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1145 domain tests, instantaneous
-swift run LampBoardE2E                # 154 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1149 domain tests, instantaneous
+swift run LampBoardE2E                # 155 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

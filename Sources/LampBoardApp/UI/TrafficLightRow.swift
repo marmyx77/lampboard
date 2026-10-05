@@ -171,6 +171,17 @@ struct TrafficLightRow: View {
                                 .accessibilityLabel(conflict)
                         }
 
+                        // Answers nobody has read, from two on (R3c).
+                        if let unread = row.unreadBadge {
+                            Text(unread)
+                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(StatusPalette.lampMasterTint)
+                                .tooltip("\(unread.dropFirst()) answers since you last looked")
+                                .accessibilityLabel("\(unread.dropFirst()) unread answers")
+                                .fixedSize()
+                        }
+
                         Spacer(minLength: 4)
 
                         Text(timeLabel)

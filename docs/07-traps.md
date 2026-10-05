@@ -2095,3 +2095,21 @@ The context reader used it, so every reading's time was `nil` for as long as it
 existed, and nothing noticed: nothing used the time until the prompt cache's minutes
 did (D100), and its test found it. Parse with `.withFractionalSeconds` first and the
 plain form after.
+
+## `screencapture -l` fails on a sleeping display
+
+A window can be photographed alone on a locked screen, but not on a display that has
+gone to sleep: `screencapture -x -o -l <id>` prints "could not create image from
+window" and writes nothing. `pmset` said sleep was prevented, which is the machine
+and not the display. `caffeinate -u -t 8` declares user activity, which wakes the
+display for long enough to take the picture.
+
+## A keychain item that does not trust a tool cannot be used from a process with no session
+
+On a Mac nobody logs into, `pkgbuild --sign` worked from an ssh session and failed
+from a detached one with `errSecInteractionNotAllowed` and four lines of "write:
+Permission denied". The Installer key had been imported trusting `codesign`,
+`productsign` and `security`, but not `pkgbuild`. From an ssh session the system let
+that pass; from a detached process it wanted to ask, and nobody could answer. Import
+signing identities with every tool that will use them (`-T`), and give the tool the
+keychain by name, since the login keychain of such an account is locked.

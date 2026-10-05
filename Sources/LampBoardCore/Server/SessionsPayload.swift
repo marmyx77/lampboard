@@ -101,6 +101,10 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let summary: String?
     public let needs: String?
 
+    /// Answers given since the person last looked (R3c). Optional on the wire, so
+    /// an older panel's answer still decodes.
+    public let unreadAnswers: Int?
+
     /// What the panel calls the session's row: the name the user gave the
     /// folder, or the conversation title for a lone terminal row, or the
     /// folder. `workspace` stays the folder — the key everything is found by.
@@ -136,8 +140,10 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         jobId: String? = nil,
         summary: String? = nil,
         needs: String? = nil,
+        unreadAnswers: Int? = nil,
         label: String? = nil
     ) {
+        self.unreadAnswers = unreadAnswers
         self.jobId = jobId
         self.summary = summary
         self.needs = needs
@@ -245,6 +251,7 @@ public enum SessionsCodec {
             jobId: session.backgroundJob?.id,
             summary: session.backgroundJob?.summary,
             needs: session.backgroundJob?.needs,
+            unreadAnswers: session.unreadAnswers,
             label: alias ?? session.displayName
         )
     }

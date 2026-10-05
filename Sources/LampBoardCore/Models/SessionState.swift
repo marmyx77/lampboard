@@ -131,6 +131,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// job file (AV2): its summary, what it needs, the id to attach to.
     public let backgroundJob: BackgroundJob?
 
+    /// Answers given since the person last looked (R3c): one per turn that ended
+    /// with something to read, back to none when the row is seen or the person
+    /// types a prompt. More than one is a session woken again and again with
+    /// nobody reading.
+    public let unreadAnswers: Int
+
     /// When this session first appeared to the panel.
     ///
     /// The one moment about a session that never moves: `updatedAt` follows every
@@ -163,8 +169,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         costUSD: Double? = nil,
         runningTool: RunningTool? = nil,
         backgroundJob: BackgroundJob? = nil,
+        unreadAnswers: Int = 0,
         firstSeenAt: Date? = nil
     ) {
+        self.unreadAnswers = max(0, unreadAnswers)
         self.backgroundJob = backgroundJob
         self.costUSD = costUSD
         self.runningTool = runningTool
@@ -276,7 +284,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// click is not session activity, and jumping a three-day-old session to "now"
     /// would erase the only useful information it carries.
     public func markedSeen(at now: Date) -> SessionState {
-        replacing(status: .idle, statusSince: now, failureReason: .some(nil))
+        replacing(status: .idle, statusSince: now, failureReason: .some(nil), unreadAnswers: 0)
     }
 
     /// Copy restored to "there is something to read".
@@ -286,7 +294,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// is lost. It leaves `updatedAt` alone for the same reason.
     public func markedUnread(at now: Date) -> SessionState {
         guard baseStatus == .idle else { return self }
-        return replacing(status: .ready, statusSince: now)
+        return replacing(status: .ready, statusSince: now, unreadAnswers: max(1, unreadAnswers))
     }
 
     /// Copy that records — or forgets — what the session is waiting on.
@@ -394,6 +402,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         return replacing(origin: newOrigin)
     }
 
+    /// Copy with this many answers unread; the same count is the same session.
+    public func with(unreadAnswers count: Int) -> SessionState {
+        guard count != unreadAnswers else { return self }
+        return replacing(unreadAnswers: count)
+    }
+
     /// Copy carrying the Agent View's job, or none; the same job is the same session.
     public func with(backgroundJob job: BackgroundJob?) -> SessionState {
         guard job != backgroundJob else { return self }
@@ -497,7 +511,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         context: ContextReading?? = nil,
         costUSD: Double?? = nil,
         runningTool: RunningTool?? = nil,
-        backgroundJob: BackgroundJob?? = nil
+        backgroundJob: BackgroundJob?? = nil,
+        unreadAnswers: Int? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -520,6 +535,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             costUSD: costUSD ?? self.costUSD,
             runningTool: runningTool ?? self.runningTool,
             backgroundJob: backgroundJob ?? self.backgroundJob,
+            unreadAnswers: unreadAnswers ?? self.unreadAnswers,
             firstSeenAt: firstSeenAt
         )
     }

@@ -454,6 +454,11 @@ public enum StateReducer {
             .with(pendingAsk: newStatus == .awaiting
                 ? (signal.pendingAsk ?? base.pendingAsk)
                 : nil)
+            // One more answer nobody has read, or none: a prompt means the person
+            // was there to type it (R3c).
+            .with(unreadAnswers: signal.event == .userPromptSubmit ? 0
+                : newStatus == .ready && (signal.event == .stop || signal.event == .stopFailure)
+                    ? base.unreadAnswers + 1 : base.unreadAnswers)
 
         // A new question opens a new turn: the previous turn's subagents no longer
         // count, and if some `SubagentStop` got lost along the way this is where
