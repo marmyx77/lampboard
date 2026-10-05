@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissions = PermissionDesk()
     private let decisions = DecisionBoardService()
     private var away: AwayMonitor?
+    private let awayFlag = AwayFlag()
     private let governor = GovernorService()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
@@ -257,7 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         presence.start()
         self.presence = presence
 
-        let away = AwayMonitor(store: store, preferences: preferences)
+        let away = AwayMonitor(store: store, preferences: preferences, flag: awayFlag)
         notifier?.isAway = { [weak away] in away?.isAway ?? false }
         away.onBack = { [weak self] line in
             if self?.preferences.notificationsEnabled == true { self?.notifier?.deliverSummary(line) }
@@ -420,6 +421,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                                 minutesAgo: Int(now.timeIntervalSince(writer.at) / 60))
                 } ?? nil
                 return RadarExchange.answer(reason: reason, nonce: nonce, key: key)
+            },
+            onModHold: { [awayFlag] body, nonce, proof, key in
+                guard let request = HoldExchange.provenRequest(body, nonce: nonce, proof: proof, key: key),
+                      let nonce else { return "" }
+                let reason = HoldExchange.reason(command: request.command, cut: request.cut, away: awayFlag.isAway)
+                return HoldExchange.answer(reason: reason, nonce: nonce, key: key)
             }
         )
 

@@ -95,12 +95,17 @@ enum ModFilesSuite {
             t.expect(code.contains("next(block ? { ...e, context: [...(e.context || []), block] } : e)"), "and it is the board")
         },
 
-        TestCase("The radar turns only an edit the engine allows into a question, proven and signed (§4.4)") { t in
+        TestCase("The radar and the hold ask with the key and take only a signed sentence (§4.4, A2)") { t in
             let code = ModFiles.register
-            t.expect(code.contains("${target.base}\(AppConfig.modRadarPath)"), "the route the server serves")
-            t.expect(code.contains("hmac(key, `\(RadarExchange.proofMessage(nonce: "${nonce}", session: "${session}", file: "${file}"))`)"), "the proof")
-            t.expect(code.contains("hmac(key, `radar:${nonce}:written:${sentence}`)"), "the signature the panel makes")
+            t.expect(code.contains("'X-LampBoard-Proof': await hmac(key, `${tag}:${nonce}:${session}:${subject}`)"), "the proof")
+            t.expect(code.contains("same(signature, await hmac(key, `${tag}:${nonce}:${verdict}:${sentence}`))"), "the signature")
+            t.expect(code.contains("signedVerdict($, '\(AppConfig.modRadarPath)', 'radar', file, { file }, 'written', RADAR_WAIT)"), "the radar's route")
+            t.expect(code.contains("signedVerdict($, '\(AppConfig.modHoldPath)', 'hold', `${cut ? 1 : 0}:${command}`,"), "the hold's route")
+            t.expect(code.contains("const HOLD_LONGEST = \(HoldExchange.longest)"), "the hold's cut is the panel's")
+            t.expect(RadarExchange.proofMessage(nonce: "n", session: "s", file: "f") == "radar:n:s:f"
+                     && HoldExchange.proofMessage(nonce: "n", session: "s", cut: true, command: "c") == "hold:n:s:1:c", "the panel checks the same")
             t.expect(code.contains("verdict && verdict.decision === 'allow' && WRITERS.has(e.tool)"), "only what would have gone ahead")
+            t.expect(code.contains("verdict && verdict.decision === 'allow' && e.tool === 'Bash'"), "only a command that would have run")
             t.expect(code.contains("return { decision: 'ask', reason: said }"), "asked, never denied")
         },
 

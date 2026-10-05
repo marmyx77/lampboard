@@ -83,6 +83,8 @@ public enum AppConfig {
     /// The radar (§4.4): before a session writes a file, whether another live
     /// session just did, asked and answered like the governor.
     public static let modRadarPath = "/mod/radar"
+    /// Away, a risky command is held (A2): asked and answered like the radar.
+    public static let modHoldPath = "/mod/hold"
 
     /// How many slots a key can address.
     ///

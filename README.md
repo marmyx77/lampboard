@@ -538,7 +538,11 @@ you are, no notification interrupts, and the panel counts what happens. When you
 come back, one line at the foot of the panel says it, and the same line arrives as a
 notification: "While you were away (1h 20m): 3 answers (api, docs-site), 1 waiting
 for you (api), 1 failed (billing), $2.10 spent." A click puts the line away
-([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)).
+([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)). With the companion mod,
+while you are away, a command that would delete recursively, force-push, discard
+changes or run as root waits for you, even where your settings would let it run on
+its own. The session shows why, and the dialog is there when you come back
+([D116](docs/04-decisions.md#d116--away-a-destructive-command-waits-for-the-person)).
 
 **One session in focus.** *Focus on this session*, in a row's menu or as a button in
 its Plancia, puts that session in the foreground and marks its row with a pin.
@@ -1623,8 +1627,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1173 domain tests, instantaneous
-swift run LampBoardE2E                # 158 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1175 domain tests, instantaneous
+swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

@@ -4354,3 +4354,44 @@ move. The legend explains them and counts the dashed ones.
 solid, as they should: its invented sessions are new and none is stuck. The rule is
 covered by the domain suite.
 
+## D116 · Away, a destructive command waits for the person
+
+**Decided.** The second half of the plan's §5.8. While the person is away (D114), a
+shell command that the engine would run on its own and that the impact rules (D87)
+name as destructive is put to them instead. It then waits for their return rather
+than running unseen. The destructive commands are the ones that delete recursively,
+force-push, discard changes, run a downloaded script, drop data, overwrite a disk,
+change permissions recursively, or run as root.
+
+Before such a command the companion mod (1.13.0) asks `/mod/hold` with the whole
+command, every line, proven with the permission key, and takes only a signed answer.
+A command longer than 4,000 characters is sent cut there, and the proof says so.
+The panel says "hold" only when it is away and some line is destructive, judged as
+written: the masking that keeps secrets off a card could swallow the very words
+that make a command destructive. While away, a command too long to read whole is
+held unread. Anything else goes as it would have: the person here, a harmless
+command, a command the engine would already ask about, or no answer in 1.5 seconds.
+Away is read from a locked flag, not from the main thread, so a busy panel still
+answers in time. The session's foot shows the sentence, and so does Claude Code's
+own dialog: "Held while you are away: this command deletes recursively. It waits
+for you." Since the held command waits on a permission, the summary on return counts
+it among what is waiting for you.
+
+The rules are D87's fixed set of spellings, not a reading of the shell. A
+destructive command they do not name goes: `rsync --delete`, `find -delete`,
+`docker system prune`, `kubectl delete`, `git clean`, a `DROP` inside a script
+file, an alias, or a command assembled from variables. The hold is a seatbelt
+for the common slips of a session left alone. It is not a sandbox, and the
+permission settings remain the person's real boundary.
+
+The radar (D113) and the hold share one question in the mod, `signedVerdict`: a
+verdict and a sentence, signed over both.
+
+**Measured on the test Mac.** A panel set to away, and a throwaway Haiku session
+whose settings allow `rm` without asking (`--allowedTools 'Bash(rm:*)'`), asked to
+run `rm -rf build`. It stopped on "Do you want to proceed?" under "Held while you
+are away: this command deletes recursively. It waits for you. [plugin:lampboard]",
+and the folder was still there. The same happened when the deletion was the second
+line of a command whose first line was `echo ok`. The end-to-end suite runs the route on a headless
+instance, where nobody is away: "go", and nothing without the proof.
+

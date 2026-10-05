@@ -216,6 +216,33 @@ enum ModE2ESuite {
                 a.expectEqual(ask(sessionId, key: nil), "", "no proof, no answer")
             },
 
+            TestCase("/mod/hold: with nobody away a destructive command goes, signed; unproven, nothing (A2)") { a in
+                let key = app.checkKeyValue ?? "", command = "echo ok\\nrm -rf build"
+                func ask(key: String?) -> String {
+                    let nonce = UUID().uuidString
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(app.port)\(AppConfig.modHoldPath)")!)
+                    request.httpMethod = "POST"
+                    request.setValue(app.tokenValue, forHTTPHeaderField: AccessToken.headerName)
+                    request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+                    if let key {
+                        request.setValue(PermissionGate.mac(key: key, message: HoldExchange.proofMessage(nonce: nonce, session: sessionId, cut: false, command: "echo ok\nrm -rf build")),
+                                         forHTTPHeaderField: "X-LampBoard-Proof")
+                    }
+                    request.httpBody = Data(#"{"v":1,"session":"\#(sessionId)","command":"\#(command)","cut":false}"#.utf8)
+                    let done = DispatchSemaphore(value: 0)
+                    var said = ""
+                    URLSession.shared.dataTask(with: request) { data, _, _ in
+                        said = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                        done.signal()
+                    }.resume()
+                    _ = done.wait(timeout: .now() + 10)
+                    return said
+                }
+                // The headless instance has no one to be away: a destructive line goes.
+                a.expect(ask(key: key).hasPrefix("go "), "here, it goes: \(ask(key: key))")
+                a.expectEqual(ask(key: nil), "", "no proof, no answer")
+            },
+
             TestCase("a measure lands on the row as the session's own count") { a in
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: LifecycleSuite.workspace))
                 guard app.waitUntil({ app.status(of: sessionId) == "working" }) else {

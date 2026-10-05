@@ -1,14 +1,14 @@
 # Code map
 
-~66,500 lines of Swift across five targets. For each file: what it contains, why
+~66,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,412 lines · 162 files  pure logic, zero AppKit
-  LampBoardApp/    24,791 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,429 lines · 110 files   1173 cases, instantaneous
-  LampBoardE2E/    4,662 lines · 20 files   158 cases, the real binary
+  LampBoardCore/  20,509 lines · 163 files  pure logic, zero AppKit
+  LampBoardApp/    24,823 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,474 lines · 111 files   1175 cases, instantaneous
+  LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 636
+### `AppConfig.swift` · 638
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -1275,6 +1275,11 @@ refused rather than guessed; the proof under its own prefix, so a permission's
 cannot stand for it; the choice signed by its index, or `ask`; twenty seconds with the panel, since a
 `tool.call` hook is dropped between 25 and 30.
 
+### `HoldExchange.swift` · 65
+Away, a destructive command waits (D116): the request proven for a session, its
+whole command and whether it was cut; every line judged unmasked, a cut command held
+unread, the sentence said only away; the answer `go` or `hold` and the sentence, signed.
+
 ### `PermissionImpact.swift` · 71
 What a permission would do, beside its Allow (D87): a shell command that destroys,
 named by what it does from its one masked line — recursive deletes, force pushes,
@@ -1516,7 +1521,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 565
+### `main.swift` · `AppDelegate.swift` · 573
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1701,7 +1706,7 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 703
+### `SignalServer.swift` · 715
 Seventeen routes, behind `LoopbackGuard`; `/handoff` takes a handoff a session wrote with the mod's `/handoff`, behind the token and proven with the permission key (D91); `/question` takes a session's question proven like an ask (D86); `/mod/band` and `/mod/band/open`, behind the token, are what a session's band shows and the digit that opens one of its items in the panel (D84); `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80); `GET /check` and `/check/answer` exist only on a fake home, for the tests: in a real install the panel answers in-process. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
@@ -1885,7 +1890,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1173 cases
+## `LampBoardTests/` — 1175 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1921,6 +1926,7 @@ script, before it was split. The most important ones:
 | `RadarSuite` | another live session's latest write of the file within two hours, never one's own, an old one or a closed session's; the sentence with a flattened name; the request proven for its session and file, the answer signed (D113) |
 | `AwaySuite` | answers, failures and asks counted as they happen; the line on return with how long, the answers, what still waits, the failures and what it cost; nothing happened said as much; a session gone since still counted; under a minute not "0m" (D114) |
 | `LampStyleSuite` | dashed while working and stuck on one tool, solid while working otherwise; hollow without the mod only when the mod is in use, the session has had two minutes, and it is on this machine (D115) |
+| `HoldSuite` | away, a destructive command held with what it does, on any line and unmasked, a cut one unread; here or harmless, it goes; the request proven for its session, command and cut, the answer signed (D116) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
@@ -1989,7 +1995,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 158 cases
+## `LampBoardE2E/` — 159 cases
 
 | Suite | Covers |
 |---|---|
