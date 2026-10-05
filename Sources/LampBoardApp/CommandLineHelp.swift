@@ -19,6 +19,8 @@ extension CommandLineInterface {
                                               (with no argument it lists the open workspaces,
                                                with --dry-run it diagnoses without activating anything)
           lampboard sessions                print the column as the running app sees it
+          lampboard search <words>          your conversations that say them, the best first
+          lampboard search --reset          take the search index away (the panel builds it again)
           lampboard usage                   ask Anthropic how much of the allowance is gone,
                                               on this Mac and on every node, and print it
           lampboard next                    raise the window of the next waiting session

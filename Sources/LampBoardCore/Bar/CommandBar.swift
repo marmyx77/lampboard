@@ -43,7 +43,7 @@ public enum CommandBar {
     }
 
     public struct Result: Sendable, Equatable, Identifiable {
-        public enum Kind: Sendable, Equatable { case session, action, ask, send, askSession }
+        public enum Kind: Sendable, Equatable { case session, action, ask, send, askSession, conversation }
         public let id: String
         public let kind: Kind
         public let title: String
@@ -51,6 +51,22 @@ public enum CommandBar {
         public let sessionId: String?
         public let action: Action?
         public let status: SessionStatus?
+    }
+
+    /// A conversation the search index found (0.7): which session, what it is
+    /// called, where it ran, and the words around the match.
+    public struct Found: Sendable, Equatable {
+        public let sessionId: String
+        public let title: String
+        public let cwd: String?
+        public let snippet: String
+
+        public init(sessionId: String, title: String, cwd: String?, snippet: String) {
+            self.sessionId = sessionId
+            self.title = title
+            self.cwd = cwd
+            self.snippet = snippet
+        }
     }
 
     /// The most results a list shows: past eight, the bar has stopped narrowing.
@@ -70,7 +86,7 @@ public enum CommandBar {
     }
 
     public static func results(for query: Query, rows: [ColumnRow], now: Date, lampMasterEnabled: Bool,
-                               sendingEnabled: Bool = false, askable: Set<String> = []) -> [Result] {
+                               sendingEnabled: Bool = false, askable: Set<String> = [], found: [Found] = []) -> [Result] {
         switch query {
         case .empty:
             return Array(rows.filter { $0.status.clearsOnFocus }
@@ -78,8 +94,14 @@ public enum CommandBar {
                 .map { session($0, now: now) }.prefix(shownAtOnce))
         case .text(let text):
             let words = text.lowercased()
-            return Array((sessions(matching: words, rows: rows, now: now, namesOnly: false)
-                + actions(matching: words)).prefix(shownAtOnce))
+            let live = sessions(matching: words, rows: rows, now: now, namesOnly: false)
+            // What was said, after what is open: a conversation already a row is that row.
+            let open = Set(rows.flatMap { $0.sessions.map(\.id) })
+            let said = found.filter { !open.contains($0.sessionId) }.map { hit in
+                Result(id: "found:" + hit.sessionId, kind: .conversation, title: RowActivity.flat(hit.title),
+                       detail: RowActivity.flat(hit.snippet), sessionId: hit.sessionId, action: nil, status: nil)
+            }
+            return Array((live + actions(matching: words) + said).prefix(shownAtOnce))
         case .mention(let name, let message):
             let found = Array(sessions(matching: name.lowercased(), rows: rows, now: now, namesOnly: true).prefix(shownAtOnce))
             guard !message.isEmpty else { return found }

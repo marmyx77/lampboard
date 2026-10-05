@@ -27,7 +27,9 @@ let package = Package(
         .executableTarget(
             name: "LampBoardApp",
             dependencies: ["LampBoardCore"],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            swiftSettings: [.swiftLanguageMode(.v5)],
+            // The system's SQLite, for the search index's FTS5 (0.7): nothing bundled.
+            linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         // End-to-end tests: they launch the real binary and talk to it over HTTP.
         //

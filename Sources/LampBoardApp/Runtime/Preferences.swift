@@ -32,6 +32,7 @@ struct Preferences {
         static let barShortcut = "bar.shortcut"
         static let permissionsFromPanel = "permissions.panel"
         static let bandHidden = "band.hidden"
+        static let searchOff = "search.off"
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
@@ -339,6 +340,12 @@ struct Preferences {
     var bandEnabled: Bool {
         get { !defaults.bool(forKey: Key.bandHidden) }
         nonmutating set { defaults.set(!newValue, forKey: Key.bandHidden) }
+    }
+
+    /// The search index (0.7): kept up unless switched off; local, no token.
+    var searchIndexed: Bool {
+        get { !defaults.bool(forKey: Key.searchOff) }
+        nonmutating set { defaults.set(!newValue, forKey: Key.searchOff) }
     }
 
     var permissionsFromPanel: Bool {

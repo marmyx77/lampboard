@@ -67,6 +67,8 @@ final class PanelController {
     var permissionDesk: PermissionDesk?
     /// Questions to sessions without disturbing them, from the bar (D82).
     var askDesk: PeerAskDesk?
+    /// What was said in every conversation, for the bar (0.7).
+    var searchIndex: SearchIndex?
     var onOpenLampMaster: (() -> Void)?
     var tour: TourController?
 

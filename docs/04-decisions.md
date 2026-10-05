@@ -3440,3 +3440,50 @@ anywhere; `find -delete`; `bash <(curl …)` and `$(curl …)`; `sudo` after `th
 `git rm --cached`. A trailing newline no longer counts as a line, and the card gives
 the project's name the room before the label.
 
+## D88 · Every conversation of this Mac is searchable, from the bar
+
+**Decided.** LampBoard keeps a search index of this Mac's conversations — what the
+person typed and what Claude answered, nothing of context, tool output or other
+sessions' messages — in `~/.lampboard/index.sqlite`, owner-only, with the system's
+SQLite and its FTS5 (`unicode61 remove_diacritics 2`: "citta" finds "città"). Words
+typed in the bar (D77) now also find the conversations that said them, after the
+open sessions and the actions; one already a row is that row; one closed copies the
+command that resumes it, `cd '<folder>' && claude --resume <id>`, and says so. From a
+terminal, `lampboard search <words>` answers the same, panel running or not.
+
+**How it is kept.** From the transcripts, not from the mod: each file is read from
+where the last pass stopped, to its last complete line; a file that shrank is read
+again from the start; a pass every thirty seconds at utility priority has a budget
+of 200 files and 32 MB, newest first, so the first build of a long history spreads
+over minutes instead of one heavy one. Only the last ninety days are built. No
+token is spent. Settings will have the switch; the preference is `search.off`.
+
+**What the plan had and this leaves.** The plan wanted the index fed in real time by
+the mod and a one-line summary of every turn from Haiku. The transcripts are already
+the record, read within thirty seconds, and a summary per turn spends tokens on every
+turn of every session — the test account sat at 85 % of its week. Both wait.
+
+**Measured on the test Mac.** The system's SQLite (3.54) has FTS5 and folds accents;
+a quoted word keeps its hyphen ("aworld-lab" is a word, not a column filter, the
+prototype's trap, §9.5) and grouping is done after `bm25()` ordering, not with
+`GROUP BY` (the other). The end-to-end suite builds an index from a fake home's
+transcripts with the real binary and finds a conversation by its words and by an
+unaccented one, never by a reminder; and on the trial's panel, "zanzibar" typed in
+the bar found the closed "Zanzibar itinerary" and copied the command to resume it.
+`SQLITE_OPEN_NOFOLLOW` refuses a link anywhere in the path — `/var` is one, and so
+are some homes — so the index file alone is checked not to be one.
+
+**What a review changed.** The command line and the panel can write at once: each
+waits for the other (`busy_timeout`), takes the write lock before reading a file's
+offset, and keeps a chunk only whole — its messages and its offset in one
+transaction, rolled back on any failure. A transcript is read at most 8 MB a pass,
+never whole into memory, and a line longer than that is stepped over; a project
+folder that is a link, or a file that is not a regular one, is not read; a new file
+deletes nothing, so a first build is not quadratic; the queue is held per file, so a
+search waits for one file, never a pass. The folder kept is where a conversation
+began, not where a later `cd` took it, since that is where it resumes from; the
+command copied takes only an id of a session's shape and a folder without control
+characters. A conversation whose transcript Claude Code cleaned up is pruned. The
+index is excluded from backups — it is a second copy of every conversation — its
+folder is created `0700`, and `lampboard search --reset` takes it away.
+

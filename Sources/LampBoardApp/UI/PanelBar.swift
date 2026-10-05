@@ -61,6 +61,33 @@ extension PanelController {
             guard let desk = self?.askDesk else { return "Asking is not available." }
             return await desk.ask(sessionId: id, question: question, host: self?.session(named: id)?.workspace.host)
         }
+        // What was said (0.7): the index the app keeps, read off the main actor.
+        if let index = searchIndex {
+            bar.onSearch = { words in
+                index.search(words, limit: 5).map { hit in
+                    CommandBar.Found(sessionId: hit.sessionId,
+                                     title: hit.title ?? hit.cwd.map { ($0 as NSString).lastPathComponent } ?? String(hit.sessionId.prefix(8)),
+                                     cwd: hit.cwd, snippet: hit.snippet)
+                }
+            }
+        }
+        bar.onConversation = { [weak self] id, foundCwd in
+            if let self, let session = self.session(named: id) {
+                self.activate(session: session)
+                return "Opened."
+            }
+            // Not open anywhere this panel sees: Claude Code resumes it from its folder.
+            // A command a person will paste: an id of a session's shape, and a
+            // folder with no line break or control character, quoted for the shell.
+            guard ModReport.isSessionId(id) else { return "That conversation has an id this panel will not put in a command." }
+            let cwd = foundCwd.flatMap { path in
+                path.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) } ? path : nil
+            }
+            let command = (cwd.map { "cd '\($0.replacingOccurrences(of: "'", with: "'\\''"))' && " } ?? "") + "claude --resume \(id)"
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(command, forType: .string)
+            return "Closed. To resume it, paste in a terminal (copied): \(command)"
+        }
         bar.onLayoutChange = { [weak self] in
             guard let self else { return }
             self.resizeToFit(self.store.state)

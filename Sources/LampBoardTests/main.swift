@@ -32,6 +32,7 @@ let suites: [TestSuite] = [
     BandSuite.suite,
     QuestionGateSuite.suite,
     PermissionImpactSuite.suite,
+    IndexRecordsSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

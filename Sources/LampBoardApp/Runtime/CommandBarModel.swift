@@ -35,12 +35,18 @@ final class CommandBarModel: ObservableObject {
     var onSend: @MainActor (String, String) async -> String? = { _, _ in "Sending is not available." }
     /// `@name ?question`: the session's fork answers it, no turn (D82).
     var onAskSession: @MainActor (String, String) async -> String = { _, _ in "" }
+    /// The search index's answer for the typed words (0.7), off the main actor.
+    var onSearch: @Sendable (String) -> [CommandBar.Found] = { _ in [] }
+    /// A conversation found: what to say in the bar about reaching it.
+    var onConversation: @MainActor (String, String?) -> String = { _, _ in "" }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
     private var lampMasterEnabled = false
     private var sendingEnabled = false
     private var askable: Set<String> = []
+    private var found: [CommandBar.Found] = []
+    private var searching: Task<Void, Never>?
     private var question: Task<Void, Never>?
 
     /// Results only while something is typed. Empty, the queue below already
@@ -101,6 +107,10 @@ final class CommandBarModel: ObservableObject {
                 self.answer = said
                 self.onLayoutChange()
             }
+        case .conversation:
+            guard let id = result.sessionId else { return }
+            answer = onConversation(id, found.first { $0.sessionId == id }?.cwd)
+            onLayoutChange()
         case .askSession:
             guard sendingEnabled, let id = result.sessionId, !asking,
                   case .mention(_, let message) = CommandBar.parse(text), message.hasPrefix("?") else { return }
@@ -155,8 +165,26 @@ final class CommandBarModel: ObservableObject {
         cancelQuestion()
         answer = nil
         selected = 0
+        found = []
         refresh()
         onLayoutChange()
+        search()
+    }
+
+    /// The index, a moment after the typing stops, off the main actor; an
+    /// answer for words no longer typed is dropped.
+    private func search() {
+        searching?.cancel()
+        guard case .text(let words) = CommandBar.parse(text), words.count >= 3 else { return }
+        let lookup = onSearch
+        searching = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+            let hits = await Task.detached(priority: .userInitiated) { lookup(words) }.value
+            guard let self, !Task.isCancelled, CommandBar.parse(self.text) == .text(words) else { return }
+            self.found = hits
+            self.refresh()
+        }
     }
 
     private func cancelQuestion() {
@@ -167,7 +195,8 @@ final class CommandBarModel: ObservableObject {
 
     private func refresh() {
         let next = CommandBar.results(for: CommandBar.parse(text), rows: rows, now: Date(),
-                                      lampMasterEnabled: lampMasterEnabled, sendingEnabled: sendingEnabled, askable: askable)
+                                      lampMasterEnabled: lampMasterEnabled, sendingEnabled: sendingEnabled, askable: askable,
+                                      found: found)
         guard next != results else { return }
         // The selection stays on the result it was on, not on its place: a
         // list reordered by a status change must not turn `⏎` into a send to

@@ -801,6 +801,14 @@ rows still come from the hooks, with or without the mod
 ([D65](docs/04-decisions.md)). `lampboard mod uninstall` takes it out, and
 `uninstall-hooks` takes it out with the hooks.
 
+**Searching what was said.** The bar finds your conversations by their words too,
+after the open sessions — "zanzibar" finds the closed one where you planned it, and
+choosing it copies the command that resumes it. The index lives in
+`~/.lampboard/index.sqlite`, owner-only: what you typed and what Claude answered, from
+the last ninety days, kept up from the transcripts every thirty seconds, no token
+spent, left out of backups. `lampboard search <words>` answers from a terminal, and
+`lampboard search --reset` takes the index away ([D88](docs/04-decisions.md)).
+
 **A line above every session's prompt.** While another session waits for you — a
 permission, a question, a stuck or failed turn — the mod draws one line above the
 prompt of the others: `⚑ LampBoard · 1: docs-site: Bash: npm publish`. A digit at an
@@ -1479,8 +1487,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1066 domain tests, instantaneous
-swift run LampBoardE2E                # 141 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1072 domain tests, instantaneous
+swift run LampBoardE2E                # 142 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

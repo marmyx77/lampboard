@@ -37,6 +37,7 @@ enum CommandLineInterface {
         /// Reads a slot's conversation in a window of its own.
         case chat(slot: Int?, port: UInt16)
         case sessions(port: UInt16)
+        case search(words: String)
         /// What the allowance strip would draw, asked once and printed. The one
         /// command that leaves the Mac, and it says so in the help text.
         case usage
@@ -105,6 +106,8 @@ enum CommandLineInterface {
             )
         case "sessions":
             return .sessions(port: port)
+        case "search":
+            return .search(words: args.dropFirst().joined(separator: " "))
         case "usage":
             return .usage
         case "remote":
@@ -197,6 +200,9 @@ enum CommandLineInterface {
 
         case .sessions(let port):
             return runSessions(port: port)
+
+        case .search(let words):
+            return runSearch(words)
 
         case .usage:
             return runUsage()

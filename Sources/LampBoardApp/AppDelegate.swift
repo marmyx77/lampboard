@@ -40,6 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissions = PermissionDesk()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
+    /// Every conversation of this Mac, searchable (0.7); kept up off the main thread.
+    let searchIndex = SearchIndex()
+    private var indexClock: DispatchSourceTimer?
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
     private var lampMasterWindow: LampMasterWindowController?
 
@@ -106,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.activity = activity
         controller.permissionDesk = permissions
         controller.askDesk = askDesk
+        controller.searchIndex = searchIndex
         mod.onReport = { [activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)
@@ -163,6 +167,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         startNotifier(for: controller)
         startPresence()
+        startIndexing()
+    }
+
+    /// One pass of the search index every 30 seconds, at utility priority, a
+    /// budget each, while it is switched on; the first build of a long history
+    /// spreads over passes instead of one heavy minute.
+    private func startIndexing() {
+        let index = searchIndex
+        let clock = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        clock.schedule(deadline: .now() + 10, repeating: 30, leeway: .seconds(5))
+        clock.setEventHandler {
+            guard Preferences().searchIndexed else { return }
+            let done = index.update()
+            if done.files > 0 { Diagnostics.log("index: \(done.files) transcripts, \(done.messages) messages") }
+        }
+        clock.resume()
+        indexClock = clock
     }
 
     private func startNotifier(for controller: PanelController) {

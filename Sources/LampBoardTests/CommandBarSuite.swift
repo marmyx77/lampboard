@@ -103,6 +103,17 @@ enum CommandBarSuite {
             t.expectEqual(asked.first?.detail, "answered from its conversation on node, with no turn")
         },
 
+        TestCase("What was said is found after what is open; a conversation that is a row is that row") { t in
+            let found = [
+                CommandBar.Found(sessionId: "old-1", title: "Slots rename", cwd: "/home/dev/events", snippet: "renamed «slots» to v2"),
+                CommandBar.Found(sessionId: "id-api", title: "api", cwd: nil, snippet: "the «slots» endpoint"),
+            ]
+            let results = CommandBar.results(for: CommandBar.parse("slots"), rows: rows, now: t0, lampMasterEnabled: true, found: found)
+            t.expectEqual(results.map(\.kind), [.conversation], "the row's own conversation is not repeated")
+            t.expectEqual(results.first?.title, "Slots rename")
+            t.expectEqual(results.first?.sessionId, "old-1")
+        },
+
         TestCase("? goes to LampMaster, or says it is off") { t in
             let on = CommandBar.results(for: .ask("who renamed slots"), rows: rows, now: t0, lampMasterEnabled: true)
             t.expectEqual(on.first?.kind, .ask)
