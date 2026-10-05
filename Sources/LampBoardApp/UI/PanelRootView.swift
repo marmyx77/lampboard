@@ -135,15 +135,17 @@ struct PanelRootView: View {
     private var column: some View {
         VStack(spacing: 0) {
             if let tour { TourBand(tour: tour, compact: flags.compact) }
-            if let bar { CommandBarView(model: bar) }
+            if let bar { CommandBarView(model: bar).tourRing(tour, at: .bar) }
             if let queue { WaitingQueueSection(model: queue) }
             // LampMaster first, fixed, its own glyph (UX §4): a row in the wide
             // panel, its line in the narrow one.
             if let lampMaster {
                 if flags.compact {
                     LampMasterStrip(service: lampMaster, compact: true, open: openLampMaster)
+                        .tourRing(tour, at: .lampMaster)
                 } else {
                     LampMasterRow(service: lampMaster, selected: plancia?.showsLampMaster == true, open: openLampMaster)
+                        .tourRing(tour, at: .lampMaster)
                 }
             }
             TrafficLightColumn(
@@ -157,11 +159,13 @@ struct PanelRootView: View {
                 actions: rowActions,
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain,
-                conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:]
+                conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:],
+                tour: tour
             )
             AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
                            reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
                            forecasts: allowance.forecasts)
+                .tourRing(tour, at: .allowance)
             issueStrip
             footer
         }
@@ -354,6 +358,7 @@ struct PanelRootView: View {
             help: "Options and Settings: the same menu as a right-click on the panel's edge",
             action: openMenuUnderPointer
         )
+        .tourRing(tour, at: .panelMenu)
     }
 
     /// Opens the panel's context menu where the pointer is.

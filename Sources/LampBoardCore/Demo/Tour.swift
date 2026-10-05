@@ -96,6 +96,12 @@ public enum Tour {
     /// only while the tour stands on "allow", where answering it counts; a
     /// tour skipped or not begun may come back to it, so it waits; past the
     /// step, or finished, never again.
+    /// Whether a row holding these sessions is the one a step points at.
+    public static func rings(_ sessions: [String], _ anchor: Anchor) -> Bool {
+        guard case .row(let id) = anchor else { return false }
+        return sessions.contains(id)
+    }
+
     public static func trialPermission(_ progress: TourProgress, steps: [Step], waiting: Bool, shown: Bool) -> Staging {
         guard let allow = steps.firstIndex(where: { $0.id == "allow" }), progress.status != .finished else { return .stop }
         guard progress.status == .inProgress, let step = progress.current(in: steps),

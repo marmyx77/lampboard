@@ -118,3 +118,49 @@ struct TourBand: View {
         }
     }
 }
+
+/// The ring around what the step speaks of (UX §13.3, D121): a row, the bar,
+/// the allowance, LampMaster or the panel's menu. It breathes, unless motion
+/// is reduced, and is never in the way of a click or of VoiceOver: the band
+/// already says it in words.
+private struct TourRing: ViewModifier {
+    @ObservedObject var tour: TourController
+    let points: (Tour.Anchor) -> Bool
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if let anchor = tour.current?.anchor, points(anchor) { RingStroke() }
+        }
+    }
+}
+
+/// The stroke, with its breath as its own state: born and gone with the
+/// ring, so a ring that comes back breathes again.
+private struct RingStroke: View {
+    @Environment(\.accessibilityReduceMotion) private var still
+    @State private var bright = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .strokeBorder(StatusPalette.lampMasterTint, lineWidth: 1.5)
+            .padding(-1)
+            .opacity(still || bright ? 1 : 0.4)
+            .animation(still ? nil : .easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: bright)
+            .onAppear { bright = true }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// Ringed while the tour's step points here; nothing outside a trial,
+    /// where the panel has no tour for its whole life.
+    @ViewBuilder
+    func tourRing(_ tour: TourController?, _ points: @escaping (Tour.Anchor) -> Bool) -> some View {
+        if let tour { modifier(TourRing(tour: tour, points: points)) } else { self }
+    }
+
+    func tourRing(_ tour: TourController?, at anchor: Tour.Anchor) -> some View {
+        tourRing(tour) { $0 == anchor }
+    }
+}

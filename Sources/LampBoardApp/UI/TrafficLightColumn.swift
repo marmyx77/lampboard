@@ -18,6 +18,8 @@ struct TrafficLightColumn: View {
     let onRevealHidden: () -> Void
     /// Files two live sessions both wrote lately, by session (R3a).
     var conflicts: [String: [FileConflicts.Conflict]] = [:]
+    /// The tour, in a trial: a row it points at is ringed (D121).
+    var tour: TourController? = nil
 
     /// Reference moment for the time labels.
     ///
@@ -133,6 +135,7 @@ struct TrafficLightColumn: View {
                     actions: actions,
                     drag: drag
                 )
+                .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
 
                 if open { conversations(of: row) }
             }
@@ -188,6 +191,7 @@ struct TrafficLightColumn: View {
                 actions: actions,
                 drag: nil
             )
+            .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
 
             if open {
                 ForEach(row.members.prefix(Layout.subRowCap)) { member in

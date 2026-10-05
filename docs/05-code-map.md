@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,752 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    25,135 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,664 lines · 113 files   1189 cases, instantaneous
+  LampBoardCore/  20,758 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    25,190 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,679 lines · 113 files   1190 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1886,7 +1886,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `LampMasterSettings.swift` | 114 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
 | `ModSettings.swift` | 130 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), the band's switch with what it shows (D84), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
-| `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
+| `TourBand.swift` | 161 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. `tourRing` rings what the step speaks of — a row, the bar, the allowance, LampMaster, the panel's menu — breathing unless motion is reduced, never taking a click (D121). In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 122 | LampMaster above the rows, only while it is on, never blinking — advice is not a session waiting: in the wide panel a row with its star, name, what the last round found and the open count, a click opening its Plancia (D97); in the narrow one a line of fixed height. Both counted by `PanelMetrics.height` |
 | `LampMasterPlancia.swift` | 213 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |
 | `LampMasterCardViews.swift` | 173 | the cards, in LampMaster's Plancia (D97; a window of their own until then, D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the words a click would propose or ask, the action, *Ask without disturbing* with its answer in the card when the session's mod can answer (D85), *Ignore*, *Wrong*, *Don't suggest this kind*. what a card can ask the panel to do |
@@ -1903,7 +1903,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1189 cases
+## `LampBoardTests/` — 1190 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

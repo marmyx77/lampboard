@@ -4579,3 +4579,22 @@ and moved the band from squad to allowance. `?who renamed the slots endpoint`
 showed LampMaster's scripted reply, and the tour ended on "Done". The probe's
 `--bar-type` now also chooses a question to LampMaster.
 
+## D121 · A ring around what the step speaks of
+
+**Decided.** The last piece of the tour that T1.3 left for later. While a step is
+on screen, what it speaks of is ringed in LampMaster's teal: the row of the session
+it names (docs-site, api, events), the bar, the allowance, LampMaster's row or
+strip, or the ⋯ that opens the panel's menu. The ring sits a point outside the
+element and breathes slowly. With *Reduce motion* it holds still. The breath belongs
+to the stroke, which is born and gone with the ring, so a ring that comes back on
+the same element (events at plancia and at focus, the bar at command and at ask)
+breathes again: the review found it would otherwise come back still.
+
+It never takes a click and VoiceOver does not read it, because the band already
+says it in words. Outside a trial there is no tour, and the modifier draws nothing.
+Every step's anchor is checked against the script's sessions by a test, so a step
+cannot point at a row that is not there.
+
+**Photographed on the test Mac.** On step 1 the docs-site row was ringed, and on
+"away" the ⋯ in the footer was.
+

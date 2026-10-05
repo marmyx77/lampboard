@@ -89,6 +89,21 @@ enum TourSuite {
             t.expect(DemoScriptCheck.problems(script).isEmpty, "the answers hold nothing real")
         },
 
+        TestCase("Every step points at something the trial draws: a row of the script, or a part of the panel") { t in
+            let ids = Set(DemoScript.standard.sessions.map(\.id))
+            for step in Tour.all() {
+                if case .row(let id) = step.anchor { t.expect(ids.contains(id), "\(step.id) points at \(id), not in the script") }
+            }
+            let anchors = Dictionary(uniqueKeysWithValues: Tour.all().map { ($0.id, $0.anchor) })
+            t.expectEqual(anchors["command"], .bar)
+            t.expectEqual(anchors["away"], .panelMenu)
+            t.expectEqual(anchors["allowance"], .allowance)
+            t.expectEqual(anchors["lampmaster"], .lampMaster)
+            t.expect(Tour.rings(["x", "demo-events-03"], .row(session: "demo-events-03")), "a row holding it is ringed")
+            t.expect(!Tour.rings(["demo-api-00002"], .row(session: "demo-events-03")), "another row is not")
+            t.expect(!Tour.rings(["demo-events-03"], .bar), "the bar is not a row")
+        },
+
         TestCase("Every step's sentence fits the band's two lines in the narrow panel") { t in
             for step in Tour.all() {
                 t.expect(step.text.count <= Tour.longestText, "\(step.id): \(step.text.count) characters")

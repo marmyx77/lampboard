@@ -993,7 +993,8 @@ the green row, then the amber one; allow its `npm publish` from the panel; press
 in focus; say *I'm away* and come back; answer LampMaster's card; ask LampMaster a
 question. Where a real panel would wait on the mod or a model, the trial plays an
 answer written in advance, and says so: a trial never runs a model. *Skip*
-leaves it, and it resumes where you stopped. Nothing in it touches your sessions
+leaves it, and it resumes where you stopped. A teal ring shows where each step
+points: a row, the bar, the allowance, LampMaster or the panel's menu. Nothing in it touches your sessions
 ([D64](docs/04-decisions.md), [D119](docs/04-decisions.md#d119--the-tour-for-10-every-gesture-done-for-real)).
 
 ## Installation
@@ -1658,7 +1659,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1189 domain tests, instantaneous
+swift run LampBoardTests              # 1190 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
