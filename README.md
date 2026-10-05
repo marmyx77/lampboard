@@ -167,6 +167,14 @@ the index and the transcript, and goes when the conversation is archived, when
 the app is quit, when it has been silent for twelve hours, or when you delete the
 conversation — which takes its folder off the disk, and the row with it.
 
+**A click opens that very conversation in the Claude app's Code tab.** The app
+files each Code conversation under an id of its own, beside the id every hook
+carries, and has a link that opens it: `claude://code/continue?session=local_<id>`.
+A click finds that id in the app's own index and opens the link. Measured on the
+test Mac, the app was on one conversation, and clicking the other's row brought
+that one up ([D107](docs/04-decisions.md#d107--a-click-opens-that-conversation-in-the-claude-app)).
+A conversation the app does not file that way still only raises the app.
+
 **A Codex session is found, not announced.** Codex inside the ChatGPT app
 registers our hooks, marks them trusted, runs a whole session and sends nothing at
 all: measured here, with eight events configured and not one line in the log. So
@@ -1546,7 +1554,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1131 domain tests, instantaneous
+swift run LampBoardTests              # 1132 domain tests, instantaneous
 swift run LampBoardE2E                # 154 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

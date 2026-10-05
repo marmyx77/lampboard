@@ -3938,3 +3938,45 @@ Authority" G2. The test Mac had only the older intermediate, so the identity sta
 **Measured.** A probe binary was signed with the hardened runtime and a timestamp,
 verified strictly, and submitted to Apple through the profile in that keychain:
 `Accepted`.
+
+## D107 · A click opens that conversation in the Claude app
+
+**Decided.** A row for a conversation in the Claude app's Code tab used to raise
+the app and nothing more, whatever conversation the app was showing. The app files
+each Code conversation in
+`~/Library/Application Support/Claude/claude-code-sessions/<organisation>/<account>/local_<id>.json`.
+That index names two ids:
+- its own, `local_<id>`;
+- the transcript's, `cliSessionId`, the session id every hook carries.
+
+The app's code (2.19675) has a link that opens a conversation by its own id:
+`claude://code/continue?session=local_<id>`, accepted only in the shape
+`^local_[A-Za-z0-9-]{1,64}$`. A click now finds the index whose `cliSessionId` is
+the row's session and opens that link. It looks first for the file named after the
+session, which is the name a conversation brought over from a terminal keeps. A
+conversation the app does not file that way still raises the app, as before.
+
+The id is read at the click and never on a timer, because a person is waiting. The
+link is built only from an id in the shape the app itself accepts, so nothing read
+from the disk can add a parameter to it.
+
+**Also found.** A row for one of these conversations can carry the origin
+"terminal": its session file is admitted like any terminal session's when terminal
+sessions are on. Its click went looking for a terminal tab there is none of. The
+app's branch now comes before the terminal's.
+
+**Measured on the test Mac**, on Marco's account with his yes (question 23). Two
+throwaway conversations, ALPHA and BETA, were made with `claude -p` and Haiku in two
+empty folders, then brought into the Code tab with `claude://resume?session=<id>`.
+With the app on BETA, `lampboard open 1` on the ALPHA row brought ALPHA up. Only the
+conversation pane was photographed, with the sidebar of real sessions cut away, and
+the photographs were deleted afterwards. The probe is
+`docs/plans/prototipi/desktop/desk-click.sh`.
+
+The first run found no index, for a reason worth keeping: a directory listing does
+not follow a symbolic link, and the probe's home links the app's folder. The folder
+is now resolved before it is listed.
+
+**Not done.** `claude://code/new?q=…&folder=…` starts a conversation, but it stops on
+the app's trust dialog for the folder, and nothing outside the app can answer that
+dialog, so the panel does not use it.

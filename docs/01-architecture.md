@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1131 cases, instantaneous. They verify Core.
+1132 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
@@ -319,8 +319,10 @@ active within `sessionStaleAfter`. The session file still means one thing, and
 only that: a turn running right now. See
 [D36](04-decisions.md#d36--presence-is-what-a-conversation-leaves-not-what-a-process-is).
 
-A click raises the application. There is no window per conversation to select and
-no deep link into one, so the row promises exactly what it can do.
+A click on a Code tab conversation opens it, through the application's own link
+(`claude://code/continue?session=local_<id>`, the id read from the application's
+index by the transcript's id, D107). Anything else raises the application, which
+is all that surface offers.
 
 ## Concurrency
 

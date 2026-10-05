@@ -28,6 +28,37 @@ extension PanelController {
         // to the project's first real session rather than nowhere.
         guard let session = row.sessions.first(where: { $0.harness != .command }) else { return }
 
+        // A Claude Desktop session lives in Claude Desktop, whatever folder it is
+        // working on. Without this it went to the folder's VS Code window, which
+        // is the convincing wrong answer: the folder really is open there, and
+        // the conversation really is not. And whatever origin its row has: one
+        // admitted through its session file with terminal sessions on is a
+        // terminal row, and its click went looking for a terminal tab there is
+        // none of (measured on the test Mac, 0.6).
+        //
+        // A Code tab conversation is opened itself, by the application's own link
+        // (D107). Any other is raised, and reported as raised: that is all the
+        // application offers for it.
+        if ClaudeDesktop.isEntrypoint(session.entrypoint) {
+            let local = DesktopCodeSessionFinder.localSessionId(for: session.id)
+            Diagnostics.log("click: Claude app row \(session.id.prefix(8)), Code tab id \(local == nil ? "none" : "found")")
+            if let local,
+               let link = DesktopCodeSession.continueURL(localSessionId: local),
+               NSWorkspace.shared.open(link) {
+                store.clearError()
+                return
+            }
+            guard let url = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: ClaudeDesktop.bundleIdentifier
+            ) else {
+                store.reportError("Claude Desktop is not on this Mac any more.")
+                return
+            }
+            NSWorkspace.shared.openApplication(at: url, configuration: .init())
+            store.clearError()
+            return
+        }
+
         // A terminal row's place is a terminal tab, found through the session's
         // process at click time (D25): its pid from the session file, the chain
         // up to the hosting application, that application's own way of selecting
@@ -42,29 +73,6 @@ extension PanelController {
         // opens in the Plancia, where its box takes a message as any other's.
         if session.origin == .background {
             openPlancia(sessionId: session.id)
-            return
-        }
-
-        // A Claude Desktop session lives in Claude Desktop, whatever folder it is
-        // working on. Without this it went to the folder's VS Code window, which
-        // is the convincing wrong answer: the folder really is open there, and
-        // the conversation really is not.
-        //
-        // Raising the application is the whole of what this surface offers and
-        // therefore the whole truth: there is one window, and the conversation is
-        // a tab inside it that nothing outside the app can select. So it is
-        // reported as raised, not as "only activated" — that phrasing exists for
-        // a click that fell short of what it could have done, and this one did
-        // not.
-        if ClaudeDesktop.isEntrypoint(session.entrypoint) {
-            guard let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: ClaudeDesktop.bundleIdentifier
-            ) else {
-                store.reportError("Claude Desktop is not on this Mac any more.")
-                return
-            }
-            NSWorkspace.shared.openApplication(at: url, configuration: .init())
-            store.clearError()
             return
         }
 

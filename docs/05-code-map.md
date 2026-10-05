@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,584 lines · 153 files  pure logic, zero AppKit
-  LampBoardApp/    23,916 lines · 135 files   shell: AppKit, network, windows
-  LampBoardTests/  15,833 lines · 100 files   1131 cases, instantaneous
+  LampBoardCore/  19,649 lines · 154 files  pure logic, zero AppKit
+  LampBoardApp/    23,969 lines · 136 files   shell: AppKit, network, windows
+  LampBoardTests/  15,855 lines · 100 files   1132 cases, instantaneous
   LampBoardE2E/    4,551 lines · 20 files   154 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -634,6 +634,14 @@ to read.
 `resolvedFolderKinds[].kind == "local"` is the application's own answer to
 whether the work is happening on this Mac, and the only thing separating a
 session that is readable from a cloud one that leaves nothing here at all.
+
+### `DesktopCodeSession.swift` · 65
+The Claude app's Code tab as it files a conversation (D107): its index under
+`claude-code-sessions` names the app's own id (`local_<id>`) beside the
+transcript's, the one every hook carries. Reads the one by the other, with whether it
+is archived; between two indexes naming the same transcript prefers the open one,
+then the newest; builds `claude://code/continue?session=local_<id>` only from an id
+in the shape the app accepts, so nothing on disk adds a parameter.
 
 ### `DesktopWorktree.swift`
 The name of a row the Claude application runs in a worktree of its own. The
@@ -1588,6 +1596,7 @@ there, the hooks are registered — and it names the link that broke.
 | `StateStore.swift` | 792 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 247 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
+| `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
@@ -1836,7 +1845,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1131 cases
+## `LampBoardTests/` — 1132 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

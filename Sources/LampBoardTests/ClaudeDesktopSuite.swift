@@ -442,5 +442,27 @@ enum ClaudeDesktopSuite {
                         "and nothing readable is no answer, never a colour")
             t.expectNil(TranscriptTurn.phase(inTailChunk: "", isWholeFile: true), "nor is nothing")
         },
+        TestCase("A Code tab session is found by its transcript's id, and opened by the application's own (0.6)") { t in
+            let cli = "3478e23f-912a-4eef-bc26-7c9a3ac3d493"
+            let index = Data(#"{"sessionId":"local_9f1c2d3e-0000-4000-8000-00000000abcd","cliSessionId":"\#(cli)","cwd":"/Users/dev/events"}"#.utf8)
+            t.expectEqual(DesktopCodeSession.localSessionId(in: index, forCLISession: cli), "local_9f1c2d3e-0000-4000-8000-00000000abcd")
+            t.expectNil(DesktopCodeSession.localSessionId(in: index, forCLISession: "another"), "another conversation's index")
+            let odd = Data(#"{"sessionId":"local_x&session=last","cliSessionId":"\#(cli)"}"#.utf8)
+            t.expectNil(DesktopCodeSession.localSessionId(in: odd, forCLISession: cli), "an id the application would refuse")
+            t.expectNil(DesktopCodeSession.localSessionId(in: Data("[]".utf8), forCLISession: cli), "not an index")
+            t.expectEqual(DesktopCodeSession.continueURL(localSessionId: "local_9f1c2d3e-0000-4000-8000-00000000abcd")?.absoluteString,
+                          "claude://code/continue?session=local_9f1c2d3e-0000-4000-8000-00000000abcd")
+            t.expectNil(DesktopCodeSession.continueURL(localSessionId: "last"), "only a session, never the app's 'last'")
+            let open = DesktopCodeSession.Entry(localSessionId: "local_a", isArchived: false)
+            let archived = DesktopCodeSession.Entry(localSessionId: "local_b", isArchived: true)
+            let early = Date(timeIntervalSince1970: 1), late = Date(timeIntervalSince1970: 2)
+            t.expect(DesktopCodeSession.prefers(open, at: early, over: archived, at: late), "the open one, however old")
+            t.expect(!DesktopCodeSession.prefers(archived, at: late, over: open, at: early), "archived loses even when newer")
+            t.expect(DesktopCodeSession.prefers(open, at: late, over: open, at: early), "then the one written last")
+            t.expectEqual(DesktopCodeSession.entry(in: Data(#"{"sessionId":"local_a","cliSessionId":"c","isArchived":true}"#.utf8),
+                                                   forCLISession: "c")?.isArchived, true)
+            t.expect(DesktopCodeSession.root(inHome: URL(fileURLWithPath: "/Users/dev")).path
+                        .hasSuffix("Library/Application Support/Claude/claude-code-sessions"), "where the Code tab keeps them")
+        },
     ])
 }
