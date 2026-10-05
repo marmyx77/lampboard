@@ -524,6 +524,14 @@ The notification says what happened, so some are answered by reading: the comman
 waiting for a yes or the question, why the turn ended, the first line of a finished
 answer. Clicking it takes you **to that session**.
 
+**I'm away.** Say so in the panel's menu, *I'm away: hold alerts, sum up when I'm
+back*, or just lock the screen: after three minutes locked you count as away. While
+you are, no notification interrupts, and the panel counts what happens. When you
+come back, one line at the foot of the panel says it, and the same line arrives as a
+notification: "While you were away (1h 20m): 3 answers (api, docs-site), 1 waiting
+for you (api), 1 failed (billing), $2.10 spent." A click puts the line away
+([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)).
+
 **One session in focus.** *Focus on this session*, in a row's menu or as a button in
 its Plancia, puts that session in the foreground and marks its row with a pin.
 While it is there, the other sessions' notifications wait. Their rows still change
@@ -1607,7 +1615,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1168 domain tests, instantaneous
+swift run LampBoardTests              # 1171 domain tests, instantaneous
 swift run LampBoardE2E                # 158 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

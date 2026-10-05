@@ -4303,3 +4303,33 @@ its foot read "LampBoard · notes.txt was written by …". The file still said
 - a session's own write is "clear";
 - nothing is answered without the proof.
 
+## D114 · I'm away: nothing interrupts, one line on return
+
+**Decided.** The plan's §5.8. Being away is said from the panel's menu, *I'm away:
+hold alerts, sum up when I'm back*, and kept across a relaunch. A screen locked for
+three minutes says it too: long enough that locking to fetch a coffee is not an
+absence. While the person is away, `SessionNotifier` sends nothing, and an
+`AwayLedger` counts from the moment they left:
+- each turn that ended with an answer, per session;
+- each session whose turn failed;
+- what every session's cost rose by, as the mod reports it.
+
+The counting happens as things happen, so a session that answered and was closed
+in the meantime still answered. On return one line says it all, with what is still
+waiting for an answer read from the column at that moment: "While you were away
+(1h 20m): 3 answers (api, docs-site), 1 waiting for you (api), 1 failed (billing),
+$2.10 spent." An absence where nothing happened says so. The line arrives as one
+notification and stays at the foot of the panel, in the place and height of the
+issue strip, until it is clicked away. A fault to fix takes that place first.
+
+**Not yet.** The plan also has the mod hold risky commands while the person is
+away, so they do not wait on a dialog nobody sees. That is the next step (A2). With
+Remote Control on, a session's own approvals already reach a phone.
+
+**Measured on the test Mac.** The trial panel started away and was brought back
+twenty-five seconds later by turning the preference off from outside. Its foot read
+"While you were away (0m): 1 answer (docs-site), 1 waiting for you …" and was
+photographed. Since then, an absence under a minute reads "under a minute". The
+ledger is covered by the domain suite. Notifications cannot be sent from the test
+suites, which do not run as a bundle.
+

@@ -73,6 +73,8 @@ final class PanelController {
     var decisionBoard: DecisionBoardService?
     /// The governor's plan (G3).
     var governor: GovernorService?
+    /// "I'm away" (A1).
+    var away: AwayMonitor?
     var onOpenLampMaster: (() -> Void)?
     /// The focus moved (G1): the notifier says what waited.
     var onFocusChanged: ((String?) -> Void)?
@@ -330,7 +332,8 @@ final class PanelController {
             hooksInstalled: !HookSetup.needsInstalling(),
             hooksMissingFrom: HookSetup.missingNames(),
             launchesAtLogin: LaunchAtLogin.isEnabled,
-            canLaunchAtLogin: LaunchAtLogin.availability != .needsBundle
+            canLaunchAtLogin: LaunchAtLogin.availability != .needsBundle,
+            isAway: away?.isAway ?? false
         )
     }
 
@@ -361,7 +364,7 @@ final class PanelController {
         let wanted = NSSize(
             width: plancia.isOpen ? PanelDepth.plancia.width : Layout.width(compact: compact),
             height: planciaHeight(Layout.height(
-                ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil,
+                ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
                 allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
                 lampMasterRow: compact ? nil : Layout.wideRowHeight,
                 tourLines: tour == nil ? 0 : TourBand.lines,

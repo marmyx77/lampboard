@@ -21,6 +21,9 @@ final class StateStore: ObservableObject {
     /// decide whether to offer a button, and which pane that button opens, and
     /// neither question can be answered by reading English back.
     @Published private(set) var issue: PanelIssue?
+    /// What happened while the person was away, said on their return (A1) until
+    /// they click it away; in the issue's place when there is no issue.
+    @Published var awayNote: String?
     /// Told when a row is opened: the tutorial's tour moves on with it.
     var onSeen: ((String) -> Void)?
 

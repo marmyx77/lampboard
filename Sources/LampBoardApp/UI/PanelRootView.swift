@@ -37,6 +37,9 @@ struct PanelActions {
     /// Asks GitHub whether there is a newer release, and offers to install it.
     let checkForUpdates: () -> Void
     let quit: () -> Void
+    /// "I'm away" (A1), and the line said on return clicked away.
+    var toggleAway: () -> Void = {}
+    var dismissAwayNote: () -> Void = {}
 }
 
 /// The menu's checkmarks, gathered together so twelve of them don't travel separately.
@@ -65,6 +68,8 @@ struct PanelFlags {
     let hooksMissingFrom: [String]
     let launchesAtLogin: Bool
     let canLaunchAtLogin: Bool
+    /// Away, said from this menu or by a locked screen (A1).
+    var isAway = false
 }
 
 /// Root of the SwiftUI hierarchy hosted inside the floating panel.
@@ -179,7 +184,32 @@ struct PanelRootView: View {
     /// by itself the moment the permission arrives.
     @ViewBuilder
     private var issueStrip: some View {
-        if let issue = store.issue {
+        if store.issue == nil, let note = store.awayNote {
+            // What happened while the person was away (A1), in the issue's place
+            // and height, until it is clicked away.
+            Button(action: actions.dismissAwayNote) {
+                HStack(spacing: 5) {
+                    Image(systemName: "moon.zzz.fill")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(StatusPalette.lampMasterTint)
+                    if !flags.compact {
+                        Text(note)
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.primary.opacity(0.65))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, flags.compact ? 4 : Layout.panelPadding + 6)
+                .frame(maxWidth: .infinity, alignment: flags.compact ? .center : .leading)
+                .frame(height: Layout.issueStripHeight)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .tooltip(note)
+            .accessibilityLabel(note)
+        } else if let issue = store.issue {
             Button { actions.fixIssue(issue) } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -389,6 +419,8 @@ struct PanelRootView: View {
 
         Button(check(flags.notificationsEnabled, "Alert me when a session gets blocked"),
                action: actions.toggleNotifications)
+
+        Button(check(flags.isAway, "I'm away: hold alerts, sum up when I'm back"), action: actions.toggleAway)
 
         if flags.notificationsEnabled {
             if let until = flags.mutedUntil {

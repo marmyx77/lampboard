@@ -629,4 +629,8 @@ public enum AppConfig {
 
     /// How often user presence is re-evaluated.
     public static let presencePollInterval: TimeInterval = 20
+
+    /// How long the screen stays locked before the person counts as away (A1):
+    /// long enough that a lock to fetch a coffee is not an absence.
+    public static let awayAfterLock: TimeInterval = 180
 }

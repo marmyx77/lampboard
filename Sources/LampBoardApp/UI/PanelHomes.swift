@@ -348,7 +348,17 @@ extension PanelController {
             },
             clearSessions: { [weak self] in self?.store.reset() },
             checkForUpdates: { [weak self] in self?.checkForUpdates() },
-            quit: { NSApp.terminate(nil) }
+            quit: { NSApp.terminate(nil) },
+            toggleAway: { [weak self] in
+                self?.away?.toggle()
+                self?.rebuildContent()
+            },
+            dismissAwayNote: { [weak self] in
+                guard let self else { return }
+                self.store.awayNote = nil
+                self.rebuildContent()
+                self.resizeToFit(self.store.state)
+            }
         )
     }
 }

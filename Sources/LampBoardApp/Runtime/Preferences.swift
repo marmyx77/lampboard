@@ -35,6 +35,7 @@ struct Preferences {
         static let searchOff = "search.off"
         static let mutedUntil = "notify.mutedUntil"
         static let focusedSession = "focus.session"
+        static let awayManual = "away.manual"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
         static let usageEnabled = "usage.enabled"
@@ -371,6 +372,13 @@ struct Preferences {
             if let newValue { defaults.set(newValue, forKey: Key.focusedSession) }
             else { defaults.removeObject(forKey: Key.focusedSession) }
         }
+    }
+
+    /// "I'm away", said from the panel's menu (A1). The screen locked for a few
+    /// minutes says it too, without this.
+    var awayManual: Bool {
+        get { defaults.bool(forKey: Key.awayManual) }
+        nonmutating set { defaults.set(newValue, forKey: Key.awayManual) }
     }
 
     /// Moment until which every notification is suspended.

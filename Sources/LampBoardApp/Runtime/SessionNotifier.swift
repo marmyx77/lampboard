@@ -207,7 +207,14 @@ final class SessionNotifier {
     /// What stands in its place: the memory that avoids duplicates, the per-project
     /// silence and the timed one. Three **explicit** checks, which the user chooses
     /// and can see — instead of one implicit check that swallows alerts silently.
+    /// Away (A1): nothing interrupts; the ledger says it all on return.
+    var isAway: () -> Bool = { false }
+
     private func passesGate(_ session: SessionState) -> Bool {
+        if isAway() {
+            Diagnostics.log("notification held while away: \(session.workspace.name)")
+            return false
+        }
         if let until = preferences.mutedUntil, until > Date() {
             Diagnostics.log("notification suppressed (muted until \(until)): \(session.workspace.name)")
             return false
@@ -251,7 +258,7 @@ final class SessionNotifier {
         hold = FocusHold(focused: focused)
     }
 
-    private func deliverSummary(_ text: String) {
+    func deliverSummary(_ text: String) {
         guard Bundle.main.bundleIdentifier != nil else { return }
         let content = UNMutableNotificationContent()
         content.title = "LampBoard"

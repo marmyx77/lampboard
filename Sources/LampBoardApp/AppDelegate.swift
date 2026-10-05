@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The permissions the panel answers, when switched on (D80).
     private let permissions = PermissionDesk()
     private let decisions = DecisionBoardService()
+    private var away: AwayMonitor?
     private let governor = GovernorService()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
@@ -254,6 +255,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let presence = PresenceFile(preferences: preferences)
         presence.start()
         self.presence = presence
+
+        let away = AwayMonitor(store: store, preferences: preferences)
+        notifier?.isAway = { [weak away] in away?.isAway ?? false }
+        away.onBack = { [weak self] line in
+            if self?.preferences.notificationsEnabled == true { self?.notifier?.deliverSummary(line) }
+            self?.panelController?.rebuildContent()
+            if let store = self?.store { self?.panelController?.resizeToFit(store.state) }
+        }
+        panelController?.away = away
+        away.start()
+        self.away = away
     }
 
 

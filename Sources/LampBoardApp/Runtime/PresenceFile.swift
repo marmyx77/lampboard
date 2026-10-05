@@ -82,7 +82,7 @@ final class PresenceFile {
     /// CoreGraphics' session dictionary exposes the key without requiring any
     /// permission. When it is missing we assume **not locked**: erring in that
     /// direction delivers one push too many, erring the other way loses it.
-    private static var isScreenLocked: Bool {
+    static var isScreenLocked: Bool {
         guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else {
             return false
         }
