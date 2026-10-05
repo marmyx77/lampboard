@@ -71,6 +71,8 @@ final class SignalServer {
     private let onModDecisions: (Data, String?, String?, String) -> String
     /// The mod's question for its session's model → the signed answer (G3).
     private let onModGovernor: (Data, String?, String?, String) -> String
+    /// The mod's question before a write → the signed answer (§4.4).
+    private let onModRadar: (Data, String?, String?, String) -> String
     private let token: String?
     private let checkKey: String?
 
@@ -101,7 +103,8 @@ final class SignalServer {
         onHandoff: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "LampBoard cannot take a handoff here." },
         onDecisions: @escaping (Data?) -> (Int, String) = { _ in (503, "no decision board here") },
         onModDecisions: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
-        onModGovernor: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" }
+        onModGovernor: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
+        onModRadar: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" }
     ) {
         self.port = port
         self.token = token
@@ -128,6 +131,7 @@ final class SignalServer {
         self.onDecisions = onDecisions
         self.onModDecisions = onModDecisions
         self.onModGovernor = onModGovernor
+        self.onModRadar = onModRadar
     }
 
     // MARK: - Lifecycle
@@ -290,6 +294,15 @@ final class SignalServer {
             let (status, body) = onDecisions(request.method == "POST" ? request.body : nil)
             let reason = [200: "OK", 400: "Bad Request"][status] ?? "Internal Server Error"
             return HTTPRequestParser.response(status: status, reason: reason, body: body)
+
+        case AppConfig.modRadarPath:
+            // A sentence put in front of the person, naming another session: proven both ways.
+            guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+            guard let token, let checkKey else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token)
+            else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: onModRadar(
+                request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey))
 
         case AppConfig.modGovernorPath:
             // Proven both ways like the board (D105): a model is spend.

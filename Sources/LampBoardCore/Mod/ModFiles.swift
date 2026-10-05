@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.11.0"
+    public static let version = "1.12.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,7 +44,7 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
@@ -105,6 +105,11 @@ public enum ModFiles {
 // has changed, as context the person does not see — asked with the permission
 // key and taken only signed with it, because these words enter the
 // conversation. Nothing pinned, or no panel, and the prompt goes as typed.
+//
+// And the radar (§4.4): before a file is written, the panel is asked whether
+// another live session wrote it lately; when one did, an edit the session would
+// have made on its own is put to the person first, with a sentence naming that
+// session. Asked and taken like the governor; anything else, the edit as it was.
 //
 // And the governor (G3): a session the person lowered one model in the panel,
 // until the window resets, runs on that model — asked at the start of each turn,
@@ -185,7 +190,7 @@ async function config($) {
 // of the shell command or which file, never a tool's free-form input. One line,
 // so a heredoc's body never leaves; cut by characters, so no half of a pair.
 function detailOf(e) {
-  for (const key of ['command', 'file_path', 'path']) {
+  for (const key of ['command', 'file_path', 'notebook_path', 'path']) {
     if (typeof e[key] === 'string' && e[key]) return Array.from(e[key].split('\n')[0]).slice(0, 120).join('')
   }
   return undefined
@@ -331,8 +336,7 @@ async function boardContext($) {
         'X-LampBoard-Proof': await hmac(key, `board:${nonce}:${session}`),
       },
       body: JSON.stringify({ v: VERSION, session }),
-    })])
-    clearTimeout(timer)
+    })]).finally(() => clearTimeout(timer))
     const cut = reply && reply.ok ? reply.text.indexOf('\n') : -1
     if (cut < 0) return null
     const [word, version, signature] = reply.text.slice(0, cut).split(' ')
@@ -342,6 +346,45 @@ async function boardContext($) {
     // Never told and nothing pinned, or told this very version: nothing new.
     if (version === (boards.get(session) || '-')) return null
     return { session, version, text }
+  } catch (_) {
+    return null
+  }
+}
+
+// The radar (§4.4): another live session's recent write of this file, in a
+// sentence for the person, or nothing.
+const WRITERS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
+const RADAR_WAIT = 600
+
+async function radar($, file) {
+  try {
+    const target = await panel($)
+    const home = await realHome($)
+    if (!target || !home) return null
+    const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+    if (!/^[0-9a-f]{16,128}$/.test(key)) return null
+    const session = await $.session.id()
+    const nonce = crypto.randomUUID()
+    let timer
+    // Every write the engine would allow waits on this: shorter than the others.
+    const late = new Promise((resolve) => { timer = setTimeout(() => resolve(null), RADAR_WAIT) })
+    const reply = await Promise.race([late, $.http.fetch(`${target.base}/mod/radar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LampBoard-Token': target.token,
+        'X-LampBoard-Nonce': nonce,
+        'X-LampBoard-Proof': await hmac(key, `radar:${nonce}:${session}:${file}`),
+      },
+      body: JSON.stringify({ v: VERSION, session, file }),
+    })]).finally(() => clearTimeout(timer))
+    const cut = reply && reply.ok ? reply.text.indexOf('\n') : -1
+    const head = reply && reply.ok ? (cut < 0 ? reply.text : reply.text.slice(0, cut)).trim() : ''
+    const sentence = cut < 0 ? '' : reply.text.slice(cut + 1)
+    const [verdict, signature] = head.split(' ')
+    if (verdict !== 'written' || !sentence) return null
+    if (!same(signature, await hmac(key, `radar:${nonce}:written:${sentence}`))) return null
+    return Array.from(sentence.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')).slice(0, 300).join('')
   } catch (_) {
     return null
   }
@@ -371,8 +414,7 @@ async function governorModel($) {
         'X-LampBoard-Proof': await hmac(key, `governor:${nonce}:${session}`),
       },
       body: JSON.stringify({ v: VERSION, session }),
-    })])
-    clearTimeout(timer)
+    })]).finally(() => clearTimeout(timer))
     const [word, chosen, signature] = reply && reply.ok ? reply.text.trim().split(' ') : []
     if (word !== 'model' || !/^(claude-[a-z0-9.-]{1,60}|-)$/.test(chosen || '')) return null
     if (!same(signature, await hmac(key, `governed:${nonce}:${chosen}`))) return null
@@ -575,6 +617,20 @@ export function register(on) {
   // LampBoard answers `ask` at once while its switch is off.
   on('tool.check', async ($, e, next) => {
     const verdict = await next(e)
+    // The radar: an edit the session would make on its own, of a file another
+    // live session just wrote, is put to the person first.
+    if (verdict && verdict.decision === 'allow' && WRITERS.has(e.tool)) {
+      const input = e.input || {}
+      const file = typeof input.file_path === 'string' ? input.file_path : input.notebook_path
+      if (typeof file === 'string' && file.startsWith('/')) {
+        const said = await radar($, file)
+        if (said) {
+          // The edit dialog does not show a hook's reason: the session says it.
+          try { void $.ui.toast(`LampBoard · ${said}`, { timeoutMs: 20000 }) } catch (_) {}
+          return { decision: 'ask', reason: said }
+        }
+      }
+    }
     if (!verdict || verdict.decision !== 'ask' || !e.tool_use_id) return verdict
     try {
       const home = await realHome($)

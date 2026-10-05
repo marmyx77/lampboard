@@ -88,6 +88,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.global(qos: .utility).async { ModSetup.refreshIfStale() }
         }
 
+        // What each session's tools did, with or without a panel on screen: the
+        // radar (§4.4) answers from it either way.
+        mod.onReport = { [activity, askDesk] report, at in
+            activity.record(report, at: at)
+            askDesk.heard(report)
+        }
+
         if !headless {
             startInterface()
         }
@@ -128,10 +135,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.searchIndex = searchIndex
         controller.decisionBoard = decisions
         controller.governor = governor
-        mod.onReport = { [activity, askDesk] report, at in
-            activity.record(report, at: at)
-            askDesk.heard(report)
-        }
         GettingStartedWindowController.shared.configure(
             port: port, lampMaster: lampMaster,
             toggleNotifications: { [weak controller] in controller?.toggleNotifications() }
@@ -387,6 +390,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // The session in focus is never lowered, whenever it was put there.
                 let focused = preferences.focusedSession == session
                 return GovernorExchange.answer(model: focused ? nil : governor.model(for: session), nonce: nonce, key: key)
+            },
+            onModRadar: { [weak self] body, nonce, proof, key in
+                guard let request = RadarExchange.provenRequest(body, nonce: nonce, proof: proof, key: key),
+                      let nonce else { return "" }
+                // Read where the logs and the rows live; no answer in time is "clear".
+                let reason = Self.onMain(timeout: 1) { () -> String? in
+                    guard let self else { return nil }
+                    let now = Date()
+                    guard let writer = FileConflicts.lastWriter(of: request.file, besides: request.session,
+                                                                logs: self.activity.logs,
+                                                                live: Set(self.store.state.sessions.keys), now: now),
+                          let other = self.store.state.sessions[writer.session] else { return nil }
+                    let name = RowNames.name(of: other.workspace.key, in: self.preferences.rowNames) ?? other.displayName
+                    return RadarExchange.reason(file: request.file, by: name,
+                                                minutesAgo: Int(now.timeIntervalSince(writer.at) / 60))
+                } ?? nil
+                return RadarExchange.answer(reason: reason, nonce: nonce, key: key)
             }
         )
 

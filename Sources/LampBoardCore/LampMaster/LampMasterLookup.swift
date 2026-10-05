@@ -172,15 +172,36 @@ public enum LampMasterLookup {
     }
 
     /// A name another session chose — a title, a file name — made fit to show:
-    /// one line, no control characters, clipped. A title can be written to read
-    /// like an order; on one short line, quoted, after the notice, it reads as
-    /// what it is.
+    /// one line, no control or format characters (a bidi override would reorder
+    /// it), clipped. A title can be written to read like an order; on one short
+    /// line, quoted, after the notice, it reads as what it is.
     static func clean(_ text: String, to length: Int) -> String {
-        let flat = String(text.unicodeScalars.map {
-            CharacterSet.controlCharacters.contains($0) || CharacterSet.newlines.contains($0) ? " " : Character($0)
-        })
+        var flat = ""
+        for scalar in text.unicodeScalars {
+            // Foundation counts format characters among the controls, so they
+            // are sorted first: a joiner keeps emoji and scripts whole, a bidi
+            // mark becomes a space, any other invisible goes.
+            if bidiControls.contains(scalar.value) {
+                flat.append(" ")
+            } else if scalar.value == 0x200D {
+                flat.unicodeScalars.append(scalar)
+            } else if scalar.properties.generalCategory == .format {
+                continue
+            } else if CharacterSet.controlCharacters.contains(scalar) || CharacterSet.newlines.contains(scalar) {
+                flat.append(" ")
+            } else {
+                flat.unicodeScalars.append(scalar)
+            }
+        }
         return String(flat.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(length))
     }
+
+    /// `clean` for the test suite, which sits outside the module.
+    public static func cleanForTests(_ text: String) -> String { clean(text, to: 200) }
+
+    /// The marks that reorder text: embeddings, overrides, isolates, marks.
+    static let bidiControls: Set<UInt32> = [0x061C, 0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+                                            0x2066, 0x2067, 0x2068, 0x2069]
 
     static func ago(_ date: Date?, now: Date) -> String {
         guard let date else { return "at an unknown time" }

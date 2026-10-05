@@ -80,6 +80,9 @@ public enum AppConfig {
     /// The governor (G3): the model a session runs on until the reset, asked by
     /// the mod with the permission key and answered signed.
     public static let modGovernorPath = "/mod/governor"
+    /// The radar (§4.4): before a session writes a file, whether another live
+    /// session just did, asked and answered like the governor.
+    public static let modRadarPath = "/mod/radar"
 
     /// How many slots a key can address.
     ///

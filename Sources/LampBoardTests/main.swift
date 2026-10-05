@@ -48,6 +48,7 @@ let suites: [TestSuite] = [
     FocusSuite.suite,
     AllowanceForecastSuite.suite,
     GovernorSuite.suite,
+    RadarSuite.suite,
     DecisionBoardSuite.suite,
     LampMasterSheetsSuite.suite,
     RemoteTranscriptScriptSuite.suite,

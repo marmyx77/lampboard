@@ -181,6 +181,41 @@ enum ModE2ESuite {
                 a.expect(mode != nil, "the plan is where the panel reads it")
             },
 
+            TestCase("/mod/radar: a file another live session wrote is answered with a signed sentence; unproven, nothing (§4.4)") { a in
+                let writer = "e2e0d0d0-0000-4000-8000-0000000000ee"
+                let file = "/tmp/e2e-radar/src/routes.ts"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: writer, cwd: LifecycleSuite.workspace))
+                guard app.waitUntil({ app.status(of: writer) == "working" }) else { return a.fail("no row for the writer") }
+                defer { app.sendHook(HookPayloads.sessionEnd(sessionId: writer, cwd: LifecycleSuite.workspace)) }
+                let report = #"{"v":1,"kind":"tool","session":"\#(writer)","id":"c1","tool":"Edit","phase":"start","detail":"\#(file)"}"#
+                a.expectEqual(app.raw(method: "POST", path: AppConfig.modPath, body: report).status, 204)
+                let key = app.checkKeyValue ?? ""
+                func ask(_ session: String, key: String?) -> String {
+                    let nonce = UUID().uuidString
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(app.port)\(AppConfig.modRadarPath)")!)
+                    request.httpMethod = "POST"
+                    request.setValue(app.tokenValue, forHTTPHeaderField: AccessToken.headerName)
+                    request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+                    if let key {
+                        request.setValue(PermissionGate.mac(key: key, message: RadarExchange.proofMessage(nonce: nonce, session: session, file: file)),
+                                         forHTTPHeaderField: "X-LampBoard-Proof")
+                    }
+                    request.httpBody = Data(#"{"v":1,"session":"\#(session)","file":"\#(file)"}"#.utf8)
+                    let done = DispatchSemaphore(value: 0)
+                    var said = ""
+                    URLSession.shared.dataTask(with: request) { data, _, _ in
+                        said = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                        done.signal()
+                    }.resume()
+                    _ = done.wait(timeout: .now() + 10)
+                    return said
+                }
+                a.expect(app.waitUntil { ask(sessionId, key: key).contains("routes.ts was written by") },
+                         "another session's write: \(ask(sessionId, key: key))")
+                a.expect(ask(writer, key: key).hasPrefix("clear "), "its own write is no warning")
+                a.expectEqual(ask(sessionId, key: nil), "", "no proof, no answer")
+            },
+
             TestCase("a measure lands on the row as the session's own count") { a in
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: LifecycleSuite.workspace))
                 guard app.waitUntil({ app.status(of: sessionId) == "working" }) else {

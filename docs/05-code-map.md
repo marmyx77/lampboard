@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,180 lines · 160 files  pure logic, zero AppKit
-  LampBoardApp/    24,576 lines · 138 files   shell: AppKit, network, windows
-  LampBoardTests/  16,260 lines · 107 files   1163 cases, instantaneous
-  LampBoardE2E/    4,627 lines · 20 files   157 cases, the real binary
+  LampBoardCore/  20,329 lines · 161 files  pure logic, zero AppKit
+  LampBoardApp/    24,609 lines · 138 files   shell: AppKit, network, windows
+  LampBoardTests/  16,331 lines · 108 files   1168 cases, instantaneous
+  LampBoardE2E/    4,662 lines · 20 files   158 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 629
+### `AppConfig.swift` · 632
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -1284,10 +1284,15 @@ one deeper and from the Plancia back to the column, `Esc` one down; the widths a
 the UX's, 44, 340 and 780 points; the Plancia closes by itself after four seconds
 with the pointer away, nothing waiting and no pin. Used by the panel from P2 on.
 
-### `FileConflicts.swift` · 42
+### `RadarExchange.swift` · 46
+The radar's exchange with the mod (§4.4, D113): the request proven with the
+permission key for a session and a file, the sentence naming the other session —
+flattened, quoted — and the answer, `clear` or `written` and the sentence, signed.
+
+### `FileConflicts.swift` · 65
 Two live sessions writing the same file of the same checkout in the last two hours
 (D99): from the writes the mods reported, absolute paths only, each session naming
-the others.
+the others; and, for the radar (D113), the latest other live session to write one file.
 
 ### `SessionActivity.swift` · 80
 What one session has been doing, for the Plancia's Activity tab: each tool with its
@@ -1506,7 +1511,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 532
+### `main.swift` · `AppDelegate.swift` · 552
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1690,7 +1695,7 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 690
+### `SignalServer.swift` · 703
 Seventeen routes, behind `LoopbackGuard`; `/handoff` takes a handoff a session wrote with the mod's `/handoff`, behind the token and proven with the permission key (D91); `/question` takes a session's question proven like an ask (D86); `/mod/band` and `/mod/band/open`, behind the token, are what a session's band shows and the digit that opens one of its items in the panel (D84); `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80); `GET /check` and `/check/answer` exist only on a fake home, for the tests: in a real install the panel answers in-process. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
@@ -1874,7 +1879,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1163 cases
+## `LampBoardTests/` — 1168 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1907,6 +1912,7 @@ script, before it was split. The most important ones:
 | `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
 | `GovernorSuite` | one step down by family and nowhere past Haiku; lowered until the reset and back after it or when taken off; the session in focus kept; the mod heard only proven, the model only signed; the file's round trip, expired entries dropped (D112) |
+| `RadarSuite` | another live session's latest write of the file within two hours, never one's own, an old one or a closed session's; the sentence with a flattened name; the request proven for its session and file, the answer signed (D113) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
@@ -1975,7 +1981,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 157 cases
+## `LampBoardE2E/` — 158 cases
 
 | Suite | Covers |
 |---|---|

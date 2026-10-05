@@ -73,7 +73,7 @@ public struct SessionActivity: Sendable, Equatable {
     }
 
     /// One line, cut: a heredoc's body never reaches the Plancia.
-    private static func line(_ text: String) -> String {
+    static func line(_ text: String) -> String {
         let first = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
         return RowActivity.flat(first).count > 120 ? String(RowActivity.flat(first).prefix(119)) + "…" : RowActivity.flat(first)
     }

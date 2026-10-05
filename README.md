@@ -107,6 +107,14 @@ At most a few, and only when they say something:
   Clicking the row clears it, and so does typing a prompt into it
   ([D108](docs/04-decisions.md#d108--a-row-counts-the-answers-nobody-has-read)).
 
+**Before two sessions write the same file.** The ⚠ says it after the fact. With
+the companion mod, a session about to edit a file that another live session wrote
+in the last two hours is stopped first, even when it would have edited on its own:
+it asks you, and a line at its foot says why, such as "notes.txt was written by
+“api” 12 minutes ago: check with it before changing it". In auto mode the question
+goes to the mode's own judge rather than to you, so there the line is all you get
+([D113](docs/04-decisions.md#d113--the-radar-a-file-another-session-just-wrote-is-asked-about-first)).
+
 ## Two harnesses, one row
 
 LampBoard watches **Claude Code** and **Codex**. Both get the same row: the same
@@ -1599,8 +1607,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1163 domain tests, instantaneous
-swift run LampBoardE2E                # 157 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1168 domain tests, instantaneous
+swift run LampBoardE2E                # 158 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

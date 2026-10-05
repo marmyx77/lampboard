@@ -4256,3 +4256,50 @@ session's prompts. So is the sheet of sessions ranked by consumption: the menu i
 sits on the row a person is already looking at, and the strip's forecast (D111) says
 when it is worth using.
 
+## D113 · The radar: a file another session just wrote is asked about first
+
+**Decided.** The row's ⚠ (D99) says two sessions wrote the same file after they
+both did. The plan's radar (§4.4) says it before the second one writes. In
+`tool.check`, when the engine would let an Edit, Write, MultiEdit or NotebookEdit go
+ahead on its own, the companion mod (1.12.0) asks `/mod/radar` whether another live
+session wrote that file in the last two hours. If one did:
+- the edit becomes a question to the person;
+- a line at the session's foot names the file, the other session and when.
+
+The edit dialog itself does not show a hook's reason, so the line carries it. The
+request and the answer are proven both ways with the permission key, like every
+sentence the panel puts in front of a session (D80, D105). The other session's name
+is flattened to one line, its control and format characters gone.
+
+Only what would have gone ahead is turned into a question. An edit the engine would
+already ask about is left to the permission path as before, and nothing is ever
+denied. In auto mode a question goes to the mode's own judge, not to the person, so
+there the line at the foot is the whole warning. That is said in the README rather
+than worked around.
+
+**What a review changed.**
+- The path is compared in the form the activity log keeps: masked, flattened and
+  cut at 120 characters. A long path used never to match. Two long paths that agree
+  up to the cut now read as one, and the most that can cost is a question.
+- A notebook's path is recorded too.
+- The wait on every write the engine would allow is 0.6 seconds at most, and the
+  timer is cleared on a failed request as well.
+- The file name in the sentence is cleaned like the session's name.
+- The cleaning itself was sharpened. Bidi marks become a space, a joiner stays so
+  that emoji and scripts keep their shape, and other invisible characters go.
+  Foundation counts format characters among the control characters, so they are
+  sorted first.
+
+**Also changed.** The mod's tool reports now reach the activity log with or without a
+panel on screen. The radar answers from that log, and a headless panel, the way the
+end-to-end suite runs, heard nothing before.
+
+**Measured on the test Mac.** Two throwaway Haiku sessions in one folder, with
+LampBoard's mod, both in `acceptEdits`. A wrote `notes.txt`. Asked to change it, B
+stopped on "Do you want to make this edit to notes.txt?" instead of editing, and
+its foot read "LampBoard · notes.txt was written by …". The file still said
+"hello". The end-to-end suite runs the route:
+- another session's reported write is answered with the signed sentence;
+- a session's own write is "clear";
+- nothing is answered without the proof.
+

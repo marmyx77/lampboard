@@ -95,6 +95,15 @@ enum ModFilesSuite {
             t.expect(code.contains("next(block ? { ...e, context: [...(e.context || []), block] } : e)"), "and it is the board")
         },
 
+        TestCase("The radar turns only an edit the engine allows into a question, proven and signed (§4.4)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("${target.base}\(AppConfig.modRadarPath)"), "the route the server serves")
+            t.expect(code.contains("hmac(key, `\(RadarExchange.proofMessage(nonce: "${nonce}", session: "${session}", file: "${file}"))`)"), "the proof")
+            t.expect(code.contains("hmac(key, `radar:${nonce}:written:${sentence}`)"), "the signature the panel makes")
+            t.expect(code.contains("verdict && verdict.decision === 'allow' && WRITERS.has(e.tool)"), "only what would have gone ahead")
+            t.expect(code.contains("return { decision: 'ask', reason: said }"), "asked, never denied")
+        },
+
         TestCase("The governor's model is asked with the key, taken only signed, and applied by a generator (G3)") { t in
             let code = ModFiles.register
             t.expect(code.contains("${target.base}\(AppConfig.modGovernorPath)"), "the route the server serves")

@@ -39,4 +39,27 @@ public enum FileConflicts {
         }
         return found.mapValues { $0.sorted { ($0.with, $0.file) < ($1.with, $1.file) } }
     }
+
+    /// The latest write of `path` by another live session in the window, for the
+    /// radar (§4.4): before a session writes it, whether somebody else just did.
+    /// A path as the activity log keeps it — masked, flattened, cut — so that the
+    /// radar compares like with like. Two long paths that agree up to the cut read
+    /// as one, which can only cost a question.
+    public static func recordedForm(_ path: String) -> String? {
+        ModReport.detail(path).map(SessionActivity.line)
+    }
+
+    public static func lastWriter(of path: String, besides session: String, logs: [String: SessionActivity],
+                                  live: Set<String>, now: Date) -> (session: String, at: Date)? {
+        guard let path = recordedForm(path) else { return nil }
+        let since = now.addingTimeInterval(-window)
+        var latest: (session: String, at: Date)?
+        for (other, log) in logs where other != session && live.contains(other) {
+            for entry in log.entries where entry.at >= since {
+                guard case .tool(let name, let detail?) = entry.kind, writers.contains(name), detail == path else { continue }
+                if latest.map({ entry.at > $0.at }) ?? true { latest = (other, entry.at) }
+            }
+        }
+        return latest
+    }
 }
