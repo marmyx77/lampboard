@@ -158,6 +158,13 @@ final class RemoteTunnel {
         let ssh = Process()
         ssh.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         ssh.arguments = ["-N"] + RemoteCommand.hardening + [
+            // A connection of its own, whatever the user's ssh config says: with
+            // `ControlMaster auto` and `ControlPersist`, ssh hands the forward to
+            // a shared master and exits 0, the tunnel reads as down while the
+            // forward lives on in the master, and the next try finds its own
+            // port taken (measured on the test VM, whose Lima config does that).
+            "-o", "ControlMaster=no",
+            "-o", "ControlPath=none",
             "-o", "ExitOnForwardFailure=yes",
             "-o", "ServerAliveInterval=15",
             "-o", "ServerAliveCountMax=2",

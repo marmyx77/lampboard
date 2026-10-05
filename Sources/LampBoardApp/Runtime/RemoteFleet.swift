@@ -44,6 +44,7 @@ final class RemoteFleet: ObservableObject {
     private let localPort: UInt16
     private var tunnels: [String: RemoteTunnel] = [:]
     private var preferenceWatcher: NSObjectProtocol?
+    private var preferencePoll: Timer?
 
     init(preferences: Preferences, localPort: UInt16) {
         self.preferences = preferences
@@ -66,11 +67,21 @@ final class RemoteFleet: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in self?.followPreferences() }
         }
+        // That notification is this process's own: a `lampboard remote add` from
+        // a terminal is another process, and its write raised nothing here — the
+        // tunnel came up only when the panel happened to write a preference of
+        // its own (found on the test VM). So the list is also read on the
+        // remote poll's clock.
+        preferencePoll = Timer.scheduledTimer(withTimeInterval: AppConfig.remotePollInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.followPreferences() }
+        }
     }
 
     func stop() {
         if let preferenceWatcher { NotificationCenter.default.removeObserver(preferenceWatcher) }
         preferenceWatcher = nil
+        preferencePoll?.invalidate()
+        preferencePoll = nil
         for tunnel in tunnels.values { tunnel.stop() }
         tunnels = [:]
     }
@@ -157,16 +168,23 @@ final class RemoteFleet: ObservableObject {
                             notes.append("hooks there carry no token and could not be rewritten: \(error.short)")
                         }
                     }
+                    // A mod of another version than this app's, put there by an
+                    // earlier one, is brought up to date the same way.
+                    switch RemoteModInstaller.refresh(on: host, inspection: inspection) {
+                    case .success(let text)?: notes.append(text)
+                    case .failure(let error)?: notes.append("mod there not updated: \(error.short)")
+                    case nil: if let version = inspection.modVersion { notes.append("mod \(version)") }
+                    }
                     outcome = .success("\(host): " + notes.joined(separator: "; "))
                 case .failure(let error):
                     hooks = .failed(error.short)
                     outcome = .failure(error)
                 }
             case .install:
-                outcome = RemoteHookInstaller.install(on: host)
+                outcome = RemoteHookInstaller.installWithMod(on: host)
                 if case .success = outcome { hooks = .installed }
             case .uninstall:
-                outcome = RemoteHookInstaller.uninstall(on: host)
+                outcome = RemoteHookInstaller.uninstallWithMod(on: host)
                 if case .success = outcome { hooks = .absent }
             }
 

@@ -361,8 +361,9 @@ final class SignalServer {
     /// the token where something else might be listening, and signs nothing it
     /// cannot check back (`PermissionGate`).
     private func handleCheck(_ request: HTTPRequest) -> Data {
-        // GET lists what waits, for whoever holds the token: what the panel shows.
+        // GET lists what waits — for a test's fake home only (see `/check/answer`).
         if request.method == "GET" {
+            guard AppConfig.isUsingHomeOverride else { return HTTPRequestParser.response(status: 404, reason: "Not Found") }
             guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
             guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
                 return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
@@ -379,7 +380,15 @@ final class SignalServer {
 
     /// `POST /check/answer` — `{"id","verdict"}`: the panel's answer to an ask
     /// waiting. 404 when no ask with that id is waiting: answered once only.
+    ///
+    /// **Only against a fake home**, for the tests and the test Mac's probes. In
+    /// a real install the panel answers in-process, from a click or a key, and
+    /// this route does not exist: the token is in every hook, here and on every
+    /// node, and readable by any process of the user's — one that held it could
+    /// otherwise list another session's ask and answer it `allow`, no click (a
+    /// security review's high finding, D80).
     private func handleCheckAnswer(_ request: HTTPRequest) -> Data {
+        guard AppConfig.isUsingHomeOverride else { return HTTPRequestParser.response(status: 404, reason: "Not Found") }
         if let refusal = tokenRefusal(request) { return refusal }
         return onCheckAnswer(request.body)
             ? HTTPRequestParser.response(status: 204, reason: "No Content")

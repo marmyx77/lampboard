@@ -1,13 +1,13 @@
 # Code map
 
-~58,200 lines of Swift across five targets. For each file: what it contains, why
+~58,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  17,401 lines · 136 files  pure logic, zero AppKit
-  LampBoardApp/    21,948 lines · 124 files   shell: AppKit, network, windows
-  LampBoardTests/  14,349 lines · 84 files   1041 cases, instantaneous
+  LampBoardCore/  17,558 lines · 137 files  pure logic, zero AppKit
+  LampBoardApp/    22,064 lines · 125 files   shell: AppKit, network, windows
+  LampBoardTests/  14,475 lines · 85 files   1046 cases, instantaneous
   LampBoardE2E/    4,103 lines · 18 files   140 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1238,8 +1238,18 @@ running session. Its stdout **is** the message; exit code **2** is the send.
 > stands a second listener down. Every path out is `exit 0` except the deliberate
 > `exit 2` — a failing hook can interrupt a Claude Code turn.
 
-### `RemoteInstallScripts.swift` · 232
-The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved. The inspection hands back the text of our script there under both names, so the token is judged here by `HookRepair` and the node is never told one; a domain case runs the real scripts against a home laid out like the node, inspect to apply and back.
+### `RemoteInstallScripts.swift` · 264
+The Python that runs on another machine to inspect it, write the hook script and the merged settings, or ask whether the tunnel answers. In Core and under test for the same reason the probe is: a promise to another machine has to be readable in one place. The data travels inside the source as base64 — no shell quoting rule is involved. The inspection hands back the text of our script there under both names, so the token is judged here by `HookRepair` and the node is never told one, and the version of the mod LampBoard put there, if any; a domain case runs the real scripts against a home laid out like the node, inspect to apply and back.
+
+### `RemoteModScripts.swift` · 147
+The companion mod written onto another machine (D83): the payload — the carried
+files, this panel's token, the tunnel's port, the permission key, Claude Code's
+own `claude plugin` steps with the folder left for the far side to name — and the
+Python that writes it there through `O_EXCL | O_NOFOLLOW` at `0600`, marked as
+the tunnel's, on one deadline; refuses a `~/.lampboard` that is a link, another
+user's or writable by others, and stops at a machine whose unmarked token or port
+belong to a panel of its own. A failed install takes the key back; taking it out
+removes the three files only when they are marked ours.
 
 ## `System/`
 
@@ -1463,8 +1473,8 @@ there, the hooks are registered — and it names the link that broke.
 | `MailboxWriter.swift` | 206 | the panel's end of the mailbox; carries out the reaper's verdict; counts the views holding a session's marker, so the chat window and the Plancia do not take it from each other |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
-| `RemoteTunnel.swift` | 283 | the reverse ssh tunnel per host, kept alive with backoff; `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac |
-| `RemoteFleet.swift` | 209 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again |
+| `RemoteTunnel.swift` | 290 | the reverse ssh tunnel per host, kept alive with backoff, on a connection of its own whatever the user's `ControlMaster` says (D83); `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac |
+| `RemoteFleet.swift` | 229 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again; the list read again on the remote poll's clock, since a host added from a terminal raises no notification here; a node's mod brought to this app's version at the check (D83) |
 | `DictationService.swift` | 339 | `SpeechTranscriber` on the device, `AVAudioEngine` capture, macOS 26 only |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 106 | blocked when the signature is ad-hoc |
@@ -1491,8 +1501,8 @@ there, the hooks are registered — and it names the link that broke.
 
 ## `Server/`
 
-### `SignalServer.swift` · 570
-Thirteen routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80). A **concurrent** queue: with a serial one, a `/next` waiting on the
+### `SignalServer.swift` · 584
+Thirteen routes, behind `LoopbackGuard`; `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80); `GET /check` and `/check/answer` exist only on a fake home, for the tests: in a real install the panel answers in-process. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
 `/open`, `/new` and `/chat` share `handleSlotRoute`: they differ only in the action, so
@@ -1601,8 +1611,11 @@ installer's `~/.local/bin/claude` link is named after its version, and
 link is not there. Feeds `NativeHookSupport`; `install-hooks` and `status` print
 what it found.
 
-### `RemoteHookInstaller.swift` · 265
-The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers. `repairToken` brings a node's hooks up to the current token by the same rule the launch applies here (D48), previous-name registrations included, and only when they post to that user's tunnel port; the fleet calls it on every check.
+### `RemoteHookInstaller.swift` · 277
+The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers. `repairToken` brings a node's hooks up to the current token by the same rule the launch applies here (D48), previous-name registrations included, and only when they post to that user's tunnel port; the fleet calls it on every check. The inspection carries the version of the mod there.
+
+### `RemoteModInstaller.swift` · 79
+The companion mod on a node (D83): installed with the hooks when it is on here and the node's Claude Code can take it, its files and the three it reads written by `RemoteModScripts`; brought up to this app's version at launch when the node has an older one; taken out with the hooks, before them, while the inspection can still find it. A mod that fails is said after the hooks' line and leaves the hooks in place.
 
 ## `UI/`
 
@@ -1668,7 +1681,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1041 cases
+## `LampBoardTests/` — 1046 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1690,6 +1703,7 @@ script, before it was split. The most important ones:
 | `AwaitingReleaseSuite` | a question you have answered stops flashing |
 | `WaitingSuite` | a session that has stopped but is not done is blue, and says what it waits on |
 | `RemoteSessionsSuite` | another machine's sessions, and what deserves a row |
+| `RemoteModScriptsSuite` | the mod put on another machine, run for real with `python3` on a temporary home and a `claude` that writes down its calls: every file and the three values owner-only, then `marketplace add` and `install` from a clean slate; a machine with a panel of its own left alone, even on the same port; its own files rewritten; a failed install taking the key back; a `~/.lampboard` others can write refused; a `~/.lampboard` that is a link refused; taken out with its three files |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
 | `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |

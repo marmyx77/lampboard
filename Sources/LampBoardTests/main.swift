@@ -27,6 +27,7 @@ let suites: [TestSuite] = [
     PermissionGateSuite.suite,
     PeerBoxSuite.suite,
     PeerTranscriptSuite.suite,
+    RemoteModScriptsSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

@@ -711,6 +711,19 @@ Measured on the node this panel watches: nine command hooks under the old name,
 alive and posting through the tunnel, that a repair knowing only the current name
 read as *nothing installed*.
 
+**The companion mod goes there too**, when it is on here and the machine's Claude
+Code is 2.1.287 or later: *Install hooks* (or `lampboard remote install`) also puts
+the mod into that machine's Claude Code with its own `claude plugin`, and the three
+files it reads into `~/.lampboard` there, owner-only — this panel's token, the
+tunnel's port and the permission key. Its sessions then report their context, cost
+and limits through the tunnel, and their permissions come to this panel's queue
+like a local session's ([D83](docs/04-decisions.md)). A machine that runs a
+LampBoard panel of its own is left alone. The launch brings a node's mod up to this
+app's version; `remote uninstall` takes the mod out with the hooks. The tunnel keeps
+an ssh connection of its own, whatever your `ControlMaster` settings say, so a host
+reached only through a master you authenticated by hand needs key login straight
+through.
+
 The machine needs ssh key login (no password prompt is possible), `python3` and
 `curl`. The tunnel is restarted with backoff when the machine sleeps or the VPN
 drops; the Settings window shows its state and the outcome of every operation.
@@ -1449,7 +1462,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1041 domain tests, instantaneous
+swift run LampBoardTests              # 1046 domain tests, instantaneous
 swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

@@ -3113,6 +3113,15 @@ on the test Mac with the trial's invented sessions: the card drawn with its two
 buttons, a Deny through `/check/answer` reaching the asker signed, and an ask
 left alone going back after 55 seconds with its line.
 
+**What a third review changed.** `GET /check` and `POST /check/answer` were behind
+the token, and the token is in every hook — here and, through the tunnel, on every
+node — and readable by any process of the user's: one that held it could list
+another session's ask and answer it `allow`, with no click. In a real install the
+two routes now answer 404; the panel answers in-process, from a click or a key,
+which is what D73 promised. They stay for a fake home only (`LAMPBOARD_HOME`), where
+the tests and the test Mac's probes answer through them. Never released: 0.5.0 has
+no permission door.
+
 ## D81 · The composer writes into Claude Code's own message box
 
 **Decided.** A message from the panel's composer — the chat window's and the
@@ -3224,4 +3233,59 @@ session to another relayed by the panel. Claude Code 2.1.289 gives every session
 `ListAgents` and `SendMessage` of its own (measured), so two sessions on one Mac
 already talk without LampBoard; what the panel adds is the person's side question,
 and showing those messages in the conversation as another session's (D81).
+
+## D83 · The companion mod on the nodes, through the tunnel
+
+**Decided.** When the mod is on here (D65) and a node's Claude Code is 2.1.287 or
+later, installing the hooks on that node installs the mod there too, with the
+node's own `claude plugin`, from LampBoard's files written into
+`~/.lampboard/mod-marketplace` there; and writes the three files the mod reads in
+`~/.lampboard` there, owner-only: this panel's token, the port of the tunnel that
+lands on this panel, and the permission key (D80). The node's sessions then report
+through the tunnel (D24), and their permissions come to the queue (D80) like a
+local session's. The launch brings a node's mod to this app's version, as it does
+the hooks' token (D48); uninstalling the hooks takes the mod out, the three files
+with it. A node without the mod is not given one at launch: it goes there when the
+person installs the hooks.
+
+**Measured on the test VM** (Lima, Debian arm64, Claude Code 2.1.289, 5 October
+2026). First by hand (B0): with the three files there and the mod loaded from a
+folder, a session's `start` and `measure` came through the tunnel, its permission
+ask reached `/check`, and the panel's `deny` held there. Then by LampBoard (B1):
+`remote install` printed "mod 1.5.0 installed … reporting through the tunnel", the
+node's `claude plugin list` showed it read from that folder, a session started
+without any flag reported and asked the same way, and `remote uninstall` left
+neither the mod nor the three files.
+
+**What a review changed.** The files written there are marked as the tunnel's
+(`tunnel-mod`): a `~/.lampboard` there with a token or a port and no mark is a
+LampBoard panel's own — whatever its port number — and is left alone; uninstalling
+takes the three files back only when they are marked ours; a failed install takes
+the key back too; a `~/.lampboard` other users can write is refused; the script
+runs on one deadline inside the one the Mac gives ssh; and the launch brings a
+node's mod up to this app's version, never down. The key is one for the Mac and
+every node: whoever holds it on a node can forge an ask, which shows a card and
+whose click goes only back to the forger, or sign an answer to a listener that only
+that node's own sessions would reach — no way to the Mac or another node, now that
+the answer routes are gone (D80). Keys per node would let a card name the machine an
+ask came from; left for later. A tunnel on a connection of its own cannot use a
+master the person authenticated by hand (2FA, a bastion): such a host needs key
+login straight through, as the probes already did with `BatchMode`.
+
+**What it writes there, and what it refuses.** One script in the shape of the
+hooks' (D24): the data as one base64 literal inside the Python, no shell, a
+`~/.lampboard` that is a link or another user's refused, every file written through
+a fresh name opened `O_EXCL | O_NOFOLLOW` at `0600`. The
+permission key goes to a machine the person reaches with their own key login, the
+same trust the hooks there already carry the token on.
+
+**Two bugs the test VM found in the tunnel.** Lima's ssh config has `ControlMaster
+auto` and `ControlPersist yes`, as many people's do: the tunnel's ssh handed its
+forward to a shared master and exited 0, the panel read the tunnel as down while
+the forward lived on in the master, and the next try found its own port taken. The
+tunnel now keeps a connection of its own (`ControlMaster=no`, `ControlPath=none`).
+And a host added with `lampboard remote add` from a terminal is a write by another
+process, which raises no `UserDefaults` notification here: its tunnel came up only
+when the panel happened to write a preference of its own. The list is now also
+read on the remote poll's clock.
 

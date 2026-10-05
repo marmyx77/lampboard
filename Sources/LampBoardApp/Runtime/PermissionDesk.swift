@@ -93,7 +93,7 @@ final class PermissionDesk: ObservableObject {
         return done.wait(timeout: .now() + 2) == .success && result.value
     }
 
-    /// The panel's answer: a click, a key, or `/check/answer`.
+    /// The panel's answer: a click, a key, or `/check/answer` on a test's fake home.
     @discardableResult
     func answer(session: String, call callId: String, _ verdict: PermissionGate.Verdict) -> Bool {
         guard let given = book.answer(session: session, call: callId, verdict),

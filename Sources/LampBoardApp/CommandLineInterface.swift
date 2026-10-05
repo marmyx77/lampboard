@@ -662,14 +662,14 @@ enum CommandLineInterface {
 
         case "install":
             guard let host = requireHost() else { return 2 }
-            switch RemoteHookInstaller.install(on: host) {
+            switch RemoteHookInstaller.installWithMod(on: host) {
             case .success(let message): print(message); return 0
             case .failure(let error): print("\(host): \(error.short)"); return 1
             }
 
         case "uninstall":
             guard let host = requireHost() else { return 2 }
-            switch RemoteHookInstaller.uninstall(on: host) {
+            switch RemoteHookInstaller.uninstallWithMod(on: host) {
             case .success(let message): print(message); return 0
             case .failure(let error): print("\(host): \(error.short)"); return 1
             }

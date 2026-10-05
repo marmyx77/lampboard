@@ -38,6 +38,8 @@ public enum RemoteInstallScripts {
             return "is not a directory"
         if info.st_uid != os.getuid():
             return "belongs to another user"
+        if info.st_mode & 0o022:
+            return "can be written by other users"
         return None
     """
 
@@ -83,6 +85,13 @@ public enum RemoteInstallScripts {
                 return f.read()
         except Exception:
             return None
+    # The companion mod there, when LampBoard put it there: its version, or None.
+    def mod_version():
+        try:
+            manifest = json.loads(read_text(os.path.join(home, "\(RemoteModScripts.folderRelativePath)/mod/.claude-plugin/plugin.json")) or "{}")
+            return manifest.get("version") if isinstance(manifest.get("version"), str) else None
+        except Exception:
+            return None
     hook_script = read_text(os.path.join(home, "\(AppConfig.remoteHookScriptRelativePath)"))
     legacy_hook_script = read_text(os.path.join(home, "\(AppConfig.legacyRemoteHookScriptRelativePath)"))
     settings, error, digest, mode = None, None, None, None
@@ -111,6 +120,7 @@ public enum RemoteInstallScripts {
         "python": platform.python_version(),
         "curl": shutil.which("curl") is not None,
         "directoryProblem": own_directory(os.path.join(home, "\(directoryName)")),
+        "modVersion": mod_version(),
         "error": error,
     }, sys.stdout)
     """

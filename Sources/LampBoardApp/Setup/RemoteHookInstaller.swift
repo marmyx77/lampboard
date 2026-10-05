@@ -23,6 +23,8 @@ struct RemoteInspection {
     /// Why `~/.lampboard` there cannot be trusted — a symlink, another user's —
     /// or `nil` when it is the user's own directory (or absent).
     let directoryProblem: String?
+    /// The companion mod LampBoard put there, by version; `nil` when none.
+    var modVersion: String? = nil
     let error: String?
 
     var scriptPath: String { home + "/" + AppConfig.remoteHookScriptRelativePath }
@@ -97,6 +99,7 @@ enum RemoteHookInstaller {
                 claudeVersion: ReleaseVersion(object["claudeVersion"] as? String),
                 hasCurl: (object["curl"] as? Bool) ?? false,
                 directoryProblem: object["directoryProblem"] as? String,
+                modVersion: (object["modVersion"] as? String).flatMap { ReleaseVersion($0) == nil ? nil : $0 },
                 error: object["error"] as? String
             ))
         }
