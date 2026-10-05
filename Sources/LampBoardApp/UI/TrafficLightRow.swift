@@ -39,6 +39,11 @@ struct RowActions {
     let revealInFinder: (ColumnRow) -> Void
     /// Opens the row's session in the Plancia, beside the list (D79).
     var openPlancia: (ColumnRow) -> Void = { _ in }
+    /// The decision board of the row's repository (D105): pin one, take one off
+    /// by its number, and the ones pinned now, for the menu.
+    var pinDecision: (String) -> Void = { _ in }
+    var unpinDecision: (String, Int) -> Void = { _, _ in }
+    var decisions: (String) -> [String] = { _ in [] }
     /// Copies what reopens a background session in a terminal (AV2).
     var copyAttach: (BackgroundJob) -> Void = { _ in }
 }
@@ -413,6 +418,21 @@ struct TrafficLightRow: View {
         if row.hostsNewConversation {
             Divider()
             Button("New conversation here", action: { actions.newConversation(row) })
+        }
+
+        // The repository's decision board (D105). Local rows only: a session on
+        // another machine reads the board of the panel over there, if any.
+        if !row.workspace.isRemote, let repository = row.primary.git?.repo {
+            Divider()
+            Button("Pin a decision for “\(repository)”…", action: { actions.pinDecision(repository) })
+            let pinned = actions.decisions(repository)
+            if !pinned.isEmpty {
+                Menu("Pinned decisions (\(pinned.count))") {
+                    ForEach(Array(pinned.enumerated()), id: \.offset) { index, text in
+                        Button("Take off: \(text)", action: { actions.unpinDecision(repository, index + 1) })
+                    }
+                }
+            }
         }
 
         // A background session reopens in a terminal with `claude attach`.

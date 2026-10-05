@@ -69,6 +69,8 @@ final class PanelController {
     var askDesk: PeerAskDesk?
     /// What was said in every conversation, for the bar (0.7).
     var searchIndex: SearchIndex?
+    /// The decision board, pinned and taken off from a row's menu (D105).
+    var decisionBoard: DecisionBoardService?
     var onOpenLampMaster: (() -> Void)?
     var tour: TourController?
 
@@ -464,6 +466,11 @@ final class PanelController {
             },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) },
             openPlancia: { [weak self] row in self?.openPlancia(sessionId: row.primary.id) },
+            pinDecision: { [weak self] repository in self?.pinDecision(in: repository) },
+            unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
+            decisions: { [weak self] repository in
+                self?.decisionBoard?.current.decisions(for: repository).map(\.text) ?? []
+            },
             copyAttach: { job in
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(job.attachCommand, forType: .string)

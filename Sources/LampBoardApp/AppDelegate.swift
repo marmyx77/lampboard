@@ -126,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.permissionDesk = permissions
         controller.askDesk = askDesk
         controller.searchIndex = searchIndex
+        controller.decisionBoard = decisions
         mod.onReport = { [activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)

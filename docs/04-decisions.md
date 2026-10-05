@@ -3870,6 +3870,15 @@ The rest of the review's fixes:
   more is sent anywhere.
 - `undecide` takes off by the number the listing shows, so list first.
 
-**What waits (B2).** Pinning from the panel: a "Pin a decision…" item on the row,
-and the board listed where it can be taken off. Its place follows the interface
-realignment that opens 0.8 (Marco's answer to question 17).
+**From the panel (B2).** A local row whose session reports a repository has two
+items in its menu:
+- "Pin a decision for “repo”…" asks for the line, and shows what is already pinned;
+- "Pinned decisions (N)" lists them, and one taken off from there is confirmed
+  first.
+
+The panel uses the same service the command line reaches through the server, so
+the two never disagree. A remote row has neither item, because its sessions would
+read the board of the panel over there. The items sit in the menu, the simplest
+place there is; where the board shows itself otherwise follows the interface
+realignment that opens 0.8 (Marco's answer to question 17). They were not
+photographed: a context menu needs a right click, which ssh cannot give.

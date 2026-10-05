@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  19,469 lines · 152 files  pure logic, zero AppKit
-  LampBoardApp/    23,685 lines · 133 files   shell: AppKit, network, windows
+  LampBoardApp/    23,762 lines · 134 files   shell: AppKit, network, windows
   LampBoardTests/  15,766 lines · 99 files   1128 cases, instantaneous
   LampBoardE2E/    4,551 lines · 20 files   154 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -1466,7 +1466,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 520
+### `main.swift` · `AppDelegate.swift` · 521
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1768,10 +1768,11 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 760 | holds everything together; row and panel actions |
+| `PanelController.swift` | 767 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 71 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow, Deny and a question's choice handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 114 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
+| `PanelDecisions.swift` | 49 | the decision board from a row's menu (D105): pin a line for the row's repository, the ones already pinned shown in the question; one taken off from *Pinned decisions*, confirmed first; the same service the command line reaches, an error said in the panel |
 | `PanelPlancia.swift` | 150 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 189 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
@@ -1780,7 +1781,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 518 | one row: dot, context ring, name, badge, timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
+| `TrafficLightRow.swift` | 538 | one row: dot, context ring, name, badge, timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |

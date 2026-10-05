@@ -875,7 +875,9 @@ changes, not with every prompt. When a pinned decision is taken off, a session t
 was told about it is told it no longer applies.
 
 A repository holds at most twenty decisions, one line each, because whatever is
-pinned enters every one of its conversations. `lampboard decisions` lists them and
+pinned enters every one of its conversations. From the panel, right-click a row:
+choose *Pin a decision for “repo”…* to add one, or open *Pinned decisions* to take
+one off. From a terminal, `lampboard decisions` lists them and
 `lampboard undecide <repo> <n>` takes one off. The board lives in
 `~/.lampboard/decisions.json`, owner-only. The mod asks for the board with the
 permission key and takes it only when it is signed with that key, so nothing else
