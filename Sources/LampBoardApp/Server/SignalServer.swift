@@ -64,6 +64,7 @@ final class SignalServer {
     private let onQuestion: (Data, String?, String?, String) -> String
     private let onBand: (String?) -> Data
     private let onBandOpen: (String) -> Bool
+    private let onHandoff: (Data, String?, String?, String) -> String
     private let token: String?
     private let checkKey: String?
 
@@ -90,7 +91,8 @@ final class SignalServer {
         onCheckAnswer: @escaping (Data) -> Bool = { _ in false },
         onQuestion: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
         onBand: @escaping (String?) -> Data = { _ in Band.json([]) },
-        onBandOpen: @escaping (String) -> Bool = { _ in false }
+        onBandOpen: @escaping (String) -> Bool = { _ in false },
+        onHandoff: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "LampBoard cannot take a handoff here." }
     ) {
         self.port = port
         self.token = token
@@ -113,6 +115,7 @@ final class SignalServer {
         self.onQuestion = onQuestion
         self.onBand = onBand
         self.onBandOpen = onBandOpen
+        self.onHandoff = onHandoff
     }
 
     // MARK: - Lifecycle
@@ -248,6 +251,18 @@ final class SignalServer {
 
         case AppConfig.bandPath:
             return handleBand(request)
+
+        case AppConfig.handoffPath:
+            // Behind the token and proven with the permission key, as `/question`
+            // is (D80, D91): the token travels with every hook, and with it alone
+            // anyone could put words in a composer under any session's name.
+            // The answer is what the session shows the person.
+            guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+            guard let token, let checkKey else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token)
+            else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: onHandoff(
+                request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey))
 
         case AppConfig.bandOpenPath:
             return handleBandOpen(request)

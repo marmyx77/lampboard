@@ -15,6 +15,43 @@ public enum Handoff {
         the files you touched. Plain text, at most thirty lines, no secret values.
         """
 
+    /// A handoff a session wrote itself, with `/handoff <name>` (T2): the mod
+    /// posts it to `POST /handoff`, and the panel proposes it to that session.
+    public struct Request: Sendable, Equatable {
+        public let session: String
+        public let to: String
+        public let text: String
+
+        public init(session: String, to: String, text: String) {
+            self.session = session
+            self.to = to
+            self.text = text
+        }
+    }
+
+    /// A name, not a sentence; and the mod's own cap on what it posts.
+    static let maxName = 80
+    static let maxText = 4000
+
+    /// The request, or `nil` when it does not read or is not proven: version 1,
+    /// a session of Claude Code's shape, a name, words within the mod's cap —
+    /// counted as it counts them, by code point — and the mod's HMAC with the
+    /// permission key, which no hook carries (D80), over the fields as sent.
+    /// The token alone could put words in a composer under any session's name.
+    public static func request(_ body: Data, nonce: String?, proof: String?, key: String) -> Request? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              object["v"] as? Int == 1,
+              let session = object["session"] as? String, ModReport.isSessionId(session),
+              let rawTo = object["to"] as? String, let rawText = object["text"] as? String,
+              let nonce, let proof,
+              PermissionGate.proves(proof, PermissionGate.mac(key: key, message: "handoff:\(nonce):\(session):\(rawTo):\(rawText)"),
+                                    nonce: nonce)
+        else { return nil }
+        let to = String(rawTo.trimmed.drop { $0 == "@" }), text = rawText.trimmed
+        guard !to.isEmpty, to.count <= maxName, !text.isEmpty, text.unicodeScalars.count <= maxText else { return nil }
+        return Request(session: session, to: to, text: text)
+    }
+
     /// The message proposed to the second session: whose it is, then the text.
     public static func brief(from source: String, text: String) -> String {
         "Handoff from \(LampMasterLookup.clean(source, to: LampMasterLookup.titleLength)), through LampBoard:\n\n\(text.trimmed)"

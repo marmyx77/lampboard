@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.8.0"
+    public static let version = "1.9.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,8 +44,8 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.8.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
+  "version": "1.9.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"
@@ -346,6 +346,48 @@ const USAGE = 'Ask LampMaster what your other sessions know: /lampmaster <questi
 // near 2,000.
 const MAX_ANSWER = 4000
 
+// The baton (5.4, D91): this session writes what another needs — a fork over
+// its own conversation, no turn — and LampBoard puts it in that session's
+// composer, unsent. The question is LampBoardCore's Handoff.question, word for word.
+const HANDOFF_USAGE = 'Write a handoff for another session: /handoff <session name>'
+const HANDOFF_QUESTION = 'Another Claude Code session is taking over from you, or depends on your work. Write the handoff it will read before it starts: what you understood, what you decided and why, what is left to do, and the files you touched. Plain text, at most thirty lines, no secret values.'
+
+async function handOver($, to) {
+  if (!(await panel($))) return 'LampBoard is not running on this Mac: there is nowhere to hand over to.'
+  try {
+    // Proven with the permission key, never the token alone (D80): the token
+    // travels with every hook, and would let anyone write in a composer.
+    const home = await realHome($)
+    const key = home ? (await $.fs.read(`${home}/.lampboard/check-key`)).trim() : ''
+    if (!/^[0-9a-f]{16,128}$/.test(key)) return 'LampBoard has no key to prove the handoff with: update the panel.'
+    const reply = await $.model.fork({ prompt: HANDOFF_QUESTION })
+    if (!reply.isAnswered || !reply.text || !reply.text.trim()) return `No handoff written (${reply.reason || 'no answer'}).`
+    // Words of the conversation: the port is asked again whether it is LampBoard.
+    confirmed = null
+    const target = await panel($)
+    if (!target) return 'LampBoard went away while the handoff was written.'
+    const text = Array.from(reply.text.trim()).slice(0, MAX_ANSWER).join('')
+    const session = await $.session.id()
+    const nonce = crypto.randomUUID()
+    const answer = await $.http.fetch(`${target.base}/handoff`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LampBoard-Token': target.token,
+        'X-LampBoard-Nonce': nonce,
+        'X-LampBoard-Proof': await hmac(key, `handoff:${nonce}:${session}:${to}:${text}`),
+      },
+      body: JSON.stringify({ v: VERSION, session, to, text }),
+    })
+    if (!answer.ok) return `LampBoard did not take the handoff (HTTP ${answer.status}).`
+    // Shown to the person: no control, no direction-changing character.
+    return Array.from(answer.text.trim().replace(/[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, ''))
+      .slice(0, 400).join('')
+  } catch (_) {
+    return 'The handoff could not be written.'
+  }
+}
+
 async function ask($, question) {
   const target = await panel($)
   if (!target) return 'LampBoard is not running on this Mac, so LampMaster cannot answer.'
@@ -379,6 +421,7 @@ export function register(on) {
       // Immediate: a question about the other sessions does not depend on this
       // one's turn, and is most useful while that turn is still running.
       await $.command.register({ name: 'lampmaster', description: 'Ask LampMaster what your other sessions know', argumentHint: '<question>', immediate: true })
+      await $.command.register({ name: 'handoff', description: 'Write a handoff for another session; it waits in its LampBoard composer', argumentHint: '<session>', immediate: true })
     } catch (_) {
       // An older Claude Code without commands: the MCP tools still answer.
     }
@@ -420,6 +463,12 @@ export function register(on) {
     } finally {
       if (id) void post($, 'tool', { id, tool: e.tool, phase: 'end' })
     }
+  })
+
+  on('command.run', { command: 'handoff' }, async ($, e) => {
+    const to = (e.args || '').trim().replace(/^@/, '')
+    if (!to || Array.from(to).length > 80) return { text: HANDOFF_USAGE }
+    return { text: await handOver($, to) }
   })
 
   on('command.run', { command: 'lampmaster' }, async ($, e) => {

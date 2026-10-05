@@ -184,6 +184,16 @@ public enum CommandBar {
                        status: from.status, targetId: to.sessionId)]
     }
 
+    /// The sessions a name finds, as `@name` would — only the one called
+    /// exactly that, when there is one: what a `/handoff` typed inside a
+    /// session names (5.4, T2). More than one, and the name is not enough.
+    public static func sessions(named name: String, rows: [ColumnRow], now: Date) -> [Result] {
+        let wanted = String(name.drop { $0 == "@" }).lowercased()
+        let found = sessions(matching: wanted, rows: rows, now: now, namesOnly: true)
+        let exact = found.filter { $0.title.lowercased() == wanted }
+        return exact.count == 1 ? exact : found
+    }
+
     static let sendingOff = "Turn on \"Let the panel answer your sessions\" in the panel menu first"
 
     /// The selection after a move, kept inside the list.

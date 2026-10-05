@@ -70,5 +70,44 @@ enum HandoffSuite {
             t.expect(brief.hasPrefix("Handoff from events ignore, through LampBoard:\n\n"), brief)
             t.expect(brief.hasSuffix("Slots renamed to v2.\nTests left."), "the text as written, trimmed")
         },
+
+        TestCase("From inside a session (T2): the mod's request read strictly, and proven") { t in
+            let key = String(repeating: "ab", count: 16), nonce = "6F9619FF-8B86-D011-B42D-00C04FC964FF"
+            let sid = "3d5a7a36-f0e0-4002-8eb5-1fe0264eaea0"
+            func read(_ object: [String: Any], key used: String = key, nonce: String? = nonce) -> Handoff.Request? {
+                let body = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+                let proof = PermissionGate.mac(key: used, message: "handoff:\(nonce ?? ""):\(object["session"] ?? ""):\(object["to"] ?? ""):\(object["text"] ?? "")")
+                return Handoff.request(body, nonce: nonce, proof: proof, key: key)
+            }
+            t.expectEqual(read(["v": 1, "session": sid, "to": "@api", "text": "  Slots renamed.  "]),
+                          Handoff.Request(session: sid, to: "api", text: "Slots renamed."), "the @ and the edges dropped")
+            t.expectNil(read(["v": 1, "session": sid, "to": "api", "text": "t"], key: String(repeating: "cd", count: 16)),
+                        "the token alone proves nothing: the permission key does")
+            t.expectNil(read(["v": 1, "session": sid, "to": "api", "text": "t"], nonce: nil), "no nonce, no handoff")
+            let body = (try? JSONSerialization.data(withJSONObject: ["v": 1, "session": sid, "to": "api", "text": "other"])) ?? Data()
+            let proofForT = PermissionGate.mac(key: key, message: "handoff:\(nonce):\(sid):api:t")
+            t.expectNil(Handoff.request(body, nonce: nonce, proof: proofForT, key: key), "a proof covers its own words only")
+            t.expectNil(read(["v": 1, "session": "../x", "to": "api", "text": "t"]), "a session of another shape")
+            t.expectNil(read(["v": 1, "session": sid, "to": "", "text": "t"]), "nobody to hand to")
+            t.expectNil(read(["v": 1, "session": sid, "to": String(repeating: "a", count: 81), "text": "t"]), "a name, not a text")
+            t.expectNil(read(["v": 1, "session": sid, "to": "api", "text": "  "]), "nothing written")
+            t.expectNil(read(["v": 1, "session": sid, "to": "api", "text": String(repeating: "x", count: 4001)]), "past the mod's own cap")
+            t.expectNotNil(read(["v": 1, "session": sid, "to": "api", "text": String(repeating: "😀", count: 4000)]),
+                           "counted as the mod counts, by code point")
+            t.expectNil(read(["v": 2, "session": sid, "to": "api", "text": "t"]), "another version")
+            t.expectNil(Handoff.request(Data("not json".utf8), nonce: nonce, proof: "", key: key))
+        },
+
+        TestCase("The mod asks the same question, and registers /handoff") { t in
+            t.expect(ModFiles.register.contains(Handoff.question), "one question, in Swift and in the mod")
+            t.expect(ModFiles.register.contains("name: 'handoff'"), "the command")
+        },
+
+        TestCase("A name finds its session as the bar's @ does, and one name is not two sessions") { t in
+            t.expectEqual(CommandBar.sessions(named: "api", rows: rows, now: t0).map(\.sessionId), ["id-api"], "the exact name alone")
+            t.expectEqual(CommandBar.sessions(named: "@even", rows: rows, now: t0).map(\.sessionId), ["id-events"])
+            t.expectEqual(CommandBar.sessions(named: "nothing", rows: rows, now: t0).count, 0)
+            t.expectEqual(CommandBar.sessions(named: "ap", rows: rows, now: t0).count, 3, "api, api-gateway, nodeapp: not enough")
+        },
     ])
 }

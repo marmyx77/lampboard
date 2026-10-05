@@ -1,7 +1,7 @@
 {
   "name": "lampboard",
-  "version": "1.8.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
+  "version": "1.9.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"

@@ -36,10 +36,12 @@ enum ModFilesSuite {
             for call in ["$.fs.write", "$.process", "$.prompt", "$.tool", "$.session.messages"] {
                 t.expect(!code.contains(call), "the mod must not use \(call)")
             }
-            // Of the model, one fork, for the panel's proven side question (D82):
-            // no completion of its own, no turn.
-            t.expectEqual(code.components(separatedBy: "$.model.").count - 1, 1, "one model call in all")
-            t.expect(code.contains("await $.model.fork({ prompt: question })"), "and it is the fork")
+            // Of the model, two forks and nothing else: the panel's proven side
+            // question (D82), and the handoff the person asks for with /handoff
+            // (D91). No completion of its own, no turn.
+            t.expectEqual(code.components(separatedBy: "$.model.").count - 1, 2, "two model calls in all")
+            t.expect(code.contains("await $.model.fork({ prompt: question })"), "the side question's fork")
+            t.expect(code.contains("await $.model.fork({ prompt: HANDOFF_QUESTION })"), "the handoff's fork, its question fixed")
             t.expect(!code.contains("https://"), "no address beyond this Mac")
         },
 

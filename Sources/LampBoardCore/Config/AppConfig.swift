@@ -45,6 +45,8 @@ public enum AppConfig {
     /// What the `lampmaster` MCP server forwards a session's tool call to.
     /// Behind the token: the lookups read every session's card.
     public static let lampMasterToolPath = "/lampmaster/tool"
+    /// A handoff a session wrote with `/handoff <name>` (5.4, T2).
+    public static let handoffPath = "/handoff"
 
     /// Where the companion mod posts what a session reports (D65). Behind the
     /// token, always: the mod is new, so no installed copy predates it.

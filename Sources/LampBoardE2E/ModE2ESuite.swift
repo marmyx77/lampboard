@@ -45,6 +45,34 @@ enum ModE2ESuite {
                 a.expectEqual(app.raw(method: "GET", path: AppConfig.modPath).status, 405)
             },
 
+            TestCase("/handoff (D91): behind the token, proven with the permission key, POST only") { a in
+                let body = #"{"v":1,"session":"\#(sessionId)","to":"api","text":"Slots renamed; tests left."}"#
+                a.expectEqual(app.raw(method: "POST", path: AppConfig.handoffPath, token: .some(nil), body: body).status, 401)
+                a.expectEqual(app.raw(method: "GET", path: AppConfig.handoffPath).status, 405)
+                // As the mod sends it: a nonce and its HMAC over the fields, never the key.
+                func send(key: String) -> String {
+                    let nonce = UUID().uuidString
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(app.port)\(AppConfig.handoffPath)")!)
+                    request.httpMethod = "POST"
+                    request.setValue(app.tokenValue, forHTTPHeaderField: AccessToken.headerName)
+                    request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+                    request.setValue(PermissionGate.mac(key: key, message: "handoff:\(nonce):\(sessionId):api:Slots renamed; tests left."),
+                                     forHTTPHeaderField: "X-LampBoard-Proof")
+                    request.httpBody = Data(body.utf8)
+                    let done = DispatchSemaphore(value: 0)
+                    var said = ""
+                    URLSession.shared.dataTask(with: request) { data, _, _ in
+                        said = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                        done.signal()
+                    }.resume()
+                    _ = done.wait(timeout: .now() + 10)
+                    return said
+                }
+                a.expectEqual(send(key: app.tokenValue ?? ""), "LampBoard could not read the handoff, or it was not proven.",
+                              "the token is not the key")
+                a.expectEqual(send(key: app.checkKeyValue ?? ""), "LampBoard's panel is not ready.", "proven, and headless: nothing proposed")
+            },
+
             TestCase("a measure lands on the row as the session's own count") { a in
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: LifecycleSuite.workspace))
                 guard app.waitUntil({ app.status(of: sessionId) == "working" }) else {

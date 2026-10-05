@@ -3570,3 +3570,26 @@ overwritten and does not swallow the handoff: it is copied, and the bar says so.
 handoff called off — the bar closed or retyped while the first session wrote —
 opens nothing and takes no clipboard. An empty answer is no handoff. `/h` keeps
 finding the action it found before, the handoff's hint after it.
+
+**From inside a session (T2).** The companion mod, from 1.9.0, registers
+`/handoff <name>`: typed in a session, the mod asks the same question of a fork over
+its own conversation — no turn — and posts the text to `POST /handoff`. The panel
+finds the session by that name, as `@name` does — the one called exactly that, or
+the only one the name finds; two or more and it asks for the exact name — and
+proposes the handoff in its composer, as from the bar. The session prints where it
+went; nothing of it enters the model's context (D71).
+
+**What a security review changed.** The route takes the token and a proof: an HMAC
+with the permission key (D80) over a nonce, the session, the name and the text, as
+sent. The token travels with every hook to whatever answers on the port; with it
+alone, anyone could put words in a composer under any session's name. A nonce
+counts once. A name that finds no session copies nothing: the clipboard is taken
+only for a session that exists and cannot take it. The answer the session prints
+loses control and direction-changing characters. What stays as before (D62, D82): a
+process that took the port while the panel was away and answers `/health` as
+LampBoard would receive the handoff's text, as it would a side question's answer.
+
+**Measured on the test Mac.** `/handoff api` typed in a throwaway Haiku session
+told about the slots rename: "Handoff written: it waits in api's composer in
+LampBoard", 665 and then, proven, 748 characters in the other session's composer,
+unsent; neither transcript gained a turn.

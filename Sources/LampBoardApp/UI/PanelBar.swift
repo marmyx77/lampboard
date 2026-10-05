@@ -74,22 +74,8 @@ extension PanelController {
                 return nil
             }
             guard reply.answered else { return "Handoff not written: " + reply.text }
-            let brief = Handoff.brief(from: source.displayName, text: reply.text)
-            func copied(_ why: String) -> String {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(brief, forType: .string)
-                return why + ": the handoff is copied, to paste where it goes."
-            }
-            // It may have gone while the first one wrote.
-            guard let target = self.session(named: to) else { return copied("That session is gone") }
-            if let host = target.workspace.host { return copied("\(target.displayName) is on \(host)") }
-            self.openPlancia(sessionId: to)
-            guard let thread = self.plancia.thread, thread.sessionId == to else { return copied("Its Plancia did not open") }
-            // The person's own words stay: the handoff is not dropped on them, it is copied.
-            guard !thread.hasDraft else { return copied("\(target.displayName)'s composer already has your text") }
-            thread.proposed = brief
-            Diagnostics.log("handoff \(from.prefix(8)) → \(to.prefix(8)): \(reply.text.count) chars proposed")
-            return nil
+            // The second may have gone while the first wrote: `propose` says so.
+            return self.propose(handoff: Handoff.brief(from: source.displayName, text: reply.text), to: to)
         }
         bar.onAskSession = { [weak self] id, question in
             guard let desk = self?.askDesk else { return "Asking is not available." }

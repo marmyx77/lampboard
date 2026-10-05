@@ -29,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster)
     /// Built with the panel, because it counts what the panel is showing.
     private var legendWindow: LegendWindowController?
+    /// The nonces of the handoffs taken (D91): a proof heard twice counts once.
+    private var handoffNonces = Set<String>()
     private var notifier: SessionNotifier?
     private var presence: PresenceFile?
     /// LampMaster's round. Started in every mode: the end-to-end suite drives
@@ -343,6 +345,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onBandOpen: { [weak self] session in
                 Self.onMain(timeout: 2) { self?.panelController?.openFromBand(session) } ?? false
+            },
+            onHandoff: { [weak self] body, nonce, proof, key in
+                guard let request = Handoff.request(body, nonce: nonce, proof: proof, key: key), let nonce else {
+                    return "LampBoard could not read the handoff, or it was not proven."
+                }
+                return Self.onMain(timeout: 2) { () -> String? in
+                    // Each proof once: one heard again is not a second handoff.
+                    guard let self, self.handoffNonces.insert(nonce).inserted else { return "That handoff was already taken." }
+                    return self.panelController?.receive(handoff: request)
+                } ?? "LampBoard's panel is not ready."
             }
         )
 
