@@ -3698,3 +3698,21 @@ it off again at the next round. A kind the person switched off themselves is lef
 **Measured on the test Mac.** The end-to-end suite writes two weeks of ignored cards of
 one kind into a fake home's record; at the next round the real binary switches that
 kind off and writes why.
+
+## D102 · LampMaster's test bench replays its saved rounds
+
+**Decided.** `lampboard lampmaster bench` replays LampMaster's last saved rounds — five,
+or `--last N` up to fifty — with the model chosen in Settings or `--model`, through the
+round's own isolated `claude` and prompt. Both the old answer and the new are screened
+by the round's validator, nothing muted and nothing remembered, so the two are judged
+alike; then the suggestions are compared by key with the old ones and with what the
+person did with them. The report puts first what decides a change: an accepted
+suggestion lost is a regression, an ignored one gone is an improvement, a new one is
+listed. This is the plan's bench (§8.3): the frames are the ones the rounds already
+keep (the last two hundred), they never leave the Mac, and it runs only when asked —
+each frame costs a round's tokens.
+
+**Measured on the test Mac.** The end-to-end suite runs a round against a fake
+`claude`, then answers the replay with no suggestion: `lampboard lampmaster bench`
+replays the one saved round, names the lost card, does not count the one the validator
+had refused, and calls `claude` once for it.

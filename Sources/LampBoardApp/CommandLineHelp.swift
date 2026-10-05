@@ -20,6 +20,8 @@ extension CommandLineInterface {
                                                with --dry-run it diagnoses without activating anything)
           lampboard sessions                print the column as the running app sees it
           lampboard search <words>          your conversations that say them, the best first
+          lampboard lampmaster bench        LampMaster's last rounds replayed, compared with what you did
+                                              with them (--model sonnet|opus, --last N; spends tokens)
           lampboard search --reset          take the search index away (the panel builds it again)
           lampboard week                    the last seven days in a paragraph, from the same index
           lampboard usage                   ask Anthropic how much of the allowance is gone,

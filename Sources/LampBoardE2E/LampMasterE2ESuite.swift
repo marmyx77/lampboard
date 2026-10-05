@@ -333,6 +333,20 @@ enum LampMasterE2ESuite {
                 }
             },
 
+            TestCase("the bench replays a saved round and names the suggestion the new answer lost (D102)") { t in
+                bench(t) { bench in
+                    bench.round()
+                    t.expect(bench.open.count == 1, "one suggestion shown by the round")
+                    // The new version answers with nothing: what the old one showed is lost.
+                    try? envelope("").write(to: bench.bin.appendingPathComponent("reply.json"), atomically: true, encoding: .utf8)
+                    let said = bench.app.runCommand(["lampmaster", "bench", "--last", "3"]).output
+                    t.expect(said.contains("Bench: 1 round replayed with sonnet."), "replayed: \(said)")
+                    t.expect(said.contains("lost (no reaction): The docs build waits for a yes."), "named: \(said)")
+                    t.expect(!said.contains("Invented."), "what the validator refused then is not counted lost")
+                    t.expectEqual(bench.calls(), 2, "claude once for the round, once for the replay")
+                }
+            },
+
             TestCase("past the day's ceiling no round reaches claude") { t in
                 bench(t) { bench in
                     let spent = LampMasterRound(at: Date(), trigger: .timer, outcome: .ran, tokens: 200_000, digest: "earlier")

@@ -139,6 +139,19 @@ struct LampMasterFiles {
         }
     }
 
+    /// The last `count` saved rounds, oldest first, for the bench (D102).
+    func savedRounds(last count: Int) -> [LampMasterBench.Saved] {
+        let stamp = { (name: String) in Int(name.dropLast(".jsonl".count)) ?? 0 }
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: framesURL.path)) ?? [])
+            .filter { $0.hasSuffix(".jsonl") }
+            .sorted { stamp($0) < stamp($1) }
+            .suffix(count)
+        return names.compactMap { name in
+            LampMasterBench.saved(read(framesURL.appendingPathComponent(name)),
+                                  at: Date(timeIntervalSince1970: TimeInterval(stamp(name))))
+        }
+    }
+
     // MARK: - Internals
 
     private func read(_ url: URL) -> String {

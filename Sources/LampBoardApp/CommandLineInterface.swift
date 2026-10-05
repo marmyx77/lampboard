@@ -38,6 +38,9 @@ enum CommandLineInterface {
         case chat(slot: Int?, port: UInt16)
         case sessions(port: UInt16)
         case search(words: String)
+        /// `lampmaster bench [--model M] [--last N]`: LampMaster's saved rounds
+        /// replayed, the new suggestions set against the old (D102).
+        case bench(model: String?, last: Int)
         /// What the allowance strip would draw, asked once and printed. The one
         /// command that leaves the Mac, and it says so in the help text.
         case usage
@@ -69,6 +72,10 @@ enum CommandLineInterface {
             return .trialHold(path: path)
         case "tour":
             return .tour(json: args.contains("--json"))
+        case "lampmaster":
+            guard args.dropFirst().first == "bench" else { return .help }
+            let value = { (flag: String) in args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil } }
+            return .bench(model: value("--model"), last: value("--last").flatMap(Int.init).map { max(1, min($0, 50)) } ?? 5)
         case "mcp":
             if let verb = args.dropFirst().first, ["install", "uninstall", "status"].contains(verb) {
                 return .mcpSetup(verb: verb, port: port)
@@ -205,6 +212,9 @@ enum CommandLineInterface {
 
         case .search(let words):
             return runSearch(words)
+
+        case .bench(let model, let last):
+            return runBench(model: model, last: last)
 
         case .usage:
             return runUsage()

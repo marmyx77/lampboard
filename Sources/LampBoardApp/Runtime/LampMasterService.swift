@@ -352,7 +352,7 @@ final class LampMasterService: ObservableObject {
 
     /// The language the suggestions are written in: the Mac's first, by its
     /// English name, because the prompt is in English.
-    static var language: String {
+    nonisolated static var language: String {
         let code = Locale.preferredLanguages.first.map { Locale(identifier: $0).language.languageCode?.identifier ?? "en" } ?? "en"
         return Locale(identifier: "en").localizedString(forLanguageCode: code) ?? "English"
     }
