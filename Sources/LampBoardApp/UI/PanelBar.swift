@@ -22,6 +22,8 @@ extension PanelController {
             case .tour: TrialLauncher.startFromMenu()
             case .checkForUpdates: self?.checkForUpdates()
             case .legend: self?.onOpenLegend?()
+            // Said in the bar itself, by the model.
+            case .week: break
             }
         }
         // The same door a session's MCP call comes through: the same switch,
@@ -70,6 +72,7 @@ extension PanelController {
                                      cwd: hit.cwd, snippet: hit.snippet)
                 }
             }
+            bar.onWeek = { index.week() }
         }
         bar.onConversation = { [weak self] id, foundCwd in
             if let self, let session = self.session(named: id) {

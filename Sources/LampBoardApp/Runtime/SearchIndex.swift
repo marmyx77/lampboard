@@ -195,6 +195,34 @@ final class SearchIndex: @unchecked Sendable {
         }
     }
 
+    /// Every prompt the person typed since `from`, with its conversation's
+    /// folder and name: what the week's summary counts.
+    func prompts(since from: Date) -> [WeekSummary.Prompt] {
+        guard open() else { return [] }
+        return queue.sync {
+            var statement: OpaquePointer?
+            let sql = """
+                SELECT msg.sid, conv.cwd, conv.title, msg.at FROM msg LEFT JOIN conv ON conv.sid = msg.sid
+                WHERE msg.sid IN (SELECT sid FROM conv WHERE last_at >= ?1) AND msg.role = 'user' AND msg.at >= ?1
+                """
+            guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(statement) }
+            sqlite3_bind_double(statement, 1, from.timeIntervalSince1970)
+            var prompts: [WeekSummary.Prompt] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                prompts.append(WeekSummary.Prompt(sessionId: text(statement, 0) ?? "", cwd: text(statement, 1),
+                                                  title: text(statement, 2),
+                                                  at: Date(timeIntervalSince1970: sqlite3_column_double(statement, 3))))
+            }
+            return prompts
+        }
+    }
+
+    /// The week in a paragraph, for the person (0.7).
+    func week(now: Date = Date()) -> String {
+        WeekSummary.text(WeekSummary.summarize(prompts(since: WeekSummary.start(now: now)), now: now))
+    }
+
     /// Where a conversation ran, as its transcript said.
     func cwd(of sessionId: String) -> String? {
         guard open() else { return nil }

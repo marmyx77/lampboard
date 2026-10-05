@@ -39,6 +39,8 @@ final class CommandBarModel: ObservableObject {
     var onSearch: @Sendable (String) -> [CommandBar.Found] = { _ in [] }
     /// A conversation found: what to say in the bar about reaching it.
     var onConversation: @MainActor (String, String?) -> String = { _, _ in "" }
+    /// The week in a paragraph, from the search index, off the main actor.
+    var onWeek: @Sendable () -> String = { "The search index is not available." }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
@@ -83,6 +85,19 @@ final class CommandBarModel: ObservableObject {
         case .session:
             if let id = result.sessionId { onOpenSession(id) }
             clear()
+        case .action where result.action == .week:
+            // Said in the bar, like an answer: read off the main actor, once at a time.
+            guard !asking else { return }
+            cancelQuestion()
+            answer = "Reading the week…"
+            onLayoutChange()
+            let typed = text, week = onWeek
+            question = Task { [weak self] in
+                let said = await Task.detached { week() }.value
+                guard let self, !Task.isCancelled, self.isEditing, self.text == typed else { return }
+                self.answer = said
+                self.onLayoutChange()
+            }
         case .action:
             if let action = result.action { onAction(action) }
             clear()

@@ -53,6 +53,10 @@ enum CommandBarSuite {
             t.expectEqual(found.first?.action, .settings)
             let command = CommandBar.results(for: CommandBar.parse("/up"), rows: rows, now: t0, lampMasterEnabled: true)
             t.expectEqual(command.map(\.action), [.checkForUpdates], "a command names only actions")
+            for word in ["week", "recap", "summary"] {
+                let week = CommandBar.results(for: CommandBar.parse(word), rows: rows, now: t0, lampMasterEnabled: true)
+                t.expect(week.contains { $0.action == .week }, "\(word) finds the week's summary (D90)")
+            }
         },
 
         TestCase("@ names only sessions") { t in

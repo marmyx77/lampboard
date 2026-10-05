@@ -3508,3 +3508,32 @@ dated twenty days back, whose prompt carries an invented word, and asks `who_kno
 through the real binary: the answer names "Docs build fix in docs" under "Said in
 earlier conversations" and never contains the invented word. The lookup is wired
 when LampBoard starts, panel on screen or not.
+
+## D90 · The week in a paragraph, from the index, for the person
+
+**Decided.** "This week" in the bar (D77) — or `week`, `weekly`, `summary`, `recap` —
+and `lampboard week` in a terminal answer with the last seven calendar days, today
+included: how many prompts the person typed, in how many conversations, projects and
+days, the busiest day, and per project, the busiest first, its prompts, conversations,
+days and the names of up to three conversations. Eight projects at most, the rest
+counted. The bar shows it where LampMaster's answers show.
+
+**Where it comes from.** The search index (D88): its `user` messages are the prompts
+the person typed, its conversations have their folder and name. No token is spent and
+nothing is read that the index does not already hold. Counts and names only: the
+summary never quotes a prompt, though it is shown to the person alone — the bar and
+the terminal, never a session.
+
+**What the plan had and this leaves.** The plan saw the summary as prose about the
+work done. That needs a model reading the week, which is the per-turn summary D88
+left waiting for the quota. Counts and names are what the index knows for certain.
+
+**Measured on the test Mac.** The end-to-end suite builds a fake home's index with
+two conversations, one ten days old, and `lampboard week` counts the recent one's two
+prompts, names it and leaves the old one out; on the trial's panel with three invented
+conversations, "week" typed in the bar showed the same paragraph the terminal printed.
+
+**What a review changed.** A project is a folder, not a name: two folders called
+`api` are two projects, named with the folder above. The bar reads the week once at a
+time and never while a message is on its way. Only conversations active in the week
+are scanned for its prompts.

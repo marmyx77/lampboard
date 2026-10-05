@@ -18,7 +18,7 @@ public enum CommandBar {
     }
 
     public enum Action: String, Sendable, CaseIterable {
-        case settings, gettingStarted, tour, checkForUpdates, legend
+        case settings, gettingStarted, tour, checkForUpdates, legend, week
 
         public var title: String {
             switch self {
@@ -27,6 +27,7 @@ public enum CommandBar {
             case .tour: return "Take the tour"
             case .checkForUpdates: return "Check for updates"
             case .legend: return "What the colours mean"
+            case .week: return "This week"
             }
         }
 
@@ -38,6 +39,7 @@ public enum CommandBar {
             case .tour: return ["tour", "tutorial", "trial"]
             case .checkForUpdates: return ["update", "upgrade", "version"]
             case .legend: return ["legend", "colours", "colors", "help"]
+            case .week: return ["week", "weekly", "summary", "recap"]
             }
         }
     }

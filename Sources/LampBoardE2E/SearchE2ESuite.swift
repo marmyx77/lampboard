@@ -2,8 +2,8 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// `lampboard search` against a fake home's transcripts (0.7, M2): the real
-/// binary, the system's SQLite, the index written owner-only.
+/// `lampboard search` and `lampboard week` against a fake home's transcripts
+/// (0.7): the real binary, the system's SQLite, the index written owner-only.
 enum SearchE2ESuite {
 
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
@@ -43,6 +43,32 @@ enum SearchE2ESuite {
                 t.expect(app.runCommand(["search", "nothing-like-this"]).output.contains("No conversation says that."), "said")
                 let mode = ((try? FileManager.default.attributesOfItem(atPath: app.home.appendingPathComponent(".lampboard/index.sqlite").path))?[.posixPermissions] as? NSNumber)?.intValue
                 t.expectEqual(mode, 0o600, "owner-only")
+            },
+
+            TestCase("lampboard week: the last seven days in a paragraph, an older prompt left out") { t in
+                let app = AppUnderTest(binaryURL: binaryURL, port: port)
+                try? FileManager.default.removeItem(at: app.home)
+                defer { try? FileManager.default.removeItem(at: app.home) }
+                let old = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86_400 * 10))
+                transcript(app, folder: "-home-dev-events", session: "aaaaaaaa-0000-4000-8000-000000000001", [
+                    ["type": "user", "uuid": "u1", "timestamp": now, "cwd": "/home/dev/events", "origin": ["kind": "human"],
+                     "message": ["role": "user", "content": "Rename the slots endpoint"]],
+                    ["type": "assistant", "uuid": "a1", "timestamp": now,
+                     "message": ["role": "assistant", "content": [["type": "text", "text": "Done."]]]],
+                    ["type": "user", "uuid": "u2", "timestamp": now, "origin": ["kind": "human"],
+                     "message": ["role": "user", "content": "Now the tests"]],
+                    ["type": "custom-title", "customTitle": "Slots rename"],
+                ])
+                transcript(app, folder: "-home-dev-api", session: "bbbbbbbb-0000-4000-8000-000000000002", [
+                    ["type": "user", "uuid": "u3", "timestamp": old, "cwd": "/home/dev/api", "origin": ["kind": "human"],
+                     "message": ["role": "user", "content": "An older question"]],
+                    ["type": "custom-title", "customTitle": "Old work"],
+                ])
+                let week = app.runCommand(["week"]).output
+                t.expect(week.contains("2 prompts in 1 conversation, 1 project, 1 day."), "counted: \(week)")
+                t.expect(week.contains("events · 2 prompts, 1 conversation, 1 day: \u{201C}Slots rename\u{201D}"), "named: \(week)")
+                t.expect(!week.contains("Old work") && !week.contains("api ·"), "ten days ago is not this week")
+                t.expect(!week.contains("Rename the slots"), "counts, never the words")
             },
         ])
     }

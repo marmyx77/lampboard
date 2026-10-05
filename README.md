@@ -808,6 +808,9 @@ choosing it copies the command that resumes it. The index lives in
 the last ninety days, kept up from the transcripts every thirty seconds, no token
 spent, left out of backups. `lampboard search <words>` answers from a terminal, and
 `lampboard search --reset` takes the index away ([D88](docs/04-decisions.md)).
+"This week" in the bar, or `lampboard week`, sums up the last seven days from the
+same index: prompts, conversations, projects, the busiest day, and per project the
+conversations' names, without a token ([D90](docs/04-decisions.md)).
 
 **A line above every session's prompt.** While another session waits for you — a
 permission, a question, a stuck or failed turn — the mod draws one line above the
@@ -1487,8 +1490,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1073 domain tests, instantaneous
-swift run LampBoardE2E                # 143 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1081 domain tests, instantaneous
+swift run LampBoardE2E                # 144 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

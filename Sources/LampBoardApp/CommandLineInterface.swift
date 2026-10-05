@@ -108,6 +108,8 @@ enum CommandLineInterface {
             return .sessions(port: port)
         case "search":
             return .search(words: args.dropFirst().joined(separator: " "))
+        case "week":
+            return .search(words: "--week")
         case "usage":
             return .usage
         case "remote":

@@ -3,7 +3,8 @@ import LampBoardCore
 
 /// `lampboard search <words>` (0.7): the conversations that say them, from the
 /// index the panel keeps — brought up to date first, so it answers whether the
-/// panel is running or not.
+/// panel is running or not. `lampboard week` is `search --week`: the week in
+/// a paragraph, from the same index.
 extension CommandLineInterface {
 
     static func runSearch(_ words: String) -> Int32 {
@@ -12,7 +13,7 @@ extension CommandLineInterface {
             print(gone ? "The search index is gone; the panel builds it again." : "The search index could not be removed.")
             return gone ? 0 : 1
         }
-        guard IndexQuery.fts(words) != nil else {
+        guard words == "--week" || IndexQuery.fts(words) != nil else {
             print("Usage: lampboard search <words>")
             return 2
         }
@@ -23,6 +24,10 @@ extension CommandLineInterface {
         }
         // The whole backlog in one go here: a person asked and is waiting.
         index.update(files: 100_000, bytes: Int.max)
+        if words == "--week" {
+            print(index.week())
+            return 0
+        }
         let hits = index.search(words, limit: 10)
         guard !hits.isEmpty else {
             print("No conversation says that.")
