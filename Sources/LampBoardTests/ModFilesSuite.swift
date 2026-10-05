@@ -73,6 +73,13 @@ enum ModFilesSuite {
                      "only what a card can show")
         },
 
+        TestCase("An edit's or a write's lines go to the panel as counts, never as text (D87)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("lines: linesOf(e.tool, e.input || {})"), "the counts with the ask")
+            t.expect(code.contains("more: goesOn(e.input || {})"), "and whether the command goes on past its first line")
+            t.expect(code.contains("return { removed: count(input.old_string), added: count(input.new_string) }"), "numbers only")
+        },
+
         TestCase("/lampmaster asks through the MCP tool's route and name, and hands the model nothing") { t in
             let code = ModFiles.register
             t.expect(code.contains("name: 'lampmaster'"), "registers /lampmaster")

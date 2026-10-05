@@ -144,6 +144,28 @@ async function hmac(key, message) {
   return hex(await sha256(outer))
 }
 
+// How many lines an edit or a write touches (D87), counted from the call's own
+// input: numbers only leave the session, never the text.
+function linesOf(tool, input) {
+  // A final newline ends the last line; it does not start another.
+  const count = (text) => (typeof text === 'string' && text.length ? text.replace(/\n$/, '').split('\n').length : 0)
+  if (tool === 'Edit') return { removed: count(input.old_string), added: count(input.new_string) }
+  if (tool === 'MultiEdit' && Array.isArray(input.edits)) {
+    return input.edits.reduce((sum, edit) => ({
+      removed: sum.removed + count(edit && edit.old_string), added: sum.added + count(edit && edit.new_string),
+    }), { removed: 0, added: 0 })
+  }
+  if (tool === 'Write') return { removed: 0, added: count(input.content) }
+  return undefined
+}
+
+// Whether a command goes on past the one line the card shows (D87): its
+// second line or its 121st character is not read there, so the card says so.
+function goesOn(input) {
+  const command = typeof input.command === 'string' ? input.command.replace(/\n+$/, '') : ''
+  return command.includes('\n') || Array.from(command).length > 120
+}
+
 // A question Claude asks (D86): put to the panel only in a shape a card can
 // show — one question, one choice, two to four options — proven with the
 // permission key like a permission, and answered only with a signed choice.
@@ -372,7 +394,10 @@ export function register(on) {
           'X-LampBoard-Nonce': nonce,
           'X-LampBoard-Proof': await hmac(key, `ask:${nonce}:${session}:${e.tool_use_id}`),
         },
-        body: JSON.stringify({ v: VERSION, session, id: e.tool_use_id, tool: e.tool, detail: detailOf(e.input || {}) }),
+        body: JSON.stringify({
+          v: VERSION, session, id: e.tool_use_id, tool: e.tool, detail: detailOf(e.input || {}),
+          lines: linesOf(e.tool, e.input || {}), more: goesOn(e.input || {}),
+        }),
       })
       // Only an answer signed with the key counts: a listener without it, on
       // a port the panel left, cannot say allow.

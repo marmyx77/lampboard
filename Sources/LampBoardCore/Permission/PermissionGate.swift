@@ -35,6 +35,8 @@ public enum PermissionGate {
         public let receivedAt: Date
         /// A question's options (D86); empty for a permission.
         public let options: [String]
+        /// What it would do, in a few words (D87).
+        public var impact: String? = nil
 
         /// Past its time with the panel: a question's is shorter (D86).
         func isDue(at now: Date) -> Bool {
@@ -64,7 +66,10 @@ public enum PermissionGate {
         else { return nil }
         let detail = (object["detail"] as? String).flatMap(ModReport.detail)
         let line = detail.map { "\(tool): \($0)" } ?? tool
-        return Request(sessionId: session, callId: call, tool: tool, line: line, receivedAt: now)
+        var request = Request(sessionId: session, callId: call, tool: tool, line: line, receivedAt: now)
+        request.impact = PermissionImpact.of(tool: tool, line: detail ?? "", lines: PermissionImpact.lines(from: object["lines"]),
+                                             partial: object["more"] as? Bool == true)
+        return request
     }
 
     // MARK: - Proof

@@ -1,13 +1,13 @@
 # Code map
 
-~59,600 lines of Swift across five targets. For each file: what it contains, why
+~59,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  17,969 lines · 140 files  pure logic, zero AppKit
-  LampBoardApp/    22,419 lines · 126 files   shell: AppKit, network, windows
-  LampBoardTests/  14,744 lines · 88 files   1060 cases, instantaneous
+  LampBoardCore/  18,076 lines · 141 files  pure logic, zero AppKit
+  LampBoardApp/    22,431 lines · 126 files   shell: AppKit, network, windows
+  LampBoardTests/  14,832 lines · 89 files   1066 cases, instantaneous
   LampBoardE2E/    4,144 lines · 18 files   141 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1125,7 +1125,7 @@ to close after them counting as delivered.
 
 ## `Permission/`
 
-### `PermissionGate.swift` · 139
+### `PermissionGate.swift` · 144
 Allow and Deny from the panel (D73, D80), as rules: the ask a session's mod posts —
 session, call, tool, and one masked line, read with the mod's own validators and
 refused rather than guessed when malformed; the verdict, one of `allow`, `deny`,
@@ -1147,6 +1147,15 @@ puts — one question, two to four options, distinct, each one clean short line 
 refused rather than guessed; the proof under its own prefix, so a permission's
 cannot stand for it; the choice signed by its index, or `ask`; twenty seconds with the panel, since a
 `tool.call` hook is dropped between 25 and 30.
+
+### `PermissionImpact.swift` · 71
+What a permission would do, beside its Allow (D87): a shell command that destroys,
+named by what it does from its one masked line — recursive deletes, force pushes,
+discarded changes, overwritten disks, dropped data, recursive permission changes,
+root, a downloaded script piped to a shell — or an edit's or a write's lines, from
+the mod's counts; "more lines unseen" when the command goes on past its first line.
+A fixed set of spellings, compiled once: a command it does not know is said nothing
+about.
 ### `PanelDepth.swift` · 43
 How much of the panel is out (UX §1): the column, the panel, the Plancia. `⌘⇧L` goes
 one deeper and from the Plancia back to the column, `Esc` one down; the widths are
@@ -1161,13 +1170,14 @@ one line of at most 120 characters; `record` reads a `ModReport` into it. In mem
 
 ## `Queue/`
 
-### `WaitingQueue.swift` · 263
+### `WaitingQueue.swift` · 267
 "Waiting for you" (UX §3, D74): the cards drawn from the rows — a permission, a
 question, a turn stuck on one tool, a failed turn, answers to read (one card each up
 to two, then one card for all), LampMaster's first open suggestion last with the
 count of the rest — in that order, then by age, read from the state the row shows.
 An ask the panel holds (D80) is a permission card of its own, carrying its call; a
 held question (D86) is a question card carrying its options, a digit choosing one.
+A permission card carries what the call would do (D87), from the mod's ask or a hook's.
 A card is armed 600 ms after the queue first shows it as it is (`Arming`): an ask's
 words are in its id, so a second permission is a new card. The keys: `J` `K` move and stop at the ends, `O` opens, `E` marks read what
 there is to read; `A` and `D` answer an ask the panel holds; `S`, `R` and the digits,
@@ -1656,7 +1666,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelPlancia.swift` | 150 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 141 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
-| `WaitingQueueSection.swift` | 179 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow, a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
+| `WaitingQueueSection.swift` | 191 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -1709,7 +1719,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1060 cases
+## `LampBoardTests/` — 1066 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1753,7 +1763,7 @@ script, before it was split. The most important ones:
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
 | `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound; a start's features, an answer's nonce and text, lines kept and cut to the bound, or its reason |
-| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run, one model call and it the fork; a side question taken proven or not, answered with the key's proof, and the start saying `ask`; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back; the band asking its route and opening through its own, never the answer route, the engine's own band when nothing waits, one clock per session stopped at its end; a question sent proven to `/question`, answered only with a signed choice, only in a shape a card shows |
+| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run, one model call and it the fork; a side question taken proven or not, answered with the key's proof, and the start saying `ask`; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back; the band asking its route and opening through its own, never the answer route, the engine's own band when nothing waits, one clock per session stopped at its end; a question sent proven to `/question`, answered only with a signed choice, only in a shape a card shows; an edit's or a write's lines sent as counts, never text |
 | `WaitingQueueSuite` | the order of urgency then age, the state the row shows when a subagent is alive, a second ask as a new card armed anew, armed from when the queue shows it, a new answer re-arming the group, an amber row with nothing said, stuck only after fifteen minutes, two ready answers alone and three as one, one LampMaster card counting the rest, a watched command that failed and not one that succeeded, armed at 600 ms, the keys and the ones not yet live, the selection kept on its card, resolved elsewhere |
 | `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
@@ -1763,6 +1773,7 @@ script, before it was split. The most important ones:
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
 | `BandSuite` | what stops work, the most urgent first, three at most, answers to read left to the panel; never the asking session's own; one clean line each, cut with an ellipsis; a secret masked and a bidi override gone; only the kind for a node; the versioned wire |
 | `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions, and with words after the name a send, saying how to switch it on while it is off; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone ; `@name ?question` asked without disturbing only a session whose mod can answer |
+| `PermissionImpactSuite` | the destructive commands named by what they do, in many spellings, a secret's mask not hiding the next command; anything else said nothing about, `git restore --staged` and `git rm --cached` included; a command that goes on said so; an edit's and a write's counts, out-of-range counts refused; the card carrying it from the mod's ask and from a hook's; a warning drawn as one, a count not |
 | `QuestionGateSuite` | a question read with its session, call, words and two to four distinct options, others refused; one clean line and short options; proven under its own prefix, a permission's proof refused; the signed choice; a question back to its dialog at 20 seconds and a permission at 55; a held question as a question card, a digit choosing, Allow not answering it |
 | `PermissionGateSuite` | HMAC-SHA256 against RFC 4231; an ask genuine only with its key's proof for its call; the same call id from another session another ask; the signed answer; answers by session and call; an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
 | `PeerBoxSuite` | a side question as one provable line then the question, nothing empty or too long; the box, the session and its busy state read from a session file as 2.1.289 writes it; no box before 2.1.224, on a relative path or another protocol; the key file for that pid only, and its token only for that process; the two lines sent, nothing empty, nothing past 64 KB; the user's words read out of the envelope, and never from another sender |
@@ -1827,7 +1838,7 @@ Seven hooks, `session.start`, `session.measure`, `tool.call`, `tool.check`,
 `127.0.0.1` with the token — `tool.check` only for a real call the engine would
 put to its dialog, asking `/check` with a nonce and its HMAC made with the permission key (never the key itself, and never the token),
 and returning the panel's `allow` or `deny` only when the answer is signed back,
-the engine's own `ask` otherwise (D80); on `AskUserQuestion` in `tool.call`, a question of one choice and two to four options put to `/question` the same way, answered only with a signed choice (D86);
+the engine's own `ask` otherwise (D80); an edit's or a write's lines counted from its input and sent as numbers (D87); on `AskUserQuestion` in `tool.call`, a question of one choice and two to four options put to `/question` the same way, answered only with a signed choice (D86);
 `session.receive`, which takes a message that starts with the panel's side-question
 line before the session sees it, whole or cut, proven or not, and only when proven answers it with
 `$.model.fork` over the conversation and posts the answer once the port has said again that it is LampBoard (D82) — its one use of the

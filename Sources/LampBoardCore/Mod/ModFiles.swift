@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.7.0"
+    public static let version = "1.8.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,7 +44,7 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
@@ -201,6 +201,28 @@ async function hmac(key, message) {
   const outer = new Uint8Array(96)
   outer.set(pad(0x5c)); outer.set(await sha256(inner), 64)
   return hex(await sha256(outer))
+}
+
+// How many lines an edit or a write touches (D87), counted from the call's own
+// input: numbers only leave the session, never the text.
+function linesOf(tool, input) {
+  // A final newline ends the last line; it does not start another.
+  const count = (text) => (typeof text === 'string' && text.length ? text.replace(/\n$/, '').split('\n').length : 0)
+  if (tool === 'Edit') return { removed: count(input.old_string), added: count(input.new_string) }
+  if (tool === 'MultiEdit' && Array.isArray(input.edits)) {
+    return input.edits.reduce((sum, edit) => ({
+      removed: sum.removed + count(edit && edit.old_string), added: sum.added + count(edit && edit.new_string),
+    }), { removed: 0, added: 0 })
+  }
+  if (tool === 'Write') return { removed: 0, added: count(input.content) }
+  return undefined
+}
+
+// Whether a command goes on past the one line the card shows (D87): its
+// second line or its 121st character is not read there, so the card says so.
+function goesOn(input) {
+  const command = typeof input.command === 'string' ? input.command.replace(/\n+$/, '') : ''
+  return command.includes('\n') || Array.from(command).length > 120
 }
 
 // A question Claude asks (D86): put to the panel only in a shape a card can
@@ -431,7 +453,10 @@ export function register(on) {
           'X-LampBoard-Nonce': nonce,
           'X-LampBoard-Proof': await hmac(key, `ask:${nonce}:${session}:${e.tool_use_id}`),
         },
-        body: JSON.stringify({ v: VERSION, session, id: e.tool_use_id, tool: e.tool, detail: detailOf(e.input || {}) }),
+        body: JSON.stringify({
+          v: VERSION, session, id: e.tool_use_id, tool: e.tool, detail: detailOf(e.input || {}),
+          lines: linesOf(e.tool, e.input || {}), more: goesOn(e.input || {}),
+        }),
       })
       // Only an answer signed with the key counts: a listener without it, on
       // a port the panel left, cannot say allow.

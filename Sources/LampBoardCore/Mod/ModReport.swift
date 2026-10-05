@@ -289,9 +289,11 @@ public enum ModReport: Equatable, Sendable {
     /// shown on a card that may be on a shared screen.
     static func masked(_ line: String) -> String {
         let rules: [(String, String)] = [
-            (#"(?i)\b(\w*(?:KEY|TOKEN|SECRET|PASS(?:WORD)?|AUTH)\w*)=(\S+)"#, "$1=***"),
+            // The value stops at a separator: what follows `;`, `&` or `|` is the
+            // next command, and the card must still read it (D87).
+            (#"(?i)\b(\w*(?:KEY|TOKEN|SECRET|PASS(?:WORD)?|AUTH)\w*)=([^\s;&|]+)"#, "$1=***"),
             (#"://([^/\s:@]+):[^@\s/]+@"#, "://$1:***@"),
-            (#"(?i)(authorization:\s*)(\S+(?:\s+\S+)?)"#, "$1***"),
+            (#"(?i)(authorization:\s*)([^\s;&|]+(?:\s+[^\s;&|]+)?)"#, "$1***"),
             (#"(?i)(--password[=\s]+)(\S+)"#, "$1***"),
         ]
         return rules.reduce(line) { text, rule in

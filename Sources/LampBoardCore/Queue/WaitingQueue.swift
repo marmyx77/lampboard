@@ -35,6 +35,8 @@ public struct WaitingCard: Sendable, Equatable, Identifiable {
     public var call: String? = nil
     /// A held question's options (D86): a digit chooses one.
     public var options: [String] = []
+    /// What a permission would do (D87).
+    public var impact: String? = nil
 }
 
 /// What waits for you, in order, and what a key does to it. Pure: the panel
@@ -59,8 +61,10 @@ public enum WaitingQueue {
             switch session.status {
             case .awaiting:
                 let question = session.pendingAsk?.tool == "AskUserQuestion"
-                cards.append(card(session, question ? .question : .permission,
-                                  line: session.pendingAsk?.sentence ?? SessionStatus.awaiting.label))
+                var asked = card(session, question ? .question : .permission,
+                                 line: session.pendingAsk?.sentence ?? SessionStatus.awaiting.label)
+                asked.impact = session.pendingAsk.flatMap { PermissionImpact.of(tool: $0.tool, line: $0.detail ?? "") }
+                cards.append(asked)
             case .failed:
                 cards.append(card(session, .failed, line: session.failureReason?.detailedLabel ?? "the turn failed"))
             // A finished command asks nothing to be read: its row already says it.
@@ -244,7 +248,7 @@ public enum WaitingQueue {
         let title = sessions.first { $0.id == ask.sessionId }?.displayName ?? "A session"
         return WaitingCard(id: "held:\(ask.sessionId):\(ask.callId)", kind: ask.options.isEmpty ? .permission : .question,
                            sessionIds: [ask.sessionId], title: title, line: ask.line, appearedAt: ask.receivedAt, more: 0,
-                           call: ask.callId, options: ask.options)
+                           call: ask.callId, options: ask.options, impact: ask.impact)
     }
 
     private static func readyCards(_ ready: [SessionState]) -> [WaitingCard] {

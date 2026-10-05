@@ -3406,3 +3406,37 @@ panel answers `choose <index> <signature>` over `choose:<nonce>:<index>`, or
 and Deny do not answer a question; a digit chooses. The answer route stays a fake
 home's only (D80): in a real install the choice is a click or a key in the panel.
 
+## D87 · A permission card says what the call would do
+
+**Decided.** Beside a permission's Allow, the card says in a few words what the
+call would do, when that can be known without running anything: a shell command
+that destroys, named by what it does — "deletes recursively", "force-pushes",
+"discards changes", "drops data", "runs as root", "runs a downloaded script" and a
+few more, in the warning colour; and for an edit or a write, how many lines it
+removes and adds, "−3 +5 lines", "writes 40 lines". A command it does not know is
+said nothing about — never called safe. The same words go to VoiceOver.
+
+**Where each part comes from.** The shell's is read off the command's one masked
+line, which the card already has — from the mod's ask and from a hook's alike, so it
+shows with the switch of D80 off too. The lines are counted by the mod, 1.8.0, from
+the call's own input (`old_string`, `new_string`, `content`, a `MultiEdit`'s edits)
+and sent as two numbers, never the text.
+
+**Why not more.** The plan had a preview of what would change — files touched, a
+`git diff --stat` — computed by the mod. The mod runs nothing (D65), and what a
+command would change cannot be known without running it; a guess presented as a
+preview is worse than none. Tried on the test Mac with the trial's sessions: the card
+read "deletes recursively" beside Deny and Allow for `rm -rf build`.
+
+**What a review changed.** The card reads one line of a command, its first, at most
+120 characters: a command that goes on past it — a second line, a long chain — is
+now said to ("more lines unseen", from the mod), so a card without a warning never
+reads as one checked whole. A secret's mask stops at `;`, `&` or `|`, so it cannot
+swallow the next command. The list is a fixed set of spellings, not a guarantee, and
+it grew: `git -C … push -f`, `-fu`, `--mirror`, `--delete`; `rm` with its flags
+anywhere; `find -delete`; `bash <(curl …)` and `$(curl …)`; `sudo` after `then`,
+`xargs` or `env`; `chmod … -R`; `git checkout .`, `git stash clear`, `shred`,
+`truncate -s0`. And it lost two false alarms: `git restore --staged` and
+`git rm --cached`. A trailing newline no longer counts as a line, and the card gives
+the project's name the room before the label.
+

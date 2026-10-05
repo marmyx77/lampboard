@@ -64,10 +64,21 @@ struct WaitingCardView: View {
                     Text(card.title)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .lineLimit(1)
+                        // The project's name before what the call would do.
+                        .layoutPriority(1)
                         // A project's name keeps both ends; LampMaster's title
                         // is a sentence, and reads from its start.
                         .truncationMode(card.kind == .lampMaster ? .tail : .middle)
                     Spacer(minLength: 2)
+                    // What it would do, beside the buttons that let it (D87).
+                    if let impact = card.impact, !resolved {
+                        Text(impact)
+                            .font(.system(size: 9, weight: PermissionImpact.warns(impact) ? .bold : .regular))
+                            .foregroundStyle(PermissionImpact.warns(impact) ? StatusPalette.color(for: .failed) : StatusPalette.timeColor)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .help(impact)
+                    }
                     if card.more > 0 {
                         Text("+\(card.more)").font(.system(size: 9, weight: .bold)).monospacedDigit().foregroundStyle(tint)
                     }
@@ -108,7 +119,8 @@ struct WaitingCardView: View {
         .opacity(resolved ? 0.45 : (armed ? 1 : 0.7))
         .contentShape(Rectangle())
         .accessibilityElement(children: card.call == nil || resolved ? .ignore : .contain)
-        .accessibilityLabel("\(kindName): \(card.title), \(resolved ? WaitingQueue.resolvedLine(card) : card.line)")
+        .accessibilityLabel("\(kindName): \(card.title), \(resolved ? WaitingQueue.resolvedLine(card) : card.line)"
+            + (card.impact.map { ", \($0)" } ?? ""))
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
         .accessibilityHint(card.call == nil || resolved ? ""
             : card.options.isEmpty ? "Allow or Deny from the actions, or A and D" : "Choose an option, or press its number")

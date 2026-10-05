@@ -816,7 +816,11 @@ put to the panel first: it waits at the top of the panel with **Allow** and
 0.6 seconds so a click meant for something else never answers it. Unanswered in
 55 seconds, it goes back to the session's own dialog, and the card says so. Only
 what the engine would have asked you: a call it allows or refuses by itself is
-never changed. A question Claude asks you with two to four options waits there the
+never changed. Beside Allow the card says what the call would do when that is known
+without running it, from the command's first line — a command that "deletes
+recursively" or "force-pushes", in red, or "more lines unseen" when it goes on past
+that line; an edit's "−3 +5 lines" ([D87](docs/04-decisions.md)). A fixed list of
+spellings, not a guarantee. A question Claude asks you with two to four options waits there the
 same way for 20 seconds, its options as buttons and on the digit keys, and the one
 you pick is your answer ([D86](docs/04-decisions.md)). The mod proves the ask with a key of its own,
 `~/.lampboard/check-key`, which it sends nowhere, and believes only an answer
@@ -1475,7 +1479,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1060 domain tests, instantaneous
+swift run LampBoardTests              # 1066 domain tests, instantaneous
 swift run LampBoardE2E                # 141 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

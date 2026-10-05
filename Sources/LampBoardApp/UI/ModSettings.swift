@@ -72,7 +72,7 @@ struct ModSettings: View {
             on the A and D keys, for up to 55 seconds; unanswered, the session shows its own \
             dialog, as it always did. A question Claude asks you with two to four options \
             waits there too, its options on the digit keys, for up to 20 seconds. Only what Claude Code would have asked you: nothing it \
-            allows or refuses by itself is ever changed. Sessions with mod 1.7.0 pick it up at once.
+            allows or refuses by itself is ever changed. Sessions with the mod pick it up at once.
             """)
             .font(.callout)
             .foregroundStyle(.secondary)
