@@ -128,6 +128,36 @@ attack() {
     fi
 }
 
+# The same, for the companion mod: Claude Code's own reading of it must go red.
+# Where there is no claude to ask it is skipped, and said.
+#   attack_mod <description> <expected fragment>
+attack_mod() {
+    local description="$1" expected="$2" before status log="$WORK/mod.log"
+    if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
+        cat > /dev/null
+        restore
+        printf '  no claude here: "%s" is not attacked on this machine\n' "$description"
+        return
+    fi
+    before="$(fingerprint)"
+    if ! python3 - ; then blunt "$description" "the mutation itself failed to run"; restore; return; fi
+    if [ "$before" = "$(fingerprint)" ]; then
+        blunt "$description" "the mutation no longer applies — this bite is stale, and has been proving nothing"
+        restore
+        return
+    fi
+    ./Scripts/check-mod.sh > "$log" 2>&1
+    status=$?
+    restore
+    if [ "$status" -eq 0 ]; then
+        blunt "$description" "check-mod.sh stayed green with the module broken"
+    elif ! grep -Fq -- "$expected" "$log"; then
+        blunt "$description" "it went red, but never said “${expected}”"
+    else
+        bit "$description"
+    fi
+}
+
 # The same, for a mutation to the Swift sources: builds, runs the domain suite,
 # and demands a specific exit code.
 #   attack_swift <description> <expected fragment> <expected exit code>
@@ -480,6 +510,18 @@ PY
 swift build > /dev/null 2>&1
 
 fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+chapter "The mod loads"
+
+# A streaming hook written as an ordinary function: Claude Code drops the whole
+# module, and check-mod.sh must say so.
+protect mod/hooks/register.js
+attack_mod "a streaming hook that is not a generator" "the mod does not load" <<'PY'
+p = "mod/hooks/register.js"
+s = open(p).read().replace("on('turn.step', async function* ($, e, next)", "on('turn.step', async ($, e, next)", 1)
+open(p, "w").write(s)
+PY
 
 # ═════════════════════════════════════════════════════════════════════════════
 printf '\n%s\n' "────────────────────────────────────────────────────────"

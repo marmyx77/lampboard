@@ -77,6 +77,9 @@ public enum AppConfig {
     /// answers enters a conversation.
     public static let decisionsPath = "/decisions"
     public static let modDecisionsPath = "/mod/decisions"
+    /// The governor (G3): the model a session runs on until the reset, asked by
+    /// the mod with the permission key and answered signed.
+    public static let modGovernorPath = "/mod/governor"
 
     /// How many slots a key can address.
     ///
@@ -290,6 +293,11 @@ public enum AppConfig {
     public static var supportDirectory: URL {
         homeDirectory
             .appendingPathComponent(".lampboard", isDirectory: true)
+    }
+
+    /// The governor's plan (G3).
+    public static var governorFile: URL {
+        supportDirectory.appendingPathComponent("governor.json")
     }
 
     /// The decision board's file (D105).

@@ -71,6 +71,8 @@ final class PanelController {
     var searchIndex: SearchIndex?
     /// The decision board, pinned and taken off from a row's menu (D105).
     var decisionBoard: DecisionBoardService?
+    /// The governor's plan (G3).
+    var governor: GovernorService?
     var onOpenLampMaster: (() -> Void)?
     /// The focus moved (G1): the notifier says what waited.
     var onFocusChanged: ((String?) -> Void)?
@@ -475,6 +477,11 @@ final class PanelController {
             unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
             decisions: { [weak self] repository in
                 self?.decisionBoard?.current.decisions(for: repository).map(\.text) ?? []
+            },
+            governorOffer: { [weak self] row in self?.governorOffer(for: row) },
+            toggleModel: { [weak self] row in
+                guard let self else { return }
+                if case .lowered = self.governorOffer(for: row) { self.releaseModel(for: row) } else { self.lowerModel(for: row) }
             },
             toggleFocus: { [weak self] row in
                 // The row's focused member, wherever it sits in the row, or its first.

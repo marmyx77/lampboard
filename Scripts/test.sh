@@ -40,6 +40,12 @@ echo
 echo "▸ End-to-end tests (port $PORT)"
 .build/debug/LampBoardE2E --port "$PORT" "$@"
 
+# The companion mod as Claude Code reads it: a module that breaks one of its rules
+# is dropped whole, silently, from every session.
+echo
+echo "▸ The mod"
+"$ROOT/Scripts/check-mod.sh"
+
 # Third, because documentation that states figures is documentation that can be
 # wrong, and nothing else in this repository would ever notice. Twenty-one of the
 # forty-seven figures in the code map had drifted before this ran for the first

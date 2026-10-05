@@ -4194,3 +4194,65 @@ line is one invented figure. The domain suite covers it:
 
 Who is burning the most, and what to do about it, is the next step (G3).
 
+## D112 · A session lowered one model until the window resets
+
+**Decided.** The plan's §5.2 asks the panel, which alone sees every session of an
+account, to lower the model of the sessions that matter less when the window is
+running out. The person chooses, from a row's menu: *Use Sonnet until the window
+resets (13:10)* lowers an Opus session one step, and Haiku is offered for a Sonnet
+one. The session in focus is never offered. The rule:
+- one step down, never further, and only on a click;
+- until the session window resets; after the reset the session is back on its own
+  model with nobody having to undo anything;
+- choosing the item again gives the model back sooner.
+
+**How it reaches the session.** The plan is kept in `~/.lampboard/governor.json`
+(0600) and read again whenever the file changes. The companion mod (1.11.0) asks
+`/mod/governor` once per turn, at `turn.start`. Like the decision board (D105), the
+request carries the token and a proof made with the permission key, and the answer
+counts only when signed with it, because choosing a model means spending. Every
+`turn.step` of that turn then names the lowered model; a subagent's steps keep the
+model they were given.
+
+**Measured on the test Mac.** Two steps.
+- A throwaway probe mod rewriting `turn.step`'s model showed that the engine obeys:
+  a session started on Sonnet answered as `claude-haiku-4-5`.
+- Then the whole chain: LampBoard's own mod, a session on Sonnet, and the panel's
+  plan lowering it. Its answers in the transcript came from `claude-haiku-4-5`.
+
+The end-to-end suite runs `/mod/governor`. It answers a proven session with its
+lowered model, signed; another session with "its own"; and nothing without the
+proof.
+
+**Two traps on the way, now behind a gate.** Claude Code checks a mod's module
+before it runs any of it, and one broken rule drops the whole module from every
+session, without a word. Both of these did it:
+- a `turn.step` hook written as an ordinary `async` function, when a streaming
+  event needs an async generator;
+- a variable named `model`, the name of a function the module hands `$` to.
+
+`Scripts/check-mod.sh` now asks `claude plugin validate`, as part of the gate, and
+`bite.sh` breaks the hook on purpose to prove the check bites.
+
+**What a review changed.**
+- The mod now asks before the turn goes on, and every step waits for that answer.
+  The first version asked afterwards, so the first step of a turn could still run
+  on the old model.
+- The reset used is the nearest one still ahead. With two accounts, a session's own
+  account is not known here, and the nearer reset cannot lower a session for longer
+  than its window.
+- A session put in focus after it was lowered goes back to its own model at its next
+  turn.
+- A session on a million-token window is not offered a step down, because the
+  smaller model's window may not hold its conversation.
+- A write that fails leaves the plan to be read again from the disk.
+
+Left as they are, and said here: the mod fails open, so with the panel closed or
+slow a lowered session runs on its own model; and a turn that runs past the reset
+stays lowered until it ends.
+
+**Left out on purpose.** "Pause until the reset", which would mean holding a
+session's prompts. So is the sheet of sessions ranked by consumption: the menu item
+sits on the row a person is already looking at, and the strip's forecast (D111) says
+when it is worth using.
+

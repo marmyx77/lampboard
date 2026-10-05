@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The permissions the panel answers, when switched on (D80).
     private let permissions = PermissionDesk()
     private let decisions = DecisionBoardService()
+    private let governor = GovernorService()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
     /// Every conversation of this Mac, searchable (0.7); kept up off the main thread.
@@ -126,6 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.askDesk = askDesk
         controller.searchIndex = searchIndex
         controller.decisionBoard = decisions
+        controller.governor = governor
         mod.onReport = { [activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)
@@ -378,6 +380,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 else { return "" }
                 return DecisionBoardExchange.answer(board: decisions.current, repository: repository.isEmpty ? nil : repository,
                                                     nonce: nonce, key: key)
+            },
+            onModGovernor: { [governor, preferences] body, nonce, proof, key in
+                guard let session = GovernorExchange.provenSession(body, nonce: nonce, proof: proof, key: key),
+                      let nonce else { return "" }
+                // The session in focus is never lowered, whenever it was put there.
+                let focused = preferences.focusedSession == session
+                return GovernorExchange.answer(model: focused ? nil : governor.model(for: session), nonce: nonce, key: key)
             }
         )
 

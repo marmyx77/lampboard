@@ -2113,3 +2113,11 @@ Permission denied". The Installer key had been imported trusting `codesign`,
 that pass; from a detached process it wanted to ask, and nobody could answer. Import
 signing identities with every tool that will use them (`-T`), and give the tool the
 keychain by name, since the login keychain of such an account is locked.
+
+## A mod's hook on a streaming event must be an async generator
+
+`turn.step` streams the model's answer through the hook chain, so its hook is
+`async function* ($, e, next) { return yield* next(e) }`. Written as an ordinary
+`async function`, the module was installed, reported "Successfully installed", and
+then never ran: no error in the session, no line in any log. `claude plugin validate`
+names the cause in one sentence. Run it on every mod before trusting a live probe.

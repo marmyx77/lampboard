@@ -303,6 +303,14 @@ Hovering it shows the sentence: "runs out ~11:40, resets 13:10". Under ten minut
 readings, or with no climb in them, it says nothing rather than guess
 ([D111](docs/04-decisions.md#d111--the-strip-says-when-the-window-runs-out-at-this-pace)).
 
+**Lowering a session until the reset.** A row whose session runs on Opus or Sonnet
+offers, in its menu, *Use Sonnet until the window resets (13:10)*, or Haiku for a
+Sonnet session. Chosen, the companion mod runs that session one model lower from
+its next turn until the window resets, then lets it go back on its own model.
+Choosing the item again gives the model back sooner. The session in focus is never
+offered. Nothing is lowered without your click
+([D112](docs/04-decisions.md#d112--a-session-lowered-one-model-until-the-window-resets)).
+
 **One group of bars per account, and the machines on other machines are asked
 too.** You can be signed in differently in different places — measured across the
 two machines this was built on, an organization account on the laptop and a
@@ -1591,8 +1599,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1158 domain tests, instantaneous
-swift run LampBoardE2E                # 156 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1163 domain tests, instantaneous
+swift run LampBoardE2E                # 157 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

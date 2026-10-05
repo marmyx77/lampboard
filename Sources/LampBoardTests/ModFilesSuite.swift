@@ -95,6 +95,15 @@ enum ModFilesSuite {
             t.expect(code.contains("next(block ? { ...e, context: [...(e.context || []), block] } : e)"), "and it is the board")
         },
 
+        TestCase("The governor's model is asked with the key, taken only signed, and applied by a generator (G3)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("${target.base}\(AppConfig.modGovernorPath)"), "the route the server serves")
+            t.expect(code.contains("hmac(key, `\(GovernorExchange.proofMessage(nonce: "${nonce}", session: "${session}"))`)"), "the proof")
+            t.expect(code.contains("hmac(key, `governed:${nonce}:${chosen}`)"), "the signature the panel makes")
+            t.expect(code.contains("on('turn.step', async function* ($, e, next)"), "a streaming hook is an async generator")
+            t.expect(code.contains("lowered && !e.agentId ? { ...e, model: lowered } : e"), "a subagent keeps the model it was given")
+        },
+
         TestCase("The board is asked with the key and taken only signed, in the panel's own words (D105)") { t in
             let code = ModFiles.register
             t.expect(code.contains("on('prompt.submit'"), "on the way down, before the prompt enters")

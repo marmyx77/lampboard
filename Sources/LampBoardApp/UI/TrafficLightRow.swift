@@ -44,6 +44,9 @@ struct RowActions {
     var pinDecision: (String) -> Void = { _ in }
     var unpinDecision: (String, Int) -> Void = { _, _ in }
     var decisions: (String) -> [String] = { _ in [] }
+    /// The governor's offer for the row, and taking it or giving it back (G3).
+    var governorOffer: (ColumnRow) -> GovernorOffer? = { _ in nil }
+    var toggleModel: (ColumnRow) -> Void = { _ in }
     /// Puts the row's session in the foreground, or takes it out (G1).
     var toggleFocus: (ColumnRow) -> Void = { _ in }
     /// Copies what reopens a background session in a terminal (AV2).
@@ -459,6 +462,10 @@ struct TrafficLightRow: View {
 
         Button(flags.isFocused ? "✓ Focus on this session" : "Focus on this session",
                action: { actions.toggleFocus(row) })
+
+        if let offer = actions.governorOffer(row) {
+            Button(offer.title, action: { actions.toggleModel(row) })
+        }
 
         // Only where a new Claude conversation can actually be opened: not on
         // another machine, not in a terminal, and not on a surface that hosts

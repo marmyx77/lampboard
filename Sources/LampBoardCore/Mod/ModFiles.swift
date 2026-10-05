@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.10.0"
+    public static let version = "1.11.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,8 +44,8 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.10.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, answers the panel's side questions without a turn, and hands each session the decisions pinned for its repository. Talks only to 127.0.0.1.",
+  "version": "1.11.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"
@@ -105,6 +105,11 @@ public enum ModFiles {
 // has changed, as context the person does not see — asked with the permission
 // key and taken only signed with it, because these words enter the
 // conversation. Nothing pinned, or no panel, and the prompt goes as typed.
+//
+// And the governor (G3): a session the person lowered one model in the panel,
+// until the window resets, runs on that model — asked at the start of each turn,
+// with the permission key, and taken only signed with it. Nothing lowered, no
+// panel, or no signature: the session's own model, untouched.
 //
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
@@ -337,6 +342,41 @@ async function boardContext($) {
     // Never told and nothing pinned, or told this very version: nothing new.
     if (version === (boards.get(session) || '-')) return null
     return { session, version, text }
+  } catch (_) {
+    return null
+  }
+}
+
+// The governor (G3): the answer each session is waiting for at its turn's start,
+// asked before the turn goes on so that its first step already has it.
+const governed = new Map()
+
+async function governorModel($) {
+  try {
+    const target = await panel($)
+    const home = await realHome($)
+    if (!target || !home) return null
+    const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+    if (!/^[0-9a-f]{16,128}$/.test(key)) return null
+    const session = await $.session.id()
+    const nonce = crypto.randomUUID()
+    let timer
+    const late = new Promise((resolve) => { timer = setTimeout(() => resolve(null), BOARD_WAIT) })
+    const reply = await Promise.race([late, $.http.fetch(`${target.base}/mod/governor`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LampBoard-Token': target.token,
+        'X-LampBoard-Nonce': nonce,
+        'X-LampBoard-Proof': await hmac(key, `governor:${nonce}:${session}`),
+      },
+      body: JSON.stringify({ v: VERSION, session }),
+    })])
+    clearTimeout(timer)
+    const [word, chosen, signature] = reply && reply.ok ? reply.text.trim().split(' ') : []
+    if (word !== 'model' || !/^(claude-[a-z0-9.-]{1,60}|-)$/.test(chosen || '')) return null
+    if (!same(signature, await hmac(key, `governed:${nonce}:${chosen}`))) return null
+    return chosen === '-' ? null : chosen
   } catch (_) {
     return null
   }
@@ -612,6 +652,19 @@ export function register(on) {
     return result
   })
 
+  // The governor (G3): asked once a turn, applied to every step of it.
+  on('turn.start', async ($, e, next) => {
+    try { governed.set(await $.session.id(), governorModel($)) } catch (_) {}
+    return next(e)
+  })
+
+  // A streaming event: its hook is an async generator, or it is dropped unseen.
+  on('turn.step', async function* ($, e, next) {
+    let lowered
+    try { lowered = await governed.get(await $.session.id()) } catch (_) {}
+    return yield* next(lowered && !e.agentId ? { ...e, model: lowered } : e)
+  })
+
   // A compacted or restarted conversation may have lost what it was handed.
   on('session.compact', async ($, e, next) => {
     const result = await next(e)
@@ -625,6 +678,7 @@ export function register(on) {
     const ending = bands.get(e.sessionId)
     if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
     boards.delete(e.sessionId)
+    governed.delete(e.sessionId)
     await post($, 'end', { session: e.sessionId, reason: e.reason })
     return result
   })

@@ -46,8 +46,8 @@ remote named `hub` pointing at that repository, and nothing else from this one.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 1158 cases, instantaneous
-swift run LampBoardE2E                # 156 cases, about a minute
+swift run LampBoardTests              # 1163 cases, instantaneous
+swift run LampBoardE2E                # 157 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
 
@@ -56,7 +56,7 @@ in a temporary root they delete, no filesystem.
 
 Both suites print `Instrument proved: 19 checks, the assertions bite.` before
 anything else. That line is the reason the count under it means something: one
-early `return` added to `expect` once made all 1158 cases report success while
+early `return` added to `expect` once made all 1163 cases report success while
 verifying nothing at all, and nothing in the project would have said so. The
 instrument is now calibrated before it is read, and a blunt one ends the run
 with exit 70 rather than the 1 of an ordinary failure.
@@ -89,7 +89,7 @@ things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and 
 could not observe what it judges. **A green with a ⚠ in it is not a green**, and
 it exits 3 to say so.
 
-`bite.sh` is the one that judges the others. It commits twenty-seven violations — a
+`bite.sh` is the one that judges the others. It commits twenty-eight violations — a
 drifted figure, a broken link, a planted home directory, a suite nobody runs, an
 assertion that has stopped asserting — and fails if any gate does not notice.
 Every mutation is undone afterwards, including on Ctrl-C.

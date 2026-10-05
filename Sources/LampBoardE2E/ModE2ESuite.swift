@@ -142,6 +142,45 @@ enum ModE2ESuite {
                 } else { a.fail("no row for the session without a repository") }
             },
 
+            TestCase("/mod/governor answers a proven session with the model it was lowered to, signed; unproven, nothing (G3)") { a in
+                let own = AppUnderTest(binaryURL: binaryURL, port: port)
+                defer { own.stop() }
+                do { try own.start() } catch { return a.fail("instance did not start: \(error)") }
+                // The plan as the panel writes it; read again because the file moved.
+                let plan = GovernorPlan().lowering(sessionId, to: "claude-sonnet-5-5", until: Date().addingTimeInterval(3600))
+                let file = own.home.appendingPathComponent(".lampboard/governor.json")
+                try? GovernorPlan.encode(plan).write(to: file)
+                func ask(_ session: String, key: String?) -> String {
+                    let nonce = UUID().uuidString
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)\(AppConfig.modGovernorPath)")!)
+                    request.httpMethod = "POST"
+                    request.setValue(own.tokenValue, forHTTPHeaderField: AccessToken.headerName)
+                    request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+                    if let key {
+                        request.setValue(PermissionGate.mac(key: key, message: GovernorExchange.proofMessage(nonce: nonce, session: session)),
+                                         forHTTPHeaderField: "X-LampBoard-Proof")
+                    }
+                    request.httpBody = Data(#"{"v":1,"session":"\#(session)"}"#.utf8)
+                    let done = DispatchSemaphore(value: 0)
+                    var said = ""
+                    URLSession.shared.dataTask(with: request) { data, _, _ in
+                        said = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                        done.signal()
+                    }.resume()
+                    _ = done.wait(timeout: .now() + 10)
+                    let parts = said.split(separator: " ").map(String.init)
+                    guard parts.count == 3, parts[2] == PermissionGate.mac(key: key ?? "", message: "governed:\(nonce):\(parts[1])")
+                    else { return "unsigned: " + said }
+                    return parts[1]
+                }
+                let key = own.checkKeyValue ?? ""
+                a.expectEqual(ask(sessionId, key: key), "claude-sonnet-5-5", "lowered, signed")
+                a.expectEqual(ask(stranger, key: key), "-", "another session: its own model")
+                a.expectEqual(ask(sessionId, key: nil), "unsigned: ", "no proof, no answer")
+                let mode = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.posixPermissions] as? NSNumber
+                a.expect(mode != nil, "the plan is where the panel reads it")
+            },
+
             TestCase("a measure lands on the row as the session's own count") { a in
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: LifecycleSuite.workspace))
                 guard app.waitUntil({ app.status(of: sessionId) == "working" }) else {

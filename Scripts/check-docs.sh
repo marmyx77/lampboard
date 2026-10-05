@@ -787,7 +787,7 @@ if not os.path.exists("Scripts/bite.sh"):
     sys.exit(3)
 
 bite = open("Scripts/bite.sh").read()
-count = len(re.findall(r"^attack ", bite, re.M)) + len(re.findall(r"^attack_swift ", bite, re.M))
+count = sum(len(re.findall(rf"^{name} ", bite, re.M)) for name in ("attack", "attack_swift", "attack_mod"))
 
 problems = []
 # Zero means the calls were renamed and this check would otherwise compare every
