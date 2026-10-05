@@ -36,6 +36,11 @@ final class SessionNotifier {
     /// or finished from one that already had. `nil` before the first pass, so
     /// what was already so at launch is not news.
     private var lastStatus: [String: SessionStatus]?
+    /// What waited while a session was in focus (G1).
+    private var hold = FocusHold()
+    /// The session in focus has been seen in this run: once it goes, the focus
+    /// goes with it, and does not come back if the id ever does.
+    private var focusSeen = false
 
     init(
         store: StateStore,
@@ -94,6 +99,13 @@ final class SessionNotifier {
     // MARK: - Reacting to state changes
 
     private func react(to state: TrafficLightState) {
+        // The focus taken off, or its session gone: what waited is said now (G1).
+        if let id = preferences.focusedSession {
+            if state.sessions[id] != nil { focusSeen = true }
+            else if focusSeen { preferences.focusedSession = nil; focusSeen = false }
+        }
+        let focused = focus(in: state)
+        if hold.focused != focused { focusChanged(to: focused, in: state) }
         announceTransitions(in: state)
         let blocked = state.sessions.values.filter { $0.status == .awaiting }
         let blockedIds = Set(blocked.map(\.id))
@@ -134,7 +146,7 @@ final class SessionNotifier {
             }
 
             announced.insert(session.id)
-            guard passesGate(session) else { continue }
+            guard passesGate(session), passesFocus(session, event: .waiting, in: state) else { continue }
             deliver(session, event: .waiting)
         }
 
@@ -161,9 +173,9 @@ final class SessionNotifier {
         guard let before = lastStatus, preferences.notificationsEnabled else { return }
         for session in state.sessions.values where before[session.id] != session.status {
             switch session.status {
-            case .failed where passesGate(session):
+            case .failed where passesGate(session) && passesFocus(session, event: .failed, in: state):
                 deliver(session, event: .failed)
-            case .ready where preferences.notifyFinished && passesGate(session):
+            case .ready where preferences.notifyFinished && passesGate(session) && passesFocus(session, event: .finished, in: state):
                 deliver(session, event: .finished)
             default:
                 continue
@@ -206,6 +218,52 @@ final class SessionNotifier {
         }
 
         return true
+    }
+
+    /// While a session is in focus the others' notifications wait (G1), kept
+    /// for the line that says what waited.
+    private func passesFocus(_ session: SessionState, event: NotificationText.Event, in state: TrafficLightState) -> Bool {
+        let focused = focus(in: state)
+        if hold.focused != focused { focusChanged(to: focused, in: state) }
+        guard !hold.admits(session.id) else { return true }
+        let name = RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName
+        hold = hold.holding(event, sessionId: session.id, name: RowActivity.flat(name))
+        Diagnostics.log("notification held for the focus: \(session.workspace.name)")
+        return false
+    }
+
+    /// The session in focus, when it is one the state has.
+    private func focus(in state: TrafficLightState) -> String? {
+        preferences.focusedSession.flatMap { state.sessions[$0] == nil ? nil : $0 }
+    }
+
+    /// The focus moved or went: what waited, and is still so, is said in one
+    /// notification — unless everything is silenced for now.
+    func focusChanged(to focused: String?, in state: TrafficLightState? = nil) {
+        let state = state ?? store.state
+        let current = hold.keeping { held in
+            guard let session = state.sessions[held.sessionId],
+                  !preferences.mutedWorkspaces.contains(session.workspace.key) else { return false }
+            return held.event != .waiting || session.status == .awaiting
+        }
+        let silenced = (preferences.mutedUntil.map { $0 > Date() }) ?? false
+        if let summary = current.summary(), preferences.notificationsEnabled, !silenced { deliverSummary(summary) }
+        hold = FocusHold(focused: focused)
+    }
+
+    private func deliverSummary(_ text: String) {
+        guard Bundle.main.bundleIdentifier != nil else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "LampBoard"
+        content.body = text
+        content.sound = .default
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: "lampboard.focus.\(UUID().uuidString)", content: content, trigger: nil)
+        ) { error in
+            Task { @MainActor in
+                Diagnostics.log(error.map { "focus summary NOT delivered: \($0.localizedDescription)" } ?? "focus summary delivered")
+            }
+        }
     }
 
     private func deliver(_ session: SessionState, event: NotificationText.Event) {

@@ -11,6 +11,7 @@ struct TrafficLightColumn: View {
     let notificationsEnabled: Bool
     let mutedWorkspaces: Set<String>
     let calmWorkspaces: Set<String>
+    var focusedSession: String? = nil
     let actions: RowActions
     /// The projects whose conversations are shown under them.
     let expandedRows: Set<String>
@@ -413,7 +414,8 @@ struct TrafficLightColumn: View {
             isCalm: calmWorkspaces.contains(row.workspace.key),
             notificationsEnabled: notificationsEnabled,
             isExpanded: expanded,
-            conflict: conflictLine(for: row)
+            conflict: conflictLine(for: row),
+            isFocused: focusedSession.map { id in row.sessions.contains { $0.id == id } } ?? false
         )
     }
 

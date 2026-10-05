@@ -4135,3 +4135,34 @@ The trial panel with `--bar-type "this week"` showed the six tiles and was
 photographed. The end-to-end suite runs `lampboard week` on one answer and the
 prompt 25 minutes after it, and checks for "waited on you 25m".
 
+## D110 · One session in focus, the others wait
+
+**Decided.** The plan's §5.3: one session in the foreground, the others served after
+it. *Focus on this session*, in the row's menu or as a button in its Plancia header,
+puts the session there and marks its row with a teal pin. Choosing it again takes
+it off. While a session is in focus, `SessionNotifier` holds the notifications of
+every other session: a permission, a failure and, for those who asked for them,
+finished turns. The rows still change colour, so the panel says everything and only
+the interruptions wait.
+
+When the focus is taken off, or its session ends, one notification says what
+waited, the most urgent kind first, with the names: "While you were focused: 1
+waiting for you (api), 1 failed (billing), 2 answers (docs-site, search)." A session
+is counted once per kind, so one that failed three times is one failure in the line.
+The choice is kept across launches, and a focus on a session that is gone counts as
+no focus.
+
+The summary says only what is still so when the focus comes off. A session answered
+or gone in the meantime is left out, as is a project muted since, and nothing sounds
+while all notifications are silenced. Once the focused session has been seen and
+ends, the focus is cleared, so it does not come back if that id is ever resumed.
+A code review asked for these.
+
+The governor (G2, G3) will treat the session in focus as the one to protect: it keeps
+its model when the others are lowered.
+
+**Measured on the test Mac.** The trial panel with `focus.session` set to the
+invented `events` session showed the pin beside its name. The hold and its summary
+are covered by the domain suite. Notifications cannot be sent from the test suites,
+which do not run as a bundle.
+

@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,906 lines · 157 files  pure logic, zero AppKit
-  LampBoardApp/    24,271 lines · 136 files   shell: AppKit, network, windows
-  LampBoardTests/  16,101 lines · 104 files   1151 cases, instantaneous
+  LampBoardCore/  19,963 lines · 158 files  pure logic, zero AppKit
+  LampBoardApp/    24,388 lines · 136 files   shell: AppKit, network, windows
+  LampBoardTests/  16,145 lines · 105 files   1154 cases, instantaneous
   LampBoardE2E/    4,588 lines · 20 files   156 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -468,6 +468,11 @@ needs, kept only while `tempo` says it is blocked. One line each, control and
 format characters turned to spaces, cut at 200. The id goes into `claude attach
 <id>`, which the person pastes into a shell: letters, digits, dashes and
 underscores, starting with a letter or a digit, or it is no job.
+
+### `FocusHold.swift` · 57
+One session in the foreground (§5.3, D110): whether a notification may go out now,
+what waits — once per session and kind — and the one line said when the focus comes
+off, the most urgent kind first, with only what is still so.
 
 ### `Workspace.swift`
 `Workspace` plus `PathNormalizer`. Path comparison is **component by component**,
@@ -1491,7 +1496,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 522
+### `main.swift` · `AppDelegate.swift` · 523
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1615,7 +1620,7 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 563 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 574 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `PermissionDesk.swift` | 218 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86) |
 | `PlanciaModel.swift` | 65 | the Plancia's state: the open session, or LampMaster's own Plancia and the sheet it opens on (D97), its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
@@ -1633,7 +1638,7 @@ there, the hooks are registered — and it names the link that broke.
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
 | `LocalClient.swift` | 179 | talks to the live instance for `sessions` and `next`, and for the `lampmaster` MCP server, which waits as long as a question may take |
-| `SessionNotifier.swift` | 259 | `awaiting` notifications after a delay, `failed` and (asked for) `ready` on the transition only, so what was already so at launch is not news; anti-duplicate memory, gate; the text from `NotificationText` |
+| `SessionNotifier.swift` | 318 | `awaiting` notifications after a delay, `failed` and (asked for) `ready` on the transition only, so what was already so at launch is not news; anti-duplicate memory, gate; the text from `NotificationText`; while a session is in focus the others wait, said in one notification when it comes off (D110) |
 | `TranscriptReader.swift` | 112 | follows one transcript by byte offset; opens on its tail, title from its head; resets when the file shrinks |
 | `TranscriptPreviewReader.swift` | 98 | the last thing said, from the file's tail, cached on its size |
 | `ContextReader.swift` | 110 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
@@ -1794,25 +1799,25 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 769 | holds everything together; row and panel actions |
+| `PanelController.swift` | 778 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 71 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow, Deny and a question's choice handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 145 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc`; the week as six tiles above its projects (D109) |
 | `PanelDecisions.swift` | 49 | the decision board from a row's menu (D105): pin a line for the row's repository, the ones already pinned shown in the question; one taken off from *Pinned decisions*, confirmed first; the same service the command line reaches, an error said in the panel |
-| `PanelPlancia.swift` | 187 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, LampMaster's from its row, asking for a round if the last is stale (D97), the header's buttons wired to the row's own actions (D98), on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
-| `PlanciaView.swift` | 262 | LampMaster's Plancia under its own name and star (D97), or a session's under its header — lamp, name, the line of facts, *Go*, *Hand over*, *Mute* (D98), its waiting card pinned under it (D101) — drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
+| `PanelPlancia.swift` | 197 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, LampMaster's from its row, asking for a round if the last is stale (D97), the header's buttons wired to the row's own actions (D98), on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
+| `PlanciaView.swift` | 270 | LampMaster's Plancia under its own name and star (D97), or a session's under its header — lamp, name, the line of facts, *Go*, *Hand over*, *Mute* (D98), its waiting card pinned under it (D101) — drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 189 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingQueueSection.swift` | 191 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 165 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 571 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
+| `TrafficLightRow.swift` | 586 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
-| `TrafficLightColumn.swift` | 535 | the column, the drag in progress, the hidden summary, the filter note; the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
+| `TrafficLightColumn.swift` | 537 | the column, the drag in progress, the hidden summary, the filter note; the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 513 | LampMaster first, above the rows — its row in the wide panel, its line in the narrow one (D97); the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 516 | LampMaster first, above the rows — its row in the wide panel, its line in the narrow one (D97); the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1857,7 +1862,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1151 cases
+## `LampBoardTests/` — 1154 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1887,6 +1892,7 @@ script, before it was split. The most important ones:
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |
+| `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |

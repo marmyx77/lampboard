@@ -75,6 +75,8 @@ struct PanelRootView: View {
     let mutedWorkspaces: Set<String>
     let calmWorkspaces: Set<String>
     let expandedRows: Set<String>
+    /// The session in the foreground (G1), or none.
+    var focusedSession: String? = nil
     let actions: PanelActions
     let rowActions: RowActions
     /// The account's allowance, when the switch is on. Its own observable rather
@@ -146,6 +148,7 @@ struct PanelRootView: View {
                 notificationsEnabled: flags.notificationsEnabled,
                 mutedWorkspaces: mutedWorkspaces,
                 calmWorkspaces: calmWorkspaces,
+                focusedSession: focusedSession,
                 actions: rowActions,
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain,

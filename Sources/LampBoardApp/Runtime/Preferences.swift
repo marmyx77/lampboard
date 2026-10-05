@@ -34,6 +34,7 @@ struct Preferences {
         static let bandHidden = "band.hidden"
         static let searchOff = "search.off"
         static let mutedUntil = "notify.mutedUntil"
+        static let focusedSession = "focus.session"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
         static let usageEnabled = "usage.enabled"
@@ -360,6 +361,16 @@ struct Preferences {
     var mutedWorkspaces: Set<String> {
         get { readSet(Key.mutedWorkspaces) }
         nonmutating set { writeSet(newValue, to: Key.mutedWorkspaces) }
+    }
+
+    /// The session in the foreground (§5.3, G1), or none: while there is one,
+    /// the others' notifications wait.
+    var focusedSession: String? {
+        get { defaults.string(forKey: Key.focusedSession) }
+        nonmutating set {
+            if let newValue { defaults.set(newValue, forKey: Key.focusedSession) }
+            else { defaults.removeObject(forKey: Key.focusedSession) }
+        }
     }
 
     /// Moment until which every notification is suspended.

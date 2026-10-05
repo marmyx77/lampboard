@@ -44,6 +44,8 @@ struct RowActions {
     var pinDecision: (String) -> Void = { _ in }
     var unpinDecision: (String, Int) -> Void = { _, _ in }
     var decisions: (String) -> [String] = { _ in [] }
+    /// Puts the row's session in the foreground, or takes it out (G1).
+    var toggleFocus: (ColumnRow) -> Void = { _ in }
     /// Copies what reopens a background session in a terminal (AV2).
     var copyAttach: (BackgroundJob) -> Void = { _ in }
 }
@@ -73,6 +75,8 @@ struct RowFlags {
     /// Another live session wrote a file this one wrote (UX §4, R3a): what to say
     /// in the ⚠'s tooltip, or `nil`.
     var conflict: String? = nil
+    /// The row holds the session in the foreground (G1).
+    var isFocused = false
 }
 
 /// One row of the column: a light and, in expanded mode, the project name with
@@ -169,6 +173,14 @@ struct TrafficLightRow: View {
                                 .foregroundStyle(StatusPalette.color(for: .failed))
                                 .tooltip(conflict)
                                 .accessibilityLabel(conflict)
+                        }
+
+                        if flags.isFocused {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(StatusPalette.lampMasterTint)
+                                .tooltip("In focus: the other sessions' notifications wait until you take it off")
+                                .accessibilityLabel("in focus")
                         }
 
                         // Answers nobody has read, from two on (R3c).
@@ -444,6 +456,9 @@ struct TrafficLightRow: View {
             Button(flags.isMuted ? "✓ Don't alert me for this project" : "Don't alert me for this project",
                    action: { actions.toggleMuted(row) })
         }
+
+        Button(flags.isFocused ? "✓ Focus on this session" : "Focus on this session",
+               action: { actions.toggleFocus(row) })
 
         // Only where a new Claude conversation can actually be opened: not on
         // another machine, not in a terminal, and not on a surface that hosts

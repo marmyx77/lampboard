@@ -45,6 +45,7 @@ let suites: [TestSuite] = [
     LampMasterBenchSuite.suite,
     BackgroundSessionSuite.suite,
     UnreadAnswersSuite.suite,
+    FocusSuite.suite,
     DecisionBoardSuite.suite,
     LampMasterSheetsSuite.suite,
     RemoteTranscriptScriptSuite.suite,

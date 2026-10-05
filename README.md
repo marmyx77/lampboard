@@ -500,6 +500,14 @@ The notification says what happened, so some are answered by reading: the comman
 waiting for a yes or the question, why the turn ended, the first line of a finished
 answer. Clicking it takes you **to that session**.
 
+**One session in focus.** *Focus on this session*, in a row's menu or as a button in
+its Plancia, puts that session in the foreground and marks its row with a pin.
+While it is there, the other sessions' notifications wait. Their rows still change
+colour; they just do not interrupt you. When you take the focus off, one
+notification says what waited: "While you were focused: 1 waiting for you (api), 2
+answers (docs-site, search)."
+([D110](docs/04-decisions.md#d110--one-session-in-focus-the-others-wait)).
+
 What suppresses an alert is only what you asked for: the memory that avoids
 duplicates, the per-project silence, and the timed one. A presence condition used
 to be there too — no alert if the panel is visible and you touched the Mac
@@ -1575,7 +1583,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1151 domain tests, instantaneous
+swift run LampBoardTests              # 1154 domain tests, instantaneous
 swift run LampBoardE2E                # 156 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

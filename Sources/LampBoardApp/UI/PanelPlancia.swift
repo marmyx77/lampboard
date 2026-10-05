@@ -84,8 +84,18 @@ extension PanelController {
             isMuted: { [weak self] id in
                 guard let self, let session = self.session(named: id) else { return false }
                 return self.preferences.mutedWorkspaces.contains(session.workspace.key)
-            }
+            },
+            toggleFocus: { [weak self] id in self?.toggleFocus(sessionId: id) },
+            isFocused: { [weak self] id in self?.preferences.focusedSession == id }
         )
+    }
+
+    /// One session in the foreground (§5.3, G1), or none: the same id again takes
+    /// it off, and the notifier says what waited.
+    func toggleFocus(sessionId: String) {
+        preferences.focusedSession = preferences.focusedSession == sessionId ? nil : sessionId
+        onFocusChanged?(preferences.focusedSession)
+        rebuildContent()
     }
 
     /// LampMaster's Plancia (UX §4): beside the list, like a session's.

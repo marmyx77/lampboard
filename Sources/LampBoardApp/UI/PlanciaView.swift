@@ -186,12 +186,15 @@ struct PlanciaActions {
     /// Mutes or unmutes the session's project, as the row's menu does.
     let toggleMuted: (String) -> Void
     let isMuted: (String) -> Bool
+    /// Puts the session in the foreground, or takes it out (G1).
+    var toggleFocus: (String) -> Void = { _ in }
+    var isFocused: (String) -> Bool = { _ in false }
 }
 
 /// The session in focus, above every tab (UX §5): its lamp, its name, the line of
 /// facts — machine, surface and agent, model, context, cost — and what can be done
-/// to it from here. Resume waits for closed conversations in the Plancia, Focus
-/// for the governor (0.8).
+/// to it from here: Go, Hand over, Mute, Focus (G1). Resume waits for closed
+/// conversations in the Plancia.
 struct PlanciaHeaderView: View {
     let session: SessionState
     let actions: PlanciaActions?
@@ -225,6 +228,11 @@ struct PlanciaHeaderView: View {
                     button(muted ? "Unmute" : "Mute", muted ? "bell" : "bell.slash",
                            muted ? "Notify again for this project" : "No notifications for this project") {
                         actions.toggleMuted(session.id)
+                    }
+                    let focused = actions.isFocused(session.id)
+                    button(focused ? "Unfocus" : "Focus", focused ? "pin.slash" : "pin",
+                           focused ? "Let the other sessions notify again" : "The other sessions' notifications wait until you take it off") {
+                        actions.toggleFocus(session.id)
                     }
                     Spacer(minLength: 0)
                 }

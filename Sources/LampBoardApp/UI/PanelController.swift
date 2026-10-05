@@ -72,6 +72,8 @@ final class PanelController {
     /// The decision board, pinned and taken off from a row's menu (D105).
     var decisionBoard: DecisionBoardService?
     var onOpenLampMaster: (() -> Void)?
+    /// The focus moved (G1): the notifier says what waited.
+    var onFocusChanged: ((String?) -> Void)?
     var tour: TourController?
 
     var onNotificationToggle: ((Bool) -> Void)?
@@ -290,6 +292,7 @@ final class PanelController {
             mutedWorkspaces: preferences.mutedWorkspaces,
             calmWorkspaces: preferences.calmBlinkWorkspaces,
             expandedRows: preferences.expandedRows,
+            focusedSession: preferences.focusedSession,
             actions: makeActions(),
             rowActions: makeRowActions(),
             allowance: allowance,
@@ -472,6 +475,12 @@ final class PanelController {
             unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
             decisions: { [weak self] repository in
                 self?.decisionBoard?.current.decisions(for: repository).map(\.text) ?? []
+            },
+            toggleFocus: { [weak self] row in
+                // The row's focused member, wherever it sits in the row, or its first.
+                guard let self else { return }
+                let held = row.sessions.first { $0.id == self.preferences.focusedSession }
+                self.toggleFocus(sessionId: held?.id ?? row.primary.id)
             },
             copyAttach: { job in
                 NSPasteboard.general.clearContents()

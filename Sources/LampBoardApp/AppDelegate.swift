@@ -215,6 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller?.isPanelVisible ?? false
         })
         self.notifier = notifier
+        controller.onFocusChanged = { [weak notifier] focused in notifier?.focusChanged(to: focused) }
 
         // The bundle guard is **not** redundant with the ones inside
         // `SessionNotifier`: `UNUserNotificationCenter.current()` does not return
