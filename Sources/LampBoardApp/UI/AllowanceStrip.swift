@@ -44,6 +44,8 @@ struct AllowanceStrip: View {
     /// Why there is nothing, when there is nothing.
     let quiet: String?
     let compact: Bool
+    /// Per account, when the session window would run out before it resets (G2).
+    var forecasts: [String: String] = [:]
 
     /// Whether to name the account. Off with a single one, where the address is a
     /// line of text telling the person what they already know; on the moment there
@@ -111,10 +113,23 @@ struct AllowanceStrip: View {
                         .foregroundStyle(Color.primary.opacity(0.70))
                         .frame(width: 34, alignment: .trailing)
 
-                    Text(reset(limit))
-                        .font(Self.face.monospacedDigit())
-                        .foregroundStyle(StatusPalette.timeColor)
-                        .frame(width: 34, alignment: .trailing)
+                    // At the last hour's pace this window runs out before it resets:
+                    // the time it runs out takes the reset's place, in the warning's
+                    // colour, and the sentence is a hover away (G2).
+                    if limit.span == .session, let warning = forecasts[report.label],
+                       let clock = warning.split(separator: ",").first?.split(separator: " ").last {
+                        Text(String(clock))
+                            .font(Self.face.monospacedDigit())
+                            .foregroundStyle(StatusPalette.warningTint)
+                            .frame(width: 44, alignment: .trailing)
+                            .tooltip(warning)
+                            .accessibilityLabel(warning)
+                    } else {
+                        Text(reset(limit))
+                            .font(Self.face.monospacedDigit())
+                            .foregroundStyle(StatusPalette.timeColor)
+                            .frame(width: 34, alignment: .trailing)
+                    }
                 }
             }
             .frame(height: Layout.allowanceLine)

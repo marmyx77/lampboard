@@ -20,6 +20,11 @@ final class AllowanceMonitor: ObservableObject {
     /// One group of bars per account, local first. Empty while the switch is off,
     /// before the first ask, or when nothing could be read.
     @Published private(set) var reports: [AllowanceReport] = []
+    /// Per account, "runs out ~11:40, resets 13:10" when the session window would
+    /// run out before it resets at the last hour's pace (G2).
+    @Published private(set) var forecasts: [String: String] = [:]
+    /// The session window's readings per account, the last two hours.
+    private var history: [String: [AllowanceForecast.Sample]] = [:]
 
     /// What the usage service answered, and the windows the companion mod
     /// reported for this Mac's default account. `reports` is the two together
@@ -145,6 +150,20 @@ final class AllowanceMonitor: ObservableObject {
 
     private func publish() {
         reports = ModAllowance.merged(serviceReports, mod: modWindows, machine: AccountLimitsReader.localMachine)
+        forecasts = forecast(reports, now: Date())
+    }
+
+    /// Each account's session window, remembered and read for its pace (G2).
+    private func forecast(_ reports: [AllowanceReport], now: Date) -> [String: String] {
+        var said: [String: String] = [:]
+        for report in reports {
+            guard let session = report.limits.limits.first(where: { $0.span == .session }) else { continue }
+            let kept = (history[report.label] ?? []).filter { now.timeIntervalSince($0.at) <= 2 * AllowanceForecast.window }
+            let sample = AllowanceForecast.Sample(at: report.limits.readAt, percent: session.percent)
+            history[report.label] = kept.contains(sample) ? kept : kept + [sample]
+            said[report.label] = AllowanceForecast.warning(history[report.label] ?? [], resetsAt: session.resetsAt, now: now)
+        }
+        return said
     }
 
     /// The trial's invented line. No request is made: the trial never reaches

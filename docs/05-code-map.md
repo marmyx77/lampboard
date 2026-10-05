@@ -1,13 +1,13 @@
 # Code map
 
-~65,200 lines of Swift across five targets. For each file: what it contains, why
+~65,600 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,963 lines · 158 files  pure logic, zero AppKit
-  LampBoardApp/    24,388 lines · 136 files   shell: AppKit, network, windows
-  LampBoardTests/  16,145 lines · 105 files   1154 cases, instantaneous
+  LampBoardCore/  20,022 lines · 159 files  pure logic, zero AppKit
+  LampBoardApp/    24,423 lines · 136 files   shell: AppKit, network, windows
+  LampBoardTests/  16,197 lines · 106 files   1158 cases, instantaneous
   LampBoardE2E/    4,588 lines · 20 files   156 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -321,6 +321,11 @@ wrong (D47).
 The uuid, not the address, is what decides two machines are spending the same
 allowance. Without one on either side the answer is *no*: drawing a group twice is
 a smaller failure than hiding a second account's allowance.
+
+### `AllowanceForecast.swift` · 59
+When the session window runs out at the last hour's pace (D111): a least-squares line
+through the readings since the last reset, at least ten minutes of them and climbing,
+or no forecast; the sentence only when it would run out before it resets.
 
 ### `AllowanceReport.swift`
 One account's allowance and where it was read, plus the rule that collapses two
@@ -1660,7 +1665,7 @@ there, the hooks are registered — and it names the link that broke.
 | `ConversationIndex.swift` | 120 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 340 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
-| `AllowanceMonitor.swift` | 156 | the timer behind that strip. On a 429 it keeps the last readings and waits longer before asking again (D54). No timer and no request while the switch is off: a feature that reaches the network is either off or on. The strip is the service's answers merged with the mod's windows (D67), which need no switch: they never leave the Mac |
+| `AllowanceMonitor.swift` | 175 | the timer behind that strip. On a 429 it keeps the last readings and waits longer before asking again (D54). No timer and no request while the switch is off: a feature that reaches the network is either off or on. The strip is the service's answers merged with the mod's windows (D67), which need no switch: they never leave the Mac; each account's session-window readings kept two hours, for the forecast (D111) |
 | `UpdateChecker.swift` | 107 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 288 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
@@ -1811,13 +1816,13 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelActivation.swift` | 165 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
-| `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
+| `AllowanceStrip.swift` | 194 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; the time the window runs out in place of the reset, in orange, when that is first (D111) |
 | `TrafficLightRow.swift` | 586 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 537 | the column, the drag in progress, the hidden summary, the filter note; the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 516 | LampMaster first, above the rows — its row in the wide panel, its line in the narrow one (D97); the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 517 | LampMaster first, above the rows — its row in the wide panel, its line in the narrow one (D97); the general menu, and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 73 | the dot, the silenceable blink, and the ring for an open ear |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 180 | what the six colours and the two rings mean, counted live (D31) |
@@ -1862,7 +1867,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1154 cases
+## `LampBoardTests/` — 1158 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1893,6 +1898,7 @@ script, before it was split. The most important ones:
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |
 | `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
+| `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |

@@ -155,7 +155,8 @@ struct PanelRootView: View {
                 conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:]
             )
             AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
-                           reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact)
+                           reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
+                           forecasts: allowance.forecasts)
             issueStrip
             footer
         }

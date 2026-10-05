@@ -4166,3 +4166,31 @@ invented `events` session showed the pin beside its name. The hold and its summa
 are covered by the domain suite. Notifications cannot be sent from the test suites,
 which do not run as a bundle.
 
+## D111 · The strip says when the window runs out, at this pace
+
+**Decided.** The plan's §5.2 begins with a sentence only this panel can say,
+because only it sees every session of an account at once: "at this pace you run
+out at 11:40, and the window resets at 13:10". `AllowanceMonitor` keeps each
+account's session-window readings for two hours. `AllowanceForecast` draws a
+straight line through the readings of the last hour since the last reset, using
+least squares, and finds where the line reaches a hundred. A reading lower than the
+one before it marks a reset and starts the history again.
+
+The pace is read over an hour: long enough to smooth one busy turn, short enough to
+notice that three sessions have just started. A forecast needs at least ten minutes
+of readings on a line that climbs; anything less is no forecast, never a guess.
+
+The strip changes only when the forecast matters, which is when the window would run
+out before it resets. The time it runs out then takes the reset's place at the end
+of the line, in the warning orange, and hovering it gives the whole sentence. A
+forecast past the reset changes nothing and is not shown.
+
+**Not photographed.** It needs an hour of real readings, and the trial's allowance
+line is one invented figure. The domain suite covers it:
+- the pace and the time it runs out;
+- too little to fit: one reading, five minutes, a flat line;
+- a reset starting the history again;
+- the sentence only when the window would run out before it resets.
+
+Who is burning the most, and what to do about it, is the next step (G3).
+

@@ -295,6 +295,14 @@ the ring beside each row already means how full *that conversation's* context
 window is, and a second ring meaning something else would read as the same
 measurement about a different subject.
 
+**When the window runs out before it resets.** The panel remembers the session
+window's readings, and at the pace of the last hour it works out when the window
+reaches a hundred. When that would happen before the window resets, the time it
+runs out takes the reset's place at the end of the line, in orange, such as `~11:40`.
+Hovering it shows the sentence: "runs out ~11:40, resets 13:10". Under ten minutes of
+readings, or with no climb in them, it says nothing rather than guess
+([D111](docs/04-decisions.md#d111--the-strip-says-when-the-window-runs-out-at-this-pace)).
+
 **One group of bars per account, and the machines on other machines are asked
 too.** You can be signed in differently in different places — measured across the
 two machines this was built on, an organization account on the laptop and a
@@ -1583,7 +1591,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1154 domain tests, instantaneous
+swift run LampBoardTests              # 1158 domain tests, instantaneous
 swift run LampBoardE2E                # 156 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
