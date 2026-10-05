@@ -146,6 +146,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.sendFromPlancia(text) }
             }
         }
+        // What the bar does when typed in: only against a fake home, the test
+        // Mac's way to try `@name message` (D81) without hands.
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--bar-type"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let text = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.typeIntoBar(text) }
+        }
         panelController = controller
 
         startNotifier(for: controller)

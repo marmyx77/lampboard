@@ -29,10 +29,14 @@ final class CommandBarModel: ObservableObject {
     var onAction: (CommandBar.Action) -> Void = { _ in }
     /// Asks LampMaster, the way a session does through the MCP tool.
     var onAsk: (String) async -> String = { _ in "" }
+    /// `@name message`: the message to that session, through its composer;
+    /// `false` when it did not go, and the bar keeps the text.
+    var onSend: (String, String) -> Bool = { _, _ in false }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
     private var lampMasterEnabled = false
+    private var sendingEnabled = false
     private var question: Task<Void, Never>?
 
     /// Results only while something is typed. Empty, the queue below already
@@ -46,9 +50,10 @@ final class CommandBarModel: ObservableObject {
         onLayoutChange()
     }
 
-    func update(rows: [ColumnRow], lampMasterEnabled: Bool) {
+    func update(rows: [ColumnRow], lampMasterEnabled: Bool, sendingEnabled: Bool) {
         self.rows = rows
         self.lampMasterEnabled = lampMasterEnabled
+        self.sendingEnabled = sendingEnabled
         refresh()
     }
 
@@ -69,6 +74,12 @@ final class CommandBarModel: ObservableObject {
             clear()
         case .action:
             if let action = result.action { onAction(action) }
+            clear()
+        case .send:
+            // Switched off, the result says how to switch it on, and stays.
+            guard sendingEnabled, let id = result.sessionId,
+                  case .mention(_, let message) = CommandBar.parse(text), !message.isEmpty,
+                  onSend(id, message) else { return }
             clear()
         case .ask:
             guard lampMasterEnabled, case .ask(let asked) = CommandBar.parse(text), !asking else { return }
@@ -118,9 +129,15 @@ final class CommandBarModel: ObservableObject {
     }
 
     private func refresh() {
-        let next = CommandBar.results(for: CommandBar.parse(text), rows: rows, now: Date(), lampMasterEnabled: lampMasterEnabled)
+        let next = CommandBar.results(for: CommandBar.parse(text), rows: rows, now: Date(),
+                                      lampMasterEnabled: lampMasterEnabled, sendingEnabled: sendingEnabled)
         guard next != results else { return }
+        // The selection stays on the result it was on, not on its place: a
+        // list reordered by a status change must not turn `⏎` into a send to
+        // another session (a review finding).
+        let was = shownResults.indices.contains(selected) ? shownResults[selected].id : nil
         results = next
+        if let was, let index = shownResults.firstIndex(where: { $0.id == was }) { selected = index }
         selected = CommandBar.move(selected, by: 0, count: shownResults.count)
         onLayoutChange()
     }

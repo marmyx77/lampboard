@@ -60,6 +60,31 @@ enum CommandBarSuite {
             t.expectEqual(found.map(\.sessionId), ["id-events"])
         },
 
+        TestCase("@ with words after the name sends them, once the switch is on") { t in
+            let on = CommandBar.results(for: CommandBar.parse("@api run the tests"), rows: rows, now: t0,
+                                        lampMasterEnabled: true, sendingEnabled: true)
+            t.expectEqual(on.first?.kind, .send)
+            t.expectEqual(on.first?.sessionId, "id-api", "the exact name first")
+            t.expectEqual(on.first?.title, "Send to api: run the tests")
+            t.expectEqual(on.map(\.kind), [.send, .send], "api and api-gateway, each a send")
+            let off = CommandBar.results(for: CommandBar.parse("@api run the tests"), rows: rows, now: t0, lampMasterEnabled: true)
+            t.expectEqual(off.first?.kind, .send)
+            t.expectEqual(off.first?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
+            let bare = CommandBar.results(for: CommandBar.parse("@api"), rows: rows, now: t0, lampMasterEnabled: true, sendingEnabled: true)
+            t.expectEqual(bare.first?.kind, .session, "a name alone finds the session")
+        },
+
+        TestCase("A session on another Mac is said, never sent to from here") { t in
+            let away = SessionState(id: "id-node", status: .idle, workspace: Workspace(path: "/home/dev/nodeapp", host: "node"),
+                                    updatedAt: t0, statusSince: t0, origin: .terminal)
+            let row = ColumnRow(id: "row-node", workspace: away.workspace, sessions: [away])
+            let found = CommandBar.results(for: CommandBar.parse("@nodeapp deploy"), rows: [row], now: t0,
+                                           lampMasterEnabled: true, sendingEnabled: true)
+            t.expectEqual(found.first?.kind, .send)
+            t.expectNil(found.first?.sessionId, "nothing to send to")
+            t.expectEqual(found.first?.detail, "On another Mac: the panel cannot write there yet")
+        },
+
         TestCase("? goes to LampMaster, or says it is off") { t in
             let on = CommandBar.results(for: .ask("who renamed slots"), rows: rows, now: t0, lampMasterEnabled: true)
             t.expectEqual(on.first?.kind, .ask)

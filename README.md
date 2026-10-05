@@ -591,6 +591,10 @@ message came from another program, not typed in its own terminal, and holds it t
 the session's own permissions: it can ask for work, never grant itself more. It
 appears in the conversation as yours.
 
+**From the bar**, with sending on and without opening anything first: `⌘K`, then `@name` and the
+message — `@api run the tests` — and `⏎`. The Plancia opens on that session and the
+message goes through its composer, so you see it arrive and the answer come back.
+
 **Through the mailbox** for a session without a box:
 
 ```
@@ -1434,7 +1438,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1035 domain tests, instantaneous
+swift run LampBoardTests              # 1037 domain tests, instantaneous
 swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

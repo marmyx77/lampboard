@@ -3167,3 +3167,13 @@ finding). A box gone since the window opened sends through the mailbox; a messag
 the conversation has not shown in a minute stops being "on its way". A session on
 another machine keeps the mailbox: its box is there, not here.
 
+**From the bar (SQ3).** `@name message` in the bar (D77) lists each session the
+name finds as "Send to …", and `⏎` opens the Plancia on it and sends through its
+composer: the same switch, the same box or mailbox, and the message seen arriving.
+Switched off, the result says where to switch it on and sends nothing; a session
+on another Mac is said as such and sent nothing; a send refused keeps the text in
+the bar; and the selection follows its result, so a list reordered by a status
+change never turns `⏎` into a send to another session (a review's findings). Tried on the
+test Mac by typing into the bar through `--bar-type` (fake home only): the session
+answered and the Plancia showed both.
+

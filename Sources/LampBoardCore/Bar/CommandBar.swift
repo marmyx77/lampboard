@@ -8,8 +8,8 @@ public enum CommandBar {
     public enum Query: Sendable, Equatable {
         case empty
         case text(String)
-        /// `@name message`: a session, and what to say to it once the panel can
-        /// (D73). Today it finds the session.
+        /// `@name message`: a session, and what to say to it (D73, D81); a name
+        /// alone finds it.
         case mention(name: String, message: String)
         /// `?question`: to LampMaster.
         case ask(String)
@@ -43,7 +43,7 @@ public enum CommandBar {
     }
 
     public struct Result: Sendable, Equatable, Identifiable {
-        public enum Kind: Sendable, Equatable { case session, action, ask }
+        public enum Kind: Sendable, Equatable { case session, action, ask, send }
         public let id: String
         public let kind: Kind
         public let title: String
@@ -69,7 +69,8 @@ public enum CommandBar {
         }
     }
 
-    public static func results(for query: Query, rows: [ColumnRow], now: Date, lampMasterEnabled: Bool) -> [Result] {
+    public static func results(for query: Query, rows: [ColumnRow], now: Date, lampMasterEnabled: Bool,
+                               sendingEnabled: Bool = false) -> [Result] {
         switch query {
         case .empty:
             return Array(rows.filter { $0.status.clearsOnFocus }
@@ -79,8 +80,20 @@ public enum CommandBar {
             let words = text.lowercased()
             return Array((sessions(matching: words, rows: rows, now: now, namesOnly: false)
                 + actions(matching: words)).prefix(shownAtOnce))
-        case .mention(let name, _):
-            return Array(sessions(matching: name.lowercased(), rows: rows, now: now, namesOnly: true).prefix(shownAtOnce))
+        case .mention(let name, let message):
+            let found = Array(sessions(matching: name.lowercased(), rows: rows, now: now, namesOnly: true).prefix(shownAtOnce))
+            guard !message.isEmpty else { return found }
+            // One line, like a title: what is about to be said is read before it is.
+            let said = RowActivity.flat(message)
+            let remote = Set(rows.filter(\.workspace.isRemote).map { "session:" + $0.id })
+            return found.map { session in
+                // A session on another Mac has its box there: said, and nothing
+                // to send to (no session id), rather than a send that goes nowhere.
+                let away = remote.contains(session.id)
+                return Result(id: "send:" + session.id, kind: .send, title: "Send to \(session.title): \(said)",
+                              detail: away ? sendingRemote : (sendingEnabled ? "into its conversation, as you" : sendingOff),
+                              sessionId: away ? nil : session.sessionId, action: nil, status: session.status)
+            }
         case .command(let name, _):
             return actions(matching: name)
         case .ask(let question):
@@ -91,6 +104,9 @@ public enum CommandBar {
                            sessionId: nil, action: nil, status: nil)]
         }
     }
+
+    static let sendingOff = "Turn on \"Let the panel answer your sessions\" in the panel menu first"
+    static let sendingRemote = "On another Mac: the panel cannot write there yet"
 
     /// The selection after a move, kept inside the list.
     public static func move(_ index: Int, by step: Int, count: Int) -> Int {

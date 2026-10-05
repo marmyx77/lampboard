@@ -729,6 +729,7 @@ final class PanelController {
         preferences.messageSendingEnabled = wanted
         reinstallHooksForMessageSending()
         rebuildContent()
+        refreshBar()
     }
 
     /// Re-registers the hooks so the delivery listener follows the switch.

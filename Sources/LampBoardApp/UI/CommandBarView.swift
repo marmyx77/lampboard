@@ -90,6 +90,7 @@ struct CommandBarView: View {
                 case .session: TrafficLightDot(status: result.status ?? .idle, calm: true, listening: false).scaleEffect(0.7)
                 case .action: Image(systemName: "gearshape").font(.system(size: 9))
                 case .ask: Image(systemName: "sparkle").font(.system(size: 9)).foregroundStyle(StatusPalette.lampMasterTint)
+                case .send: Image(systemName: "paperplane").font(.system(size: 9))
                 }
             }
             .frame(width: Layout.dotSize)

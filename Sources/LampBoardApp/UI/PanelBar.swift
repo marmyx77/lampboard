@@ -33,6 +33,20 @@ extension PanelController {
             ])) ?? Data()
             return await lampMaster.tool(body).text
         }
+        // Through the Plancia's composer, opened on that session: the same
+        // switch, the same box or mailbox, and the message seen as it goes.
+        bar.onSend = { [weak self] id, message in
+            guard let self, self.session(named: id) != nil else {
+                Diagnostics.log("bar: send to \(id) refused, no such session")
+                return false
+            }
+            self.openPlancia(sessionId: id)
+            guard let thread = self.plancia.thread, thread.sessionId == id else {
+                Diagnostics.log("bar: send to \(id) refused, its Plancia did not open")
+                return false
+            }
+            return thread.send(message)
+        }
         bar.onLayoutChange = { [weak self] in
             guard let self else { return }
             self.resizeToFit(self.store.state)
@@ -74,7 +88,26 @@ extension PanelController {
         bar.focus()
     }
 
+    /// What typing in the bar and `⏎` do, for `--bar-type` on a fake home:
+    /// waits up to a minute for the text to find something, then submits once.
+    func typeIntoBar(_ text: String, attempts: Int = 30) {
+        if isCompact, !store.state.sessions.isEmpty { toggleCompact() }
+        refreshBar()
+        bar.focus()
+        bar.text = text
+        guard !bar.shownResults.isEmpty else {
+            guard attempts > 0 else { return Diagnostics.log("bar-type: nothing found for it") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.typeIntoBar(text, attempts: attempts - 1) }
+            return
+        }
+        Diagnostics.log("bar-type: \(bar.shownResults[0].title)")
+        bar.submit()
+        // Pinned, so the Plancia stays to be photographed.
+        plancia.pinned = true
+    }
+
     func refreshBar() {
-        bar.update(rows: currentRendering.rows, lampMasterEnabled: lampMaster?.snapshot.enabled ?? false)
+        bar.update(rows: currentRendering.rows, lampMasterEnabled: lampMaster?.snapshot.enabled ?? false,
+                   sendingEnabled: preferences.messageSendingEnabled)
     }
 }
