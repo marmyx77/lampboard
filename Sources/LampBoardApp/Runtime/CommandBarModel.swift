@@ -28,6 +28,8 @@ final class CommandBarModel: ObservableObject {
     @Published private(set) var focusTick = 0
 
     var onOpenSession: (String) -> Void = { _ in }
+    /// Any result chosen: what the tour's ⌘K step waits for.
+    var onChose: () -> Void = {}
     var onAction: (CommandBar.Action) -> Void = { _ in }
     /// Asks LampMaster, the way a session does through the MCP tool.
     var onAsk: (String) async -> String = { _ in "" }
@@ -87,6 +89,7 @@ final class CommandBarModel: ObservableObject {
     }
 
     func choose(_ result: CommandBar.Result) {
+        onChose()
         switch result.kind {
         case .session:
             if let id = result.sessionId { onOpenSession(id) }

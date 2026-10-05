@@ -982,6 +982,17 @@ permission key and takes it only when it is signed with that key, so nothing els
 listening on the port can put words in front of a model
 ([D105](docs/04-decisions.md#d105--a-decision-pinned-for-a-repository-reaches-every-session-in-it)).
 
+## The tutorial
+
+*Take the tour…*, in the panel's menu or the lamp's, opens a second panel on
+invented sessions: the real app on a temporary home, marked TRIAL at the top. A
+band says one thing at a time, and each step moves on only when you do it: click
+the green row, then the amber one; press `⌘⇧L` until the Plancia opens; right-click
+`events` › *Open in the Plancia*; `⌘K`, `@ev`, Return; point at the allowance; put a
+session in focus; say *I'm away* and come back; answer LampMaster's card. *Skip*
+leaves it, and it resumes where you stopped. Nothing in it touches your sessions
+([D64](docs/04-decisions.md), [D119](docs/04-decisions.md#d119--the-tour-for-10-every-gesture-done-for-real)).
+
 ## Installation
 
 ```bash
@@ -1644,7 +1655,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1185 domain tests, instantaneous
+swift run LampBoardTests              # 1186 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

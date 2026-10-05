@@ -11,15 +11,26 @@ public enum Tour {
 
     /// What the panel can do in this version. A step names the one it teaches.
     public enum Feature: String, Codable, Sendable, CaseIterable {
-        case rows, allowFromPanel, depths, plancia, commandBar, squad, allowance, lampMaster
+        case rows, allowFromPanel, depths, plancia, commandBar, squad, allowance, focus, away, lampMaster, lampMasterAsk
     }
 
     /// What the panel reports when the person does something.
     public enum Event: Equatable, Sendable {
         case rowOpened(session: String)
+        /// `⌘⇧L` reached its last depth: the Plancia.
+        case depthReachedPlancia
+        case planciaOpened(session: String)
+        /// A result of the bar was chosen: a session, an action, a message.
+        case barChose
+        case permissionAnswered(session: String)
+        case sideQuestionAnswered(session: String)
         case allowanceInspected
+        /// A session put in focus.
+        case focused
+        case awayToggled(on: Bool)
         case lampMasterOpened
         case lampMasterAnswered
+        case lampMasterAsked
     }
 
     /// Where the ring and the bubble point.
@@ -27,6 +38,8 @@ public enum Tour {
         case row(session: String)
         case allowance
         case lampMaster
+        case bar
+        case panelMenu
     }
 
     public struct Step: Equatable, Sendable {
@@ -37,32 +50,43 @@ public enum Tour {
         public let teaches: Feature
     }
 
-    /// The features 0.5 has. Each later version adds its own.
-    public static let available: Set<Feature> = [.rows, .allowance, .lampMaster]
+    /// The longest sentence the band holds in two lines of the narrow panel.
+    public static let longestText = 100
 
-    /// Every step of the tour, in order, for every version. UX §13.3.
+    /// What the trial can show. The answer from the panel, the squad and a
+    /// question to LampMaster need scripted answers the trial does not have
+    /// yet: a step the trial cannot complete is not shown.
+    public static let available: Set<Feature> = [.rows, .depths, .plancia, .commandBar, .allowance, .focus, .away, .lampMaster]
+
+    /// Every step of the tour, in order, for every version. UX §13.3, and the
+    /// 0.7 and 0.8 features after it.
     public static func all(_ script: DemoScript = .standard) -> [Step] {
-        let docs = script.sessions[0].id, api = script.sessions[1].id
+        let docs = script.sessions[0].id, api = script.sessions[1].id, events = script.sessions[2].id
         return [
             Step(id: "colours", text: "Yellow: working. Green: finished, with something to read. Click the green row.",
                  anchor: .row(session: docs), waitsFor: .rowOpened(session: docs), teaches: .rows),
             Step(id: "amber", text: "Amber: it is waiting for you — the only thing here that blinks. Click it to go there.",
                  anchor: .row(session: api), waitsFor: .rowOpened(session: api), teaches: .rows),
-            Step(id: "allow", text: "You can answer from here, without changing window.",
-                 anchor: .row(session: api), waitsFor: .rowOpened(session: api), teaches: .allowFromPanel),
-            Step(id: "depths", text: "Three depths: Column at a glance, Panel, Plancia to act.",
-                 anchor: .row(session: docs), waitsFor: .rowOpened(session: docs), teaches: .depths),
-            Step(id: "plancia", text: "Space opens a session in the Plancia: thread, activity, cost.",
-                 anchor: .row(session: docs), waitsFor: .rowOpened(session: docs), teaches: .plancia),
-            Step(id: "command", text: "⌘K is the door to everything: search, @ for a session, ? for LampMaster.",
-                 anchor: .row(session: docs), waitsFor: .rowOpened(session: docs), teaches: .commandBar),
-            Step(id: "squad", text: "Ask a session what another knows. LampBoard carries the question and the answer.",
-                 anchor: .row(session: docs), waitsFor: .rowOpened(session: docs), teaches: .squad),
+            Step(id: "allow", text: "You can answer from here, without changing window: Allow, or press A.",
+                 anchor: .row(session: api), waitsFor: .permissionAnswered(session: api), teaches: .allowFromPanel),
+            Step(id: "depths", text: "Three depths: the column, the panel, the Plancia to act. Press ⌘⇧L until the Plancia opens.",
+                 anchor: .panelMenu, waitsFor: .depthReachedPlancia, teaches: .depths),
+            Step(id: "plancia", text: "The Plancia shows one session: thread, activity, cost. Right-click events › Open in the Plancia.",
+                 anchor: .row(session: events), waitsFor: .planciaOpened(session: events), teaches: .plancia),
+            Step(id: "command", text: "⌘K is the door to everything: search, @ a session, ? LampMaster. Press ⌘K, type @ev, Return.",
+                 anchor: .bar, waitsFor: .barChose, teaches: .commandBar),
+            Step(id: "squad", text: "Ask a session without disturbing it: ⌘K, then @events ?what changed in the calendar.",
+                 anchor: .bar, waitsFor: .sideQuestionAnswered(session: events), teaches: .squad),
             Step(id: "allowance", text: "Each account's allowance, and when it comes back. Point at the bar.",
                  anchor: .allowance, waitsFor: .allowanceInspected, teaches: .allowance),
-            Step(id: "lampmaster", text: "LampMaster looks at every session once an hour and suggests at most three "
-                    + "things. You decide: open its card and answer it.",
+            Step(id: "focus", text: "One session in focus, the others wait: right-click a row › Focus on this session.",
+                 anchor: .row(session: events), waitsFor: .focused, teaches: .focus),
+            Step(id: "away", text: "Going out? Panel menu › I'm away: nothing interrupts. Choose it again: one line sums it up.",
+                 anchor: .panelMenu, waitsFor: .awayToggled(on: false), teaches: .away),
+            Step(id: "lampmaster", text: "LampMaster looks at every session hourly and suggests at most three things. Answer its card.",
                  anchor: .lampMaster, waitsFor: .lampMasterAnswered, teaches: .lampMaster),
+            Step(id: "ask", text: "Ask LampMaster about all your sessions: ⌘K, then ?who renamed the slots endpoint.",
+                 anchor: .bar, waitsFor: .lampMasterAsked, teaches: .lampMasterAsk),
         ]
     }
 

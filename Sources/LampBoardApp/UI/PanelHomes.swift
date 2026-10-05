@@ -350,8 +350,10 @@ extension PanelController {
             checkForUpdates: { [weak self] in self?.checkForUpdates() },
             quit: { NSApp.terminate(nil) },
             toggleAway: { [weak self] in
-                self?.away?.toggle()
-                self?.rebuildContent()
+                guard let self, let away = self.away else { return }
+                away.toggle()
+                self.tour?.handle(.awayToggled(on: away.isAway))
+                self.rebuildContent()
             },
             dismissAwayNote: { [weak self] in
                 guard let self else { return }

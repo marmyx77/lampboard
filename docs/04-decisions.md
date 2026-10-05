@@ -4503,3 +4503,43 @@ was read as its follow-up. It said the index does not say, and pointed to openin
 that conversation. Before the index was searched word by word, both answers were
 "I do not know".
 
+## D119 · The tour for 1.0: every gesture done for real
+
+**Decided.** The first part of the plan's complete tutorial. The tour's steps
+were written for 0.5, with placeholders: steps 3 to 7 waited for a row to be
+clicked, and only four steps were shown. Every step now waits for its own gesture,
+reported by the panel where it happens:
+- **depths**: `⌘⇧L` reaching the Plancia;
+- **plancia**: the Plancia opening on `events`;
+- **command**: any result chosen in the bar;
+- **focus**: a session put in focus;
+- **away**: *I'm away* chosen and then left, so the step ends on the line that
+  sums it up;
+- **allow**: the permission answered from the panel;
+- **squad**: a side question answered;
+- **ask**: LampMaster asked.
+
+Focus, away and asking LampMaster are new steps, for 0.7, 0.8 and D118.
+
+The trial shows nine of the twelve. Answering a permission, a side question and a
+question to LampMaster all need an answer the trial does not have: no mod holds
+the demo permission, no fork answers for an invented session, and LampMaster
+would run a real model. Those three steps stay hidden until the trial scripts
+their answers. A step the trial cannot complete would stop the tour there.
+
+Every sentence fits the band's two lines in the narrow panel, a hundred characters
+at most, and a test holds it there. The first photograph cut "away" at its second
+line.
+
+`--tour-step <id>` opens the tour on one step, against a fake home only, for
+photographs and the site's screenshots. A step shown that way is never saved, so
+it cannot replace the person's own place in the tour.
+
+The review found that the plancia step said "press Space", which nothing in the
+panel answers. It now says to right-click events and choose *Open in the
+Plancia*, the gesture that is really there.
+
+**Measured on the test Mac.** A trial with `--tour-step depths --plancia`: `⌘⇧L`
+opened the Plancia and the band moved to "plancia", 4 of 9. With `--tour-step
+command --bar-type "@ev"`, the bar's choice moved it to "allowance", 6 of 9.
+

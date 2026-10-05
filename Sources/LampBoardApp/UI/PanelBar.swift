@@ -11,6 +11,7 @@ import LampBoardCore
 extension PanelController {
 
     func wireBar() {
+        bar.onChose = { [weak self] in self?.tour?.handle(.barChose) }
         bar.onOpenSession = { [weak self] id in
             guard let self, let session = self.session(named: id) else { return }
             self.activate(session: session)

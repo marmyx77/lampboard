@@ -149,6 +149,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         if let trial = TrialStage.mode {
             let tour = TourController(fresh: trial.fresh)
+            if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--tour-step"),
+               CommandLine.arguments.indices.contains(index + 1) {
+                tour.show(stepId: CommandLine.arguments[index + 1])
+            }
             controller.tour = tour
             store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
             lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }

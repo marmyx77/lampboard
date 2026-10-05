@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,681 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    25,052 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,607 lines · 113 files   1185 cases, instantaneous
+  LampBoardCore/  20,705 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    25,072 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,626 lines · 113 files   1186 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -989,7 +989,9 @@ an item is done wherever it was done. Optional ones never count as left to do.
 ### `Tour.swift`
 The tour's steps, every version's, and the ones this version shows: a step whose
 feature is not installed yet is not shown. A step moves on with its own gesture —
-the row clicked, the card answered — and with nothing else; there is no "Next".
+the row clicked, `⌘⇧L` reaching the Plancia, a result chosen in the bar, a session
+put in focus, *I'm away* left again, the card answered — and with nothing else;
+there is no "Next" (D119). Each sentence fits the band's two lines.
 Progress is kept by step id, so a version that adds steps still resumes at the
 right one, and never leaves the Mac.
 
@@ -1881,7 +1883,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `LampMasterSettings.swift` | 114 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
 | `ModSettings.swift` | 130 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), the band's switch with what it shows (D84), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
-| `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
+| `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 122 | LampMaster above the rows, only while it is on, never blinking — advice is not a session waiting: in the wide panel a row with its star, name, what the last round found and the open count, a click opening its Plancia (D97); in the narrow one a line of fixed height. Both counted by `PanelMetrics.height` |
 | `LampMasterPlancia.swift` | 213 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |
 | `LampMasterCardViews.swift` | 173 | the cards, in LampMaster's Plancia (D97; a window of their own until then, D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the words a click would propose or ask, the action, *Ask without disturbing* with its answer in the card when the session's mod can answer (D85), *Ignore*, *Wrong*, *Don't suggest this kind*. what a card can ask the panel to do |
@@ -1898,7 +1900,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1185 cases
+## `LampBoardTests/` — 1186 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1924,7 +1926,7 @@ script, before it was split. The most important ones:
 | `RemotePeerScriptsSuite` | a message into a node session's box, run for real with `python3` against a Unix socket a listener holds: the key's line then the words, from `lampboard`; another session's id, a key others can read, a session file and key with no start time, a malformed id or nothing to send, refused and said |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
-| `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |
+| `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps the trial can show, every sentence within the band's two lines, a step moving only on its own gesture, skip and resume |
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |

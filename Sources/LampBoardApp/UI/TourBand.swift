@@ -19,7 +19,7 @@ final class TourController: ObservableObject {
 
     /// Kept nowhere when `fresh`: the screenshots start at step one and leave
     /// the person's own progress where it was.
-    private let keeps: Bool
+    private var keeps: Bool
 
     init(fresh: Bool = false) {
         keeps = !fresh
@@ -41,6 +41,13 @@ final class TourController: ObservableObject {
     }
 
     func skip() { progress = progress.skipped(); save() }
+    /// On one step, for a photograph of it (`--tour-step`, fake home only).
+    func show(stepId: String) {
+        guard steps.contains(where: { $0.id == stepId }) else { return }
+        // A photograph's step is never kept: it would replace the person's own.
+        keeps = false
+        progress = TourProgress(status: .inProgress, stepId: stepId)
+    }
     func resume() { progress = progress.resumed(in: steps); save() }
 
     private func save() {

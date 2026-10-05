@@ -53,9 +53,16 @@ enum TourSuite {
             t.expectEqual(report.limits.limits.first?.resetsAt, Date(timeIntervalSince1970: 1_800_000_000 + 95 * 60))
         },
 
-        TestCase("Today's tour shows only what 0.5 can do") { t in
-            t.expectEqual(today.map(\.id), ["colours", "amber", "allowance", "lampmaster"])
-            t.expectEqual(Tour.steps(available: Set(Tour.Feature.allCases)).count, 9, "every step once all is there")
+        TestCase("Today's tour: every step whose gesture the trial can show, the scripted ones still out") { t in
+            t.expectEqual(today.map(\.id), ["colours", "amber", "depths", "plancia", "command", "allowance", "focus", "away",
+                                             "lampmaster"])
+            t.expectEqual(Tour.steps(available: Set(Tour.Feature.allCases)).count, 12, "every step once all is there")
+        },
+
+        TestCase("Every step's sentence fits the band's two lines in the narrow panel") { t in
+            for step in Tour.all() {
+                t.expect(step.text.count <= Tour.longestText, "\(step.id): \(step.text.count) characters")
+            }
         },
 
         TestCase("A step moves on with its own gesture, and with nothing else") { t in
@@ -66,8 +73,20 @@ enum TourSuite {
             progress = progress.after(.rowOpened(session: "demo-docs-0001"), in: today)
             t.expectEqual(progress.stepId, "amber")
             progress = progress.after(.rowOpened(session: "demo-api-00002"), in: today)
+            t.expectEqual(progress.stepId, "depths")
+            progress = progress.after(.planciaOpened(session: "demo-events-03"), in: today)
+            t.expectEqual(progress.stepId, "depths", "a Plancia opened some other way is not the depths")
+            progress = progress.after(.depthReachedPlancia, in: today)
+            t.expectEqual(progress.stepId, "plancia")
+            progress = progress.after(.planciaOpened(session: "demo-docs-0001"), in: today)
+            t.expectEqual(progress.stepId, "plancia", "events, not another session")
+            progress = progress.after(.planciaOpened(session: "demo-events-03"), in: today)
+                .after(.barChose, in: today)
                 .after(.allowanceInspected, in: today)
-                .after(.lampMasterAnswered, in: today)
+            t.expectEqual(progress.stepId, "focus")
+            progress = progress.after(.focused, in: today).after(.awayToggled(on: true), in: today)
+            t.expectEqual(progress.stepId, "away", "away is learnt by coming back")
+            progress = progress.after(.awayToggled(on: false), in: today).after(.lampMasterAnswered, in: today)
             t.expectEqual(progress.status, .finished)
         },
 
