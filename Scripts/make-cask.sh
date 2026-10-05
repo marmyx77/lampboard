@@ -19,7 +19,7 @@ OUT="$ROOT/dist/lampboard.rb"
 URL="https://github.com/marmyx77/lampboard/releases/download/v$VERSION/LampBoard-$VERSION.dmg"
 
 echo "▸ Fetching $URL"
-TMP="$(mktemp -t lampboard-dmg)"
+TMP="$(mktemp "${TMPDIR:-/tmp}/lampboard-dmg.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
 curl -fsSL --retry 2 -o "$TMP" "$URL" || {
     echo "  Not there. Publish the release first:  ./Scripts/release.sh"

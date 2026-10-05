@@ -3939,6 +3939,24 @@ Authority" G2. The test Mac had only the older intermediate, so the identity sta
 verified strictly, and submitted to Apple through the profile in that keychain:
 `Accepted`.
 
+**What the first real release taught (0.7.0).** Two things broke, and both are fixed.
+- The test Mac dropped off the network twice in an hour, and the first
+  `release-remote.sh` held one ssh open for the whole release, so it hung with the
+  connection. The release now runs detached on the signing account, writes its exit
+  status beside its log, and is asked after every half minute. Each step that has to
+  reach the Mac is tried for ten minutes before it gives up.
+- The package would not sign from a detached process. `pkgbuild` was given no
+  keychain, so it went to the login keychain, which is locked when nobody logs in;
+  and the Installer key did not list `pkgbuild` among the programs it trusts, so asking
+  it meant a dialog nobody could see. `make-pkg.sh` now names the release keychain, and
+  the identities are imported trusting `codesign`, `productsign`, `pkgbuild`,
+  `productbuild` and `security`.
+
+0.7.0's package was rebuilt that way from the tag's own signed app, with the corrected
+`make-pkg.sh`: the same binary, packaged by a script one commit newer than the tag.
+`make-cask.sh` also stopped using the BSD-only form of `mktemp`, since the releases
+are now driven from Linux.
+
 ## D107 · A click opens that conversation in the Claude app
 
 **Decided.** A row for a conversation in the Claude app's Code tab used to raise

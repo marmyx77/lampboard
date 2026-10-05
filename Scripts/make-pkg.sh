@@ -63,7 +63,9 @@ fi
 
 IDENTITY="${LAMPBOARD_INSTALLER_IDENTITY:-}"
 if [ -z "$IDENTITY" ]; then
-    MATCHES="$(security find-identity -v 2>/dev/null | grep 'Developer ID Installer' || true)"
+    # In the release keychain when there is one (D106): the login keychain of an
+    # account nobody logs into is locked, and asking it means a dialog nobody sees.
+    MATCHES="$(security find-identity -v ${LAMPBOARD_NOTARY_KEYCHAIN:+"$LAMPBOARD_NOTARY_KEYCHAIN"} 2>/dev/null | grep 'Developer ID Installer' || true)"
     COUNT="$(printf '%s' "$MATCHES" | grep -c . || true)"
     if [ "$COUNT" = "1" ]; then
         IDENTITY="$(printf '%s\n' "$MATCHES" | sed -n 's/.*"\(.*\)".*/\1/p')"
@@ -107,6 +109,7 @@ pkgbuild \
     --identifier "$BUNDLE_ID" \
     --version "$VERSION" \
     --sign "$IDENTITY" \
+    ${LAMPBOARD_NOTARY_KEYCHAIN:+--keychain "$LAMPBOARD_NOTARY_KEYCHAIN"} \
     "$PKG" >/dev/null
 
 echo "    $(basename "$PKG") built and signed"
