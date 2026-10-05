@@ -3304,3 +3304,47 @@ key is taken only with a start time that matches, as on the Mac; and a box slow 
 close after the message went counts as delivered, so a "not sent" never invites a
 second copy.
 
+## D84 · A band above every session's prompt says what waits elsewhere
+
+**Decided.** While another session waits for the person — a permission, a
+question, a turn stuck on one tool or failed — the companion mod, 1.6.0, draws one
+line above the prompt of every other session: "⚑ LampBoard · 1: docs-site: Bash: npm
+publish · 2: …", at most three, the most urgent first, never the session's own. A
+digit at an empty prompt opens that session in the panel — its Plancia here, the
+session itself on a node. Nothing is answered from the band. It shows only while
+something waits, in the terminal and in the Claude app (one chat at a time there,
+#99265); VS Code draws nothing a mod draws. A switch under the mod in Settings turns
+it off; it is on.
+
+**Measured on the test Mac** (Claude Code 2.1.289, 5 October 2026). A probe mod drew
+above the prompt with `ui.render` on `AbovePrompt`, from elements built by
+`$.ui.resolve(e)` — an element written by hand is refused, "not held by a plugin"
+— redrew on `$.ui.invalidate` from a `setInterval`, which the runtime has, and a
+`1` at an empty prompt pressed its button. Then with LampBoard's mod in two
+throwaway sessions: while A sat on its permission dialog, B's band read "⚑ LampBoard
+· 1: a: waiting for your answer", and a `1` in B brought the panel up on A.
+
+**How it knows.** Every few seconds each interactive session's mod asks
+`GET /mod/band`, behind the token, naming itself; the panel answers with its queue's
+cards as the queue would draw them now (D74), without that session's, and the mod
+redraws only when the answer changed. A press posts `POST /mod/band/open`. What the
+band shows is drawn on the screen and never put into the conversation: the model of
+one session reads nothing of another's.
+
+**Why no Allow or Deny in the band.** The band lives in the mod, and the mod holds
+only the token — which any process of the person's can read. A route that let the
+band answer a permission would let any of them answer one with no click, the hole
+D80's third review closed. So the band brings the person to the panel, where the
+click is theirs.
+
+**What a review changed.** A permission's line that came from a hook was not masked
+on its way in, and the band goes to every session: each line is now read the way a
+permission card reads one (`ModReport.detail`) — secrets masked, no control, format
+or separator character, so no bidi override reorders it — and a session on a node is
+told who waits and how ("a permission"), never this Mac's command lines. The band
+empties when the panel stops answering, instead of keeping its last items; each
+session keeps its own clock and state, stopped when it ends, since one process can
+hold several; and the labels share the terminal's width. Measured again in the two
+throwaway sessions: the band drawn, the digit opening the panel, and the band's text
+in neither transcript.
+

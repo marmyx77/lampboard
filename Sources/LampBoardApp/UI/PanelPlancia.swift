@@ -85,6 +85,18 @@ extension PanelController {
         Diagnostics.log("plancia-send: \(thread.send(text) ? "sent" : "refused")")
     }
 
+    /// A digit pressed in a session's band (D84): the panel comes up with that
+    /// session open — its Plancia here, the session itself on another machine.
+    @discardableResult
+    func openFromBand(_ id: String) -> Bool {
+        guard let session = session(named: id) else { return false }
+        Diagnostics.log("band: \(id.prefix(8)) opened from a session's band")
+        panel.orderFrontRegardless()
+        if isCompact { toggleCompact() }
+        if session.workspace.isRemote { activate(session: session) } else { openPlancia(sessionId: session.id) }
+        return true
+    }
+
     func cycleDepth() {
         if isCompact {
             toggleCompact()

@@ -308,7 +308,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onCheck: { [permissions] body, nonce, proof, key in permissions.check(body, nonce: nonce, proof: proof, key: key) },
             onChecks: { [permissions] in permissions.listing },
-            onCheckAnswer: { [permissions] body in permissions.answer(body: body) }
+            onCheckAnswer: { [permissions] body in permissions.answer(body: body) },
+            onBand: { [weak self] asking in
+                Self.onMain(timeout: 1) { self?.bandItems(excluding: asking) } ?? Band.json([])
+            },
+            onBandOpen: { [weak self] session in
+                Self.onMain(timeout: 2) { self?.panelController?.openFromBand(session) } ?? false
+            }
         )
 
         do {
@@ -375,6 +381,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - Crossing over to the main actor
 
 extension AppDelegate {
+
+    /// What the band shows a session (D84): the queue's cards, as the panel
+    /// would draw them now, or nothing while the band is switched off. A
+    /// session on a node is told who waits and how, not the command lines:
+    /// they are this Mac's sessions' business (a review finding).
+    @MainActor
+    private func bandItems(excluding asking: String?) -> Data {
+        guard Preferences().bandEnabled else { return Band.json([]) }
+        let cards = WaitingQueue.cards(sessions: Array(store.state.sessions.values), suggestions: [],
+                                       asks: permissions.pending, now: Date())
+        let away = asking.flatMap { store.state.sessions[$0]?.workspace.isRemote } ?? false
+        return Band.json(Band.items(cards: cards, excluding: asking, lines: !away))
+    }
 
     /// Runs `body` on the main actor and returns its result, giving up after
     /// `timeout` seconds.

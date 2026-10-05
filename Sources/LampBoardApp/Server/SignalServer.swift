@@ -61,6 +61,8 @@ final class SignalServer {
     private let onCheck: (Data, String?, String?, String) -> String
     private let onChecks: () -> Data
     private let onCheckAnswer: (Data) -> Bool
+    private let onBand: (String?) -> Data
+    private let onBandOpen: (String) -> Bool
     private let token: String?
     private let checkKey: String?
 
@@ -84,7 +86,9 @@ final class SignalServer {
         onWatch: @escaping (WatchReport) -> Void = { _ in },
         onCheck: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
         onChecks: @escaping () -> Data = { Data("[]".utf8) },
-        onCheckAnswer: @escaping (Data) -> Bool = { _ in false }
+        onCheckAnswer: @escaping (Data) -> Bool = { _ in false },
+        onBand: @escaping (String?) -> Data = { _ in Band.json([]) },
+        onBandOpen: @escaping (String) -> Bool = { _ in false }
     ) {
         self.port = port
         self.token = token
@@ -104,6 +108,8 @@ final class SignalServer {
         self.onCheck = onCheck
         self.onChecks = onChecks
         self.onCheckAnswer = onCheckAnswer
+        self.onBand = onBand
+        self.onBandOpen = onBandOpen
     }
 
     // MARK: - Lifecycle
@@ -229,6 +235,12 @@ final class SignalServer {
 
         case AppConfig.checkAnswerPath:
             return handleCheckAnswer(request)
+
+        case AppConfig.bandPath:
+            return handleBand(request)
+
+        case AppConfig.bandOpenPath:
+            return handleBandOpen(request)
 
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:
@@ -393,6 +405,31 @@ final class SignalServer {
         return onCheckAnswer(request.body)
             ? HTTPRequestParser.response(status: 204, reason: "No Content")
             : HTTPRequestParser.response(status: 404, reason: "Not Found", body: "no such ask waiting")
+    }
+
+    /// `GET /mod/band` — what the band above a session's prompt shows (D84),
+    /// behind the token: what waits elsewhere, never the asking session's own.
+    private func handleBand(_ request: HTTPRequest) -> Data {
+        guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+        guard AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        let asking = request.header("X-LampBoard-Session").flatMap { ModReport.isSessionId($0) ? $0 : nil }
+        return HTTPRequestParser.response(status: 200, reason: "OK", body: onBand(asking), contentType: "application/json")
+    }
+
+    /// `POST /mod/band/open` — `{"session"}`: a digit pressed in a band, which
+    /// opens that session in the panel. It answers nothing and runs nothing.
+    private func handleBandOpen(_ request: HTTPRequest) -> Data {
+        if let refusal = tokenRefusal(request) { return refusal }
+        guard let object = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+              let session = object["session"] as? String, ModReport.isSessionId(session) else {
+            return HTTPRequestParser.response(status: 400, reason: "Bad Request")
+        }
+        return onBandOpen(session)
+            ? HTTPRequestParser.response(status: 204, reason: "No Content")
+            : HTTPRequestParser.response(status: 404, reason: "Not Found", body: "no such session")
     }
 
     /// POST and the token, or the response that says which is missing.

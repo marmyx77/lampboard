@@ -905,7 +905,12 @@ session's box with its `text` as sent, and that returning `{ consumed }` keeps i
 out of the conversation; that `$.model.fork({ prompt })` answers from the
 conversation with no turn, idle or mid-turn, as `{ isAnswered, text }` or
 `{ isAnswered: false, reason }`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
-`$.session.id`, `$.session.model`, `$.session.cwd` and `$.model.fork` exist.
+`$.session.id`, `$.session.model`, `$.session.cwd` and `$.model.fork` exist; that
+`ui.render` on `{ component: 'AbovePrompt' }` draws a tree built with
+`$.ui.resolve(e)`'s `Box`, `Text` and `Button` above the prompt on the terminal and
+desktop surfaces, that a Button's `hotkey` digit presses it from an empty prompt,
+that `$.ui.invalidate('ui.render')` redraws it, and that `setInterval` exists in
+the mod's runtime.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·
 [ModReport.swift](../Sources/LampBoardCore/Mod/ModReport.swift) ·
@@ -915,7 +920,8 @@ conversation with no turn, idle or mid-turn, as `{ isAnswered, text }` or
 the mod loaded and then installed, delivered `start`, a measure of 21,140 tokens
 with two windows, and `end` (4 October 2026, 2.1.289); a probe mod took a box message in
 `session.receive` (nothing in the transcript) and answered it with `$.model.fork`
-in about a second and a half, idle and mid-turn (5 October 2026, 2.1.289); the names are read in the
+in about a second and a half, idle and mid-turn, and drew a band above the prompt
+that a `1` pressed and a clock redrew (5 October 2026, 2.1.289); the names are read in the
 binary by `check-contract.sh`, which also has `claude plugin validate --strict` list
 the mod's hooks and calls and compares them with `companionMod` in
 `required-fields.json`.

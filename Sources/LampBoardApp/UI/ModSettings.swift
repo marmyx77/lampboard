@@ -14,6 +14,7 @@ struct ModSettings: View {
     @State private var problem: String?
     @State private var reading: ModTrust.Reading?
     @State private var permissions = Preferences().permissionsFromPanel
+    @State private var band = Preferences().bandEnabled
     /// Getting started, the command line or the launch refresh can change it
     /// while this window is open: read again every few seconds.
     private let refresh = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
@@ -80,6 +81,20 @@ struct ModSettings: View {
                 set: { permissions = $0; Preferences().permissionsFromPanel = $0 }
             ))
             .disabled(!installed && !permissions)
+
+            Toggle("Show what waits elsewhere above each session's prompt", isOn: Binding(
+                get: { band },
+                set: { band = $0; Preferences().bandEnabled = $0 }
+            ))
+            Text("""
+            While another session waits for you — a permission, a question, a stuck or failed \
+            turn — a line above the prompt of the others says so, in the terminal and in the \
+            Claude app (one chat at a time there). A digit at an empty prompt opens it in this \
+            panel; nothing is answered from the line. Not in VS Code, where mods draw nothing.
+            """)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         } header: {
             Text("The LampBoard mod")
         }

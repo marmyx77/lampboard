@@ -54,6 +54,16 @@ enum ModFilesSuite {
             t.expect(code.contains("features: ['ask']"), "and the start says it can")
         },
 
+        TestCase("The band shows and opens; it answers nothing, and draws nothing when nothing waits (D84)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("${target.base}\(AppConfig.bandPath)`"), "asks the band's route")
+            t.expect(code.contains("${target.base}\(AppConfig.bandOpenPath)`"), "and opens through its own")
+            t.expect(!code.contains("check/answer"), "never the answer route: a permission is a click in the panel")
+            t.expect(code.contains("if (items.length === 0 || (e.props && e.props.hasSurvey)) return next(e)"), "the engine's own band when empty")
+            t.expect(code.contains("if (e.isInteractive && !bands.has(session))"), "one clock per session, where a person reads")
+            t.expect(code.contains("clearInterval(ending.clock)"), "stopped when its session ends")
+        },
+
         TestCase("/lampmaster asks through the MCP tool's route and name, and hands the model nothing") { t in
             let code = ModFiles.register
             t.expect(code.contains("name: 'lampmaster'"), "registers /lampmaster")

@@ -416,7 +416,8 @@
       "tool.call",
       "command.run",
       "tool.check",
-      "session.receive"
+      "session.receive",
+      "ui.render"
     ],
     "calls": [
       "$.env.get",
@@ -426,7 +427,9 @@
       "$.session.model",
       "$.session.cwd",
       "$.command.register",
-      "$.model.fork"
+      "$.model.fork",
+      "$.ui.resolve",
+      "$.ui.invalidate"
     ],
     "binaryStrings": [
       "session.measure",

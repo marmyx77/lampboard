@@ -31,6 +31,11 @@
 // and only the answer goes to the panel. A message in that shape that is not
 // proven is taken all the same and answered by nobody.
 //
+// And a band above the prompt (D84): what waits for the person in the other
+// sessions — their names and one line each, as the panel's queue has them —
+// drawn on the screen, never put into the conversation; a digit opens that one
+// in the panel. Asked of the panel every few seconds, redrawn only on change.
+//
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
 
@@ -163,6 +168,49 @@ async function answerQuietly($, nonce, proof, question) {
   }
 }
 
+// The band (D84): what the panel says waits elsewhere, kept between draws,
+// per session — one process can hold several (the Claude app's chats) — with
+// one clock each, stopped when that session ends.
+const BAND_EVERY = 5000
+const bands = new Map()
+
+async function refreshBand($, session) {
+  const state = bands.get(session)
+  if (!state) return
+  let text = '{"items":[],"v":1}'
+  try {
+    const target = await panel($)
+    if (target) {
+      const reply = await $.http.fetch(`${target.base}/mod/band`, {
+        headers: { 'X-LampBoard-Token': target.token, 'X-LampBoard-Session': session },
+      })
+      if (reply.ok) text = reply.text
+    }
+  } catch (_) {
+    // The panel is closed or restarting: nothing waits that it can show.
+  }
+  if (text === state.text) return
+  try {
+    const read = JSON.parse(text)
+    if (read.v !== 1 || !Array.isArray(read.items)) return
+    state.text = text
+    state.items = read.items
+    $.ui.invalidate('ui.render')
+  } catch (_) {}
+}
+
+async function openInPanel($, session) {
+  try {
+    const target = await panel($)
+    if (!target) return
+    await $.http.fetch(`${target.base}/mod/band/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-LampBoard-Token': target.token },
+      body: JSON.stringify({ session }),
+    })
+  } catch (_) {}
+}
+
 // `/lampmaster <question>` (D71): the person's question to LampMaster, through
 // the route the `lampmaster` MCP server uses, so the limits, the daily ceiling
 // and the off switch are the same ones. The answer is shown to the person and
@@ -211,6 +259,12 @@ export function register(on) {
       // An older Claude Code without commands: the MCP tools still answer.
     }
     await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($), features: ['ask'] })
+    // A band only where a person reads it, and one clock per session.
+    const session = await $.session.id()
+    if (e.isInteractive && !bands.has(session)) {
+      bands.set(session, { text: '', items: [], clock: setInterval(() => { void refreshBand($, session) }, BAND_EVERY) })
+      void refreshBand($, session)
+    }
     return result
   })
 
@@ -295,9 +349,32 @@ export function register(on) {
     return { consumed: 'lampboard-ask' }
   })
 
+  // The band: nothing while nothing waits elsewhere, so the engine draws its own.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const state = bands.get(await $.session.id())
+    const items = state ? state.items.slice(0, 3) : []
+    if (items.length === 0 || (e.props && e.props.hasSurvey)) return next(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    // One line whatever the width: each label gets its share of the columns.
+    const columns = (e.props && e.props.bodyColumns) || 80
+    const share = Math.max(12, Math.floor((columns - 14) / items.length) - 6)
+    const fit = (label) => (Array.from(label).length <= share ? label : Array.from(label).slice(0, share - 1).join('') + '…')
+    const children = [Text({ color: 'yellow', children: ['⚑ LampBoard · '] })]
+    items.forEach((item, i) => {
+      children.push(Button({
+        key: `band-${i + 1}`, label: fit(`${item.title}: ${item.line}`), hotkey: String(i + 1), plain: true,
+        onPress: async () => { await openInPanel($, item.session) },
+      }))
+      if (i < items.length - 1) children.push(Text({ dimColor: true, children: [' · '] }))
+    })
+    return Box({ flexDirection: 'row', children })
+  })
+
   // `session.end` has 1.5 s in all: one short post, and no model lookup.
   on('session.end', async ($, e, next) => {
     const result = await next(e)
+    const ending = bands.get(e.sessionId)
+    if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
     await post($, 'end', { session: e.sessionId, reason: e.reason })
     return result
   })

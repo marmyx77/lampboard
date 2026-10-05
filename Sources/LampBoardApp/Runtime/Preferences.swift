@@ -31,6 +31,7 @@ struct Preferences {
         static let menuBarCounter = "menubar.counter"
         static let barShortcut = "bar.shortcut"
         static let permissionsFromPanel = "permissions.panel"
+        static let bandHidden = "band.hidden"
         static let mutedUntil = "notify.mutedUntil"
         static let messageSendingEnabled = "chat.sendingEnabled"
         static let presenceEnabled = "presence.enabled"
@@ -333,6 +334,13 @@ struct Preferences {
 
     /// The panel answers permissions a session would put to its dialog (D73,
     /// D80). Off by default: it is a capability, not a convenience.
+    /// The band above each session's prompt (D84): on unless switched off — it
+    /// shows only while something waits, and what it shows is the queue's.
+    var bandEnabled: Bool {
+        get { !defaults.bool(forKey: Key.bandHidden) }
+        nonmutating set { defaults.set(!newValue, forKey: Key.bandHidden) }
+    }
+
     var permissionsFromPanel: Bool {
         get { defaults.bool(forKey: Key.permissionsFromPanel) }
         nonmutating set { defaults.set(newValue, forKey: Key.permissionsFromPanel) }

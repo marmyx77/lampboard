@@ -25,6 +25,7 @@ public enum ModTrust {
         "tool.check": "when a call would ask you for permission",
         "command.run": "when you type its command",
         "session.receive": "when a message reaches the session",
+        "ui.render": "when it draws the line above the prompt",
     ]
 
     /// Claude Code's capability, in words, and no more than it says: which
@@ -39,6 +40,8 @@ public enum ModTrust {
         "$.session.cwd": "reads the session's folder",
         "$.command.register": "adds a command",
         "$.model.fork": "asks the model a side question over the conversation",
+        "$.ui.resolve": "draws on the session's screen",
+        "$.ui.invalidate": "redraws what it drew",
     ]
 
     /// `nil` when the text is not `validate`'s JSON.

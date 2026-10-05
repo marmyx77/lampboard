@@ -801,6 +801,14 @@ rows still come from the hooks, with or without the mod
 ([D65](docs/04-decisions.md)). `lampboard mod uninstall` takes it out, and
 `uninstall-hooks` takes it out with the hooks.
 
+**A line above every session's prompt.** While another session waits for you — a
+permission, a question, a stuck or failed turn — the mod draws one line above the
+prompt of the others: `⚑ LampBoard · 1: docs-site: Bash: npm publish`. A digit at an
+empty prompt brings this panel up on that session; nothing is answered from the
+line. In the terminal and the Claude app (one chat at a time there); not in VS Code,
+where mods draw nothing. Settings, under the mod, turns it off
+([D84](docs/04-decisions.md)).
+
 **Permissions from the panel**, off until you switch it on in Settings, under the
 mod. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
 put to the panel first: it waits at the top of the panel with **Allow** and
@@ -1465,7 +1473,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1048 domain tests, instantaneous
+swift run LampBoardTests              # 1054 domain tests, instantaneous
 swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

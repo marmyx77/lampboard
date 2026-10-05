@@ -60,6 +60,12 @@ public enum AppConfig {
     public static let checkPath = "/check"
     public static let checkAnswerPath = "/check/answer"
 
+    /// What the band above each session's prompt shows, and the press that opens
+    /// one of its items in the panel (D84). Behind the token; the asking session
+    /// names itself in `X-LampBoard-Session`, and is left out of its own band.
+    public static let bandPath = "/mod/band"
+    public static let bandOpenPath = "/mod/band/open"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without
