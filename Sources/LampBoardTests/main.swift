@@ -52,6 +52,7 @@ let suites: [TestSuite] = [
     AwaySuite.suite,
     LampStyleSuite.suite,
     HoldSuite.suite,
+    SpokenAlertSuite.suite,
     DecisionBoardSuite.suite,
     LampMasterSheetsSuite.suite,
     RemoteTranscriptScriptSuite.suite,

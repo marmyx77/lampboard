@@ -635,4 +635,9 @@ public enum AppConfig {
     /// How long the screen stays locked before the person counts as away (A1):
     /// long enough that a lock to fetch a coffee is not an absence.
     public static let awayAfterLock: TimeInterval = 180
+
+    /// How long without a key or the mouse before a permission is also said
+    /// aloud (D117): a minute is a person who has looked away, not one between
+    /// two sentences.
+    public static let speakAfterIdle: TimeInterval = 60
 }

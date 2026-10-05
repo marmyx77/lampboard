@@ -1,13 +1,13 @@
 # Code map
 
-~66,800 lines of Swift across five targets. For each file: what it contains, why
+~67,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,509 lines · 163 files  pure logic, zero AppKit
-  LampBoardApp/    24,823 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,474 lines · 111 files   1175 cases, instantaneous
+  LampBoardCore/  20,538 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    24,876 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,501 lines · 112 files   1177 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -517,6 +517,11 @@ a failed turn the reason, for a finished one the first line of the answer withou
 Markdown's marks, cut at 160 characters where it says so. Never the last message
 for a waiting session: a `Notification` payload carries none, and the row still
 holds the previous turn's reply. Also the menu bar's `wanting · working` counter.
+
+### `SpokenAlert.swift` · 26
+The voice (D117): whether a waiting session is also said aloud (asked for, the
+screen unlocked, a minute without a key) and the sentence, the row's name flat and
+cut at forty characters.
 
 ### `MenuBarSummary.swift` · 123
 What the lamp shows, computed from the `ColumnRendering` the panel draws rather
@@ -1890,7 +1895,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1175 cases
+## `LampBoardTests/` — 1177 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1955,6 +1960,7 @@ script, before it was split. The most important ones:
 | `WaitingQueueSuite` | the order of urgency then age, the state the row shows when a subagent is alive, a second ask as a new card armed anew, armed from when the queue shows it, a new answer re-arming the group, an amber row with nothing said, stuck only after fifteen minutes, two ready answers alone and three as one, one LampMaster card counting the rest, a watched command that failed and not one that succeeded, armed at 600 ms, the keys and the ones not yet live, the selection kept on its card, resolved elsewhere |
 | `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
+| `SpokenAlertSuite` | said only when asked for, unlocked and a minute from the keys; the row's name in one plain line, cut, or "A session" (D117) |
 | `NotificationTextSuite` | what a notification says for a wait, a failure and a finished turn, never the previous answer; the menu bar counter with its zeros |
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |

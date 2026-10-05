@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import LampBoardCore
 import Combine
 import Foundation
@@ -36,6 +37,9 @@ final class SessionNotifier {
     /// or finished from one that already had. `nil` before the first pass, so
     /// what was already so at launch is not news.
     private var lastStatus: [String: SessionStatus]?
+    /// The voice (D117): kept, so an utterance is not cut by its owner going.
+    private let voice = AVSpeechSynthesizer()
+    private let voiceLog = VoiceLog()
     /// What waited while a session was in focus (G1).
     private var hold = FocusHold()
     /// The session in focus has been seen in this run: once it goes, the focus
@@ -147,7 +151,7 @@ final class SessionNotifier {
 
             announced.insert(session.id)
             guard passesGate(session), passesFocus(session, event: .waiting, in: state) else { continue }
-            deliver(session, event: .waiting)
+            if deliver(session, event: .waiting) { speak(session) }
         }
 
         // Come back for the ones that were too young. The store publishes only
@@ -273,8 +277,11 @@ final class SessionNotifier {
         }
     }
 
-    private func deliver(_ session: SessionState, event: NotificationText.Event) {
-        guard Bundle.main.bundleIdentifier != nil else { return }
+    /// Whether a notification went out: never from a bare binary, which a
+    /// test panel or a `swift run` is.
+    @discardableResult
+    private func deliver(_ session: SessionState, event: NotificationText.Event) -> Bool {
+        guard Bundle.main.bundleIdentifier != nil else { return false }
 
         let content = UNMutableNotificationContent()
         content.title = RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName
@@ -302,6 +309,23 @@ final class SessionNotifier {
                 }
             }
         }
+        return true
+    }
+
+    /// Said aloud too, to someone near the Mac but away from its keys (D117).
+    private func speak(_ session: SessionState) {
+        guard preferences.speakWaiting else { return }
+        let idle = Self.secondsSinceLastInput(), locked = PresenceFile.isScreenLocked
+        guard SpokenAlert.speaks(enabled: true, idle: idle, locked: locked) else {
+            return Diagnostics.log("not spoken (idle \(Int(idle)) s\(locked ? ", locked" : "")): \(session.workspace.name)")
+        }
+        let name = RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName
+        voice.delegate = voiceLog
+        // The latest is what matters: a sentence still queued would be said
+        // after the person is back at the keys.
+        if voice.isSpeaking { voice.stopSpeaking(at: .word) }
+        voice.speak(AVSpeechUtterance(string: SpokenAlert.sentence(name: name)))
+        Diagnostics.log("speaking: \(session.workspace.name)")
     }
 
     /// Opens the session named by a notification that was clicked.
@@ -321,5 +345,16 @@ final class SessionNotifier {
         return types
             .map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
             .min() ?? .greatestFiniteMagnitude
+    }
+}
+
+/// Says in the log that an utterance was heard to the end, or cut.
+private final class VoiceLog: NSObject, AVSpeechSynthesizerDelegate {
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Diagnostics.log("spoken: \(utterance.speechString)")
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        Diagnostics.log("speech cut: \(utterance.speechString)")
     }
 }

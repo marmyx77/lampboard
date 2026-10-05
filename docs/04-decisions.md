@@ -4395,3 +4395,47 @@ and the folder was still there. The same happened when the deletion was the seco
 line of a command whose first line was `echo ok`. The end-to-end suite runs the route on a headless
 instance, where nobody is away: "go", and nothing without the proof.
 
+## D117 · A session waiting, said aloud to someone away from the keys
+
+**Decided.** The plan's §5.9, marked there as cheap and to be tried. A notification
+is a banner, and a banner reaches only someone looking at the screen. Someone
+across the room, with the Mac open on the desk, hears a sentence. With *Say it
+aloud when I'm away from the keys* on, the notification for a session waiting for
+you is also spoken: "docs-site is waiting for you." It is off by default, because
+a Mac that talks is a surprise to opt into.
+
+It speaks when three things hold. Nobody has touched the keyboard or the mouse for
+a minute; someone typing already has the banner. The screen is unlocked, since a
+locked screen is an empty room, or an absence that D114 is about to count. And the
+notification for that wait was handed to macOS. So every silence that holds a
+notification (away, muted, a muted project, a session in focus) holds the voice too,
+and a bare binary (a test panel, a `swift run`) never speaks. The voice adds no gate
+of its own and no second memory: one wait, one sentence. A banner macOS then refuses
+to show is still spoken, which makes the voice the only way that wait is said. The
+single line that sums up what waited during a focus is not spoken. A new sentence
+cuts the one still being said, so a burst says its last, not a queue that goes on
+after the person is back. Idleness is read once, when the sentence starts, and a
+sentence already under way is not cut when a key is pressed.
+
+**The panel speaks, not the mod.** The plan named the mod's `$.audio.speak`. The
+panel's own synthesizer (`AVSpeechSynthesizer`) says the same with nothing
+installed in Claude Code. It covers Codex and every session without the mod, and
+it keeps one voice, rather than one per session process, in the place that already
+knows about the silences, the focus and the idle time. Answering aloud needs
+nothing new: the panel's dictation (D18) is already there.
+
+`SpokenAlert` decides and words it. The name is the row's, flattened, with no
+control or bidi character, and cut at forty characters, since past that a name is
+a path. A row without a name is "A session".
+
+**Measured on the test Mac.** A test panel with notifications and the voice on, and
+a session that started waiting for a permission. The screen was locked, and the log
+said "not spoken (idle 17177 s, locked)". That run came before the voice was tied to
+the banner; a test panel now stays silent before it gets that far. The synthesizer renders the sentence on
+that Mac, since `say -o` writes it to a file. Playback could not be heard there:
+the test Mac is a laptop with its lid closed, and every sound hangs, `afplay`
+included. An utterance with no way out is simply never finished. The synthesizer
+does not hold the main thread, so a Mac without a speaker loses the sentence,
+not the panel. The log says "speaking", then "spoken" once an utterance has been
+heard to the end.
+

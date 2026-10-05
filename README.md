@@ -532,6 +532,13 @@ The notification says what happened, so some are answered by reading: the comman
 waiting for a yes or the question, why the turn ended, the first line of a finished
 answer. Clicking it takes you **to that session**.
 
+*Say it aloud when I'm away from the keys*, also in Settings, adds a voice to the
+notification for a session waiting for you: "docs-site is waiting for you." It
+speaks only when nobody has touched the Mac for a minute and the screen is
+unlocked, never while you type, and never while you are away, muted or in focus. It
+is meant for someone across the room, who would not see a banner
+([D117](docs/04-decisions.md#d117--a-session-waiting-said-aloud-to-someone-away-from-the-keys)).
+
 **I'm away.** Say so in the panel's menu, *I'm away: hold alerts, sum up when I'm
 back*, or just lock the screen: after three minutes locked you count as away. While
 you are, no notification interrupts, and the panel counts what happens. When you
@@ -1627,7 +1634,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1175 domain tests, instantaneous
+swift run LampBoardTests              # 1177 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

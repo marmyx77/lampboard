@@ -28,6 +28,7 @@ struct Preferences {
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
         static let notifyFinished = "notify.finished"
+        static let speakWaiting = "notify.speak"
         static let menuBarCounter = "menubar.counter"
         static let barShortcut = "bar.shortcut"
         static let permissionsFromPanel = "permissions.panel"
@@ -321,6 +322,13 @@ struct Preferences {
     var notifyFinished: Bool {
         get { defaults.bool(forKey: Key.notifyFinished) }
         nonmutating set { defaults.set(newValue, forKey: Key.notifyFinished) }
+    }
+
+    /// A session waiting for you is also said aloud, to someone away from the
+    /// keys (D117). Off by default: a Mac that talks is a surprise to opt into.
+    var speakWaiting: Bool {
+        get { defaults.bool(forKey: Key.speakWaiting) }
+        nonmutating set { defaults.set(newValue, forKey: Key.speakWaiting) }
     }
 
     /// The menu bar lamp carries `wanting · working` beside it. Off by default,

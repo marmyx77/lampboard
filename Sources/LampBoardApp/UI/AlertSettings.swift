@@ -8,12 +8,13 @@ extension Notification.Name {
     static let barShortcutChanged = Notification.Name("com.lampboard.barShortcutChanged")
 }
 
-/// The menu bar counter and the notification for a finished turn: two ways of
-/// hearing more, both off until asked for (5.6).
+/// The menu bar counter, the notification for a finished turn and the voice:
+/// ways of hearing more, all off until asked for (5.6, D117).
 struct AlertSettings: View {
     private let preferences = Preferences()
     @State private var counter = Preferences().menuBarCounter
     @State private var finished = Preferences().notifyFinished
+    @State private var speak = Preferences().speakWaiting
     @State private var shortcut = Preferences().barShortcut
 
     var body: some View {
@@ -35,6 +36,15 @@ struct AlertSettings: View {
             With notifications on, LampBoard tells you when a session waits for you and when \
             a turn fails, saying what it asks or why it stopped. This adds a notification for \
             every finished turn, with the first line of the answer.
+            """)
+            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+
+            Toggle("Say it aloud when I'm away from the keys", isOn: $speak)
+                .onChange(of: speak) { _, value in preferences.speakWaiting = value }
+            Text("""
+            With notifications on, a session waiting for you is also spoken — "docs-site is \
+            waiting for you" — when nobody has touched the Mac for a minute. Never while you \
+            type, never to a locked screen, never while you are away, muted or in focus.
             """)
             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
