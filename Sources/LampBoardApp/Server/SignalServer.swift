@@ -61,6 +61,7 @@ final class SignalServer {
     private let onCheck: (Data, String?, String?, String) -> String
     private let onChecks: () -> Data
     private let onCheckAnswer: (Data) -> Bool
+    private let onQuestion: (Data, String?, String?, String) -> String
     private let onBand: (String?) -> Data
     private let onBandOpen: (String) -> Bool
     private let token: String?
@@ -87,6 +88,7 @@ final class SignalServer {
         onCheck: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
         onChecks: @escaping () -> Data = { Data("[]".utf8) },
         onCheckAnswer: @escaping (Data) -> Bool = { _ in false },
+        onQuestion: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
         onBand: @escaping (String?) -> Data = { _ in Band.json([]) },
         onBandOpen: @escaping (String) -> Bool = { _ in false }
     ) {
@@ -108,6 +110,7 @@ final class SignalServer {
         self.onCheck = onCheck
         self.onChecks = onChecks
         self.onCheckAnswer = onCheckAnswer
+        self.onQuestion = onQuestion
         self.onBand = onBand
         self.onBandOpen = onBandOpen
     }
@@ -235,6 +238,13 @@ final class SignalServer {
 
         case AppConfig.checkAnswerPath:
             return handleCheckAnswer(request)
+
+        case AppConfig.questionPath:
+            // Proven with the permission key, as `/check` is (D80, D86).
+            guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+            guard let checkKey else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: onQuestion(
+                request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey))
 
         case AppConfig.bandPath:
             return handleBand(request)

@@ -14,7 +14,7 @@ struct WaitingQueueSection: View {
             VStack(spacing: Layout.rowSpacing) {
                 ForEach(model.visible) { card in
                     WaitingCardView(card: card, selected: model.isSelected(card), armed: model.isArmed(card), resolved: false,
-                                    onAnswer: { model.answer(card, $0) })
+                                    onAnswer: { model.answer(card, $0) }, onChoose: { model.choose(card, $0) })
                         // Not on a held permission: a click on its Allow must
                         // never also raise the session (a review finding). `O`
                         // still opens it.
@@ -50,6 +50,8 @@ struct WaitingCardView: View {
     let resolved: Bool
     /// Allow or Deny, for an ask the panel holds.
     var onAnswer: (PermissionGate.Verdict) -> Void = { _ in }
+    /// One of a held question's options (D86).
+    var onChoose: (Int) -> Void = { _ in }
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
@@ -70,8 +72,14 @@ struct WaitingCardView: View {
                         Text("+\(card.more)").font(.system(size: 9, weight: .bold)).monospacedDigit().foregroundStyle(tint)
                     }
                     if card.call != nil, !resolved {
-                        answerButton("Deny", .deny)
-                        answerButton("Allow", .allow)
+                        if card.options.isEmpty {
+                            answerButton("Deny", .deny)
+                            answerButton("Allow", .allow)
+                        } else {
+                            ForEach(Array(card.options.enumerated()), id: \.offset) { index, option in
+                                optionButton(index, option)
+                            }
+                        }
                     }
                 }
                 Text(resolved ? WaitingQueue.resolvedLine(card) : card.line)
@@ -102,9 +110,24 @@ struct WaitingCardView: View {
         .accessibilityElement(children: card.call == nil || resolved ? .ignore : .contain)
         .accessibilityLabel("\(kindName): \(card.title), \(resolved ? WaitingQueue.resolvedLine(card) : card.line)")
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
-        .accessibilityHint(card.call == nil || resolved ? "" : "Allow or Deny from the actions, or A and D")
-        .accessibilityAction(named: "Allow") { if card.call != nil, !resolved { onAnswer(.allow) } }
-        .accessibilityAction(named: "Deny") { if card.call != nil, !resolved { onAnswer(.deny) } }
+        .accessibilityHint(card.call == nil || resolved ? ""
+            : card.options.isEmpty ? "Allow or Deny from the actions, or A and D" : "Choose an option, or press its number")
+        .accessibilityAction(named: "Allow") { if card.call != nil, card.options.isEmpty, !resolved { onAnswer(.allow) } }
+        .accessibilityAction(named: "Deny") { if card.call != nil, card.options.isEmpty, !resolved { onAnswer(.deny) } }
+    }
+
+    /// An option of a held question: its digit and a short label, the whole
+    /// label in the tooltip; inert until the card arms, like Allow.
+    private func optionButton(_ index: Int, _ option: String) -> some View {
+        Button("\(index + 1) \(option.count > 10 ? String(option.prefix(9)) + "…" : option)") { onChoose(index) }
+            .buttonStyle(.plain)
+            .font(.system(size: 9, weight: .semibold))
+            .padding(.horizontal, 5)
+            .frame(height: 13)
+            .background(Capsule().fill(StatusPalette.blockEdge))
+            .disabled(!armed)
+            .help("\(option) (\(index + 1))")
+            .accessibilityLabel(option)
     }
 
     /// Small, and inert until the card arms: a permission that pops up under

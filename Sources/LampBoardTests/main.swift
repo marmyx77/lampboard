@@ -30,6 +30,7 @@ let suites: [TestSuite] = [
     RemoteModScriptsSuite.suite,
     RemotePeerScriptsSuite.suite,
     BandSuite.suite,
+    QuestionGateSuite.suite,
     LampMasterMCPSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,

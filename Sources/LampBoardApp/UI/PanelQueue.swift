@@ -20,6 +20,9 @@ extension PanelController {
         queue.onAnswer = { [weak self] session, call, verdict in
             self?.permissionDesk?.answer(session: session, call: call, verdict) ?? false
         }
+        queue.onChoose = { [weak self] session, call, index in
+            self?.permissionDesk?.choose(session: session, call: call, index: index) ?? false
+        }
         queue.onLayoutChange = { [weak self] in
             guard let self else { return }
             self.resizeToFit(self.store.state)

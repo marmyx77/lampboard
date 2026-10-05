@@ -33,6 +33,8 @@ public struct WaitingCard: Sendable, Equatable, Identifiable {
     /// The call a permission waits on while the panel holds it (D80): only
     /// then can the card's Allow and Deny answer it.
     public var call: String? = nil
+    /// A held question's options (D86): a digit chooses one.
+    public var options: [String] = []
 }
 
 /// What waits for you, in order, and what a key does to it. Pure: the panel
@@ -172,6 +174,8 @@ public enum WaitingQueue {
         case markRead(sessionIds: [String])
         /// Allow or Deny for an ask the panel holds.
         case answer(sessionId: String, call: String, PermissionGate.Verdict)
+        /// One of a held question's options, by index (D86).
+        case choose(sessionId: String, call: String, index: Int)
     }
 
     /// The selected card, by position, kept on its card when the queue changes.
@@ -203,9 +207,13 @@ public enum WaitingQueue {
                 default: return .none
                 }
             case .allow, .deny:
-                guard let call = card.call, let session = card.sessionIds.first else { return .unavailable }
+                guard let call = card.call, card.options.isEmpty, let session = card.sessionIds.first else { return .unavailable }
                 return .answer(sessionId: session, call: call, key == .allow ? .allow : .deny)
-            case .always, .reply, .option:
+            case .option(let number):
+                guard let call = card.call, card.options.indices.contains(number - 1), let session = card.sessionIds.first
+                else { return .unavailable }
+                return .choose(sessionId: session, call: call, index: number - 1)
+            case .always, .reply:
                 return .unavailable
             }
         }
@@ -234,8 +242,9 @@ public enum WaitingQueue {
     /// been shown — so it is the queue that says the session waits.
     private static func held(_ ask: PermissionGate.Request, in sessions: [SessionState]) -> WaitingCard {
         let title = sessions.first { $0.id == ask.sessionId }?.displayName ?? "A session"
-        return WaitingCard(id: "held:\(ask.sessionId):\(ask.callId)", kind: .permission, sessionIds: [ask.sessionId],
-                           title: title, line: ask.line, appearedAt: ask.receivedAt, more: 0, call: ask.callId)
+        return WaitingCard(id: "held:\(ask.sessionId):\(ask.callId)", kind: ask.options.isEmpty ? .permission : .question,
+                           sessionIds: [ask.sessionId], title: title, line: ask.line, appearedAt: ask.receivedAt, more: 0,
+                           call: ask.callId, options: ask.options)
     }
 
     private static func readyCards(_ ready: [SessionState]) -> [WaitingCard] {

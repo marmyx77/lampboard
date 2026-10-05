@@ -309,6 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onCheck: { [permissions] body, nonce, proof, key in permissions.check(body, nonce: nonce, proof: proof, key: key) },
             onChecks: { [permissions] in permissions.listing },
             onCheckAnswer: { [permissions] body in permissions.answer(body: body) },
+            onQuestion: { [permissions] body, nonce, proof, key in permissions.question(body, nonce: nonce, proof: proof, key: key) },
             onBand: { [weak self] asking in
                 Self.onMain(timeout: 1) { self?.bandItems(excluding: asking) } ?? Band.json([])
             },

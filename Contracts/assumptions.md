@@ -910,7 +910,10 @@ conversation with no turn, idle or mid-turn, as `{ isAnswered, text }` or
 `$.ui.resolve(e)`'s `Box`, `Text` and `Button` above the prompt on the terminal and
 desktop surfaces, that a Button's `hotkey` digit presses it from an empty prompt,
 that `$.ui.invalidate('ui.render')` redraws it, and that `setInterval` exists in
-the mod's runtime.
+the mod's runtime; and that a `tool.call` hook on `AskUserQuestion` may return
+`{ result: { questions, answers } }` itself, the model reading it as the person's
+answer, after waiting on the panel over HTTP for up to 25 seconds (30 is lost to the
+dialog) — version-sensitive, measured on 2.1.289 only.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·
 [ModReport.swift](../Sources/LampBoardCore/Mod/ModReport.swift) ·

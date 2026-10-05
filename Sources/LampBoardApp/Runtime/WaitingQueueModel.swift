@@ -26,6 +26,8 @@ final class WaitingQueueModel: ObservableObject {
     /// Allow or Deny for an ask the panel holds.
     /// `false` when the ask was gone already: said with a beep, not in silence.
     var onAnswer: (String, String, PermissionGate.Verdict) -> Bool = { _, _, _ in false }
+    /// One of a held question's options (D86); `false` when it was gone already.
+    var onChoose: (String, String, Int) -> Bool = { _, _, _ in false }
     /// The number of lines drawn changed: the panel has to be remeasured.
     var onLayoutChange: () -> Void = {}
     /// Whether the panel holds the keyboard now. Keys are only ever taken then.
@@ -94,6 +96,13 @@ final class WaitingQueueModel: ObservableObject {
         perform(cursor.selected, verdict == .allow ? .allow : .deny)
     }
 
+    /// A click on one of a held question's options: what its digit does.
+    func choose(_ card: WaitingCard, _ index: Int) {
+        guard isArmed(card), let position = cards.firstIndex(where: { $0.id == card.id }) else { return }
+        cursor = WaitingQueue.Cursor(selected: position)
+        perform(cursor.selected, .option(index + 1))
+    }
+
     // MARK: - Keys
 
     /// Listens for keys while the panel holds the keyboard and the queue has
@@ -138,6 +147,9 @@ final class WaitingQueueModel: ObservableObject {
         case .answer(let session, let call, let verdict):
             actedOn.insert(cards[index].id)
             if !onAnswer(session, call, verdict) { NSSound.beep() }
+        case .choose(let session, let call, let option):
+            actedOn.insert(cards[index].id)
+            if !onChoose(session, call, option) { NSSound.beep() }
         case .unavailable:
             // Said, not swallowed in silence: the key is right, the hand is not
             // there yet (D73).

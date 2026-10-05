@@ -26,6 +26,8 @@ final class PermissionDesk: ObservableObject {
     private final class Reply: @unchecked Sendable {
         let done = DispatchSemaphore(value: 0)
         var verdict: PermissionGate.Verdict = .ask
+        /// A question's chosen option (D86); `nil` sends it to the dialog.
+        var choice: Int?
     }
 
     init(preferences: Preferences = Preferences()) {
@@ -76,18 +78,77 @@ final class PermissionDesk: ObservableObject {
         return PermissionGate.signed(reply.verdict, key: key, nonce: nonce)
     }
 
+    /// The server's side of a question (D86): proven with the key under its
+    /// own prefix, held like a permission, answered with the chosen option's
+    /// index — or `ask`, the session's own dialog.
+    nonisolated func question(_ body: Data, nonce: String?, proof: String?, key: String) -> String {
+        let ask = PermissionGate.Verdict.ask.rawValue
+        guard let request = QuestionGate.decode(body, at: Date()) else {
+            Diagnostics.log("question: one that does not read")
+            return ask
+        }
+        guard let nonce, let proof,
+              QuestionGate.isGenuine(key: key, nonce: nonce, proof: proof, session: request.sessionId, call: request.callId)
+        else {
+            Diagnostics.log("question: \(request.callId) not proven with the key")
+            return ask
+        }
+        guard let reply = hold(request) else { return QuestionGate.signed(choice: nil, key: key, nonce: nonce) }
+        _ = reply.done.wait(timeout: .now() + QuestionGate.answerWithin + 2)
+        return QuestionGate.signed(choice: reply.choice, key: key, nonce: nonce)
+    }
+
+    /// Books the request on the main actor and hands back its reply, or `nil`
+    /// when it is not the panel's to answer — switched off, full, or a main
+    /// actor too busy to say, where a booking made late is withdrawn.
+    nonisolated private func hold(_ request: PermissionGate.Request) -> Reply? {
+        let admitted = DispatchSemaphore(value: 0)
+        let box = Box()
+        Task { @MainActor in
+            if !box.abandoned { box.reply = self.admit(request) }
+            admitted.signal()
+        }
+        guard admitted.wait(timeout: .now() + 2) == .success, let reply = box.reply else {
+            Task { @MainActor in
+                box.abandoned = true
+                if let mine = box.reply { self.withdraw(mine, session: request.sessionId, call: request.callId) }
+            }
+            return nil
+        }
+        return reply
+    }
+
+    /// One of a held question's options, from a click or a digit (D86).
+    @discardableResult
+    func choose(session: String, call callId: String, index: Int) -> Bool {
+        guard let held = book.pending.first(where: { $0.sessionId == session && $0.callId == callId }),
+              held.options.indices.contains(index),
+              book.answer(session: session, call: callId, .allow) != nil,
+              let reply = replies.removeValue(forKey: Self.key(session, callId)) else { return false }
+        reply.choice = index
+        reply.done.signal()
+        pending = book.pending
+        return true
+    }
+
     /// `{"session","id","verdict"}` from the server; `false` when nothing waits
     /// under that session and call.
     nonisolated func answer(body: Data) -> Bool {
         guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
               let session = object["session"] as? String,
-              let id = object["id"] as? String,
-              let raw = object["verdict"] as? String, let verdict = PermissionGate.Verdict(rawValue: raw)
+              let id = object["id"] as? String
         else { return false }
+        let choice = object["choice"] as? Int
+        let verdict = (object["verdict"] as? String).flatMap(PermissionGate.Verdict.init(rawValue:))
+        guard choice != nil || verdict != nil else { return false }
         let done = DispatchSemaphore(value: 0)
         let result = Flag()
         Task { @MainActor in
-            result.value = self.answer(session: session, call: id, verdict)
+            if let choice {
+                result.value = self.choose(session: session, call: id, index: choice)
+            } else if let verdict {
+                result.value = self.answer(session: session, call: id, verdict)
+            }
             done.signal()
         }
         return done.wait(timeout: .now() + 2) == .success && result.value
@@ -96,6 +157,11 @@ final class PermissionDesk: ObservableObject {
     /// The panel's answer: a click, a key, or `/check/answer` on a test's fake home.
     @discardableResult
     func answer(session: String, call callId: String, _ verdict: PermissionGate.Verdict) -> Bool {
+        // A question is answered by a choice, never by Allow or Deny; `ask`
+        // sends either back to its dialog.
+        if verdict != .ask, book.pending.contains(where: { $0.sessionId == session && $0.callId == callId && !$0.options.isEmpty }) {
+            return false
+        }
         guard let given = book.answer(session: session, call: callId, verdict),
               let reply = replies.removeValue(forKey: Self.key(session, callId)) else { return false }
         reply.verdict = given
@@ -138,7 +204,7 @@ final class PermissionDesk: ObservableObject {
         private let lock = NSLock()
         private var data = Data("[]".utf8)
         func publish(_ pending: [PermissionGate.Request]) {
-            let rows = pending.map { ["session": $0.sessionId, "id": $0.callId, "tool": $0.tool, "line": $0.line] }
+            let rows = pending.map { ["session": $0.sessionId, "id": $0.callId, "tool": $0.tool, "line": $0.line, "options": $0.options] as [String: Any] }
             let encoded = (try? JSONSerialization.data(withJSONObject: rows)) ?? Data("[]".utf8)
             lock.lock(); data = encoded; lock.unlock()
         }

@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.6.0"
+    public static let version = "1.7.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -44,7 +44,7 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, and answers the panel's side questions without a turn. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
@@ -82,6 +82,11 @@ public enum ModFiles {
 // switch off, the dialog comes as it always did (D80). For that one the mod
 // reads a second file the panel wrote, its permission key, sends it to nobody,
 // and proves it holds it; the panel's answer counts only signed with it.
+//
+// And a question Claude asks the person (D86), with the same switch: one
+// question, one choice, two to four options, put to the panel first like a
+// permission and answered with the option the person picked there; any other,
+// or one unanswered in 55 seconds, gets the session's own dialog.
 //
 // And one question, asked by the person from the panel without disturbing the
 // session (D82): a message in this session's box that starts with LampBoard's
@@ -196,6 +201,44 @@ async function hmac(key, message) {
   const outer = new Uint8Array(96)
   outer.set(pad(0x5c)); outer.set(await sha256(inner), 64)
   return hex(await sha256(outer))
+}
+
+// A question Claude asks (D86): put to the panel only in a shape a card can
+// show — one question, one choice, two to four options — proven with the
+// permission key like a permission, and answered only with a signed choice.
+async function askPanel($, e) {
+  try {
+    const questions = e.questions || (e.input && e.input.questions) || []
+    if (questions.length !== 1) return null
+    const q = questions[0]
+    const options = Array.isArray(q.options) ? q.options.map((o) => o && o.label) : []
+    if (q.multiSelect || (q.kind && q.kind !== 'choice') || options.length < 2 || options.length > 4) return null
+    if (!options.every((label) => typeof label === 'string' && label)) return null
+    const home = await realHome($)
+    if (!home) return null
+    const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+    const port = parseInt((await $.fs.read(`${home}/.lampboard/port`)).trim(), 10)
+    if (!/^[0-9a-f]{16,128}$/.test(key) || !(port >= 1024 && port < 65536)) return null
+    const session = await $.session.id()
+    const nonce = crypto.randomUUID()
+    const reply = await $.http.fetch(`http://127.0.0.1:${port}/question`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LampBoard-Nonce': nonce,
+        'X-LampBoard-Proof': await hmac(key, `question:${nonce}:${session}:${e.tool_use_id}`),
+      },
+      body: JSON.stringify({ v: VERSION, session, id: e.tool_use_id, question: q.question, header: q.header, options }),
+    })
+    const [word, index, signature] = reply.ok ? reply.text.trim().split(' ') : []
+    if (word !== 'choose' || !/^[0-3]$/.test(index || '')) return null
+    if (!same(signature, await hmac(key, `choose:${nonce}:${index}`))) return null
+    const label = options[Number(index)]
+    if (label === undefined) return null
+    return { result: { questions, answers: { [q.question]: label } } }
+  } catch (_) {
+    return null
+  }
 }
 
 // The same comparison whatever the guess: a proof is not found a byte at a time.
@@ -343,6 +386,11 @@ export function register(on) {
   // command left waiting (5.7). The posts are not awaited: a tool call must
   // never wait on the panel, and they cannot throw.
   on('tool.call', async ($, e, next) => {
+    // A question answered from the panel never reaches the dialog.
+    if (e.tool === 'AskUserQuestion' && e.tool_use_id) {
+      const answered = await askPanel($, e)
+      if (answered) return answered
+    }
     const id = e.tool_use_id
     if (id) void post($, 'tool', { id, tool: e.tool, phase: 'start', detail: detailOf(e) })
     try {

@@ -70,13 +70,14 @@ struct ModSettings: View {
             With the mod installed, a session about to ask you whether it may run something can \
             ask this panel first. The ask waits in "Waiting for you" with Allow and Deny, also \
             on the A and D keys, for up to 55 seconds; unanswered, the session shows its own \
-            dialog, as it always did. Only what Claude Code would have asked you: nothing it \
-            allows or refuses by itself is ever changed. Sessions with mod 1.4.0 pick it up at once.
+            dialog, as it always did. A question Claude asks you with two to four options \
+            waits there too, its options on the digit keys, for up to 20 seconds. Only what Claude Code would have asked you: nothing it \
+            allows or refuses by itself is ever changed. Sessions with mod 1.7.0 pick it up at once.
             """)
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-            Toggle("Answer permissions from the panel", isOn: Binding(
+            Toggle("Answer permissions and questions from the panel", isOn: Binding(
                 get: { permissions },
                 set: { permissions = $0; Preferences().permissionsFromPanel = $0 }
             ))

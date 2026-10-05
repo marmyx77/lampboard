@@ -59,6 +59,9 @@ public enum AppConfig {
     /// they decide what a session may run.
     public static let checkPath = "/check"
     public static let checkAnswerPath = "/check/answer"
+    /// Where the mod puts a session's question to the panel (D86), proven and
+    /// answered like a permission.
+    public static let questionPath = "/question"
 
     /// What the band above each session's prompt shows, and the press that opens
     /// one of its items in the panel (D84). Behind the token; the asking session

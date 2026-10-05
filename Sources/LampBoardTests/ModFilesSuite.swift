@@ -64,6 +64,15 @@ enum ModFilesSuite {
             t.expect(code.contains("clearInterval(ending.clock)"), "stopped when its session ends")
         },
 
+        TestCase("A question goes to the panel proven, and only a signed choice answers it (D86)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("/question`"), "the question's route")
+            t.expect(code.contains("hmac(key, `question:${nonce}:${session}:${e.tool_use_id}`)"), "proven under its own prefix")
+            t.expect(code.contains("same(signature, await hmac(key, `choose:${nonce}:${index}`))"), "the choice signed")
+            t.expect(code.contains("if (q.multiSelect || (q.kind && q.kind !== 'choice') || options.length < 2 || options.length > 4) return null"),
+                     "only what a card can show")
+        },
+
         TestCase("/lampmaster asks through the MCP tool's route and name, and hands the model nothing") { t in
             let code = ModFiles.register
             t.expect(code.contains("name: 'lampmaster'"), "registers /lampmaster")

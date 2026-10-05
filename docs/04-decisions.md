@@ -3376,3 +3376,33 @@ and scrolls past a few lines. A proposal is taken once — it cannot come back w
 the Plancia redraws — goes only into the Plancia of the session it is for, and
 never replaces or takes the focus from what the person was typing.
 
+## D86 · A question Claude asks is answered from the panel too
+
+**Decided.** With the switch of D80 on — now "Answer permissions and questions from
+the panel" — a question Claude puts to the person with `AskUserQuestion` goes to the
+panel first, like a permission: one question, one choice, two to four options, what
+a card can show. It waits at the top of the queue (D74) as a question card with its
+options as buttons and on the digit keys, inert for 600 ms; the option chosen goes
+back to the session as the person's answer. Unanswered in 20 seconds, switched off,
+or in any other shape — several questions, several choices, a number to type — the
+session's own dialog asks it, as it always did.
+
+**Measured on the test Mac** (Claude Code 2.1.289, 5 October 2026). A probe mod's
+`tool.call` on `AskUserQuestion` returned `{ result: { questions, answers } }` itself:
+Claude Code recorded "User answered Claude's questions: … → Blue" and the model said
+"You chose Blue". The hook may wait on the panel over HTTP, but less long than a
+permission's: 20 and 25 seconds held, 30, 40 and 55 lost to the dialog (a review
+asked for the measure); a `setTimeout` of 15 seconds, time the engine counts, lost it
+too. So a question has 20 seconds with the panel, a permission 55. Then
+with LampBoard's mod 1.7.0 in a throwaway session: the question waited in the panel
+as "work: Which color do you prefer? · 1 Red · 2 Blue", the second option chosen
+reached the session, and the model answered "You chose Blue."
+
+**Proven and signed like a permission.** The mod puts the question to
+`POST /question` with a nonce and an HMAC of the permission key (D80) under its own
+prefix, `question:`, so a permission's proof cannot stand for a question's; the
+panel answers `choose <index> <signature>` over `choose:<nonce>:<index>`, or
+`ask`, and the mod believes only a signed choice inside the options it sent. Allow
+and Deny do not answer a question; a digit chooses. The answer route stays a fake
+home's only (D80): in a real install the choice is a click or a key in the panel.
+

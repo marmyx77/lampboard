@@ -45,6 +45,26 @@ enum PermissionE2ESuite {
         return body
     }
 
+    /// A question as the mod puts it (D86): proven like an ask, under its own prefix.
+    static func question(_ app: AppUnderTest, call: String, nonce: String) -> String {
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(app.port)\(AppConfig.questionPath)")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 70
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+        request.setValue(PermissionGate.mac(key: app.checkKeyValue ?? "", message: QuestionGate.askMessage(nonce: nonce, session: session, call: call)),
+                         forHTTPHeaderField: "X-LampBoard-Proof")
+        request.httpBody = Data(#"{"v":1,"session":"\#(session)","id":"\#(call)","question":"Which color?","options":["Red","Blue"]}"#.utf8)
+        let done = DispatchSemaphore(value: 0)
+        var body = ""
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            body = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+            done.signal()
+        }.resume()
+        _ = done.wait(timeout: .now() + 70)
+        return body
+    }
+
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
         // `on: nil` leaves the switch as a new installation has it.
         func instance(on: Bool?, _ t: Assertions, _ body: (AppUnderTest) -> Void) {
@@ -92,6 +112,27 @@ enum PermissionE2ESuite {
                     t.expectEqual(check(app, call: "toolu_new", nonce: nonce), PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce))
                     t.expect(Date().timeIntervalSince(started) < 3, "no wait: the dialog, as without the panel")
                     t.expectEqual(app.raw(method: "GET", path: AppConfig.checkPath).body, "[]", "nothing held")
+                }
+            },
+
+            TestCase("a question waits for a choice, signed; Allow does not answer it (D86)") { t in
+                instance(on: true, t) { app in
+                    var reply = ""
+                    let done = DispatchSemaphore(value: 0)
+                    DispatchQueue.global().async {
+                        reply = question(app, call: "toolu_q", nonce: nonce)
+                        done.signal()
+                    }
+                    Thread.sleep(forTimeInterval: 1)
+                    t.expect(app.raw(method: "GET", path: AppConfig.checkPath).body.contains("Blue"), "listed with its options")
+                    let allowed = app.raw(method: "POST", path: AppConfig.checkAnswerPath,
+                                          body: #"{"session":"\#(session)","id":"toolu_q","verdict":"allow"}"#)
+                    t.expectEqual(allowed.status, 404, "a question is answered by a choice")
+                    let chosen = app.raw(method: "POST", path: AppConfig.checkAnswerPath,
+                                         body: #"{"session":"\#(session)","id":"toolu_q","choice":1}"#)
+                    t.expectEqual(chosen.status, 204)
+                    t.expectEqual(done.wait(timeout: .now() + 5), .success, "the question returned")
+                    t.expectEqual(reply, QuestionGate.signed(choice: 1, key: app.checkKeyValue ?? "", nonce: nonce))
                 }
             },
 

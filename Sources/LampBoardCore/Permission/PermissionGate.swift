@@ -33,13 +33,21 @@ public enum PermissionGate {
         public let tool: String
         public let line: String
         public let receivedAt: Date
+        /// A question's options (D86); empty for a permission.
+        public let options: [String]
 
-        public init(sessionId: String, callId: String, tool: String, line: String, receivedAt: Date) {
+        /// Past its time with the panel: a question's is shorter (D86).
+        func isDue(at now: Date) -> Bool {
+            now.timeIntervalSince(receivedAt) >= (options.isEmpty ? PermissionGate.answerWithin : QuestionGate.answerWithin)
+        }
+
+        public init(sessionId: String, callId: String, tool: String, line: String, receivedAt: Date, options: [String] = []) {
             self.sessionId = sessionId
             self.callId = callId
             self.tool = tool
             self.line = line
             self.receivedAt = receivedAt
+            self.options = options
         }
     }
 
@@ -82,8 +90,13 @@ public enum PermissionGate {
 
     /// Whether an ask's proof was made with this key for this call.
     public static func isGenuine(key: String, nonce: String, proof: String, session: String, call: String) -> Bool {
+        return proves(proof, mac(key: key, message: askMessage(nonce: nonce, session: session, call: call)), nonce: nonce)
+    }
+
+    /// The comparison, in constant time, once the nonce and the proof have the
+    /// shape they must.
+    static func proves(_ proof: String, _ expected: String, nonce: String) -> Bool {
         guard (16...64).contains(nonce.count), proof.count == 64 else { return false }
-        let expected = mac(key: key, message: askMessage(nonce: nonce, session: session, call: call))
         return expected.utf8.count == proof.utf8.count && zip(expected.utf8, proof.utf8).reduce(0) { $0 | ($1.0 ^ $1.1) } == 0
     }
 
@@ -118,8 +131,8 @@ public enum PermissionGate {
         /// The asks whose time is up, taken out of the book: each goes back to
         /// its session's dialog.
         public mutating func expired(at now: Date) -> [Request] {
-            let gone = pending.filter { now.timeIntervalSince($0.receivedAt) >= PermissionGate.answerWithin }
-            pending.removeAll { now.timeIntervalSince($0.receivedAt) >= PermissionGate.answerWithin }
+            let gone = pending.filter { $0.isDue(at: now) }
+            pending.removeAll { $0.isDue(at: now) }
             return gone
         }
     }
