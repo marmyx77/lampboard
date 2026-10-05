@@ -47,6 +47,9 @@ final class LampMasterService: ObservableObject {
     /// The search index's conversations for a failure's words, with what was
     /// said around them: the round's precedents (D3).
     var precedentsSearch: (@Sendable (String) -> [LampMasterPrecedents.Hit])?
+    /// The allowance strip's reports, this Mac's first (D4): the frame's quota,
+    /// and the rule that the round gives way when its own account is tight.
+    var allowance: () -> [AllowanceReport] = { [] }
 
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
@@ -154,8 +157,10 @@ final class LampMasterService: ObservableObject {
         let found = await cards.sessions(live: rows().compactMap(Self.live), now: now)
         let muted = preferences.lampMasterMuted
         var shown = files.suggestions()
+        let reports = allowance()
         var frame = LampMasterFrameBuilder.build(
-            sessions: found, now: now, recent: LampMasterLedger.recent(shown, now: now),
+            sessions: found, now: now, quota: LampMasterQuota.frame(reports, now: now),
+            recent: LampMasterLedger.recent(shown, now: now),
             muted: muted.map(\.rawValue), notebook: files.notebook()
         )
         let ids = Set(frame.sessions.map(\.id))
@@ -179,7 +184,8 @@ final class LampMasterService: ObservableObject {
         let decision = LampMasterSchedule.decide(
             trigger: trigger, enabled: preferences.lampMasterEnabled, interval: preferences.lampMasterInterval,
             lastRun: last?.at, lastDigest: last?.digest, digest: digest, sessionCount: frame.sessions.count,
-            tokensToday: tokensToday(rounds: rounds, now: now), now: now
+            tokensToday: tokensToday(rounds: rounds, now: now),
+            quotaTight: LampMasterQuota.tight(reports, now: now), now: now
         )
         switch decision {
         case .wait:

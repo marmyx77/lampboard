@@ -46,6 +46,8 @@ public enum LampMasterSchedule {
         case dailyCap
         /// Asked for again within `askedSpacing` of the last run.
         case tooSoon
+        /// The account the round spends would run out before its reset (D4).
+        case quotaTight
     }
 
     public enum Decision: Sendable, Equatable {
@@ -61,7 +63,7 @@ public enum LampMasterSchedule {
     ///   - lastDigest: the digest of that round's frame.
     public static func decide(
         trigger: Trigger, enabled: Bool, interval: TimeInterval, lastRun: Date?, lastDigest: String?,
-        digest: String, sessionCount: Int, tokensToday: Int, cap: Int = dailyTokenCap, now: Date
+        digest: String, sessionCount: Int, tokensToday: Int, cap: Int = dailyTokenCap, quotaTight: Bool = false, now: Date
     ) -> Decision {
         guard enabled else { return .skip(.off) }
         let since = lastRun.map { now.timeIntervalSince($0) } ?? .infinity
@@ -74,6 +76,8 @@ public enum LampMasterSchedule {
         if sessionCount == 0 { return .skip(.empty) }
         if digest == lastDigest { return .skip(.unchanged) }
         if tokensToday >= cap { return .skip(.dailyCap) }
+        // The round spends what the person's own sessions need (§6): it gives way.
+        if quotaTight { return .skip(.quotaTight) }
         if trigger == .asked, since < askedSpacing { return .skip(.tooSoon) }
         return .run
     }

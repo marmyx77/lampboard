@@ -150,6 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         legendWindow = legend
         controller.onOpenLegend = { legend.show() }
+        lampMaster.allowance = { [weak controller] in controller?.allowance.reports ?? [] }
         controller.show()
         if TrialStage.mode != nil {
             controller.allowance.showTrial([DemoScript.standard.allowanceReport(now: Date())])

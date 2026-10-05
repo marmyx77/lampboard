@@ -20,6 +20,7 @@ public enum LampMasterLine {
         guard let last else { return "LampMaster · no round yet" }
         switch (last.outcome, last.skip, last.failure) {
         case (.skipped, .dailyCap?, _): return "Today's tokens spent · signals only"
+        case (.skipped, .quotaTight?, _): return "Allowance tight · signals only"
         case (.failed, _, let failure?): return "Last round failed: " + reason(failure)
         default: return "Nothing to report · round at \(time(last.at))"
         }

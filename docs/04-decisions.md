@@ -3629,3 +3629,22 @@ conversation under `precedents` with its project and the words around the match.
 **What a review changed.** The search moved after the decision to run, and to the
 sessions the frame kept; a failure two sessions share is searched once and picked for
 each, since each has its own project.
+
+## D93 · The round gives way to a tight allowance
+
+**Decided.** LampMaster's round now carries the allowance in its frame — one line
+per account the allowance strip shows: the share used of the window most at risk,
+the minutes to its reset, and whether it runs out before then — and it gives way: when
+the account it spends, this Mac's, would run out of its session or weekly window
+before the reset, the round is skipped at no cost and the line says "Allowance tight ·
+signals only". A model's own weekly cap is not the round's and does not count.
+
+**The forecast.** The pace so far: a window five hours long, two hours in at 60 %,
+ends at 150 %. It needs no history beyond the strip's last reading; before 15 % of a
+window has gone it says nothing, since a burst at the start reads as a pace. The
+person's sessions and the round draw on the same allowance (§6 of the plan): the
+round is the one that waits.
+
+**What it does not cover.** The end-to-end suite runs the app headless, where no
+allowance strip exists; the rule is held by the domain suite, the wiring is two
+lines. The nodes' sessions in the frame are the next part of the same step.
