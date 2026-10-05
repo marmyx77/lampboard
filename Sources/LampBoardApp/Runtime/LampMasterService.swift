@@ -44,6 +44,9 @@ final class LampMasterService: ObservableObject {
     /// What was said in earlier conversations, for `who_knows` (D89): the
     /// search index, set by whoever owns it.
     var remember: (@Sendable (String) -> [LampMasterLookup.Remembered])?
+    /// The same, wider: a question from the panel searches word by word and
+    /// keeps what two words agree on, which a top six per word rarely shares.
+    var rememberMany: (@Sendable (String) -> [LampMasterLookup.Remembered])?
     /// The search index's conversations for a failure's words, with what was
     /// said around them: the round's precedents (D3).
     var precedentsSearch: (@Sendable (String) -> [LampMasterPrecedents.Hit])?
@@ -53,6 +56,12 @@ final class LampMasterService: ObservableObject {
 
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
+    /// The conversation in LampMaster's Plancia (D118): kept while the panel
+    /// runs, so a tab or the Plancia closing does not lose it.
+    @Published var conversation: [LampMasterAsk.Exchange] = []
+    /// A question of that conversation being answered, and why the last failed.
+    @Published var conversing: String?
+    @Published var conversationError: String?
     /// Told when a card is answered, whatever the answer: the tour's last step.
     var onReact: (() -> Void)?
     /// The port this panel listens on, which the MCP server's entry must name.

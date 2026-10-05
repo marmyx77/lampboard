@@ -30,10 +30,7 @@ extension PanelController {
         // limits and daily ceiling (D62), and the answer drawn for the person.
         bar.onAsk = { [weak self] question in
             guard let lampMaster = self?.lampMaster else { return "LampMaster is not available." }
-            let body = (try? JSONSerialization.data(withJSONObject: [
-                "tool": LampMasterMCP.Tool.askLampMaster.rawValue, "arguments": ["question": question],
-            ])) ?? Data()
-            return await lampMaster.tool(body).text
+            return await lampMaster.askFromPanel(question).text
         }
         // Through the Plancia's composer, opened on that session: the same
         // switch, the same box or mailbox, and the message seen as it goes.

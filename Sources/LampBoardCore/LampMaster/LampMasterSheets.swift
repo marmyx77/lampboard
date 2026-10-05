@@ -17,6 +17,30 @@ public enum LampMasterSheets {
         public let outcome: String
     }
 
+    /// A question put to LampMaster today, by a session or by the person (D118).
+    public struct AskLine: Sendable, Equatable, Identifiable {
+        public var id: String { "\(at.timeIntervalSince1970)-\(who)-\(question)" }
+        public let at: Date
+        /// "You" from the panel, else the row's name, else the session's id,
+        /// else "A session" for one that did not say which it is.
+        public let who: String
+        public let question: String
+        /// `nil` while it runs, or when it could not be answered.
+        public let answer: String?
+    }
+
+    /// Today's questions, the newest first.
+    public static func asked(
+        _ history: [LampMasterAskLimits.Asked], now: Date, calendar: Calendar = .current, name: (String) -> String?
+    ) -> [AskLine] {
+        history.filter { calendar.isDate($0.at, inSameDayAs: now) }
+            .sorted { $0.at > $1.at }
+            .map { asked in
+                let who = asked.session.map { $0 == LampMasterAsk.panel ? "You" : name($0) ?? String($0.prefix(8)) } ?? "A session"
+                return AskLine(at: asked.at, who: who, question: asked.question, answer: asked.answer)
+            }
+    }
+
     /// Today's suggestions, the newest first.
     public static func today(_ shown: [LampMasterShown], now: Date, calendar: Calendar = .current) -> [TodayLine] {
         shown.filter { calendar.isDate($0.at, inSameDayAs: now) }

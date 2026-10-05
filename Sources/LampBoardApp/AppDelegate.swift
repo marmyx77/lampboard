@@ -111,6 +111,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                             project: $0.cwd.map { ($0 as NSString).lastPathComponent }, lastAt: $0.lastAt)
             }
         }
+        lampMaster.rememberMany = { [searchIndex] word in
+            searchIndex.search(word, limit: 40).map {
+                LampMasterLookup.Remembered(sessionId: $0.sessionId, title: $0.title ?? "untitled",
+                                            project: $0.cwd.map { ($0 as NSString).lastPathComponent }, lastAt: $0.lastAt)
+            }
+        }
         lampMaster.precedentsSearch = { [searchIndex] words in
             searchIndex.search(words, limit: 8).map {
                 LampMasterPrecedents.Hit(sessionId: $0.sessionId, project: $0.cwd.map { ($0 as NSString).lastPathComponent },
@@ -171,6 +177,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
            let sheet = LampMasterPlanciaContent.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak controller] in controller?.openLampMasterPlancia(sheet: sheet) }
+        }
+        // And a conversation in it, as if typed, one question after the other's
+        // answer (D118) — only against a fake home: `--lampmaster-ask "q1 | q2"`.
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--lampmaster-ask"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let questions = CommandLine.arguments[index + 1].components(separatedBy: " | ")
+            // After the search index's first pass, which starts ten seconds in.
+            Task { @MainActor [lampMaster] in
+                try? await Task.sleep(for: .seconds(20))
+                for question in questions {
+                    lampMaster.converse(question)
+                    while lampMaster.conversing != nil { try? await Task.sleep(for: .milliseconds(500)) }
+                }
+            }
         }
         // The Plancia on the most urgent session, once the first rows are in.
         if CommandLine.arguments.contains("--plancia") {

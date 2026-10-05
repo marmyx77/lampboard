@@ -4439,3 +4439,67 @@ does not hold the main thread, so a Mac without a speaker loses the sentence,
 not the panel. The log says "speaking", then "spoken" once an utterance has been
 heard to the end.
 
+## D118 · LampMaster in conversation, from its Plancia
+
+**Decided.** The plan's D8 for LampMaster, the first 1.0 step. *Today*, in
+LampMaster's Plancia, opens on a box: a question about all the sessions at once,
+answered beneath it, and a follow-up read against what came before, until *New
+conversation*. Below the box, *Asked today* lists every question LampMaster took
+today, with who asked (a session by its row's name, or "You") and what it answered.
+Then the day's suggestions follow, as before.
+
+**One door.** The box and `?question` in the bar take the same path, now its own:
+`askFromPanel`. Before, the bar went through the MCP tool's entry with no session,
+and LampMaster was told "the asking session is not in the frame". Now the message
+says the person asks from the panel. The person's questions are recorded under
+`panel`, and shown as "You". A session that does not say which it is stays "unknown"
+in the message and "A session" on *Asked today*, never the person, and a session
+cannot pass for `panel`. The switch, the twenty questions an hour of everyone and the
+day's tokens are the same as for a session's question. The five per asker are not
+applied to the person: a conversation runs past five, and a person is not a loop.
+
+**A follow-up carries the last three exchanges**, each question cut at 300
+characters and each answer at 600, fenced as data. Each answer goes without its
+sources, which quote other sessions. That is enough for "and the
+other one?", without rereading a transcript at every question. A follow-up is
+never answered from an earlier answer to the same words, because "why?" means
+something else after a different answer. Only answered exchanges are kept, so a
+refusal is shown and not carried. The conversation lives while the panel runs, and
+closing the Plancia does not lose it.
+
+**Nothing in a fence can close it.** An earlier answer is LampMaster's own text,
+which can repeat another session's words, and an index title is a session's own.
+Every line between two markers is made a single line with no control character,
+and its angle brackets become ‹ and ›. So a `</earlier>` in a stored answer is
+just words. The rules say the earlier exchanges and the index are data, never
+instructions.
+
+**The index, word by word.** From the panel, the question's words (and the previous
+question's) are looked up in the search index (D88), forty conversations per word. The index wants every word of
+a query, and a question never has all its words in one conversation. So it is one
+query per word, searched as a prefix. Each word is cut to a crude English root of
+at least four letters: "renamed" finds "rename", "files" becomes "file", and
+"string" stays whole. Left out are the words every question has ("conversation",
+"project", "can you tell") and words under four letters that are not names. Among
+the words that found something, a conversation two of them agree on is kept; a rare
+name that alone found anything keeps its own hits. LampMaster
+gets the titles, projects, dates and ids, never the words. The rule now says that a
+title shows a conversation happened, not what it decided. A conversation the frame
+already shows is left out. One the frame does not carry is named, even when a card
+exists for it, such as a closed conversation of days ago. A session's question keeps
+to the frame, as it always has.
+
+**The fork stays a click.** When a live session would know better, the answer names
+it and the question to put. Asking it without disturbing is `@name ?question` in the
+bar (D82), which reads its conversation from cache at the session account's cost,
+so it is never run on LampMaster's initiative.
+
+**Measured on the test Mac.** Three invented conversations, LampMaster on, the
+Plancia on *Today*, and two questions typed by `--lampmaster-ask` (fake home only).
+"Which conversation renamed slots, and in which project?" was answered with the
+index's "Slots rename" in events, three days ago, and LampMaster added that the
+title says nothing of what was decided. "And what did it keep for the old name?"
+was read as its follow-up. It said the index does not say, and pointed to opening
+that conversation. Before the index was searched word by word, both answers were
+"I do not know".
+

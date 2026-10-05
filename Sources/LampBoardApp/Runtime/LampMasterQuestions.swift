@@ -29,7 +29,8 @@ extension LampMasterService {
               let name = object["tool"] as? String, let tool = LampMasterMCP.Tool(rawValue: name)
         else { return ("Unknown tool.", true) }
         let arguments = object["arguments"] as? [String: Any] ?? [:]
-        let asker = (object["session"] as? String).flatMap { $0.isEmpty ? nil : String($0.prefix(64)) }
+        // A session cannot pass for the person, whose questions have no five-an-hour.
+        let asker = (object["session"] as? String).flatMap { $0.isEmpty || $0 == LampMasterAsk.panel ? nil : String($0.prefix(64)) }
         let cwd = (object["cwd"] as? String).flatMap { $0.hasPrefix("/") ? $0 : nil }
         let text = { (key: String) in (arguments[key] as? String).map { String($0.prefix(LampMasterMCP.maxArgument)) } ?? "" }
 
@@ -63,9 +64,56 @@ extension LampMasterService {
         }
     }
 
+    /// The person, from the panel's bar or LampMaster's Plancia (D118): the same
+    /// switch, limits and ceiling as a session's question, with the
+    /// conversation so far and what the search index remembers.
+    func askFromPanel(_ question: String, earlier: [LampMasterAsk.Exchange] = []) async -> (text: String, isError: Bool) {
+        let now = Date()
+        let sessions = await cards.sessions(live: rows().compactMap(Self.live), now: now)
+        return await ask(String(question.prefix(LampMasterMCP.maxArgument)), asker: LampMasterAsk.panel, sessions: sessions,
+                         now: now, fromPanel: true, earlier: earlier)
+    }
+
+    /// A question in the Plancia's conversation: answered against the ones
+    /// before it, and kept only when it was answered.
+    /// `failed` gets the question back when it was not answered, so the box
+    /// can give it back to be asked again.
+    func converse(_ question: String, failed: @escaping (String) -> Void = { _ in }) {
+        let asked = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !asked.isEmpty, conversing == nil else { return }
+        conversing = asked
+        conversationError = nil
+        let earlier = conversation
+        Task { @MainActor in
+            let reply = await askFromPanel(asked, earlier: earlier)
+            conversing = nil
+            if reply.isError {
+                conversationError = reply.text
+                failed(asked)
+            } else {
+                // The last twenty on screen; three of them go with a follow-up.
+                conversation = Array((conversation + [LampMasterAsk.Exchange(question: asked, answer: reply.text)]).suffix(20))
+            }
+        }
+    }
+
+    func newConversation() {
+        guard conversing == nil else { return }
+        conversation = []
+        conversationError = nil
+    }
+
+    /// Today's questions, with the rows' names for the sessions that asked.
+    func askedToday(now: Date = Date()) -> [LampMasterSheets.AskLine] {
+        let names = Dictionary(rows().map { ($0.id, RowNames.name(of: $0.workspace.key, in: preferences.rowNames) ?? $0.displayName) },
+                               uniquingKeysWith: { first, _ in first })
+        return LampMasterSheets.asked(files.asks(), now: now, name: { names[$0].map(RowActivity.flat) })
+    }
+
     /// A question: the switch, the limits, the ceiling, then the run.
     private func ask(
-        _ question: String, asker: String?, sessions: [LampMasterSession], now: Date
+        _ question: String, asker: String?, sessions: [LampMasterSession], now: Date,
+        fromPanel: Bool = false, earlier: [LampMasterAsk.Exchange] = []
     ) async -> (text: String, isError: Bool) {
         guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return ("Ask a question.", true) }
         guard questionsRunning < LampMasterAsk.concurrent else {
@@ -75,7 +123,8 @@ extension LampMasterService {
             return ("LampMaster is switched off in LampBoard's Settings, so it does not run a model. "
                 + "overlaps, who_knows and precedents still answer.", true)
         }
-        switch LampMasterAskLimits.decide(history: files.asks(), session: asker, question: question, now: now) {
+        switch LampMasterAskLimits.decide(history: files.asks(), session: asker, question: question, now: now,
+                                          followingUp: !earlier.isEmpty) {
         case .reuse(let answer): return (answer, false)
         case .refuse(let reason): return (reason, true)
         case .run: break
@@ -100,7 +149,24 @@ extension LampMasterService {
         let frame = LampMasterFrameBuilder.build(sessions: sessions, now: now)
         let text = frame.json()
         let ids = Set(frame.sessions.map(\.id))
-        let message = LampMasterAsk.message(question: question, asker: asker, frame: text)
+        // From the panel the index adds what earlier conversations said, by
+        // title; a session's question keeps to the frame, as it always has.
+        var index: String?
+        if fromPanel, let remember = rememberMany ?? remember {
+            let words = LampMasterAsk.indexWords(([question] + earlier.suffix(1).map(\.question)).joined(separator: " "))
+            if !words.isEmpty {
+                let found = await Task.detached(priority: .userInitiated) { words.map { remember($0) } }.value
+                let merged = LampMasterAsk.merge(found)
+                Diagnostics.log("lampmaster: \(words.count) words, the index found \(merged.count) conversations")
+                // Left out only what the frame shows: a card it does not carry
+                // (a closed conversation of days ago) is the index's to name.
+                let shown = merged.filter { !ids.contains(String($0.sessionId.prefix(8))) }
+                index = LampMasterLookup.remembered(shown, asker: nil, now: now)
+            }
+        }
+        // A session that did not say which it is stays unnamed, never "the person".
+        let message = LampMasterAsk.message(question: question, asker: fromPanel ? nil : (asker ?? "unknown"), frame: text,
+                                            earlier: earlier, index: index)
         let system = LampMasterAsk.system(language: Self.language)
         let directory = files.directory
         files.prepare()

@@ -1,13 +1,13 @@
 # Code map
 
-~67,000 lines of Swift across five targets. For each file: what it contains, why
+~67,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,538 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    24,876 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,501 lines · 112 files   1177 cases, instantaneous
+  LampBoardCore/  20,681 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    25,052 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,607 lines · 113 files   1185 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -788,7 +788,7 @@ envelope's tokens are counted even when the run failed: the ceiling counts what
 was spent. Drop a flag and the round shows up as a session in the panel, or
 carries the user's connectors into every hour.
 
-### `LampMasterSheets.swift` · 115
+### `LampMasterSheets.swift` · 138
 The window's sheets beside the cards (D96): the day's suggestions with their outcome;
 the last saved frame read back — sessions, signals, precedents, the allowance; the
 day's rounds and spending, the last ten runs, each kind with its acceptance and state.
@@ -867,6 +867,9 @@ frame — stricter than the round's evidence, because a real clause could otherw
 carry an invented one into another session. Twenty questions an hour, five per
 session, and the same question within ten minutes gets the answer already given:
 a session's model calls tools on its own, and a loop in one must not spend the day.
+The person asks too, from the panel (D118): the message then carries the last three
+exchanges and what the search index found, word by word, cut to roots and merged
+where two words agree; a follow-up is never answered from an earlier answer.
 
 ### `LampMasterRegistration.swift`
 The arguments of `claude mcp add` and `remove` for the `lampmaster` server, and
@@ -1659,7 +1662,7 @@ there, the hooks are registered — and it names the link that broke.
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 210 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, a digit for a held question's option, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 368 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the kinds passed over switched off (D95), the frame with the allowance strip's quota and the nodes' sessions — one ssh per node, on threads of their own, while LampMaster is on (D94) —, the skip — a tight allowance among the reasons (D93) —, the run — its precedents searched in the index only then, off the main actor (D92) —, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
-| `LampMasterQuestions.swift` | 136 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, `who_knows` and `precedents` naming the index's earlier conversations too (D89, D92), a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
+| `LampMasterQuestions.swift` | 195 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, `who_knows` and `precedents` naming the index's earlier conversations too (D89, D92), a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 182 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws. The nodes' transcripts are followed the same way by host and path, from what one ssh per node brought (D94) |
 | `DecisionBoardService.swift` | 80 | the decision board on disk, `~/.lampboard/decisions.json` (D105): read at launch, written whole through a `0600` file renamed into place, under a lock because the server's threads reach it; an unreadable file set aside as `.unreadable`, not overwritten by the next pin; `/decisions` answered with the board as it now is, or why not |
@@ -1880,7 +1883,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 122 | LampMaster above the rows, only while it is on, never blinking — advice is not a session waiting: in the wide panel a row with its star, name, what the last round found and the open count, a click opening its Plancia (D97); in the narrow one a line of fixed height. Both counted by `PanelMetrics.height` |
-| `LampMasterPlancia.swift` | 131 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |
+| `LampMasterPlancia.swift` | 213 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |
 | `LampMasterCardViews.swift` | 173 | the cards, in LampMaster's Plancia (D97; a window of their own until then, D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the words a click would propose or ask, the action, *Ask without disturbing* with its answer in the card when the session's mod can answer (D85), *Ignore*, *Wrong*, *Don't suggest this kind*. what a card can ask the panel to do |
 | `PanelHandoff.swift` | 50 | a handoff delivered (D91): into the session's Plancia composer, unsent, or copied where no composer can take it — gone, on another machine, sending off, the Plancia not open, the person's own words in it; and the mod's proven `/handoff <name>`, the name finding one session or asking for the exact one, nothing copied for a name that finds none |
 | `PanelLampMaster.swift` | 135 | what a card does to the panel, by reusing what a row does — a question or a reply opens the Plancia with it in the composer, never sent (D85); the same raise, the same confirmation before ending a process, the same dismissal. A card can never do something a row could not |
@@ -1895,7 +1898,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1177 cases
+## `LampBoardTests/` — 1185 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1933,6 +1936,7 @@ script, before it was split. The most important ones:
 | `LampStyleSuite` | dashed while working and stuck on one tool, solid while working otherwise; hollow without the mod only when the mod is in use, the session has had two minutes, and it is on this machine (D115) |
 | `HoldSuite` | away, a destructive command held with what it does, on any line and unmasked, a cut one unread; here or harmless, it goes; the request proven for its session, command and cut, the answer signed (D116) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
+| `LampMasterChatSuite` | a follow-up carrying the last three exchanges, cut and fenced; the person named as the asker from the panel; the index's words by root and merged where two agree; no reuse for a follow-up; today's questions with who asked (D118) |
 | `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
 | `LampMasterAutoMuteSuite` | under a fifth over two weeks off, with why; too few or too young not; what counts and what does not; a kind off left alone, one asked back counting from then |

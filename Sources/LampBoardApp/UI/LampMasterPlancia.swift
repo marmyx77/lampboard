@@ -32,7 +32,10 @@ struct LampMasterPlanciaContent: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         switch sheet {
-                        case .today: TodaySheet(lines: sheets.today)
+                        case .today:
+                            ConversationBox(service: service)
+                            AskedToday(lines: service.askedToday())
+                            TodaySheet(lines: sheets.today)
                         case .frame: FrameSheetView(sheet: sheets.frame)
                         default: CostSheetView(sheet: sheets.cost, interval: service.preferences.lampMasterInterval,
                                                model: service.preferences.lampMasterModel)
@@ -44,6 +47,87 @@ struct LampMasterPlanciaContent: View {
             }
         }
         .frame(minWidth: 380, minHeight: 300)
+    }
+}
+
+/// Asking LampMaster from its Plancia (D118): a question, its answer, and a
+/// follow-up read against them, until *New conversation*.
+private struct ConversationBox: View {
+    @ObservedObject var service: LampMasterService
+    @State private var typed = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(service.conversation) { exchange in
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(exchange.question).font(.callout.weight(.semibold))
+                    Text(exchange.answer).font(.callout).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if let asked = service.conversing {
+                Text(asked).font(.callout.weight(.semibold))
+                Text("LampMaster is reading your sessions…").font(.callout).foregroundStyle(.secondary)
+            }
+            if let error = service.conversationError {
+                Text(error).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(alignment: .firstTextBaseline) {
+                TextField(service.conversation.isEmpty ? "Ask LampMaster about your sessions" : "Follow up",
+                          text: $typed, axis: .vertical)
+                    .lineLimit(1...4)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(ask)
+                    .disabled(!service.snapshot.enabled)
+                Button("Ask", action: ask)
+                    .disabled(!service.snapshot.enabled || service.conversing != nil
+                              || typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            HStack {
+                Text(service.snapshot.enabled
+                     ? "Answered from your sessions and the search index, with Sonnet, within today's tokens."
+                     : "Switch LampMaster on in Settings to ask it.")
+                    .font(.caption2).foregroundStyle(.secondary)
+                Spacer()
+                if !service.conversation.isEmpty {
+                    Button("New conversation") { service.newConversation() }
+                        .buttonStyle(.link).font(.caption).disabled(service.conversing != nil)
+                }
+            }
+        }
+        Divider()
+    }
+
+    private func ask() {
+        guard service.conversing == nil else { return }
+        let asked = typed
+        typed = ""
+        // Refused or failed: the question comes back, unless something new was typed.
+        service.converse(asked) { back in if typed.isEmpty { typed = back } }
+    }
+}
+
+/// Who asked LampMaster what today: the sessions through `/lampmaster` and
+/// the tool, and the person from the panel.
+private struct AskedToday: View {
+    let lines: [LampMasterSheets.AskLine]
+
+    var body: some View {
+        if !lines.isEmpty {
+            Text("Asked today").font(.caption.weight(.semibold))
+            ForEach(lines) { line in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(line.who).font(.caption.weight(.semibold))
+                        Spacer()
+                        Text(line.at.formatted(date: .omitted, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(line.question).font(.callout).lineLimit(2)
+                    Text(line.answer ?? "No answer.").font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                }
+                Divider()
+            }
+        }
     }
 }
 

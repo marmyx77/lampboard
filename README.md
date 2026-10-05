@@ -690,6 +690,16 @@ Measured on the test Mac: about two seconds to an answer, idle or mid-turn. Each
 question costs the session's account the conversation read again from cache —
 some tens of thousands of cached tokens on a long session.
 
+**Asking LampMaster**: `?question` in the bar, or the box on *Today* in
+LampMaster's Plancia, asks it about all your sessions at once: "which conversation
+renamed slots?". The box keeps a conversation: a follow-up, "and what did it keep
+for the old name?", is read against the last three answers, until *New
+conversation*. Asked from the panel, LampMaster also gets what the search index
+remembers about the question's words, the conversation's title, project and date,
+never its words. *Today* lists who asked what today, sessions and you. It runs with
+Sonnet, under the same switch, hourly limits and daily tokens as a session's
+`/lampmaster` ([D118](docs/04-decisions.md#d118--lampmaster-in-conversation-from-its-plancia)).
+
 **Handing over**: `/handoff @from @to` asks the first session, the same way and
 without a turn, for what the second needs — what it understood, decided and left,
 the files it touched — and puts it in the second session's composer, to read, change
@@ -1634,7 +1644,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1177 domain tests, instantaneous
+swift run LampBoardTests              # 1185 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
