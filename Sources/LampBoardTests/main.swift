@@ -50,6 +50,7 @@ let suites: [TestSuite] = [
     GovernorSuite.suite,
     RadarSuite.suite,
     AwaySuite.suite,
+    LampStyleSuite.suite,
     DecisionBoardSuite.suite,
     LampMasterSheetsSuite.suite,
     RemoteTranscriptScriptSuite.suite,

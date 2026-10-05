@@ -27,6 +27,9 @@ struct TrafficLightDot: View {
     /// sitting unread underneath.
     var listening: Bool = false
 
+    /// Solid, dashed when stuck, hollow without the mod (R4).
+    var style: LampStyle = .solid
+
     /// Two views, not one view with two behaviours.
     ///
     /// The first version toggled a `@State` flag on the same circle and relied on
@@ -50,8 +53,7 @@ struct TrafficLightDot: View {
     private var color: Color { StatusPalette.color(for: status) }
 
     private var circle: some View {
-        Circle()
-            .fill(color)
+        disc
             .frame(width: Layout.dotSize, height: Layout.dotSize)
             // Drawn *inside* the dot's own circle with `strokeBorder`, so a ring
             // costs no layout: eleven points is eleven points whether or not
@@ -65,6 +67,21 @@ struct TrafficLightDot: View {
                 }
             }
             .opacity(StatusPalette.opacity(for: status))
+    }
+
+    /// The lamp's body: the shape says what the colour cannot (UX §11: never
+    /// colour alone). A ring for a session no mod speaks for; a dashed ring in the
+    /// working yellow for one stuck on a tool.
+    @ViewBuilder
+    private var disc: some View {
+        switch style {
+        case .solid:
+            Circle().fill(color)
+        case .stalled:
+            Circle().strokeBorder(color, style: StrokeStyle(lineWidth: 2.4, dash: [2.6, 1.8]))
+        case .hollow:
+            Circle().strokeBorder(color, lineWidth: 2)
+        }
     }
 
     private func glowing<Dot: View>(_ dot: Dot) -> some View {

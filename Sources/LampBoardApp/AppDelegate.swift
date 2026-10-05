@@ -165,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
         if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
+        if CommandLine.arguments.contains("--legend") { legendWindow?.show() }
         // LampMaster's Plancia on one of its sheets (D96): `--lampmaster today`.
         if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
            let sheet = LampMasterPlanciaContent.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {

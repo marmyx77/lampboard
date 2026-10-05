@@ -102,6 +102,23 @@ public struct ColumnRow: Sendable, Equatable, Identifiable {
         )
     }
 
+    /// The lamp's shape (UX §4, R4). Dashed while the row works but its session
+    /// has sat on one tool past `RunningTool.stuckAfter` — yellow that is not
+    /// progress; hollow for a local Claude Code session the companion mod has not
+    /// spoken for, when the mod is in use at all (otherwise every lamp would be
+    /// hollow and none would stand out), once the session has had `quietGrace`
+    /// to be heard; solid otherwise.
+    public func lampStyle(now: Date, modInUse: Bool) -> LampStyle {
+        let session = primary
+        if status == .working, session.stuckTool(at: now) != nil { return .stalled }
+        if modInUse, session.harness == .claudeCode, !workspace.isRemote,
+           session.context?.confidence != .reported,
+           now.timeIntervalSince(session.firstSeenAt) >= LampStyle.quietGrace {
+            return .hollow
+        }
+        return .solid
+    }
+
     /// `✉n`, the answers nobody has read in this row's conversations, when there
     /// are two or more (R3c): one is what green already says.
     public var unreadBadge: String? {
@@ -424,4 +441,16 @@ public enum ColumnLayout {
             workspaceNames: names
         )
     }
+}
+
+/// How a row's lamp is drawn (R4).
+public enum LampStyle: Sendable, Equatable {
+    case solid
+    /// Working, but stuck on one tool.
+    case stalled
+    /// No companion mod heard from this session: base data, no hands.
+    case hollow
+
+    /// How long a session may run before its silence means no mod.
+    public static let quietGrace: TimeInterval = 120
 }

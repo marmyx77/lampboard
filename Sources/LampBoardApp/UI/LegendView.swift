@@ -47,6 +47,30 @@ struct LegendView: View {
                     }
                 }
 
+                section("The light's shape") {
+                    entry(
+                        swatch: AnyView(TrafficLightDot(status: .working, calm: true, style: .stalled).frame(width: 16)),
+                        title: "a dashed light",
+                        detail: """
+                            Working, but on the same tool for a quarter of an hour or more: \
+                            a build that takes its time, or a command waiting on input. \
+                            Its card names the tool and the line.
+                            """,
+                        count: rows.filter { $0.lampStyle(now: Date(), modInUse: true) == .stalled }.count
+                    )
+                    entry(
+                        swatch: AnyView(TrafficLightDot(status: .ready, calm: true, style: .hollow).frame(width: 16)),
+                        title: "a hollow light",
+                        detail: """
+                            A session the companion mod does not speak for, while other \
+                            sessions have it: the colour comes from the hooks alone, and \
+                            what needs the mod — exact context, cost, answering from here — \
+                            is not there. Started before the mod was installed, usually.
+                            """,
+                        count: 0
+                    )
+                }
+
                 section("The two rings") {
                     entry(
                         swatch: AnyView(

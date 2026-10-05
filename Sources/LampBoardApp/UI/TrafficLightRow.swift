@@ -80,6 +80,8 @@ struct RowFlags {
     var conflict: String? = nil
     /// The row holds the session in the foreground (G1).
     var isFocused = false
+    /// Some session's mod is heard from, so a silent one can be drawn hollow (R4).
+    var modInUse = false
 }
 
 /// One row of the column: a light and, in expanded mode, the project name with
@@ -117,7 +119,8 @@ struct TrafficLightRow: View {
             // The light and its ring travel together, closer to each other than
             // to anything else: same session, two questions.
             HStack(spacing: Layout.dotToRing) {
-                TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0)
+                TrafficLightDot(status: row.status, calm: flags.isCalm, listening: row.listeners > 0,
+                                style: row.lampStyle(now: now, modInUse: flags.modInUse))
 
                 if !compact {
                     ring

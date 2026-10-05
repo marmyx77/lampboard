@@ -60,6 +60,14 @@ mode too, where there is no text. It sits **below** `ready` because a ready answ
 is consumed at once, whereas there is nothing you can do about a rate limit until
 it expires.
 
+Two shapes say what the colour cannot. A **dashed** yellow light is a session at
+work that has sat on one tool for a quarter of an hour or more: a long build, or a
+command waiting on input. A **hollow** light is a session the companion mod does not
+speak for, while other sessions have it: its colour comes from the hooks alone, and
+what needs the mod is not there for it, usually because it started before the mod
+was installed. The legend, *What the lights mean…*, draws both
+([D115](docs/04-decisions.md#d115--the-lights-shape-dashed-when-stuck-hollow-without-the-mod)).
+
 ## The ring beside the light
 
 Every row carries a second, smaller ring: the arc is how much of the model's
@@ -1615,7 +1623,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1171 domain tests, instantaneous
+swift run LampBoardTests              # 1173 domain tests, instantaneous
 swift run LampBoardE2E                # 158 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

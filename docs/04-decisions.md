@@ -4333,3 +4333,24 @@ photographed. Since then, an absence under a minute reads "under a minute". The
 ledger is covered by the domain suite. Notifications cannot be sent from the test
 suites, which do not run as a bundle.
 
+## D115 · The light's shape: dashed when stuck, hollow without the mod
+
+**Decided.** Marco's answer to question 25 kept the panel always dark. The colours
+and the glow were already the prototype's, so what was left of the visual pass (R4)
+was the two shapes the interface plan gives the light (§4, and §11: never colour
+alone):
+- **Dashed**, in the working yellow, while a session is working but has sat on one
+  tool past a quarter of an hour (the same rule as the `⌛` on its card).
+- **Hollow**, for a local Claude Code session the companion mod does not speak for.
+  Only while some other session's mod is heard from: without the mod at all, every
+  light would be hollow and none would stand out. Only after the session has had two
+  minutes to be heard.
+
+Both are drawn inside the light's own eleven points, so a row's layout does not
+move. The legend explains them and counts the dashed ones.
+
+**Measured on the test Mac.** The legend, opened with a new launch option
+`--legend`, was photographed with both shapes. The trial panel's lights stayed
+solid, as they should: its invented sessions are new and none is stuck. The rule is
+covered by the domain suite.
+

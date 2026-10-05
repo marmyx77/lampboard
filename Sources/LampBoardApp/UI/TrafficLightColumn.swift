@@ -415,7 +415,8 @@ struct TrafficLightColumn: View {
             notificationsEnabled: notificationsEnabled,
             isExpanded: expanded,
             conflict: conflictLine(for: row),
-            isFocused: focusedSession.map { id in row.sessions.contains { $0.id == id } } ?? false
+            isFocused: focusedSession.map { id in row.sessions.contains { $0.id == id } } ?? false,
+            modInUse: store.state.sessions.values.contains { $0.context?.confidence == .reported }
         )
     }
 
