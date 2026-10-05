@@ -41,6 +41,12 @@
 // drawn on the screen, never put into the conversation; a digit opens that one
 // in the panel. Asked of the panel every few seconds, redrawn only on change.
 //
+// And the decision board (D105): what the person pinned in LampBoard for this
+// session's repository, handed to the model with the next prompt whenever it
+// has changed, as context the person does not see — asked with the permission
+// key and taken only signed with it, because these words enter the
+// conversation. Nothing pinned, or no panel, and the prompt goes as typed.
+//
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
 
@@ -233,6 +239,50 @@ async function answerQuietly($, nonce, proof, question) {
   }
 }
 
+// The decision board (D105): the version each session was last handed, so a
+// board reaches a session once per change and not with every prompt. Recorded
+// only once the prompt has entered with it, and forgotten when the session
+// compacts or starts again, which can drop what it was handed.
+const boards = new Map()
+const BOARD_WAIT = 1500
+
+async function boardContext($) {
+  try {
+    const target = await panel($)
+    const home = await realHome($)
+    if (!target || !home) return null
+    const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+    if (!/^[0-9a-f]{16,128}$/.test(key)) return null
+    const session = await $.session.id()
+    const nonce = crypto.randomUUID()
+    // A prompt never waits long on a dashboard: past this it goes as typed.
+    let timer
+    const late = new Promise((resolve) => { timer = setTimeout(() => resolve(null), BOARD_WAIT) })
+    const reply = await Promise.race([late, $.http.fetch(`${target.base}/mod/decisions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-LampBoard-Token': target.token,
+        'X-LampBoard-Nonce': nonce,
+        'X-LampBoard-Proof': await hmac(key, `board:${nonce}:${session}`),
+      },
+      body: JSON.stringify({ v: VERSION, session }),
+    })])
+    clearTimeout(timer)
+    const cut = reply && reply.ok ? reply.text.indexOf('\n') : -1
+    if (cut < 0) return null
+    const [word, version, signature] = reply.text.slice(0, cut).split(' ')
+    const text = reply.text.slice(cut + 1)
+    if (word !== 'board' || !/^([0-9a-f]{16}|-)$/.test(version || '')) return null
+    if (!same(signature, await hmac(key, `pinned:${nonce}:${version}:${text}`))) return null
+    // Never told and nothing pinned, or told this very version: nothing new.
+    if (version === (boards.get(session) || '-')) return null
+    return { session, version, text }
+  } catch (_) {
+    return null
+  }
+}
+
 // The band (D84): what the panel says waits elsewhere, kept between draws,
 // per session — one process can hold several (the Claude app's chats) — with
 // one clock each, stopped when that session ends.
@@ -358,6 +408,7 @@ async function ask($, question) {
 export function register(on) {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    try { boards.delete(await $.session.id()) } catch (_) {}
     try {
       // Immediate: a question about the other sessions does not depend on this
       // one's turn, and is most useful while that turn is still running.
@@ -492,11 +543,29 @@ export function register(on) {
     return Box({ flexDirection: 'row', children })
   })
 
+  // Context on the way down, before the prompt enters: once it has, a block
+  // attached is not read (the API's word).
+  on('prompt.submit', async ($, e, next) => {
+    const board = await boardContext($)
+    const block = board && board.text
+    const result = await next(block ? { ...e, context: [...(e.context || []), block] } : e)
+    if (board && !result.drop) boards.set(board.session, board.version)
+    return result
+  })
+
+  // A compacted or restarted conversation may have lost what it was handed.
+  on('session.compact', async ($, e, next) => {
+    const result = await next(e)
+    if (!e.agentId) { try { boards.delete(await $.session.id()) } catch (_) {} }
+    return result
+  })
+
   // `session.end` has 1.5 s in all: one short post, and no model lookup.
   on('session.end', async ($, e, next) => {
     const result = await next(e)
     const ending = bands.get(e.sessionId)
     if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
+    boards.delete(e.sessionId)
     await post($, 'end', { session: e.sessionId, reason: e.reason })
     return result
   })

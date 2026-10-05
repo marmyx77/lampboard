@@ -3789,3 +3789,87 @@ Two smaller changes came from the same review:
 
 The summary and the need travel in `GET /sessions`, which needs the token and
 already carries each session's last answer.
+
+## D105 · A decision pinned for a repository reaches every session in it
+
+**Decided.** Parallel sessions in one repository contradict each other because
+each one knows only its own conversation: one settles that timestamps are UTC,
+the next writes local times. A decision pinned on the board, from the command line
+for now (`lampboard decide <repo> <text>`), reaches every session working in that
+repository through the companion mod. On `prompt.submit`, before the prompt enters,
+the mod asks the panel for its session's board. If the board has changed since that
+session last read it, the mod attaches it as context, a block the model reads and
+the person does not see. This is the plan's §5.5.
+
+Repositories are keyed by the name the hook script resolves (`GitIdentity.repo`),
+the same in every worktree. A session with no repository has no board.
+
+It is kept small because whatever is pinned enters every conversation of that
+repository:
+- at most twenty decisions a repository;
+- one line each, at most 300 characters;
+- the same words twice is refused, whatever the case;
+- the board reaches a session once per change, not with every prompt.
+
+When the last decision is taken off, a session that was told about it reads one
+sentence saying none applies now. A session that was never told reads nothing.
+
+**The first words the mod puts into a conversation, so proven both ways.** Until
+now the mod added nothing to a conversation: the band is drawn and never sent, and
+LampMaster's answer is the person's to read (D71, D84). This is different, so it
+takes the road a permission takes (D80):
+- the request carries the token and an HMAC made with `~/.lampboard/check-key`,
+  found from HOME;
+- the answer counts only when it is signed with that key, over the nonce, the
+  version and the words.
+
+A project can point `LAMPBOARD_HOME` at a folder of its own and listen on a port,
+but it cannot set HOME, so it can neither ask for a board nor answer with one.
+Nothing pinned, no panel, or no signature: the prompt goes as typed.
+
+**Measured on the test Mac.** A throwaway session ran with Haiku in a git
+repository in a fake home, with the mod installed and one decision pinned from the
+command line. Asked whether anything was pinned, it quoted the decision word for
+word. After `undecide`, asked again, it answered "WITHDRAWN". The transcript holds
+two `hook_additional_context` attachments, one for each change, and none for the
+prompts in between. The probe is `docs/plans/prototipi/bacheca/board-live.sh`.
+
+The end-to-end suite covers:
+- pinning, listing and taking off from the command line, with the file kept 0600;
+- `/mod/decisions` answering a proven session with its repository's board, signed;
+- nothing answered without the proof, or with the token used as the key;
+- nothing for a session with no repository.
+
+**What a review changed.** A repository's name comes from the session's own
+project, because the hook script runs `git` there. The first version wrote that name
+into the withdrawal sentence, which the panel signs, so a project could get words of
+its own in front of a model. The sentence now names no repository. A name nobody
+could have pinned under, such as one with control characters, counts as no
+repository at all.
+
+The rest of the review's fixes:
+- A session is recorded as told only once its prompt has entered with the board.
+  A dropped prompt does not count.
+- A compaction or a restart forgets what a session was told, so the board reaches
+  it again.
+- The version covers the repository's name as well as the words.
+- If the panel cannot say which repository a session is in, it answers nothing. A
+  timeout must not read as "nothing pinned" and withdraw what the session was told.
+- A prompt waits at most 1.5 seconds on the panel.
+- `--port` counts only first or last on the command line, so a decision that
+  mentions a port keeps all its words.
+- An unreadable board file is set aside, not overwritten by the next pin.
+
+**Limits, said rather than hidden.**
+- Pinning needs the token. A process of yours that can read `~/.lampboard/token`
+  can pin, but it can also read the key beside it and edit Claude Code's own
+  settings. The key keeps out a project that redirects `LAMPBOARD_HOME`, which is
+  the threat it is there for.
+- Two repositories with the same name share a board. A clone named like another
+  project reads that project's decisions. They are your own decisions, and nothing
+  more is sent anywhere.
+- `undecide` takes off by the number the listing shows, so list first.
+
+**What waits (B2).** Pinning from the panel: a "Pin a decision…" item on the row,
+and the board listed where it can be taken off. Its place follows the interface
+realignment that opens 0.8 (Marco's answer to question 17).

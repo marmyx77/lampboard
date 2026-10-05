@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let activity = ActivityRecorder()
     /// The permissions the panel answers, when switched on (D80).
     private let permissions = PermissionDesk()
+    private let decisions = DecisionBoardService()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
     /// Every conversation of this Mac, searchable (0.7); kept up off the main thread.
@@ -362,6 +363,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     guard let self, self.handoffNonces.insert(nonce).inserted else { return "That handoff was already taken." }
                     return self.panelController?.receive(handoff: request)
                 } ?? "LampBoard's panel is not ready."
+            },
+            onDecisions: { [decisions] body in decisions.handle(body) },
+            onModDecisions: { [weak self, decisions] body, nonce, proof, key in
+                guard let session = DecisionBoardExchange.provenSession(body, nonce: nonce, proof: proof, key: key),
+                      let nonce else { return "" }
+                // "" is a row with no repository; nil is no row, or no answer from
+                // the main actor in time — not knowing, which must not read as
+                // "nothing pinned" and withdraw what the session was told.
+                guard let repository = Self.onMain(timeout: 1, { self?.store.state.sessions[session].map { $0.git?.repo ?? "" } })
+                else { return "" }
+                return DecisionBoardExchange.answer(board: decisions.current, repository: repository.isEmpty ? nil : repository,
+                                                    nonce: nonce, key: key)
             }
         )
 

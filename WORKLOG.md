@@ -930,8 +930,8 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1118**, instantaneous |
-| End-to-end tests | **152**, about a minute |
+| Domain tests | **1128**, instantaneous |
+| End-to-end tests | **154**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
@@ -2462,3 +2462,12 @@ keeps about them in `~/.claude/jobs` (D104): the summary it writes, what a block
 one needs, the id `claude attach` takes, which the row's menu copies. A throwaway
 background session on the test Mac, with Haiku, showed the same id in five places
 before any of it was trusted.
+
+Then the decision board (D105). Something settled in one session reaches the
+others in the same repository: pinned with `lampboard decide`, handed by the mod to
+each session's next prompt as context, once per change. These are the first words
+the mod puts into a conversation, so the request is proven with the permission key
+and the answer is taken only when signed with it. A review found that the
+repository's name, which a project chooses, was being signed into the withdrawal
+sentence; the sentence now names nothing. A throwaway session on the test Mac
+quoted the decision, then answered "withdrawn" once it was taken off.

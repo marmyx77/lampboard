@@ -73,6 +73,75 @@ enum ModE2ESuite {
                 a.expectEqual(send(key: app.checkKeyValue ?? ""), "LampBoard's panel is not ready.", "proven, and headless: nothing proposed")
             },
 
+            TestCase("the decision board (D105): pinned, listed and taken off from the command line, kept 0600") { a in
+                let port = ["--port", String(app.port)]
+                let pinned = app.runCommand(["decide", "e2e-board", "Dates", "are", "UTC."] + port)
+                a.expectEqual(pinned.status, 0, pinned.output)
+                a.expect(pinned.output.contains("e2e-board:\n  1. Dates are UTC."), pinned.output)
+                let again = app.runCommand(["decide", "e2e-board", "dates are utc."] + port)
+                a.expectEqual(again.status, 1, "the same words refused")
+                a.expect(again.output.contains(DecisionBoardError.duplicate.sentence), again.output)
+                a.expect(app.runCommand(["decisions"] + port).output.contains("1. Dates are UTC."), "listed")
+                let mode = (try? FileManager.default.attributesOfItem(
+                    atPath: app.home.appendingPathComponent(".lampboard/decisions.json").path))?[.posixPermissions] as? NSNumber
+                a.expectEqual(mode?.int16Value, 0o600)
+                let words = app.runCommand(["decide", "e2e-board", "Dev", "servers", "use", "--port", "80"] + port)
+                a.expect(words.output.contains("2. Dev servers use --port 80"), "a port in the words stays in the words: \(words.output)")
+                a.expectEqual(app.runCommand(["undecide", "e2e-board", "2"] + port).status, 0)
+                let off = app.runCommand(["undecide", "e2e-board", "1"] + port)
+                a.expect(off.output.contains("e2e-board: no decisions pinned."), off.output)
+                a.expectEqual(app.raw(method: "POST", path: AppConfig.decisionsPath, token: .some(nil), body: "{}").status, 401)
+            },
+
+            TestCase("/mod/decisions answers a proven session with its repository's board, signed; unproven, nothing") { a in
+                let id = "e2e0d0d0-0000-4000-8000-0000000000cc"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: id, cwd: LifecycleSuite.workspace), repo: "e2e-board-mod")
+                guard app.waitUntil({ app.status(of: id) == "working" }) else { return a.fail("no row: \(app.status(of: id))") }
+                defer { app.sendHook(HookPayloads.sessionEnd(sessionId: id, cwd: LifecycleSuite.workspace)) }
+                let port = ["--port", String(app.port)]
+                a.expectEqual(app.runCommand(["decide", "e2e-board-mod", "Keys are tenant_id."] + port).status, 0)
+                defer { app.runCommand(["undecide", "e2e-board-mod", "1"] + port) }
+                let key = app.checkKeyValue ?? ""
+                func ask(session: String, key: String?) -> String {
+                    let nonce = UUID().uuidString
+                    var request = URLRequest(url: URL(string: "http://127.0.0.1:\(app.port)\(AppConfig.modDecisionsPath)")!)
+                    request.httpMethod = "POST"
+                    request.setValue(app.tokenValue, forHTTPHeaderField: AccessToken.headerName)
+                    request.setValue(nonce, forHTTPHeaderField: "X-LampBoard-Nonce")
+                    if let key {
+                        request.setValue(PermissionGate.mac(key: key, message: DecisionBoardExchange.proofMessage(nonce: nonce, session: session)),
+                                         forHTTPHeaderField: "X-LampBoard-Proof")
+                    }
+                    request.httpBody = Data(#"{"v":1,"session":"\#(session)"}"#.utf8)
+                    let done = DispatchSemaphore(value: 0)
+                    var said = ""
+                    URLSession.shared.dataTask(with: request) { data, _, _ in
+                        said = data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                        done.signal()
+                    }.resume()
+                    _ = done.wait(timeout: .now() + 10)
+                    guard let cut = said.firstIndex(of: "\n") else { return said }
+                    let head = said[..<cut].split(separator: " ").map(String.init)
+                    let text = String(said[said.index(after: cut)...])
+                    guard head.count == 3, head[2] == PermissionGate.mac(key: key ?? "",
+                        message: DecisionBoardExchange.signedMessage(nonce: nonce, version: head[1], text: text))
+                    else { return "unsigned: " + said }
+                    return head[1] + "|" + text
+                }
+                let answer = ask(session: id, key: key)
+                a.expect(answer.contains("|") && answer.contains("1. Keys are tenant_id.") && answer.contains("e2e-board-mod"), answer)
+                a.expect(answer.prefix(16).allSatisfy(\.isHexDigit), "a version: \(answer.prefix(20))")
+                a.expectEqual(ask(session: id, key: nil), "", "no proof, no board")
+                a.expectEqual(ask(session: id, key: app.tokenValue), "", "the token is not the key")
+                a.expectEqual(ask(session: stranger, key: key), "", "a session the panel does not know: no answer, not \"nothing pinned\"")
+                let bare = "e2e0d0d0-0000-4000-8000-0000000000dd"
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: bare, cwd: LifecycleSuite.workspace))
+                defer { app.sendHook(HookPayloads.sessionEnd(sessionId: bare, cwd: LifecycleSuite.workspace)) }
+                if app.waitUntil({ app.status(of: bare) == "working" }) {
+                    a.expectEqual(ask(session: bare, key: key), "-|", "a session with no repository: nothing pinned")
+                } else { a.fail("no row for the session without a repository") }
+            },
+
             TestCase("a measure lands on the row as the session's own count") { a in
                 app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: LifecycleSuite.workspace))
                 guard app.waitUntil({ app.status(of: sessionId) == "working" }) else {

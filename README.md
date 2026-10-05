@@ -820,7 +820,8 @@ left waiting on input.
 It reads the home, LampBoard's token, port and permission key, and of a running tool its name and
 the first line of its shell command or its file path — no conversation, no file's
 contents; the panel masks anything in a command that looks like a secret — writes
-nothing, runs nothing, and talks only to
+nothing, runs nothing, adds nothing to a conversation but the decisions you pinned
+(below), and talks only to
 `127.0.0.1`, and only once that port answers as LampBoard. `claude plugin validate
 --strict ~/.lampboard/mod-marketplace/mod` lists exactly that. The colours of the
 rows still come from the hooks, with or without the mod
@@ -864,6 +865,22 @@ you pick is your answer ([D86](docs/04-decisions.md)). The mod proves the ask wi
 signed with it, so nothing else listening on that port can say *allow*; it finds
 the panel from your home folder, which a project's settings cannot move
 ([D80](docs/04-decisions.md)).
+
+**Decisions every session keeps to.** When you settle something in one session,
+for example "every timestamp is stored in UTC", the parallel sessions in the same
+repository don't know it. `lampboard decide <repo> <text>` pins it on the board.
+With its next prompt, each session working in that repository reads the board as
+context the model gets and you don't see. It reads it once each time the board
+changes, not with every prompt. When a pinned decision is taken off, a session that
+was told about it is told it no longer applies.
+
+A repository holds at most twenty decisions, one line each, because whatever is
+pinned enters every one of its conversations. `lampboard decisions` lists them and
+`lampboard undecide <repo> <n>` takes one off. The board lives in
+`~/.lampboard/decisions.json`, owner-only. The mod asks for the board with the
+permission key and takes it only when it is signed with that key, so nothing else
+listening on the port can put words in front of a model
+([D105](docs/04-decisions.md#d105--a-decision-pinned-for-a-repository-reaches-every-session-in-it)).
 
 ## Installation
 
@@ -1399,6 +1416,9 @@ lampboard sessions                 the column as the running app sees it
 lampboard usage                    ask Anthropic how much of the allowance is gone, here and on every node
 lampboard terminal on|off|status   rows for claude started in a terminal
 lampboard rename <folder> [name]   the panel's word for a row; no name restores it
+lampboard decide <repo> <text>     pin a decision every session in that repository reads
+lampboard decisions [repo]         the pinned decisions, numbered
+lampboard undecide <repo> <n>      take one off
 lampboard remote [list|add|install|check|uninstall|remove] [host]   another machine's sessions (see above)
 lampboard next                     raise the next waiting session
 lampboard open <n>                 raise the project bound to slot n
@@ -1516,8 +1536,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1118 domain tests, instantaneous
-swift run LampBoardE2E                # 152 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1128 domain tests, instantaneous
+swift run LampBoardE2E                # 154 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

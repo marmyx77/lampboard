@@ -71,6 +71,13 @@ public enum AppConfig {
     public static let bandPath = "/mod/band"
     public static let bandOpenPath = "/mod/band/open"
 
+    /// The decision board (D105): `/decisions` behind the token, for the
+    /// command line and the panel; `/mod/decisions` for the companion mod,
+    /// behind the token and proven with the permission key, because what it
+    /// answers enters a conversation.
+    public static let decisionsPath = "/decisions"
+    public static let modDecisionsPath = "/mod/decisions"
+
     /// How many slots a key can address.
     ///
     /// Nine because that is how many number keys a modifier can reach without
@@ -283,6 +290,11 @@ public enum AppConfig {
     public static var supportDirectory: URL {
         homeDirectory
             .appendingPathComponent(".lampboard", isDirectory: true)
+    }
+
+    /// The decision board's file (D105).
+    public static var decisionBoardFile: URL {
+        supportDirectory.appendingPathComponent("decisions.json")
     }
 
     /// LampMaster's rounds, suggestions, notebook and last frames. Owner-only:

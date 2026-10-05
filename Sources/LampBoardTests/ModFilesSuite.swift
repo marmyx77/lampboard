@@ -89,8 +89,24 @@ enum ModFilesSuite {
             t.expect(code.contains("${target.base}\(AppConfig.lampMasterToolPath)"), "the route the server serves")
             t.expect(code.contains("tool: '\(LampMasterMCP.Tool.askLampMaster.rawValue)'"), "the tool the server knows")
             // An answer is the person's to read (D71): a `context` entry would be
-            // a hidden message to the model, made of other sessions' work.
-            t.expect(!code.contains("context: ["), "no note left for the model")
+            // a hidden message to the model, made of other sessions' work. The
+            // one note the mod leaves the model is the decision board (D105).
+            t.expectEqual(code.components(separatedBy: "context: [").count - 1, 1, "one note for the model")
+            t.expect(code.contains("next(block ? { ...e, context: [...(e.context || []), block] } : e)"), "and it is the board")
+        },
+
+        TestCase("The board is asked with the key and taken only signed, in the panel's own words (D105)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("on('prompt.submit'"), "on the way down, before the prompt enters")
+            t.expect(code.contains("${target.base}\(AppConfig.modDecisionsPath)"), "the route the server serves")
+            t.expect(code.contains("hmac(key, `\(DecisionBoardExchange.proofMessage(nonce: "${nonce}", session: "${session}"))`)"),
+                     "the proof the panel checks")
+            t.expect(code.contains("hmac(key, `\(DecisionBoardExchange.signedMessage(nonce: "${nonce}", version: "${version}", text: "${text}"))`)"),
+                     "the signature the panel makes")
+            t.expect(code.contains("if (version === (boards.get(session) || '-')) return null"), "once per change, not every prompt")
+            t.expect(code.contains("if (board && !result.drop) boards.set(board.session, board.version)"), "told only once it entered")
+            t.expect(code.contains("on('session.compact'"), "and told again after a compaction")
+            t.expect(code.contains("Promise.race([late, $.http.fetch("), "a prompt never waits long on the panel")
         },
 
         TestCase("Installed through Claude Code's own commands, and taken out with its marketplace") { t in

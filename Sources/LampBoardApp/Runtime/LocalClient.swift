@@ -51,6 +51,18 @@ enum LocalClient {
         }
     }
 
+    /// The decision board (D105): listed with no change, otherwise changed and
+    /// listed as it now is.
+    static func decisions(change: Data?, port: UInt16) -> Result<DecisionBoard, ClientError> {
+        switch request(method: change == nil ? "GET" : "POST", path: AppConfig.decisionsPath, port: port, body: change) {
+        case .failure(let error):
+            return .failure(error)
+        case .success(let data):
+            guard let board = try? DecisionBoardCodec.decode(data) else { return .failure(.transport("response not decodable")) }
+            return .success(board)
+        }
+    }
+
     /// Asks the running instance to raise the next waiting session.
     static func next(port: UInt16) -> Result<String, ClientError> {
         switch request(method: "POST", path: AppConfig.nextPath, port: port) {

@@ -84,6 +84,12 @@ extension CommandLineInterface {
           its window and its folder keep theirs. `lampboard rename <folder> [name]`
           does the same from here; no name restores the original.
 
+        DECISIONS
+          `lampboard decide <repo> <text>` pins a decision for a repository; every
+          session working in it reads the board with its next prompt, through the
+          companion mod. `lampboard decisions [repo]` lists them, numbered;
+          `lampboard undecide <repo> <n>` takes one off.
+
         STATES
           red        the session is at rest
           yellow     Claude is working

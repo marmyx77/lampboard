@@ -65,6 +65,10 @@ final class SignalServer {
     private let onBand: (String?) -> Data
     private let onBandOpen: (String) -> Bool
     private let onHandoff: (Data, String?, String?, String) -> String
+    /// The decision board (D105): a change or `nil` to list → status and body.
+    private let onDecisions: (Data?) -> (Int, String)
+    /// The mod's question for its session's board → the signed answer.
+    private let onModDecisions: (Data, String?, String?, String) -> String
     private let token: String?
     private let checkKey: String?
 
@@ -92,7 +96,9 @@ final class SignalServer {
         onQuestion: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "ask" },
         onBand: @escaping (String?) -> Data = { _ in Band.json([]) },
         onBandOpen: @escaping (String) -> Bool = { _ in false },
-        onHandoff: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "LampBoard cannot take a handoff here." }
+        onHandoff: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "LampBoard cannot take a handoff here." },
+        onDecisions: @escaping (Data?) -> (Int, String) = { _ in (503, "no decision board here") },
+        onModDecisions: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" }
     ) {
         self.port = port
         self.token = token
@@ -116,6 +122,8 @@ final class SignalServer {
         self.onBand = onBand
         self.onBandOpen = onBandOpen
         self.onHandoff = onHandoff
+        self.onDecisions = onDecisions
+        self.onModDecisions = onModDecisions
     }
 
     // MARK: - Lifecycle
@@ -266,6 +274,29 @@ final class SignalServer {
 
         case AppConfig.bandOpenPath:
             return handleBandOpen(request)
+
+        case AppConfig.decisionsPath:
+            // Behind the token: GET lists the board, POST pins or takes off.
+            guard request.method == "GET" || request.method == "POST" else {
+                return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+            }
+            guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token)
+            else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+            let (status, body) = onDecisions(request.method == "POST" ? request.body : nil)
+            let reason = [200: "OK", 400: "Bad Request"][status] ?? "Internal Server Error"
+            return HTTPRequestParser.response(status: status, reason: reason, body: body)
+
+        case AppConfig.modDecisionsPath:
+            // What this answers enters a conversation: the token, and the
+            // permission key both ways (D80, D105). An unproven request gets
+            // an empty answer, which the mod reads as nothing to add.
+            guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+            guard let token, let checkKey else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token)
+            else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: onModDecisions(
+                request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey))
 
         // Courtesy endpoint: lets you check that the app is alive.
         case AppConfig.healthPath:

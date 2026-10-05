@@ -51,6 +51,9 @@ enum CommandLineInterface {
         case terminal(verb: String)
         /// The name a row shows, by folder; an empty name restores the original.
         case rename(path: String?, name: String?)
+        /// `decisions [repo]`, `decide <repo> <text…>`, `undecide <repo> <n>`:
+        /// the decision board (D105).
+        case decisions(verb: String, arguments: [String], port: UInt16)
         case help
     }
 
@@ -131,6 +134,9 @@ enum CommandLineInterface {
                 path: args.count > 1 ? args[1] : nil,
                 name: args.count > 2 ? args[2...].joined(separator: " ") : nil
             )
+        case "decisions", "decide", "undecide":
+            let (words, own) = splitPort(Array(args.dropFirst()))
+            return .decisions(verb: args[0], arguments: words, port: own ?? AppConfig.listenPort)
         case "help", "--help", "-h":
             return .help
         case .some(let unknown) where unknown.hasPrefix("-") == false:
@@ -209,6 +215,9 @@ enum CommandLineInterface {
 
         case .sessions(let port):
             return runSessions(port: port)
+
+        case .decisions(let verb, let arguments, let port):
+            return runDecisions(verb: verb, arguments: arguments, port: port)
 
         case .search(let words):
             return runSearch(words)
@@ -699,6 +708,16 @@ enum CommandLineInterface {
     }
 
     // MARK: - Helpers
+
+    /// For commands whose words are text (D105): `--port N` counts only first or
+    /// last, so a decision that mentions a port keeps all its words.
+    private static func splitPort(_ args: [String]) -> ([String], UInt16?) {
+        if args.count >= 2, args[0] == "--port", let port = UInt16(args[1]) { return (Array(args.dropFirst(2)), port) }
+        if args.count >= 2, args[args.count - 2] == "--port", let port = UInt16(args[args.count - 1]) {
+            return (Array(args.dropLast(2)), port)
+        }
+        return (args, nil)
+    }
 
     /// Only before a `--`: what follows is another command's, and its own
     /// `--port 3000` is not this panel's.

@@ -138,7 +138,7 @@ final class AppUnderTest {
     @discardableResult
     func sendHook(
         _ payload: [String: Any], entrypoint: String? = "claude-vscode", host: String? = nil,
-        harness: String? = nil
+        harness: String? = nil, repo: String? = nil
     ) -> Int {
         let body = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
         var request = URLRequest(url: url(AppConfig.signalPath))
@@ -155,6 +155,11 @@ final class AppUnderTest {
         // read as Claude Code's — which would quietly rewrite the row's harness.
         if let harness {
             request.setValue(harness, forHTTPHeaderField: AppConfig.harnessHeader)
+        }
+        // What the hook script resolves in the session's folder (D105 reads it).
+        if let repo {
+            request.setValue(repo, forHTTPHeaderField: AppConfig.repoHeader)
+            request.setValue("main", forHTTPHeaderField: AppConfig.branchHeader)
         }
         request.httpBody = body
         return perform(request).status
