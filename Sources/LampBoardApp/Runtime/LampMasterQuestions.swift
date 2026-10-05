@@ -41,7 +41,13 @@ extension LampMasterService {
             guard !files.isEmpty else { return ("Name the files, as paths.", true) }
             return (LampMasterLookup.overlaps(files: Array(files), asker: asker, cwd: cwd, sessions: sessions, now: now), false)
         case .whoKnows:
-            return (LampMasterLookup.whoKnows(topic: text("topic"), asker: asker, sessions: sessions, now: now), false)
+            let cards = LampMasterLookup.whoKnows(topic: text("topic"), asker: asker, sessions: sessions, now: now)
+            // And what was said before the week the cards cover (D89), off the main actor.
+            let terms = LampMasterLookup.terms(text("topic")).joined(separator: " ")
+            guard let remember, !terms.isEmpty else { return (cards, false) }
+            let hits = await Task.detached(priority: .userInitiated) { remember(terms) }.value
+            let named = Set(sessions.map(\.card.sessionId))
+            return (LampMasterLookup.remembered(hits, asker: asker, named: named, now: now).map { cards + "\n\n" + $0 } ?? cards, false)
         case .precedents:
             guard !text("error").isEmpty else { return ("Paste the error.", true) }
             return (LampMasterLookup.precedents(error: text("error"), asker: asker, sessions: sessions, now: now), false)

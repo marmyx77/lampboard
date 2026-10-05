@@ -41,6 +41,10 @@ final class LampMasterService: ObservableObject {
     let files: LampMasterFiles
     let cards: LampMasterCards
     private let box = LampMasterBox()
+    /// What was said in earlier conversations, for `who_knows` (D89): the
+    /// search index, set by whoever owns it.
+    var remember: (@Sendable (String) -> [LampMasterLookup.Remembered])?
+
     /// Questions from sessions being answered now (`LampMasterQuestions`).
     var questionsRunning = 0
     /// Told when a card is answered, whatever the answer: the tour's last step.

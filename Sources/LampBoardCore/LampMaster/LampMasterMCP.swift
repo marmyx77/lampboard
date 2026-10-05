@@ -31,8 +31,9 @@ public enum LampMasterMCP {
                     + "Paths may be relative to the project. No model runs: instant and free."
             case .whoKnows:
                 return "Which of this developer's sessions, live or from the past week, worked on a topic: "
-                    + "project, title, when, and which words matched. Use it to find who to ask, or where a "
-                    + "decision was made. No model runs: instant and free."
+                    + "project, title, when, and which words matched; then earlier conversations from the last "
+                    + "ninety days that said those words, by name, project and date. Use it to find who to ask, "
+                    + "or where a decision was made. No model runs: instant and free."
             case .precedents:
                 return "Which other sessions hit the same error, ignoring paths, numbers and hashes, and whether "
                     + "they saved work afterwards. Use it when an error repeats. No model runs: instant and free."

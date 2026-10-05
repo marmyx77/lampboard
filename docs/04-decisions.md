@@ -3487,3 +3487,24 @@ characters. A conversation whose transcript Claude Code cleaned up is pruned. Th
 index is excluded from backups — it is a second copy of every conversation — its
 folder is created `0700`, and `lampboard search --reset` takes it away.
 
+
+## D89 · `who_knows` also remembers, without the words
+
+**Decided.** The `who_knows` lookup a session asks through the `lampmaster` MCP
+server (D62) answered only from the cards, which cover the sessions of the last
+week. It now also asks the search index (D88), and after the cards it names up to
+five earlier conversations that said those words, from the last ninety days: title,
+project, how long ago, the first eight characters of the id. A session the cards
+already named is not named twice, nor the asker itself.
+
+**What it does not carry.** The index holds what other conversations said; the
+answer goes into the asking session's context, which acts with the person's tools
+(D62). So the answer names the conversation and never quotes it: no snippet, no
+matched sentence. The person can open it from the bar, which shows the words to
+them and not to a model.
+
+**Measured on the test Mac.** The end-to-end suite indexes a fake home's transcript
+dated twenty days back, whose prompt carries an invented word, and asks `who_knows`
+through the real binary: the answer names "Docs build fix in docs" under "Said in
+earlier conversations" and never contains the invented word. The lookup is wired
+when LampBoard starts, panel on screen or not.

@@ -92,6 +92,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.startPolling()
         fleet.start()
         lampMaster.port = port
+        // Earlier conversations for `who_knows` (D89), with or without a panel on screen.
+        lampMaster.remember = { [searchIndex] words in
+            searchIndex.search(words, limit: 6).map {
+                LampMasterLookup.Remembered(sessionId: $0.sessionId, title: $0.title ?? "untitled",
+                                            project: $0.cwd.map { ($0 as NSString).lastPathComponent }, lastAt: $0.lastAt)
+            }
+        }
         lampMaster.start()
         if let trial { TrialStage.play(.standard, port: port, pace: trial.pace) }
 

@@ -91,10 +91,41 @@ public enum LampMasterLookup {
             .joined(separator: "\n")
     }
 
+    /// A conversation the search index found (D88, D89): older than the week
+    /// the cards cover, or closed.
+    public struct Remembered: Sendable, Equatable {
+        public let sessionId: String
+        public let title: String
+        public let project: String?
+        public let lastAt: Date?
+
+        public init(sessionId: String, title: String, project: String?, lastAt: Date?) {
+            self.sessionId = sessionId
+            self.title = title
+            self.project = project
+            self.lastAt = lastAt
+        }
+    }
+
+    /// The index's conversations for `who_knows`, never the asker's own: a
+    /// name, a project, when — whom to ask, as the cards say it, and like them
+    /// never another conversation's words. `nil` when there is none.
+    /// - Parameter named: the sessions the cards already named, not repeated.
+    public static func remembered(_ hits: [Remembered], asker: String?, named: Set<String> = [], now: Date) -> String? {
+        let lines = hits.filter { $0.sessionId != asker && !named.contains($0.sessionId) }.prefix(5).map { hit -> String in
+            // Quoted and clipped as the cards' titles are: another session's prose.
+            let place = hit.project.map { " in " + clean($0, to: titleLength) } ?? ""
+            let title = "\u{201C}" + clean(hit.title, to: titleLength) + "\u{201D}"
+            return "- \(title)\(place), \(ago(hit.lastAt, now: now)) [\(clean(String(hit.sessionId.prefix(8)), to: 8))]"
+        }
+        guard !lines.isEmpty else { return nil }
+        return "Said in earlier conversations (search index, ninety days):\n" + lines.joined(separator: "\n")
+    }
+
     /// The words of a topic worth looking for: three characters or more, with
     /// the dashes, dots and slashes that hold names like `events-api` together,
     /// and without the small words every conversation contains.
-    static func terms(_ topic: String) -> [String] {
+    public static func terms(_ topic: String) -> [String] {
         let separators = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_./")).inverted
         var seen = Set<String>()
         return topic.lowercased()

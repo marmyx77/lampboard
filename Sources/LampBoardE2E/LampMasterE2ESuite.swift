@@ -350,6 +350,34 @@ enum LampMasterE2ESuite {
                 }
             },
 
+            TestCase("who_knows names an earlier conversation from the search index, never its words (D89)") { t in
+                bench(t) { bench in
+                    let dir = bench.app.home.appendingPathComponent(".claude/projects/-home-dev-docs")
+                    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                    // Older than the week the cards cover: only the index remembers it.
+                    let now = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86_400 * 20))
+                    let lines: [[String: Any]] = [
+                        ["type": "user", "uuid": "u1", "timestamp": now, "cwd": "/home/dev/docs", "origin": ["kind": "human"],
+                         "message": ["role": "user", "content": "The quokka migration broke the docs site build"]],
+                        ["type": "custom-title", "customTitle": "Docs build fix"],
+                    ]
+                    let text = lines.compactMap { try? JSONSerialization.data(withJSONObject: $0) }
+                        .map { String(decoding: $0, as: UTF8.self) }.joined(separator: "\n") + "\n"
+                    let file = dir.appendingPathComponent("dddddddd-0000-4000-8000-000000000004.jsonl")
+                    try? text.write(to: file, atomically: true, encoding: .utf8)
+                    try? FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-86_400 * 20)], ofItemAtPath: file.path)
+                    _ = bench.app.runCommand(["search", "docs"])
+                    let answers = bench.mcp(as: "0000aaaa-asker", [
+                        #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}"#,
+                        #"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"who_knows","arguments":{"topic":"docs site build"}}}"#,
+                    ])
+                    let said = ((answers[2]?["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String ?? ""
+                    t.expect(said.contains("Said in earlier conversations") && said.contains("\u{201C}Docs build fix\u{201D} in docs"), "named: \(said)")
+                    t.expect(!said.contains("quokka"), "never its words")
+                    t.expectEqual(bench.calls(), 0, "no model ran")
+                }
+            },
+
             TestCase("ask_lampmaster runs claude once, keeps only real sources, and answers a repeat for free") { t in
                 bench(reply: askReply, t) { bench in
                     let question = #"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"ask_lampmaster","arguments":{"question":"Is anything waiting on the docs build?"}}}"#
