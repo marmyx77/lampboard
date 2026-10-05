@@ -34,8 +34,10 @@ struct ModSettings: View {
             its shell command (anything that looks like a secret masked) or its file path — \
             no conversation, no file's contents — writes nothing, runs nothing, \
             and talks only to 127.0.0.1, once that port answers as \
-            LampBoard. It adds nothing to the context of your sessions. Sessions already open \
-            pick it up after a restart.
+            LampBoard. It adds nothing to the context of your sessions. One exception you ask \
+            for: a question typed in the bar as @name ?question, with sending on, is answered \
+            by a side look over that session's conversation — no turn, nothing added to it — \
+            and only the answer comes back here. Sessions already open pick it up after a restart.
             """)
             .font(.callout)
             .foregroundStyle(.secondary)

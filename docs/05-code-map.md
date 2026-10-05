@@ -1,13 +1,13 @@
 # Code map
 
-~57,600 lines of Swift across five targets. For each file: what it contains, why
+~58,200 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  17,234 lines · 135 files  pure logic, zero AppKit
-  LampBoardApp/    21,820 lines · 123 files   shell: AppKit, network, windows
-  LampBoardTests/  14,284 lines · 84 files   1037 cases, instantaneous
+  LampBoardCore/  17,401 lines · 136 files  pure logic, zero AppKit
+  LampBoardApp/    21,948 lines · 124 files   shell: AppKit, network, windows
+  LampBoardTests/  14,349 lines · 84 files   1041 cases, instantaneous
   LampBoardE2E/    4,103 lines · 18 files   140 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -787,8 +787,10 @@ colours stay with the hooks.
 ### `ModReport.swift`
 The wire format of `POST /mod`, version 1: `start` (surface, interactive, model),
 `measure` (the session's own context count, cost, rate-limit windows), `end`
-(Claude Code's own reason) and `tool` (a call's start or end, its name, and its
-line cut to one printable line). Every field is bounded on the way in, because the route
+(Claude Code's own reason), `tool` (a call's start or end, its name, and its
+line cut to one printable line) and `answer` (a side question's nonce and the
+fork's reply, lines kept, controls gone, at most 4,000 characters, or the word for
+why there is none, D82); a `start` names what the mod can do (`ask`). Every field is bounded on the way in, because the route
 takes whatever a process of this user sends: a session id of a UUID's alphabet,
 numbers in range, words from a short alphabet, at most eight windows. A reading
 from a measure is `reported`, and the reducer never lets a transcript reading
@@ -819,7 +821,8 @@ The phrases say the capability and no more — which files, which address, is th
 claim the text beside the switch makes, not dressed up as Claude Code's. A hook or
 call the table has no words for is shown as Claude Code spelled it, and a valid
 reading that lists nothing is unreadable rather than reassuring: a changed mod
-must look changed.
+must look changed. It has words for `tool.check`, `command.run`, `session.receive`
+and `$.model.fork` (a side question over the conversation).
 
 ### `ModAllowance.swift`
 This Mac's allowance with the mod's windows in it (D67): `five_hour` and
@@ -1063,14 +1066,16 @@ filter lives here.
 
 ## `Bar/`
 
-### `CommandBar.swift` · 160
+### `CommandBar.swift` · 183
 The bar at the top of the wide panel (UX §2, D77), as logic: what was typed — text,
 `@name message`, `?question`, `/command` — and what it finds. Sessions by name first
 (exact, from the start, from a word, anywhere), then by what they say or are titled,
 ties to the more urgent, titles flattened to one clean line; then the panel's actions by their words; empty, what needs
 you. `@name` with words after it makes each session found a "Send to" result, which
 says where to switch sending on while it is off, or that a session on another Mac
-cannot be written to from here (D81). Eight results at most. A question becomes one result for LampMaster, or says
+cannot be written to from here (D81). `@name ?question` makes each one an "Ask
+… without disturbing it" result, with something to act on only for a session whose
+mod can answer, on this Mac (D82). Eight results at most. A question becomes one result for LampMaster, or says
 it is switched off.
 
 > **Touching here** changes what a few keystrokes reach. A name typed exactly must
@@ -1084,13 +1089,20 @@ editor.
 
 ## `Peer/`
 
-### `PeerBox.swift` · 113
+### `PeerBox.swift` · 120
 Claude Code's own message box (D81), as rules: the box a session file under
 `~/.claude/sessions/` names (protocol 1, an absolute `.sock` path short enough for
 `sun_path`), the key file `<pid>.<hex>.key` for that pid and no other, its token
 only when written for that very process (`procStart`), the two lines a message is
 — the key, then the user's words under the panel's preamble, from `lampboard` — and
-the words read back out of Claude Code's envelope, or bare when taken mid-turn.
+the words read back out of Claude Code's envelope, or bare when taken mid-turn; and the
+same two lines around a content of the panel's own making.
+
+### `PeerAsk.swift` · 34
+A side question without disturbing (D82): the line the mod can prove — the head,
+the nonce, an HMAC with the permission key over nonce, session and question — then
+the question, at most 2,000 characters; the feature a mod announces, and the
+minute the panel waits.
 
 ## `Permission/`
 
@@ -1318,7 +1330,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 434
+### `main.swift` · `AppDelegate.swift` · 440
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1422,12 +1434,12 @@ there, the hooks are registered — and it names the link that broke.
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 26 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
-| `ModReceiver.swift` | 93 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
+| `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 518 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `PermissionDesk.swift` | 152 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog |
 | `PlanciaModel.swift` | 50 | the Plancia's state: the open session, its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
-| `CommandBarModel.swift` | 144 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
+| `CommandBarModel.swift` | 165 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 198 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 282 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the frame, the skip, the run, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
@@ -1446,7 +1458,8 @@ there, the hooks are registered — and it names the link that broke.
 | `ContextReader.swift` | 110 | how full the context is, from the same tail, cached the same way — an `actor`, so the seek never lands on the thread that draws |
 | `SessionTitleReader.swift` | 16 | the first 512 KB of a transcript, handed to the scanner; what names a terminal row |
 | `IDEWindowReader.swift` | 54 | reads the locks and **confirms them against the editor's process**, not the file's age |
-| `PeerSender.swift` | 122 | the panel's end of Claude Code's message box (D81): the session's file and key under `~/.claude/sessions/`, read again for every message, used only when the process is running, this user's and the one the file was written for, the files regular, this user's and not links, the key private, the socket this user's; the two lines written down the socket, our half closed, and the box's end of file taken as the receipt; no SIGPIPE |
+| `PeerSender.swift` | 130 | the panel's end of Claude Code's message box (D81): the session's file and key under `~/.claude/sessions/`, read again for every message, used only when the process is running, this user's and the one the file was written for, the files regular, this user's and not links, the key private, the socket this user's; the two lines written down the socket, our half closed, and the box's end of file taken as the receipt; no SIGPIPE; a content of the panel's own, for a side question |
+| `PeerAskDesk.swift` | 69 | side questions (D82): which sessions can be asked, from their mods' `start` and `end`; a question through the box, with the permission key's proof, and the answer report it waits for — registered before it is sent — a minute at most, put in words when there is no text |
 | `MailboxWriter.swift` | 206 | the panel's end of the mailbox; carries out the reaper's verdict; counts the views holding a session's marker, so the chat window and the Plancia do not take it from each other |
 | `RemoteSessionReader.swift` | 108 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 147 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix |
@@ -1595,13 +1608,13 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 750 | holds everything together; row and panel actions |
+| `PanelController.swift` | 752 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 68 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow and Deny handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
-| `CommandBarView.swift` | 111 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
+| `CommandBarView.swift` | 112 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
 | `PanelPlancia.swift` | 138 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 160 | the Plancia drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
-| `PanelBar.swift` | 113 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎` |
+| `PanelBar.swift` | 131 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting for a row that has answered, `{first}` standing for its first word |
 | `WaitingQueueSection.swift` | 156 | the queue drawn above the rows, wide panel only: at most four cards, a line for the rest, a card dimmed until it is armed and outlined while selected with the keyboard, an ask answered elsewhere shown for a moment; a held permission's Deny and Allow, inert until it arms, its line cut in the middle and whole in a tooltip, no click-to-open on it, Allow and Deny as VoiceOver actions; VoiceOver reads the kind, the project and the ask |
 | `PanelActivation.swift` | 158 | where a click goes, which is a different question for every surface |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
@@ -1638,7 +1651,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 | `SettingsView.swift` | 168 | the Settings form: LampMaster first, the companion mod, the menu bar and notifications, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
 | `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
 | `LampMasterSettings.swift` | 105 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off |
-| `ModSettings.swift` | 112 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
+| `ModSettings.swift` | 114 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 113 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; a row opened, a quota line pointed at, a card answered move it on. In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line under the column, only while it is on: one line of fixed height, counted by `PanelMetrics.height`, never blinking — advice is not a session waiting |
@@ -1655,7 +1668,7 @@ The local installer's merge applied to another machine: inspect over ssh, merge 
 
 # The tests
 
-## `LampBoardTests/` — 1037 cases
+## `LampBoardTests/` — 1041 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1696,8 +1709,8 @@ script, before it was split. The most important ones:
 | `AppleScriptEscapeSuite` | title escaping, including a hostile title |
 | `AccessTokenSuite` | constant-time comparison, prefixes, empty expected value |
 | `ContextSuite` | the token sum; a refusal that must not read as 0%; the floor and the dash; the iterations fallback; a dated model id; an unknown model |
-| `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound |
-| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
+| `ModReportSuite` · `ModLedgerSuite` | the mod's reports read and bounded, a hostile id or word refused; the session's own count never replaced by the transcript's; the ledger's cost, windows and bound; a start's features, an answer's nonce and text, lines kept and cut to the bound, or its reason |
+| `ModFilesSuite` | the carried mod equal to the repository's byte for byte; loopback only, nothing written or run, one model call and it the fork; a side question taken proven or not, answered with the key's proof, and the start saying `ask`; `/lampmaster` on the MCP tool's route and name, with nothing for the model; Claude Code's own install and removal steps; enabled, version and a declared marketplace read back |
 | `WaitingQueueSuite` | the order of urgency then age, the state the row shows when a subagent is alive, a second ask as a new card armed anew, armed from when the queue shows it, a new answer re-arming the group, an amber row with nothing said, stuck only after fifteen minutes, two ready answers alone and three as one, one LampMaster card counting the rest, a watched command that failed and not one that succeeded, armed at 600 ms, the keys and the ones not yet live, the selection kept on its card, resolved elsewhere |
 | `WatchSuite` | the report read back as posted, the malformed ones refused (a folder with a bidi mark or a newline included); at most twenty rows; a running command never pruned; yellow, green, red with the code; an end without its start; terminal sessions hidden without hiding a command; no hook can claim the harness |
 | `StuckSuite` | a tool's start and end read and its line made one printable line, secrets masked; an end before its start; a subagent's call and a call from an earlier turn left out; the ledger's running tools across a measure and the end; the cap; stuck at fifteen minutes and only while working; a turn that stops takes its tool with it |
@@ -1705,9 +1718,9 @@ script, before it was split. The most important ones:
 | `LoopbackGuardSuite` | loopback hosts and no `Origin` pass; any `Origin`, a rebound or malformed `Host` refused |
 | `ModAllowanceSuite` | the mod's windows over an older answer, kept from a newer one, alone when the service gave nothing, ignored when none can be drawn; only the default account's windows reach the strip |
 | `ModTrustSuite` | the real `validate` output as four sentences; an unknown call shown as spelled; a valid but empty reading refused |
-| `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions, and with words after the name a send, saying how to switch it on while it is off; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone |
+| `CommandBarSuite` | the four kinds of query, names ranked exact, start, word, anywhere, then what a session says; empty listing what needs you; actions by their words and `/command` naming only actions; `@` naming only sessions, and with words after the name a send, saying how to switch it on while it is off; `?` to LampMaster or saying it is off; the selection kept in the list; the shortcut from anywhere off unless chosen and never `⌘K` alone ; `@name ?question` asked without disturbing only a session whose mod can answer |
 | `PermissionGateSuite` | HMAC-SHA256 against RFC 4231; an ask genuine only with its key's proof for its call; the same call id from another session another ask; the signed answer; answers by session and call; an ask read with its session, call, tool and masked line; malformed ones refused; 55 seconds, then the dialog; an answer taken once; one ask per call, eight at most; the three verdicts |
-| `PeerBoxSuite` | the box, the session and its busy state read from a session file as 2.1.289 writes it; no box before 2.1.224, on a relative path or another protocol; the key file for that pid only, and its token only for that process; the two lines sent, nothing empty, nothing past 64 KB; the user's words read out of the envelope, and never from another sender |
+| `PeerBoxSuite` | a side question as one provable line then the question, nothing empty or too long; the box, the session and its busy state read from a session file as 2.1.289 writes it; no box before 2.1.224, on a relative path or another protocol; the key file for that pid only, and its token only for that process; the two lines sent, nothing empty, nothing past 64 KB; the user's words read out of the envelope, and never from another sender |
 | `PeerTranscriptSuite` | a message from the panel taken idle, and one taken mid-turn as a `queued_command`, shown as the user's; another session's, even with the preamble copied, a note |
 | `PlanciaSuite` | the three depths cycled and stepped down, a session found by LampMaster's eight characters only when they name one, their widths, the Plancia closing by itself only with nothing waiting, the pointer away and no pin; a tool's duration, one still running, an end without a start; a turn's own cost; the mod's reports read into it; the newest sixty kept, a detail one short line |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
@@ -1764,19 +1777,23 @@ in this repository because the repository is its marketplace
 `lampboard@lampboard`).
 
 ### `mod/hooks/register.js`
-Five hooks, `session.start`, `session.measure`, `tool.call`, `tool.check` and
-`session.end`, each passing the event on first and then posting to `/mod` on
+Six hooks, `session.start`, `session.measure`, `tool.call`, `tool.check`,
+`session.receive` and `session.end`, each passing the event on first and then posting to `/mod` on
 `127.0.0.1` with the token — `tool.check` only for a real call the engine would
 put to its dialog, asking `/check` with a nonce and its HMAC made with the permission key (never the key itself, and never the token),
 and returning the panel's `allow` or `deny` only when the answer is signed back,
 the engine's own `ask` otherwise (D80);
+`session.receive`, which takes a message that starts with the panel's side-question
+line before the session sees it, whole or cut, proven or not, and only when proven answers it with
+`$.model.fork` over the conversation and posts the answer once the port has said again that it is LampBoard (D82) — its one use of the
+model, and the one time it reads the conversation;
 and `/lampmaster <question>`, registered at the start, which posts the typed
 question to `/lampmaster/tool` and prints the answer to the person only (D71). It reads
 the home (`HOME`, absolute only — never `LAMPBOARD_HOME`, which a project's settings
 can set, D80), the token, the port and the permission key, and nothing else; it sends nothing until that port answers `/health` as LampBoard, since
 a project's settings can set environment variables for its sessions and a cloned
 repository could point the mod at a port of its choosing:
-no conversation, no file of the project, no command. When the panel is not there,
+no conversation but for a proven side question, no file of the project, no command. When the panel is not there,
 or answers anything, it does nothing and says nothing. `claude plugin validate
 --strict` lists exactly that, and is what the panel will show (5.10).
 

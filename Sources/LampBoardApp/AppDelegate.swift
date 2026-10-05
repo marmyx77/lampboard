@@ -38,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let activity = ActivityRecorder()
     /// The permissions the panel answers, when switched on (D80).
     private let permissions = PermissionDesk()
+    /// Questions to live sessions without disturbing them (D82).
+    private let askDesk = PeerAskDesk()
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
     private var lampMasterWindow: LampMasterWindowController?
 
@@ -103,7 +105,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.lampMaster = lampMaster
         controller.activity = activity
         controller.permissionDesk = permissions
-        mod.onReport = { [activity] report, at in activity.record(report, at: at) }
+        controller.askDesk = askDesk
+        mod.onReport = { [activity, askDesk] report, at in
+            activity.record(report, at: at)
+            askDesk.heard(report)
+        }
         GettingStartedWindowController.shared.configure(
             port: port, lampMaster: lampMaster,
             toggleNotifications: { [weak controller] in controller?.toggleNotifications() }

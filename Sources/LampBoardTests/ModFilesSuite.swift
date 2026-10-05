@@ -33,10 +33,25 @@ enum ModFilesSuite {
         TestCase("The mod talks to loopback only, and writes and runs nothing") { t in
             let code = ModFiles.register
             t.expect(code.contains("http://127.0.0.1:"), "posts to loopback")
-            for call in ["$.fs.write", "$.process", "$.prompt", "$.tool", "$.model", "$.session.messages"] {
+            for call in ["$.fs.write", "$.process", "$.prompt", "$.tool", "$.session.messages"] {
                 t.expect(!code.contains(call), "the mod must not use \(call)")
             }
+            // Of the model, one fork, for the panel's proven side question (D82):
+            // no completion of its own, no turn.
+            t.expectEqual(code.components(separatedBy: "$.model.").count - 1, 1, "one model call in all")
+            t.expect(code.contains("await $.model.fork({ prompt: question })"), "and it is the fork")
             t.expect(!code.contains("https://"), "no address beyond this Mac")
+        },
+
+        TestCase("A side question is taken before the session reads it, and answered only when proven (D82)") { t in
+            let code = ModFiles.register
+            t.expect(code.contains("return { consumed: 'lampboard-ask' }"), "taken, proven or not")
+            t.expect(code.contains("if (!text.startsWith('LampBoard asks without disturbing [')) return next(e)"),
+                     "anything else passes untouched, and the line's head is PeerAsk's")
+            t.expect(code.contains("LampBoard asks without disturbing ["), "the head the mod looks for")
+            t.expect(code.contains("hmac(key, `fork:${nonce}:${session}:${question}`)"), "the proof PeerAsk makes")
+            t.expect(code.contains("/.lampboard/check-key`"), "with the permission key, never the token")
+            t.expect(code.contains("features: ['ask']"), "and the start says it can")
         },
 
         TestCase("/lampmaster asks through the MCP tool's route and name, and hands the model nothing") { t in

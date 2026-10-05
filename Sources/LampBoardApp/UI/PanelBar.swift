@@ -47,6 +47,10 @@ extension PanelController {
             }
             return thread.send(message)
         }
+        bar.onAskSession = { [weak self] id, question in
+            guard let desk = self?.askDesk else { return "Asking is not available." }
+            return await desk.ask(sessionId: id, question: question)
+        }
         bar.onLayoutChange = { [weak self] in
             guard let self else { return }
             self.resizeToFit(self.store.state)
@@ -68,6 +72,12 @@ extension PanelController {
             }
             .store(in: &cancellables)
 
+        // Which sessions can be asked without disturbing comes with their mods.
+        askDesk?.$askable
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshBar() }
+            .store(in: &cancellables)
         // The switch decides whether a question can be asked, and the bar says so.
         lampMaster?.$snapshot
             .map(\.enabled)
@@ -89,13 +99,21 @@ extension PanelController {
     }
 
     /// What typing in the bar and `⏎` do, for `--bar-type` on a fake home:
-    /// waits up to a minute for the text to find something, then submits once.
+    /// waits up to a minute for the text to find something it can act on,
+    /// then submits once. `{first}` stands for the first row's name, which a
+    /// test cannot know in advance.
     func typeIntoBar(_ text: String, attempts: Int = 30) {
         if isCompact, !store.state.sessions.isEmpty { toggleCompact() }
         refreshBar()
+        // A row that has answered once: before, there is nothing to ask it about.
+        // Its first word: `@name` ends at a space, and the rest would be the message.
+        let first = currentRendering.rows.first.flatMap { row -> String? in
+            guard row.primary.lastMessage != nil else { return nil }
+            return RowActivity.flat(row.displayName).split(separator: " ").first.map(String.init)
+        } ?? "{first}"
         bar.focus()
-        bar.text = text
-        guard !bar.shownResults.isEmpty else {
+        bar.text = text.replacingOccurrences(of: "{first}", with: first)
+        guard bar.shownResults.first?.sessionId != nil || bar.shownResults.first?.action != nil else {
             guard attempts > 0 else { return Diagnostics.log("bar-type: nothing found for it") }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.typeIntoBar(text, attempts: attempts - 1) }
             return
@@ -108,6 +126,6 @@ extension PanelController {
 
     func refreshBar() {
         bar.update(rows: currentRendering.rows, lampMasterEnabled: lampMaster?.snapshot.enabled ?? false,
-                   sendingEnabled: preferences.messageSendingEnabled)
+                   sendingEnabled: preferences.messageSendingEnabled, askable: askDesk?.askable ?? [])
     }
 }

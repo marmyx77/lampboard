@@ -3177,3 +3177,51 @@ change never turns `⏎` into a send to another session (a review's findings). T
 test Mac by typing into the bar through `--bar-type` (fake home only): the session
 answered and the Plancia showed both.
 
+## D82 · A side question to a live session, answered by its mod with a fork
+
+**Decided.** `@name ?question` in the bar asks a session a question without
+disturbing it. The panel puts into the session's box (D81) one line — "LampBoard
+asks without disturbing [v1 <nonce> <proof>]:" — and the question; the proof is an
+HMAC with the permission key of D80 over the nonce, the session and the question.
+The companion mod, 1.5.0, takes any message in that shape in `session.receive`
+before the session sees it (`{ consumed }`), proven or not, and only when proven
+answers it with `$.model.fork` over the session's conversation and posts the reply
+to the panel as an `answer` report. The panel offers the question only to sessions
+whose mod said `ask` in its `start` report, on this Mac, with sending on (D15,
+D81), and shows the answer where LampMaster's answers show; it waits a minute.
+
+**Measured on the test Mac** (Claude Code 2.1.289, 5 October 2026). With a probe
+mod, a box message taken in `session.receive` left nothing in the transcript; the
+fork answered "BLUE-HERON." from the conversation in about a second and a half,
+idle and mid-turn, reading some 33,000 tokens from cache and adding no turn; a
+message without the line passed untouched. With LampBoard's own mod installed by
+LampBoard into a fake home, `@Blue-heron ?…` typed into the bar through
+`--bar-type` came back in two seconds as "BLUE-HERON.", the session's row
+unchanged and the question nowhere in its transcript.
+
+**Why taken even when unproven.** A message that starts with that line is never
+the session's to read, whether the rest checks out or not — cut, too long, forged: a forged one should not reach the model as a peer's request, and one the
+panel sent with a key since rotated should not turn into a turn. Taken and
+answered by nobody, it costs the sender a minute's wait. The key stays a same-account
+secret, as D80 says: a session's own tools could read it and forge a proven
+question to a sibling, which would cost that sibling a fork's tokens and give the
+forger nothing, since the answer goes to the panel and is dropped for a nonce it is
+not waiting on. The mod asks the port again whether it is LampBoard before posting
+an answer, the first post that carries words of a conversation. Each question costs
+the account the conversation read from cache, some 33,000 tokens in the measure (a
+security review's findings, with the bound counted in UTF-16 units on both sides).
+
+**What it changes in what the mod reads.** Until now the mod read nothing of the
+conversation. A fork reads all of it — that is how it answers — but only for a
+question the person typed and the panel proved, and only the answer leaves the
+session, to `127.0.0.1`. The Settings text says so beside the mod's switch, and
+`claude plugin validate` now lists `session.receive` and `$.model.fork`, which the
+mod's card reads out. The mod uses the model for nothing else; a test counts its
+calls.
+
+**Why not a switchboard between sessions.** The plan had one: a question from one
+session to another relayed by the panel. Claude Code 2.1.289 gives every session
+`ListAgents` and `SendMessage` of its own (measured), so two sessions on one Mac
+already talk without LampBoard; what the panel adds is the person's side question,
+and showing those messages in the conversation as another session's (D81).
+

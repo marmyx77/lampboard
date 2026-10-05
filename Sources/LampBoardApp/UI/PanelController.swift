@@ -65,6 +65,8 @@ final class PanelController {
     var activity: ActivityRecorder?
     /// The permissions the panel holds, answered from the queue (D80).
     var permissionDesk: PermissionDesk?
+    /// Questions to sessions without disturbing them, from the bar (D82).
+    var askDesk: PeerAskDesk?
     var onOpenLampMaster: (() -> Void)?
     var tour: TourController?
 

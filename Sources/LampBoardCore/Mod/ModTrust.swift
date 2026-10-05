@@ -22,6 +22,9 @@ public enum ModTrust {
         "session.measure": "when its context, cost or limits change",
         "session.end": "when it ends",
         "tool.call": "when a tool starts and ends",
+        "tool.check": "when a call would ask you for permission",
+        "command.run": "when you type its command",
+        "session.receive": "when a message reaches the session",
     ]
 
     /// Claude Code's capability, in words, and no more than it says: which
@@ -33,6 +36,9 @@ public enum ModTrust {
         "$.http.fetch": "makes network requests",
         "$.session.id": "reads the session's id",
         "$.session.model": "reads the session's model name",
+        "$.session.cwd": "reads the session's folder",
+        "$.command.register": "adds a command",
+        "$.model.fork": "asks the model a side question over the conversation",
     ]
 
     /// `nil` when the text is not `validate`'s JSON.

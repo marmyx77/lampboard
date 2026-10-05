@@ -38,11 +38,11 @@ enum ModTrustSuite {
         // look different, even to a panel that has no words for it.
         TestCase("A call or a hook it has no words for is shown as Claude Code spelled it") { t in
             let changed = Data(#"""
-                {"success":true,"contents":[{"notes":["./register.js hooks: tool.check",
+                {"success":true,"contents":[{"notes":["./register.js hooks: session.compact",
                 "./register.js calls: $.process.run (via x), $.fs.read (via y)"]}]}
                 """#.utf8)
             let sentences = ModTrust.read(validateJSON: changed)?.sentences ?? []
-            t.expectEqual(sentences.first, "It runs on tool.check.")
+            t.expectEqual(sentences.first, "It runs on session.compact.")
             t.expectEqual(sentences.last, "It uses $.process.run and reads files.")
         },
 

@@ -74,6 +74,21 @@ enum CommandBarSuite {
             t.expectEqual(bare.first?.kind, .session, "a name alone finds the session")
         },
 
+        TestCase("@ then ? asks a session without disturbing it, when its mod can answer") { t in
+            let can = CommandBar.results(for: CommandBar.parse("@api ?what are you on"), rows: rows, now: t0,
+                                         lampMasterEnabled: true, sendingEnabled: true, askable: ["id-api"])
+            t.expectEqual(can.first?.kind, .askSession)
+            t.expectEqual(can.first?.title, "Ask api without disturbing it: what are you on")
+            t.expectEqual(can.first?.sessionId, "id-api")
+            t.expectEqual(can.first?.detail, "answered from its conversation, with no turn")
+            let cannot = can.first { $0.title.contains("api-gateway") }
+            t.expectNil(cannot?.sessionId, "its mod has not said it can")
+            t.expectEqual(cannot?.detail, "Its session needs the LampBoard mod 1.5.0: restart it after the update")
+            let off = CommandBar.results(for: CommandBar.parse("@api ?what are you on"), rows: rows, now: t0,
+                                         lampMasterEnabled: true, askable: ["id-api"])
+            t.expectEqual(off.first?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
+        },
+
         TestCase("A session on another Mac is said, never sent to from here") { t in
             let away = SessionState(id: "id-node", status: .idle, workspace: Workspace(path: "/home/dev/nodeapp", host: "node"),
                                     updatedAt: t0, statusSince: t0, origin: .terminal)

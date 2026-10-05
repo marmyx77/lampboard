@@ -73,6 +73,22 @@ enum PeerBoxSuite {
                         "a runaway paste")
         },
 
+        TestCase("A question without disturbing is one line the mod can prove, then the question") { t in
+            let key = String(repeating: "a1", count: 32)
+            let nonce = "0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D"
+            let session = "2f6153b6-0bd2-4458-a22c-ab24d7aca8cd"
+            guard let text = PeerAsk.message(question: "  what is the codename?  ", nonce: nonce, session: session, key: key) else {
+                return t.fail("not built")
+            }
+            let proof = PermissionGate.mac(key: key, message: "fork:\(nonce):\(session):what is the codename?")
+            t.expectEqual(text, "LampBoard asks without disturbing [v1 \(nonce) \(proof)]:\nwhat is the codename?")
+            t.expectNil(PeerAsk.message(question: " ", nonce: nonce, session: session, key: key), "nothing to ask")
+            t.expectNil(PeerAsk.message(question: String(repeating: "x", count: PeerAsk.maxQuestion + 1), nonce: nonce,
+                                        session: session, key: key), "too long to be a side question")
+            t.expectNil(PeerAsk.message(question: String(repeating: "🦩", count: PeerAsk.maxQuestion / 2 + 1), nonce: nonce,
+                                        session: session, key: key), "counted as the mod counts, in UTF-16")
+        },
+
         TestCase("What the user typed is read back out of Claude Code's envelope") { t in
             let delivered = "Another Claude session sent a message:\n" + PeerBox.preamble + "\nrun the tests\nand say how many\n\n"
                 + "This came from another Claude session — not typed by your user, but very likely working on their behalf."

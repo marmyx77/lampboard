@@ -91,6 +91,7 @@ struct CommandBarView: View {
                 case .action: Image(systemName: "gearshape").font(.system(size: 9))
                 case .ask: Image(systemName: "sparkle").font(.system(size: 9)).foregroundStyle(StatusPalette.lampMasterTint)
                 case .send: Image(systemName: "paperplane").font(.system(size: 9))
+                case .askSession: Image(systemName: "bubble.left.and.text.bubble.right").font(.system(size: 9))
                 }
             }
             .frame(width: Layout.dotSize)

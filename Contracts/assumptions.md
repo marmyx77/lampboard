@@ -900,8 +900,12 @@ through `next(e)` with `decision` `allow`, `ask` or `deny`, carries `tool_use_id
 and the tool's arguments in `input`, waits about a minute for the hook, and shows the ordinary
 dialog when the hook answers `ask`; that a project's settings can set `LAMPBOARD_HOME`
 for a session and cannot set `HOME`; that the runtime offers `crypto.subtle.digest`
-and `crypto.randomUUID`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
-`$.session.id`, `$.session.model` and `$.session.cwd` exist.
+and `crypto.randomUUID`; that `session.receive` sees a message put into the
+session's box with its `text` as sent, and that returning `{ consumed }` keeps it
+out of the conversation; that `$.model.fork({ prompt })` answers from the
+conversation with no turn, idle or mid-turn, as `{ isAnswered, text }` or
+`{ isAnswered: false, reason }`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
+`$.session.id`, `$.session.model`, `$.session.cwd` and `$.model.fork` exist.
 
 **Depends at** [register.js](../mod/hooks/register.js) ·
 [ModReport.swift](../Sources/LampBoardCore/Mod/ModReport.swift) ·
@@ -909,7 +913,9 @@ and `crypto.randomUUID`; and that `$.env.get`, `$.fs.read`, `$.http.fetch`,
 
 **How verified** — `probe` and `binary`. A throwaway session on the test Mac, with
 the mod loaded and then installed, delivered `start`, a measure of 21,140 tokens
-with two windows, and `end` (4 October 2026, 2.1.289); the names are read in the
+with two windows, and `end` (4 October 2026, 2.1.289); a probe mod took a box message in
+`session.receive` (nothing in the transcript) and answered it with `$.model.fork`
+in about a second and a half, idle and mid-turn (5 October 2026, 2.1.289); the names are read in the
 binary by `check-contract.sh`, which also has `claude plugin validate --strict` list
 the mod's hooks and calls and compares them with `companionMod` in
 `required-fields.json`.
@@ -918,7 +924,9 @@ the mod's hooks and calls and compares them with `companionMod` in
 missing one: the ring falls back to the transcript's figure, the strip to the
 usage request, the cost line disappears. Nothing turns the wrong colour, because
 the colours never came from the mod (D65). A call that no longer exists makes the
-mod's own `try` give up, and the panel hears nothing from it.
+mod's own `try` give up, and the panel hears nothing from it. A `session.receive`
+that stopped consuming would let a side question reach the session as a message:
+loud, and seen in its conversation.
 
 ## What this cannot do
 

@@ -21,10 +21,28 @@ public enum ModReport: Equatable, Sendable {
     case end(session: String, reason: EndReason)
     /// `tool.call`: a tool began or finished running (5.7).
     case tool(session: String, run: ToolRun)
+    /// The reply to a question asked without disturbing (D82).
+    case answer(session: String, answer: Answer)
 
     public var session: String {
         switch self {
-        case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _): return session
+        case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
+             .answer(let session, _): return session
+        }
+    }
+
+    /// What the session's fork said to a question, or why it said nothing.
+    public struct Answer: Equatable, Sendable {
+        /// The question's nonce.
+        public let id: String
+        public let text: String?
+        /// `nothing-to-fork`, `api-error`, …, when there is no text.
+        public let reason: String?
+
+        public init(id: String, text: String?, reason: String?) {
+            self.id = id
+            self.text = text
+            self.reason = reason
         }
     }
 
@@ -50,11 +68,14 @@ public enum ModReport: Equatable, Sendable {
         public let surface: String?
         public let interactive: Bool
         public let model: String?
+        /// What this mod can do beyond reporting: `ask` (D82).
+        public let features: [String]
 
-        public init(surface: String?, interactive: Bool, model: String?) {
+        public init(surface: String?, interactive: Bool, model: String?, features: [String] = []) {
             self.surface = surface
             self.interactive = interactive
             self.model = model
+            self.features = features
         }
     }
 
@@ -135,6 +156,8 @@ public enum ModReport: Equatable, Sendable {
     static let maxRateLimits = 8
     static let maxWordLength = 40
     static let maxModelLength = 80
+    /// An answer is read on a card: past this it was not a side answer.
+    public static let maxAnswer = 4000
 
     public static func decode(_ data: Data) throws -> ModReport {
         guard let wire = try? JSONDecoder().decode(Wire.self, from: data) else { throw Failure.unreadable }
@@ -144,7 +167,8 @@ public enum ModReport: Equatable, Sendable {
         case "start":
             return .start(session: session, start: Start(
                 surface: wire.surface.flatMap(word), interactive: wire.interactive ?? false,
-                model: wire.model.flatMap(model)
+                model: wire.model.flatMap(model),
+                features: Array((wire.features ?? []).prefix(8).compactMap(word))
             ))
         case "measure":
             let limits = (wire.rateLimits ?? []).prefix(maxRateLimits).compactMap { limit -> RateLimit? in
@@ -172,6 +196,11 @@ public enum ModReport: Equatable, Sendable {
             else { throw Failure.unreadable }
             return .tool(session: session, run: ToolRun(
                 id: id, tool: tool, detail: wire.detail.flatMap(detail), finished: wire.phase == "end"
+            ))
+        case "answer":
+            guard let id = wire.id, isSessionId(id) else { throw Failure.unreadable }
+            return .answer(session: session, answer: Answer(
+                id: id, text: wire.text.flatMap(answerText), reason: wire.reason.flatMap(word)
             ))
         default:
             throw Failure.unknownKind
@@ -207,6 +236,20 @@ public enum ModReport: Equatable, Sendable {
     static func count(_ raw: Double, from lower: Int) -> Int? {
         guard raw.isFinite, raw >= Double(lower), raw <= Double(maxTokens) else { return nil }
         return Int(raw.rounded())
+    }
+
+    /// A fork's reply as a card shows it: lines kept, every other control or
+    /// format character gone, cut to `maxAnswer`.
+    static func answerText(_ raw: String) -> String? {
+        let kept = String(String.UnicodeScalarView(raw.unicodeScalars.filter { scalar in
+            if scalar == "\n" { return true }
+            switch scalar.properties.generalCategory {
+            case .control, .format, .lineSeparator, .paragraphSeparator: return false
+            default: return true
+            }
+        })).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !kept.isEmpty else { return nil }
+        return String(kept.prefix(maxAnswer))
     }
 
     /// `toolu_01AbC…`: letters, digits, `_` and `-`.
@@ -278,6 +321,8 @@ public enum ModReport: Equatable, Sendable {
         let tool: String?
         let detail: String?
         let phase: String?
+        let text: String?
+        let features: [String]?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

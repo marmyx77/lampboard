@@ -595,6 +595,17 @@ appears in the conversation as yours.
 message — `@api run the tests` — and `⏎`. The Plancia opens on that session and the
 message goes through its composer, so you see it arrive and the answer come back.
 
+**Asking without disturbing**: `@name ?question` asks the session a side question
+and shows the answer right there in the bar. The session's LampBoard mod (1.5.0)
+takes the question before the session sees it and answers it with a fork over the
+conversation — no turn, nothing added to it, the conversation read from cache —
+so a session in the middle of work is not interrupted ([D82](docs/04-decisions.md)).
+The question is proven with the same key as the permissions (D80); a message in
+that shape that is not proven is taken all the same and answered by nobody.
+Measured on the test Mac: about two seconds to an answer, idle or mid-turn. Each
+question costs the session's account the conversation read again from cache —
+some tens of thousands of cached tokens on a long session.
+
 **Through the mailbox** for a session without a box:
 
 ```
@@ -1438,7 +1449,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1037 domain tests, instantaneous
+swift run LampBoardTests              # 1041 domain tests, instantaneous
 swift run LampBoardE2E                # 140 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

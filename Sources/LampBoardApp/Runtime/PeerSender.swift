@@ -38,6 +38,14 @@ struct PeerSender: Sendable {
         return write(wire, to: address.socketPath)
     }
 
+    /// A content of the panel's own making, as it is: a question without
+    /// disturbing (D82).
+    func send(content: String, to sessionId: String) -> Result<Void, Failure> {
+        guard let (address, token) = find(sessionId) else { return .failure(.noBox) }
+        guard let wire = PeerBox.wire(token: token, content: content) else { return .failure(.empty) }
+        return write(wire, to: address.socketPath)
+    }
+
     // MARK: - Internals
 
     private func find(_ sessionId: String) -> (PeerBox.Address, String)? {

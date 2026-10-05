@@ -2,7 +2,8 @@
 // the session knows — its context as Claude Code counts it, what it has cost,
 // the account's rate-limit windows, where it draws and why it ended.
 //
-// It reads nothing of the conversation — of a running tool only its name and
+// It reads nothing of the conversation unless the person asks it a side question
+// from the panel (below) — of a running tool only its name and
 // the first line of its shell command or its file path, to say which one a
 // stuck session is on; the panel masks what looks like a secret — writes
 // nothing, runs nothing, and
@@ -22,6 +23,13 @@
 // switch off, the dialog comes as it always did (D80). For that one the mod
 // reads a second file the panel wrote, its permission key, sends it to nobody,
 // and proves it holds it; the panel's answer counts only signed with it.
+//
+// And one question, asked by the person from the panel without disturbing the
+// session (D82): a message in this session's box that starts with LampBoard's
+// line, proven with that same key, is taken before the session sees it and
+// answered with a fork over the conversation — no turn, nothing added to it —
+// and only the answer goes to the panel. A message in that shape that is not
+// proven is taken all the same and answered by nobody.
 //
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
@@ -126,6 +134,35 @@ async function hmac(key, message) {
   return hex(await sha256(outer))
 }
 
+// The same comparison whatever the guess: a proof is not found a byte at a time.
+function same(a, b) {
+  if (typeof a !== 'string' || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
+// A side question from the panel (D82), as PeerAsk in LampBoardCore writes it.
+const ASK = /^LampBoard asks without disturbing \[v1 ([A-Za-z0-9-]{16,64}) ([0-9a-f]{64})\]:\n([\s\S]{1,2000})$/
+
+async function answerQuietly($, nonce, proof, question) {
+  try {
+    const home = await realHome($)
+    if (!home) return
+    const key = (await $.fs.read(`${home}/.lampboard/check-key`)).trim()
+    if (!/^[0-9a-f]{16,128}$/.test(key)) return
+    const session = await $.session.id()
+    if (!same(proof, await hmac(key, `fork:${nonce}:${session}:${question}`))) return
+    const reply = await $.model.fork({ prompt: question })
+    // The first post that carries words of the conversation: the port is asked
+    // again whether it is LampBoard, not taken on an earlier answer.
+    confirmed = null
+    await post($, 'answer', reply.isAnswered ? { id: nonce, text: reply.text } : { id: nonce, reason: reply.reason })
+  } catch (_) {
+    // The panel waits a minute and says it heard nothing.
+  }
+}
+
 // `/lampmaster <question>` (D71): the person's question to LampMaster, through
 // the route the `lampmaster` MCP server uses, so the limits, the daily ceiling
 // and the off switch are the same ones. The answer is shown to the person and
@@ -173,7 +210,7 @@ export function register(on) {
     } catch (_) {
       // An older Claude Code without commands: the MCP tools still answer.
     }
-    await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($) })
+    await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($), features: ['ask'] })
     return result
   })
 
@@ -245,6 +282,17 @@ export function register(on) {
       // The panel is closed or restarting: the dialog, as without it.
     }
     return verdict
+  })
+
+  // Taken whether or not it is proven: a message that starts like this is never the
+  // session's to read. The answer is not awaited: the delivery is not held.
+  on('session.receive', async ($, e, next) => {
+    const text = e.text || ''
+    if (!text.startsWith('LampBoard asks without disturbing [')) return next(e)
+    // Its line, but not its shape (cut, too long): taken all the same.
+    const asked = ASK.exec(text)
+    if (asked) void answerQuietly($, asked[1], asked[2], asked[3])
+    return { consumed: 'lampboard-ask' }
   })
 
   // `session.end` has 1.5 s in all: one short post, and no model lookup.

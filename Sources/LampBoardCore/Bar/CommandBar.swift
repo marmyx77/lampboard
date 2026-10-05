@@ -43,7 +43,7 @@ public enum CommandBar {
     }
 
     public struct Result: Sendable, Equatable, Identifiable {
-        public enum Kind: Sendable, Equatable { case session, action, ask, send }
+        public enum Kind: Sendable, Equatable { case session, action, ask, send, askSession }
         public let id: String
         public let kind: Kind
         public let title: String
@@ -70,7 +70,7 @@ public enum CommandBar {
     }
 
     public static func results(for query: Query, rows: [ColumnRow], now: Date, lampMasterEnabled: Bool,
-                               sendingEnabled: Bool = false) -> [Result] {
+                               sendingEnabled: Bool = false, askable: Set<String> = []) -> [Result] {
         switch query {
         case .empty:
             return Array(rows.filter { $0.status.clearsOnFocus }
@@ -83,9 +83,13 @@ public enum CommandBar {
         case .mention(let name, let message):
             let found = Array(sessions(matching: name.lowercased(), rows: rows, now: now, namesOnly: true).prefix(shownAtOnce))
             guard !message.isEmpty else { return found }
+            let remote = Set(rows.filter(\.workspace.isRemote).map { "session:" + $0.id })
+            if message.hasPrefix("?") {
+                return asks(found, question: String(message.dropFirst()).trimmed, remote: remote,
+                            sendingEnabled: sendingEnabled, askable: askable)
+            }
             // One line, like a title: what is about to be said is read before it is.
             let said = RowActivity.flat(message)
-            let remote = Set(rows.filter(\.workspace.isRemote).map { "session:" + $0.id })
             return found.map { session in
                 // A session on another Mac has its box there: said, and nothing
                 // to send to (no session id), rather than a send that goes nowhere.
@@ -102,6 +106,25 @@ public enum CommandBar {
                            detail: lampMasterEnabled ? "LampMaster reads your sessions and answers here"
                                                      : "LampMaster is switched off in Settings",
                            sessionId: nil, action: nil, status: nil)]
+        }
+    }
+
+    static let askNeedsMod = "Its session needs the LampBoard mod 1.5.0: restart it after the update"
+
+    /// `@name ?question`: each session found, asked without disturbing it
+    /// (D82) — only one whose mod said it can answer, on this Mac.
+    private static func asks(_ found: [Result], question: String, remote: Set<String>,
+                             sendingEnabled: Bool, askable: Set<String>) -> [Result] {
+        guard !question.isEmpty else { return found }
+        let asked = RowActivity.flat(question)
+        return found.map { session in
+            let away = remote.contains(session.id)
+            let can = !away && session.sessionId.map(askable.contains) == true
+            let detail = away ? sendingRemote : !can ? askNeedsMod
+                : (sendingEnabled ? "answered from its conversation, with no turn" : sendingOff)
+            return Result(id: "ask:" + session.id, kind: .askSession,
+                          title: "Ask \(session.title) without disturbing it: \(asked)", detail: detail,
+                          sessionId: can ? session.sessionId : nil, action: nil, status: session.status)
         }
     }
 

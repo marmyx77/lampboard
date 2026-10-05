@@ -75,11 +75,18 @@ public enum PeerBox {
     /// is nothing to send, or too much.
     public static func wire(token: String, typed: String) -> Data? {
         let text = typed.trimmed
-        guard !text.isEmpty, text.utf8.count <= maxBytes else { return nil }
+        guard !text.isEmpty else { return nil }
+        return wire(token: token, content: preamble + "\n" + text)
+    }
+
+    /// The same two lines with a content of the panel's own making, as a
+    /// question without disturbing is (D82).
+    public static func wire(token: String, content: String) -> Data? {
+        guard !content.isEmpty, content.utf8.count <= maxBytes else { return nil }
         let auth: [String: Any] = ["type": "auth", "token": token]
         let user: [String: Any] = [
             "type": "user", "from": sender, "priority": "next",
-            "message": ["role": "user", "content": preamble + "\n" + text],
+            "message": ["role": "user", "content": content],
         ]
         guard let first = try? JSONSerialization.data(withJSONObject: auth, options: [.sortedKeys]),
               let second = try? JSONSerialization.data(withJSONObject: user, options: [.sortedKeys])

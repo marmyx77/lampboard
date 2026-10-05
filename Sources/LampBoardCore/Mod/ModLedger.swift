@@ -61,6 +61,8 @@ public struct ModLedger: Equatable, Sendable {
     public static let maxSessions = 300
 
     public func applying(_ report: ModReport, now: Date) -> ModLedger {
+        // An answer is a reply to the panel's question, not a fact about the session.
+        if case .answer = report { return self }
         let old = sessions[report.session]
         var facts: Facts
         switch report {
@@ -91,6 +93,8 @@ public struct ModLedger: Equatable, Sendable {
                 next.running[run.id] = RunningTool(tool: run.tool, detail: run.detail, since: now)
             }
             facts = next.heard(at: now)
+        case .answer:
+            return self
         case .end(_, let reason):
             facts = Facts(
                 surface: old?.surface, interactive: old?.interactive, model: old?.model, costUSD: old?.costUSD,

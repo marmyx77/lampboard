@@ -32,11 +32,14 @@ final class CommandBarModel: ObservableObject {
     /// `@name message`: the message to that session, through its composer;
     /// `false` when it did not go, and the bar keeps the text.
     var onSend: (String, String) -> Bool = { _, _ in false }
+    /// `@name ?question`: the session's fork answers it, no turn (D82).
+    var onAskSession: (String, String) async -> String = { _, _ in "" }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
     private var lampMasterEnabled = false
     private var sendingEnabled = false
+    private var askable: Set<String> = []
     private var question: Task<Void, Never>?
 
     /// Results only while something is typed. Empty, the queue below already
@@ -50,8 +53,9 @@ final class CommandBarModel: ObservableObject {
         onLayoutChange()
     }
 
-    func update(rows: [ColumnRow], lampMasterEnabled: Bool, sendingEnabled: Bool) {
+    func update(rows: [ColumnRow], lampMasterEnabled: Bool, sendingEnabled: Bool, askable: Set<String> = []) {
         self.rows = rows
+        self.askable = askable
         self.lampMasterEnabled = lampMasterEnabled
         self.sendingEnabled = sendingEnabled
         refresh()
@@ -81,6 +85,23 @@ final class CommandBarModel: ObservableObject {
                   case .mention(_, let message) = CommandBar.parse(text), !message.isEmpty,
                   onSend(id, message) else { return }
             clear()
+        case .askSession:
+            guard sendingEnabled, let id = result.sessionId, !asking,
+                  case .mention(_, let message) = CommandBar.parse(text), message.hasPrefix("?") else { return }
+            let asked = String(message.dropFirst()).trimmingCharacters(in: .whitespaces)
+            let typed = text
+            asking = true
+            answer = "Asking it, without a turn…"
+            onLayoutChange()
+            question = Task { [weak self] in
+                guard let self else { return }
+                let reply = await self.onAskSession(id, asked)
+                // Dropped if the bar closed or the question changed meanwhile.
+                guard !Task.isCancelled, self.isEditing, self.text == typed else { return }
+                self.answer = reply
+                self.asking = false
+                self.onLayoutChange()
+            }
         case .ask:
             guard lampMasterEnabled, case .ask(let asked) = CommandBar.parse(text), !asking else { return }
             asking = true
@@ -130,7 +151,7 @@ final class CommandBarModel: ObservableObject {
 
     private func refresh() {
         let next = CommandBar.results(for: CommandBar.parse(text), rows: rows, now: Date(),
-                                      lampMasterEnabled: lampMasterEnabled, sendingEnabled: sendingEnabled)
+                                      lampMasterEnabled: lampMasterEnabled, sendingEnabled: sendingEnabled, askable: askable)
         guard next != results else { return }
         // The selection stays on the result it was on, not on its place: a
         // list reordered by a status change must not turn `⏎` into a send to

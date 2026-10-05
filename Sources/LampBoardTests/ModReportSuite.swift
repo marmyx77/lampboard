@@ -32,6 +32,25 @@ enum ModReportSuite {
 
     static let suite = TestSuite("The companion mod's reports", [
 
+        TestCase("A start says what the mod can do; an answer carries its ask's nonce and the reply") { t in
+            let start = try? decode(#"{"v":1,"kind":"start","session":"\#(id)","interactive":true,"features":["ask","Bad Word"]}"#)
+            guard case .start(_, let begun)? = start else { return t.fail("not a start") }
+            t.expectEqual(begun.features, ["ask"], "words only")
+            let answer = try? decode(#"{"v":1,"kind":"answer","session":"\#(id)","id":"0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D","text":"BLUE-HERON.\nSecond line\u0007"}"#)
+            guard case .answer(let session, let reply)? = answer else { return t.fail("not an answer") }
+            t.expectEqual(session, id)
+            t.expectEqual(reply.id, "0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D")
+            t.expectEqual(reply.text, "BLUE-HERON.\nSecond line", "lines kept, controls gone")
+            let refused = try? decode(#"{"v":1,"kind":"answer","session":"\#(id)","id":"0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D","reason":"nothing-to-fork"}"#)
+            guard case .answer(_, let none)? = refused else { return t.fail("not an answer") }
+            t.expectNil(none.text)
+            t.expectEqual(none.reason, "nothing-to-fork")
+            let long = String(repeating: "x", count: ModReport.maxAnswer + 50)
+            let cut = try? decode(#"{"v":1,"kind":"answer","session":"\#(id)","id":"0F6A2C1E-6B5E-4D7A-9B1C-2E3F4A5B6C7D","text":"\#(long)"}"#)
+            guard case .answer(_, let trimmed)? = cut else { return t.fail("not an answer") }
+            t.expectEqual(trimmed.text?.count, ModReport.maxAnswer, "cut to the bound")
+        },
+
         TestCase("A measure carries the session's own count, cost and windows") { t in
             guard case .measure(let session, let m) = try? decode(measure) else {
                 return t.fail("the measure was not read")

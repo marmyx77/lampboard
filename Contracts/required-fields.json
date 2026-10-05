@@ -415,7 +415,8 @@
       "session.end",
       "tool.call",
       "command.run",
-      "tool.check"
+      "tool.check",
+      "session.receive"
     ],
     "calls": [
       "$.env.get",
@@ -424,7 +425,8 @@
       "$.session.id",
       "$.session.model",
       "$.session.cwd",
-      "$.command.register"
+      "$.command.register",
+      "$.model.fork"
     ],
     "binaryStrings": [
       "session.measure",
