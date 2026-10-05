@@ -163,6 +163,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
         if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
+        // LampMaster's window on one of its sheets (D5): `--lampmaster today`.
+        if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
+           let sheet = LampMasterWindowView.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in self?.lampMasterWindow?.show(sheet: sheet) }
+        }
         // The Plancia on the most urgent session, once the first rows are in.
         if CommandLine.arguments.contains("--plancia") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak controller] in controller?.cycleDepth() }

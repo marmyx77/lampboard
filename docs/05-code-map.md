@@ -1,13 +1,13 @@
 # Code map
 
-~63,800 lines of Swift across five targets. For each file: what it contains, why
+~64,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,469 lines · 152 files  pure logic, zero AppKit
-  LampBoardApp/    23,762 lines · 134 files   shell: AppKit, network, windows
-  LampBoardTests/  15,766 lines · 99 files   1128 cases, instantaneous
+  LampBoardCore/  19,584 lines · 153 files  pure logic, zero AppKit
+  LampBoardApp/    23,916 lines · 135 files   shell: AppKit, network, windows
+  LampBoardTests/  15,833 lines · 100 files   1131 cases, instantaneous
   LampBoardE2E/    4,551 lines · 20 files   154 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -750,6 +750,11 @@ envelope's tokens are counted even when the run failed: the ceiling counts what
 was spent. Drop a flag and the round shows up as a session in the panel, or
 carries the user's connectors into every hour.
 
+### `LampMasterSheets.swift` · 115
+The window's sheets beside the cards (D96): the day's suggestions with their outcome;
+the last saved frame read back — sessions, signals, precedents, the allowance; the
+day's rounds and spending, the last ten runs, each kind with its acceptance and state.
+
 ### `LampMasterSchedule.swift`
 When a round runs and when it is skipped for nothing: switched off, no session to
 look at, the frame unchanged since the last round, the day's 200,000 tokens spent,
@@ -1466,7 +1471,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 521
+### `main.swift` · `AppDelegate.swift` · 526
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1596,12 +1601,13 @@ there, the hooks are registered — and it names the link that broke.
 | `CommandBarModel.swift` | 245 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 210 | the queue's state between refreshes: the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, a digit for a held question's option, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
-| `LampMasterService.swift` | 359 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the kinds passed over switched off (D95), the frame with the allowance strip's quota and the nodes' sessions — one ssh per node, on threads of their own, while LampMaster is on (D94) —, the skip — a tight allowance among the reasons (D93) —, the run — its precedents searched in the index only then, off the main actor (D92) —, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
+| `LampMasterService.swift` | 368 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the kinds passed over switched off (D95), the frame with the allowance strip's quota and the nodes' sessions — one ssh per node, on threads of their own, while LampMaster is on (D94) —, the skip — a tight allowance among the reasons (D93) —, the run — its precedents searched in the index only then, off the main actor (D92) —, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
 | `LampMasterQuestions.swift` | 136 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, `who_knows` and `precedents` naming the index's earlier conversations too (D89, D92), a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 182 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws. The nodes' transcripts are followed the same way by host and path, from what one ssh per node brought (D94) |
 | `DecisionBoardService.swift` | 80 | the decision board on disk, `~/.lampboard/decisions.json` (D105): read at launch, written whole through a `0600` file renamed into place, under a lock because the server's threads reach it; an unreadable file set aside as `.unreadable`, not overwritten by the next pin; `/decisions` answered with the board as it now is, or why not |
-| `LampMasterFiles.swift` | 172 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames — read back for the bench (D102) —, the last day's questions. The folder is `0700` because the frames quote conversations |
+| `LampMasterFiles.swift` | 181 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames — read back for the bench (D102) —, the last day's questions. The folder is `0700` because the frames quote conversations |
+| `LampMasterSheetsView.swift` | 131 | the window's four sheets (D96): the cards, Today, Frame and Cost, chosen at the top, read from LampMaster's files each time they are drawn; `--lampmaster <sheet>` opens the window on one |
 | `TrialStage.swift` | 197 | the trial: an editor lock per invented project, a stand-in process per session — for the Codex one, the app itself run as `codex trial-hold <rollout>` through a hard link, since a Codex session lives only while a process of that name holds its rollout open — a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
@@ -1830,7 +1836,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1128 cases
+## `LampBoardTests/` — 1131 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1860,6 +1866,7 @@ script, before it was split. The most important ones:
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `DecisionBoardSuite` | a decision pinned for its repository as one clean line and only there; empty, too long, repeated, past twenty or under a name no one could pin refused, the board unchanged; taken off by number; the version moving with the words and the repository; the block numbered, the withdrawal naming no repository; the file round trip; the command line's changes; the mod heard only with a proof for its own session; the answer signed over version and words, nothing for a session with no repository or a hostile name (D105) |
+| `LampMasterSheetsSuite` | today's suggestions only, the newest first, with their outcome; the last frame read back with signals, precedents and the allowance; the day's rounds, spending, last runs and each kind's acceptance and state |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
 | `LampMasterAutoMuteSuite` | under a fifth over two weeks off, with why; too few or too young not; what counts and what does not; a kind off left alone, one asked back counting from then |
 | `LampMasterQuotaSuite` | the pace's forecast, none too early or without a reset; one line per account, the window most at risk; the round skipped when this Mac's account is tight, not another machine's or a model's own cap, and the line saying so |

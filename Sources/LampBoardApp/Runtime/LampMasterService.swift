@@ -132,6 +132,15 @@ final class LampMasterService: ObservableObject {
         publish(running: enabled && snapshot.running)
     }
 
+    /// What the window shows beside the cards (D5), read from the files when asked.
+    func sheets(now: Date = Date()) -> (today: [LampMasterSheets.TodayLine], frame: LampMasterSheets.FrameSheet?,
+                                        cost: LampMasterSheets.CostSheet) {
+        let shown = files.suggestions()
+        return (LampMasterSheets.today(shown, now: now), LampMasterSheets.frame(files.latestFrame()),
+                LampMasterSheets.cost(rounds: files.rounds(), shown: shown, muted: preferences.lampMasterMuted,
+                                      autoMuted: preferences.lampMasterAutoMuted, now: now))
+    }
+
     /// The user's reaction to a suggestion on screen.
     func react(to id: String, with outcome: LampMasterShown.Outcome) {
         onReact?()

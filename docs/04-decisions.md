@@ -3882,3 +3882,26 @@ read the board of the panel over there. The items sit in the menu, the simplest
 place there is; where the board shows itself otherwise follows the interface
 realignment that opens 0.8 (Marco's answer to question 17). They were not
 photographed: a context menu needs a right click, which ssh cannot give.
+
+## D96 · LampMaster's window shows what it did, saw and cost
+
+**Decided.** LampMaster's window keeps its cards and gains three sheets beside them,
+as the plan's Plancia of LampMaster asks: *Today*, the day's suggestions with what
+became of each; *Frame*, what the last round was given — each session with its
+project, machine, state, signals and the precedents found for it, and the allowance
+as the round saw it — so a suggestion can be trusted or a wrong one understood;
+*Cost*, the day's rounds that ran, were skipped or failed, the tokens against the
+ceiling and the cost, the last ten rounds with their model, and each kind of
+suggestion on or off with how many were taken up over two weeks and, for one that
+switched itself off, why (D95).
+
+**Where it comes from.** The files LampMaster already keeps — its rounds, its
+suggestions with their outcomes, the last two hundred frames — read when a sheet is
+drawn. Nothing new is recorded, nothing is spent, nothing leaves the Mac. A window
+and not the panel's Plancia: the cards already live in one (D61), and the panel's
+Plancia shows sessions.
+
+**Measured on the test Mac.** After one round against a fake `claude` on two
+invented conversations, `--lampmaster today`, `frame` and `cost` opened the window
+on each sheet and each was photographed: the open suggestion, the two sessions, one
+round of 5,632 tokens and the five kinds on.

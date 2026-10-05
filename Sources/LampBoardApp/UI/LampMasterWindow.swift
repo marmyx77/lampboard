@@ -36,7 +36,7 @@ final class LampMasterWindowController: NSObject, NSWindowDelegate {
 
     /// A round is asked for only when the window opens, not when an open one is
     /// brought forward: that would flash "looking" for a round that then waits.
-    func show() {
+    func show(sheet: LampMasterWindowView.Sheet = .suggestions) {
         if let window {
             bringToFront(window)
             return
@@ -50,7 +50,7 @@ final class LampMasterWindowController: NSObject, NSWindowDelegate {
         )
         window.title = "LampMaster"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: LampMasterCardsView(service: service, actions: actions))
+        window.contentView = NSHostingView(rootView: LampMasterWindowView(service: service, actions: actions, sheet: sheet))
         window.delegate = self
         window.center()
         self.window = window

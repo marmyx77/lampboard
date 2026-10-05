@@ -152,6 +152,15 @@ struct LampMasterFiles {
         }
     }
 
+    /// The last round's saved frame and answer, for the window's Frame sheet (D5).
+    func latestFrame() -> String {
+        let stamp = { (name: String) in Int(name.dropLast(".jsonl".count)) ?? 0 }
+        let newest = ((try? FileManager.default.contentsOfDirectory(atPath: framesURL.path)) ?? [])
+            .filter { $0.hasSuffix(".jsonl") }
+            .max { stamp($0) < stamp($1) }
+        return newest.map { read(framesURL.appendingPathComponent($0)) } ?? ""
+    }
+
     // MARK: - Internals
 
     private func read(_ url: URL) -> String {
