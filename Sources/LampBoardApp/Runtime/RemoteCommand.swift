@@ -74,8 +74,11 @@ enum RemoteCommand {
         "-o", "StrictHostKeyChecking=accept-new",
     ]
 
+    /// - Parameter maxOutput: past this many bytes the far side is answering more
+    ///   than it was asked, and ssh is stopped: another machine's answer is not
+    ///   let fill this one's memory.
     static func runPython(
-        on host: String, script: String, timeout: TimeInterval = AppConfig.remoteProbeTimeout
+        on host: String, script: String, timeout: TimeInterval = AppConfig.remoteProbeTimeout, maxOutput: Int? = nil
     ) -> Result<Data, RemoteCommandError> {
         precondition(RemoteHostList.isUsable(host), "host names are validated before they get here")
 
@@ -116,7 +119,14 @@ enum RemoteCommand {
         done.enter()
         var stdout = Data(), stderr = Data()
         DispatchQueue.global().async {
-            stdout = output.fileHandleForReading.readDataToEndOfFile()
+            if let maxOutput {
+                while let chunk = try? output.fileHandleForReading.read(upToCount: 65_536), !chunk.isEmpty {
+                    stdout.append(chunk)
+                    if stdout.count > maxOutput { process.terminate(); stdout = Data(); break }
+                }
+            } else {
+                stdout = output.fileHandleForReading.readDataToEndOfFile()
+            }
             stderr = errors.fileHandleForReading.readDataToEndOfFile()
             exited.wait()
             done.leave()

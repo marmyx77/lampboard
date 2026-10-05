@@ -3648,3 +3648,34 @@ round is the one that waits.
 **What it does not cover.** The end-to-end suite runs the app headless, where no
 allowance strip exists; the rule is held by the domain suite, the wiring is two
 lines. The nodes' sessions in the frame are the next part of the same step.
+
+## D94 · The nodes' sessions in LampMaster's frame
+
+**Decided.** LampMaster's round now sees the Claude Code sessions running on the
+nodes, as it sees this Mac's. Once per round, and only while LampMaster is on, the
+panel runs one program over ssh on each node with such sessions; it reads each
+transcript from where the last read stopped — the tail first, half a megabyte at
+most — and the panel builds the same cards from it, marked with the node's name in
+the frame. A node that does not answer keeps the cards it had. The lookups the
+sessions ask (D62) still read this Mac's cards only.
+
+**What a node is trusted with, and what not.** The program reads only a transcript:
+a path a hook reported, checked here (absolute, a `.jsonl` under a projects folder,
+no `..`, no control character) and again there — its real path under that machine's
+own `~/.claude/projects`, opened without following a link or waiting on a pipe and
+checked as opened. The asks reach the program as base64, never as text pasted into
+it (D83's lesson). The answer is another machine's and is read so: only the ids
+asked for, whole non-negative numbers that add up to the file's size, half a
+megabyte a file, ssh stopped past twice what was asked; only whole lines are kept,
+so no record and no character is cut in two, and a line longer than a read is
+stepped over. ssh waits on a thread of its own, never one of the shared pool's.
+
+**Measured on the test Mac.** The end-to-end suite runs the program with `python3`
+in a fake home: the tail first, then only what was added, a file that shrank read
+again, a link and a path out of the projects not read. A round with a real node
+spends a round's tokens and was not run; the ssh is the allowance strip's (B3).
+
+**What a review changed.** One huge `start` from a node would have overflowed the
+offset and stopped the app: the answer is now validated as above. The output cap,
+the whole lines, the descriptor-based checks on the node and ssh off the pool are
+the same review's.

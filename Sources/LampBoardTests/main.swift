@@ -38,6 +38,7 @@ let suites: [TestSuite] = [
     LampMasterMCPSuite.suite,
     LampMasterPrecedentsSuite.suite,
     LampMasterQuotaSuite.suite,
+    RemoteTranscriptScriptSuite.suite,
     TourSuite.suite,
     HookPayloadDecoderSuite.suite,
     CodexContextSuite.suite,

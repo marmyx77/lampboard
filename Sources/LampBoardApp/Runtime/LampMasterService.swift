@@ -154,7 +154,11 @@ final class LampMasterService: ObservableObject {
             trigger = .quick
         }
 
-        let found = await cards.sessions(live: rows().compactMap(Self.live), now: now)
+        var found = await cards.sessions(live: rows().compactMap(Self.live), now: now)
+        // The nodes' sessions too, one ssh per node, only while LampMaster is on (D4).
+        if preferences.lampMasterEnabled {
+            found += await nodeSessions(rows().compactMap(Self.remote))
+        }
         let muted = preferences.lampMasterMuted
         var shown = files.suggestions()
         let reports = allowance()
@@ -277,10 +281,53 @@ final class LampMasterService: ObservableObject {
 
     // MARK: - From the panel's rows
 
-    /// A row of this Mac's Claude Code, as the cards need it. Rows on other
-    /// machines wait for the nodes' stage (D4), and Codex for its own reader.
+    /// A row of this Mac's Claude Code, as the cards need it. Codex waits for
+    /// its own reader.
     static func live(_ row: SessionState) -> LampMasterCards.Live? {
         guard !row.workspace.isRemote, row.harness == .claudeCode else { return nil }
+        return facts(row)
+    }
+
+    /// A row of Claude Code on another machine, with the path its hook gave (D4).
+    static func remote(_ row: SessionState) -> LampMasterCards.Remote? {
+        guard let host = row.workspace.host, RemoteHostList.isUsable(host), row.harness == .claudeCode,
+              row.transcriptPath != nil, let facts = facts(row) else { return nil }
+        return LampMasterCards.Remote(host: host, live: facts)
+    }
+
+    /// The nodes' transcripts read over ssh, each node once and all at once, off
+    /// the main actor; a node that does not answer within its time is left as it was.
+    private func nodeSessions(_ remote: [LampMasterCards.Remote]) async -> [LampMasterSession] {
+        guard !remote.isEmpty else { return [] }
+        let asks = await cards.remoteAsks(remote)
+        let tail = UInt64(AppConfig.transcriptInitialWindow)
+        let reads = await withTaskGroup(of: (String, [RemoteTranscriptScript.Read]).self) { group in
+            for (host, list) in asks {
+                group.addTask {
+                    // ssh waits on its own thread, never on one of the shared pool's.
+                    await withCheckedContinuation { done in
+                        DispatchQueue.global(qos: .utility).async {
+                            let script = RemoteTranscriptScript.script(list, tail: tail)
+                            let cap = RemoteTranscriptScript.maxBytes * 2 * list.count + 65_536
+                            switch RemoteCommand.runPython(on: host, script: script, maxOutput: cap) {
+                            case .success(let data):
+                                done.resume(returning: (host, RemoteTranscriptScript.decode(data, asked: Set(list.map(\.id)))))
+                            case .failure(let error):
+                                Diagnostics.log("lampmaster: \(host) transcripts not read: \(error.localizedDescription)")
+                                done.resume(returning: (host, []))
+                            }
+                        }
+                    }
+                }
+            }
+            var all: [String: [RemoteTranscriptScript.Read]] = [:]
+            for await (host, list) in group { all[host] = list }
+            return all
+        }
+        return await cards.remoteSessions(remote, reads: reads)
+    }
+
+    private static func facts(_ row: SessionState) -> LampMasterCards.Live? {
         let liveness: LampMasterSession.Liveness
         switch row.status {
         case .working: liveness = .working

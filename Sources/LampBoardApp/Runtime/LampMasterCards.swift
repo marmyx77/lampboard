@@ -41,6 +41,60 @@ actor LampMasterCards {
     }
 
     private var followed: [String: Followed] = [:]
+    /// A node's transcripts, by host and path: read over ssh, one call per node
+    /// and round, never in the walk of this Mac's files (D4).
+    private var remoteFollowed: [String: Followed] = [:]
+
+    /// A row on another machine: its host, and the same facts as a live row's.
+    struct Remote: Sendable {
+        let host: String
+        let live: Live
+    }
+
+    /// What to ask each node for: every session's transcript, from where the
+    /// last read stopped.
+    func remoteAsks(_ rows: [Remote]) -> [String: [RemoteTranscriptScript.Ask]] {
+        Dictionary(grouping: rows.compactMap { row -> (String, RemoteTranscriptScript.Ask)? in
+            guard let path = row.live.transcriptPath else { return nil }
+            let offset = remoteFollowed[row.host + ":" + path]?.offset ?? 0
+            return (row.host, .init(id: path, path: path, offset: offset))
+        }, by: \.0).mapValues { $0.map(\.1) }
+    }
+
+    /// The nodes' sessions, their cards brought up to date with what the nodes
+    /// sent. A node that did not answer keeps the card it had.
+    func remoteSessions(_ rows: [Remote], reads: [String: [RemoteTranscriptScript.Read]]) -> [LampMasterSession] {
+        var kept: Set<String> = [], result: [LampMasterSession] = []
+        for row in rows {
+            guard let path = row.live.transcriptPath else { continue }
+            let key = row.host + ":" + path
+            kept.insert(key)
+            var entry = remoteFollowed[key] ?? Followed(reader: SessionCardReader(sessionId: row.live.sessionId), offset: 0)
+            if let read = reads[row.host]?.first(where: { $0.id == path }) {
+                // Not where this one stopped: a first read, or a file that shrank.
+                let fresh = read.start != entry.offset
+                if fresh { entry = Followed(reader: SessionCardReader(sessionId: row.live.sessionId), offset: 0) }
+                // From the middle of a file the first line is half a record.
+                let head = fresh && read.start > 0 ? read.data.count - TranscriptWindow.trimmedToLineStart(read.data).count : 0
+                let body = read.data.subdata(in: head..<read.data.count)
+                // Whole lines only, so no record and no character is cut in two;
+                // a line longer than a whole read is stepped over.
+                let lines = RemoteTranscriptScript.wholeLines(body)
+                entry.reader.consume(String(decoding: lines, as: UTF8.self))
+                let taken = lines.isEmpty && read.data.count == RemoteTranscriptScript.maxBytes ? read.data.count : head + lines.count
+                entry.offset = read.start + UInt64(taken)
+            }
+            remoteFollowed[key] = entry
+            guard entry.offset > 0 else { continue }
+            result.append(LampMasterSession(
+                card: entry.reader.card, liveness: row.live.liveness, host: row.host, surface: row.live.surface,
+                agent: row.live.agent, repository: row.live.repository, branch: row.live.branch,
+                contextWindow: row.live.contextWindow
+            ))
+        }
+        remoteFollowed = remoteFollowed.filter { kept.contains($0.key) }
+        return result
+    }
     private let projects: URL
 
     init(projects: URL = AppConfig.claudeDirectory.appendingPathComponent("projects", isDirectory: true)) {
