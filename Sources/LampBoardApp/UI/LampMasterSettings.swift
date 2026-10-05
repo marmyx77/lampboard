@@ -72,7 +72,12 @@ struct LampMasterSettings: View {
             if !muted.isEmpty {
                 ForEach(muted.sorted { $0.rawValue < $1.rawValue }, id: \.self) { kind in
                     HStack {
-                        Text("Not suggested: " + LampMasterLine.title(kind))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Not suggested: " + LampMasterLine.title(kind))
+                            if let why = preferences.lampMasterAutoMuted[kind] {
+                                Text("Switched off by itself: " + why).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer()
                         Button("Suggest again") {
                             // Read fresh: a card in the other window may have muted
@@ -80,6 +85,9 @@ struct LampMasterSettings: View {
                             var current = preferences.lampMasterMuted
                             current.remove(kind)
                             preferences.lampMasterMuted = current
+                            preferences.lampMasterAutoMuted[kind] = nil
+                            // Its record counts from now (D5).
+                            preferences.lampMasterAskedBack[kind] = Date()
                             muted = current
                         }
                     }

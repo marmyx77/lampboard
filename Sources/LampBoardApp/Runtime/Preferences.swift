@@ -48,6 +48,8 @@ struct Preferences {
         static let lampMasterInterval = "lampmaster.intervalMinutes"
         static let lampMasterModel = "lampmaster.model"
         static let lampMasterMuted = "lampmaster.muted"
+        static let lampMasterAutoMuted = "lampmaster.autoMuted"
+        static let lampMasterAskedBack = "lampmaster.askedBack"
         static let lampMasterTimeout = "lampmaster.timeoutSeconds"
     }
 
@@ -453,6 +455,34 @@ struct Preferences {
     var lampMasterMuted: Set<LampMasterAdvice.Suggestion.Kind> {
         get { Set(readSet(Key.lampMasterMuted).compactMap(LampMasterAdvice.Suggestion.Kind.init(rawValue:))) }
         nonmutating set { writeSet(Set(newValue.map(\.rawValue)), to: Key.lampMasterMuted) }
+    }
+
+    /// The kinds that switched themselves off (D5), with why, as Settings says it.
+    var lampMasterAutoMuted: [LampMasterAdvice.Suggestion.Kind: String] {
+        get {
+            let stored = defaults.dictionary(forKey: Key.lampMasterAutoMuted) as? [String: String] ?? [:]
+            return Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
+                LampMasterAdvice.Suggestion.Kind(rawValue: key).map { ($0, value) }
+            })
+        }
+        nonmutating set {
+            defaults.set(Dictionary(uniqueKeysWithValues: newValue.map { ($0.key.rawValue, $0.value) }), forKey: Key.lampMasterAutoMuted)
+        }
+    }
+
+    /// When each kind was asked back with "Suggest again": its record counts
+    /// from then, or it would switch itself off again at the next round.
+    var lampMasterAskedBack: [LampMasterAdvice.Suggestion.Kind: Date] {
+        get {
+            let stored = defaults.dictionary(forKey: Key.lampMasterAskedBack) as? [String: Double] ?? [:]
+            return Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
+                LampMasterAdvice.Suggestion.Kind(rawValue: key).map { ($0, Date(timeIntervalSince1970: value)) }
+            })
+        }
+        nonmutating set {
+            defaults.set(Dictionary(uniqueKeysWithValues: newValue.map { ($0.key.rawValue, $0.value.timeIntervalSince1970) }),
+                         forKey: Key.lampMasterAskedBack)
+        }
     }
 
     /// The round's deadline. Not in the Settings window: it exists so the

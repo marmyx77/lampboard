@@ -3679,3 +3679,22 @@ spends a round's tokens and was not run; the ssh is the allowance strip's (B3).
 offset and stopped the app: the answer is now validated as above. The output cap,
 the whole lines, the descriptor-based checks on the node and ssh off the pool are
 the same review's.
+
+## D95 · A kind of suggestion passed over switches itself off
+
+**Decided.** A kind of LampMaster suggestion that stays under a fifth accepted for two
+weeks switches itself off, as the plan's rule against noise asks: one wrong card spoils
+trust more than a missing one, and a kind the person keeps passing over costs them
+reading for nothing. The count is local and spends no token: of the cards of that kind
+in the last two weeks, the ones taken up against the ones ignored, marked wrong or left
+to expire — a card still open, or settled because its sessions left, says nothing. Ten
+reactions at least, and two weeks of history: a bad first week is not yet a pattern.
+
+**Where it shows, and how it comes back.** Settings lists it among the kinds not
+suggested, with "Switched off by itself: 1 of 12 accepted in two weeks", and "Suggest
+again" brings it back. From then its record counts afresh, or the old one would switch
+it off again at the next round. A kind the person switched off themselves is left alone.
+
+**Measured on the test Mac.** The end-to-end suite writes two weeks of ignored cards of
+one kind into a fake home's record; at the next round the real binary switches that
+kind off and writes why.

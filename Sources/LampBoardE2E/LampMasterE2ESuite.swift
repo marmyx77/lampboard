@@ -307,6 +307,32 @@ enum LampMasterE2ESuite {
                 }
             },
 
+            TestCase("a kind passed over for two weeks switches itself off at the next round, and says why (D5)") { t in
+                bench(t) { bench in
+                    let now = Date()
+                    let past: [LampMasterShown] = ([21] + Array(0..<12)).map { days in
+                        LampMasterShown(id: "old-\(days)", at: now.addingTimeInterval(-Double(days) * 86_400 - 60),
+                                        suggestion: LampMasterAdvice.Suggestion(
+                                            kind: .stalled, sessions: ["e2e1a2b3"], text: "t", evidence: "e",
+                                            action: .init(kind: .none), confidence: 0.9, key: "old \(days)"),
+                                        outcome: .ignored, settledAt: now.addingTimeInterval(-Double(days) * 86_400))
+                    }
+                    let text = past.compactMap(LampMasterLedger.line).map { $0 + "\n" }.joined()
+                    // Before any round the folder is not there yet.
+                    try? FileManager.default.createDirectory(at: bench.folder, withIntermediateDirectories: true)
+                    t.expect((try? text.write(to: bench.folder.appendingPathComponent("suggestions.jsonl"), atomically: true, encoding: .utf8)) != nil,
+                             "the record written")
+                    bench.round()
+                    // Written by the other process: read fresh, not from this one's cache.
+                    CFPreferencesAppSynchronize(bench.domain as CFString)
+                    let defaults = UserDefaults(suiteName: bench.domain)
+                    t.expect(defaults?.stringArray(forKey: "lampmaster.muted")?.contains("stalled") == true,
+                             "switched off: \(String(describing: bench.lastRound))")
+                    t.expectEqual((defaults?.dictionary(forKey: "lampmaster.autoMuted") as? [String: String])?["stalled"],
+                                  "0 of 12 accepted in two weeks", "and why")
+                }
+            },
+
             TestCase("past the day's ceiling no round reaches claude") { t in
                 bench(t) { bench in
                     let spent = LampMasterRound(at: Date(), trigger: .timer, outcome: .ran, tokens: 200_000, digest: "earlier")

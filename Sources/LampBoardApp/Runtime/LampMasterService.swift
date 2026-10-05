@@ -159,8 +159,15 @@ final class LampMasterService: ObservableObject {
         if preferences.lampMasterEnabled {
             found += await nodeSessions(rows().compactMap(Self.remote))
         }
-        let muted = preferences.lampMasterMuted
         var shown = files.suggestions()
+        // A kind the person keeps passing over switches itself off (D5), and says why.
+        for verdict in LampMasterAutoMute.verdicts(shown, muted: preferences.lampMasterMuted,
+                                                    since: preferences.lampMasterAskedBack, now: now) {
+            preferences.lampMasterMuted.insert(verdict.kind)
+            preferences.lampMasterAutoMuted[verdict.kind] = verdict.reason
+            Diagnostics.log("lampmaster: \(verdict.kind.rawValue) switched itself off, \(verdict.reason)")
+        }
+        let muted = preferences.lampMasterMuted
         let reports = allowance()
         var frame = LampMasterFrameBuilder.build(
             sessions: found, now: now, quota: LampMasterQuota.frame(reports, now: now),
