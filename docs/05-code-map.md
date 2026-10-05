@@ -1,18 +1,18 @@
 # Code map
 
-~62,700 lines of Swift across five targets. For each file: what it contains, why
+~63,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  19,035 lines · 149 files  pure logic, zero AppKit
-  LampBoardApp/    23,399 lines · 130 files   shell: AppKit, network, windows
-  LampBoardTests/  15,544 lines · 98 files   1113 cases, instantaneous
-  LampBoardE2E/    4,441 lines · 20 files   151 cases, the real binary
+  LampBoardCore/  19,179 lines · 150 files  pure logic, zero AppKit
+  LampBoardApp/    23,459 lines · 131 files   shell: AppKit, network, windows
+  LampBoardTests/  15,626 lines · 98 files   1118 cases, instantaneous
+  LampBoardE2E/    4,477 lines · 20 files   152 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 791 lines. The limit the project sets itself is 800.
+No file exceeds 792 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -23,7 +23,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 601
+### `AppConfig.swift` · 609
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -70,7 +70,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 512
+### `SessionState.swift` · 526
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -457,6 +457,14 @@ is merely incomplete, so the row is green rather than red.
 resolves the workspace and read by everything that treats a terminal row
 differently (D25). Not on `Workspace`, which is the row's identity.
 
+### `BackgroundJob.swift` · 81
+What the Agent View keeps of a background session in `~/.claude/jobs/<id>/state.json`
+(AV2, D104): its id, the summary Claude Code writes of it (`detail`), and what it
+needs, kept only while `tempo` says it is blocked. One line each, control and
+format characters turned to spaces, cut at 200. The id goes into `claude attach
+<id>`, which the person pastes into a shell: letters, digits, dashes and
+underscores, starting with a letter or a digit, or it is no job.
+
 ### `Workspace.swift`
 `Workspace` plus `PathNormalizer`. Path comparison is **component by component**,
 not by string prefix: without that, `/dev/project-old` would come out as inside
@@ -569,13 +577,15 @@ included, which Foundation deliberately leaves alone.
 A path naming nothing comes back untouched, which is what makes it safe to apply
 anywhere.
 
-### `RowActivity.swift` · 73
+### `RowActivity.swift` · 79
 The row's second line in the wide panel (D76): what the session is doing now, in
 the fewest words — what it asks, the tool it is on and, past fifteen minutes on
 one, `stuck 16m on npm install`; why it died; the first line of the answer that
 waits; what holds a blue row; at rest only its agent. A remote row says its
-machine first, a project of several adds `+N`. One line, its control and format
-characters turned to spaces, cut at eighty characters.
+machine first, a project of several adds `+N`. A background row says
+"background" first and reads its job (D104): what it needs while blocked, unless the
+hooks hold a question, and Claude Code's summary when it is ready or at rest. One
+line, its control and format characters turned to spaces, cut at eighty characters.
 
 > **Touching here** changes what every row says at a glance. It must stay one
 > phrase: the card is where the rest goes.
@@ -1251,7 +1261,7 @@ dialog (`returned`).
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 680
+### `StateReducer.swift` · 711
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1271,7 +1281,7 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 A minimal HTTP/1.1 parser. Deliberately not general-purpose: it accepts only what
 the hook script sends.
 
-### `SessionsPayload.swift` · 235
+### `SessionsPayload.swift` · 251
 The JSON contract. A type **separate** from `SessionState`, so an internal
 refactor doesn't break its consumers. ISO 8601 dates, sorted keys.
 
@@ -1422,7 +1432,9 @@ The table of recognized editors: declared name, bundle, process name.
 **Deliberately short** — see [N3](04-decisions.md#n3--jetbrains-and-the-other-ides).
 
 ### `IDEWindow.swift` · `LiveSession.swift`
-The two parsers for the on-disk files.
+The two parsers for the on-disk files. A live file's `jobId` — a background
+session's folder under `~/.claude/jobs/` — is kept only when it is fit for a
+shell (AV2).
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
 The extension's URI, the policy that sends it only to sessions the extension
@@ -1546,8 +1558,9 @@ there, the hooks are registered — and it names the link that broke.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 791 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStore.swift` | 792 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 247 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
 | `SessionTerminator.swift` | 91 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
@@ -1732,7 +1745,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 754 | holds everything together; row and panel actions |
+| `PanelController.swift` | 760 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 71 | "Waiting for you" wired in (D74): its cards from the store, LampMaster's open suggestions and the asks the panel holds, Allow, Deny and a question's choice handed to the permission desk, `O` and a click raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when the queue's lines change |
 | `CommandBarView.swift` | 114 | the bar at the top of the wide panel (D77): at rest a button saying `⌘K`, opened a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc` |
@@ -1744,7 +1757,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 179 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation |
-| `TrafficLightRow.swift` | 509 | one row: dot, context ring, name, badge, timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
+| `TrafficLightRow.swift` | 518 | one row: dot, context ring, name, badge, timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 505 | the column, the drag in progress, the hidden summary, the filter note |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
@@ -1793,7 +1806,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1113 cases
+## `LampBoardTests/` — 1118 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1821,7 +1834,7 @@ script, before it was split. The most important ones:
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
 | `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps 0.5 shows, a step moving only on its own gesture, skip and resume |
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
-| `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103) |
+| `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `LampMasterBenchSuite` | a saved round read as frame and answer; kept, lost and new by key, a lost accepted card a regression and an ignored one gone a gain; the report with the regressions first |
 | `LampMasterAutoMuteSuite` | under a fifth over two weeks off, with why; too few or too young not; what counts and what does not; a kind off left alone, one asked back counting from then |
 | `LampMasterQuotaSuite` | the pace's forecast, none too early or without a reset; one line per account, the window most at risk; the round skipped when this Mac's account is tight, not another machine's or a model's own cap, and the line saying so |
@@ -1885,7 +1898,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 151 cases
+## `LampBoardE2E/` — 152 cases
 
 | Suite | Covers |
 |---|---|
@@ -1893,7 +1906,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `WatchE2ESuite` | `lampboard watch` run for real: a failing command red with the command's own exit code and output, a succeeding one green with its own `--port`, `/watch` behind the token, the command left alone when no panel hears |
 | `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
-| `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a background session a row of its own in a folder an editor claims (D103), a renamed row, a signal from another machine, subagents |
+| `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a background session a row of its own in a folder an editor claims (D103), a renamed row, a signal from another machine, subagents; a background session found on disk with no hook, carrying its job's summary, its need and its attach id, losing them when the job goes and keeping its row (AV2) |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `NodeTranscriptE2ESuite` | the node's program run with `python3` in a fake home: the tail first, then only what was added, a shrunk file read again, a link and a path out of the projects not read (D94) |

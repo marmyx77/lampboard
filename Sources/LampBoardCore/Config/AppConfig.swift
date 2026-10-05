@@ -148,6 +148,14 @@ public enum AppConfig {
         claudeDirectory.appendingPathComponent("ide", isDirectory: true)
     }
 
+    /// Where the Agent View keeps one folder per background session, named after
+    /// the id `claude attach` takes, each with a `state.json` (AV2).
+    public static var backgroundJobsDirectory: URL {
+        homeDirectory
+            .appendingPathComponent(".claude", isDirectory: true)
+            .appendingPathComponent("jobs", isDirectory: true)
+    }
+
     /// Directory where Claude Code drops one file per live process,
     /// named after the PID.
     public static var liveSessionsDirectory: URL {

@@ -300,7 +300,8 @@ final class AppUnderTest {
         name: String? = nil,
         pid: Int32? = nil,
         procStart: String? = nil,
-        kind: String = "interactive"
+        kind: String = "interactive",
+        jobId: String? = nil
     ) {
         var payload: [String: Any] = [
             "pid": pid ?? ProcessInfo.processInfo.processIdentifier,
@@ -311,6 +312,7 @@ final class AppUnderTest {
         ]
         if let name { payload["name"] = name }
         if let procStart { payload["procStart"] = procStart }
+        if let jobId { payload["jobId"] = jobId }
         let url = home.appendingPathComponent(
             ".claude/sessions/\(payload["pid"] as? Int32 ?? 0).json"
         )

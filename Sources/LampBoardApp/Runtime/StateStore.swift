@@ -684,6 +684,7 @@ final class StateStore: ObservableObject {
         }
 
         adoptLiveSessions(live, windows: windows, at: now)
+        readBackgroundJobs(live, at: now)
 
         // Only what was actually confirmed is exempt from the age rule. A remote
         // row nobody can confirm — its host silent, its probe broken — must still

@@ -16,12 +16,18 @@ public enum RowActivity {
     public static func line(for row: ColumnRow, now: Date) -> String {
         let session = row.primary
         let place = session.workspace.host.map { "@" + $0 } ?? (session.origin == .background ? "background" : nil)
+        // A background session's job says what it needs and what it has done in
+        // words written for that (AV2); a question held by the hooks is more
+        // precise still, and a failure says why it failed.
+        let job = session.origin == .background ? session.backgroundJob : nil
         let doing: String?
         switch row.status {
         case .awaiting:
-            doing = session.pendingAsk?.sentence ?? SessionStatus.awaiting.label
+            doing = session.pendingAsk?.sentence ?? job?.needs ?? SessionStatus.awaiting.label
         case .failed:
             doing = session.failureReason?.detailedLabel ?? "the turn failed"
+        case .working where job?.needs != nil:
+            doing = job?.needs
         case .working:
             if let stuck = session.stuckTool(at: now) {
                 let minutes = CompactDuration.label(seconds: now.timeIntervalSince(stuck.since))
@@ -34,7 +40,7 @@ public enum RowActivity {
         case .ready:
             // The first line with something on it: an answer that opens with a
             // blank line would otherwise leave the row's second line empty.
-            doing = session.lastMessage.flatMap { message in
+            doing = job?.summary ?? session.lastMessage.flatMap { message in
                 message.prefix(2_000).split(whereSeparator: \.isNewline)
                     .map(String.init).first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             } ?? "an answer to read"
@@ -42,7 +48,7 @@ public enum RowActivity {
             let holding = RowSummary.counted(session.waitingOn)
             doing = holding.isEmpty ? SessionStatus.waiting.label : "waiting on " + holding
         case .idle:
-            doing = nil
+            doing = job?.summary
         }
         var parts: [String]
         if let doing {

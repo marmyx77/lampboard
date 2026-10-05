@@ -49,12 +49,17 @@ public struct LiveSession: Sendable, Equatable {
     /// arrives.
     public let context: ContextReading?
 
+    /// For a background session, the Agent View's id for it: the folder under
+    /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
+    /// is fit for a shell — see `BackgroundJobParser.isSafe`.
+    public let jobId: String?
+
     /// Copy with a different activity timestamp.
     public func with(modifiedAt newValue: Date) -> LiveSession {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context
+            context: context, jobId: jobId
         )
     }
 
@@ -68,8 +73,10 @@ public struct LiveSession: Sendable, Equatable {
         modifiedAt: Date,
         host: String? = nil,
         procStart: String? = nil,
-        context: ContextReading? = nil
+        context: ContextReading? = nil,
+        jobId: String? = nil
     ) {
+        self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
         self.host = host?.trimmed.nilIfEmpty
         self.procStart = procStart?.trimmed.nilIfEmpty
@@ -151,7 +158,8 @@ public enum LiveSessionParser {
             name: (object["name"] as? String)?.trimmed.nilIfEmpty,
             kind: (object["kind"] as? String)?.trimmed.nilIfEmpty,
             modifiedAt: modifiedAt,
-            procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init)
+            procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init),
+            jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty
         )
     }
 }

@@ -127,6 +127,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// turn it belonged to.
     public let runningTool: RunningTool?
 
+    /// What the Agent View keeps about it, for a background session that has a
+    /// job file (AV2): its summary, what it needs, the id to attach to.
+    public let backgroundJob: BackgroundJob?
+
     /// When this session first appeared to the panel.
     ///
     /// The one moment about a session that never moves: `updatedAt` follows every
@@ -158,8 +162,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         context: ContextReading? = nil,
         costUSD: Double? = nil,
         runningTool: RunningTool? = nil,
+        backgroundJob: BackgroundJob? = nil,
         firstSeenAt: Date? = nil
     ) {
+        self.backgroundJob = backgroundJob
         self.costUSD = costUSD
         self.runningTool = runningTool
         self.firstSeenAt = firstSeenAt ?? updatedAt
@@ -388,6 +394,12 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         return replacing(origin: newOrigin)
     }
 
+    /// Copy carrying the Agent View's job, or none; the same job is the same session.
+    public func with(backgroundJob job: BackgroundJob?) -> SessionState {
+        guard job != backgroundJob else { return self }
+        return replacing(backgroundJob: .some(job))
+    }
+
     /// Copy that knows the conversation's title. `nil` or blank leaves it alone.
     public func with(title newTitle: String?) -> SessionState {
         guard let newTitle = newTitle?.trimmed.nilIfEmpty, newTitle != title else { return self }
@@ -484,7 +496,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         title: String?? = nil,
         context: ContextReading?? = nil,
         costUSD: Double?? = nil,
-        runningTool: RunningTool?? = nil
+        runningTool: RunningTool?? = nil,
+        backgroundJob: BackgroundJob?? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -506,6 +519,7 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             context: context ?? self.context,
             costUSD: costUSD ?? self.costUSD,
             runningTool: runningTool ?? self.runningTool,
+            backgroundJob: backgroundJob ?? self.backgroundJob,
             firstSeenAt: firstSeenAt
         )
     }

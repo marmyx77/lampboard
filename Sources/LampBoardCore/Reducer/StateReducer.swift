@@ -63,6 +63,11 @@ public enum ReducerAction: Sendable, Equatable {
     /// What the session has cost so far, as it counted it and the companion mod
     /// passed it on (D65: a figure, never a colour).
     case costed(sessionId: String, usd: Double)
+    /// What the Agent View's job file says of a background session, or that it
+    /// has none (AV2). Like `.observed`: attached to a row that exists, never a
+    /// row made, and only to a background one — a job is not evidence about a
+    /// session in a window.
+    case jobRead(sessionId: String, job: BackgroundJob?)
     /// The tool a session has been running longest, or none (5.7).
     case tooling(sessionId: String, tool: RunningTool?)
     /// A command under `lampboard watch` started or ended (D70). The one action
@@ -125,6 +130,7 @@ extension ReducerAction {
             return "reconcile \(harness.rawValue) keeping \(alive.count)"
         case .observed: return "observed"
         case .costed: return "costed"
+        case .jobRead: return "jobRead"
         case .tooling: return "tooling"
         case .watched: return "watched"
         case .rehome: return "rehome"
@@ -195,6 +201,11 @@ public enum StateReducer {
             // figure (a floor, or one resting on our window table) is older news.
             if session.context?.confidence == .reported, context.confidence != .reported { return state }
             return state.upserting(session.with(context: context))
+
+        case .jobRead(let sessionId, let job):
+            guard let session = state.sessions[sessionId], session.origin == .background else { return state }
+            let updated = session.with(backgroundJob: job)
+            return updated == session ? state : state.upserting(updated)
 
         case .costed(let sessionId, let usd):
             guard let session = state.sessions[sessionId] else { return state }

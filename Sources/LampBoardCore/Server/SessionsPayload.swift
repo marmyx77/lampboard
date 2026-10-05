@@ -86,13 +86,20 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
     public let entrypoint: String?
 
     /// `editor` for a session an editor window hosts, `terminal` for one whose
-    /// folder nobody claims and whose place is a terminal tab. A reader that
+    /// folder nobody claims and whose place is a terminal tab, `background` for
+    /// one the Agent View runs with nobody at a terminal (D103). A reader that
     /// raises windows must not look for an editor window of a terminal row.
     public let origin: String
 
     /// The conversation's title, once the transcript has one. What names a
     /// terminal row; informative for the others.
     public let title: String?
+
+    /// For a background session with a job file (AV2): the id `claude attach`
+    /// takes, the summary Claude Code wrote of it, what it needs while blocked.
+    public let jobId: String?
+    public let summary: String?
+    public let needs: String?
 
     /// What the panel calls the session's row: the name the user gave the
     /// folder, or the conversation title for a lone terminal row, or the
@@ -126,8 +133,14 @@ public struct SessionSnapshot: Sendable, Equatable, Codable {
         entrypoint: String? = nil,
         origin: String = SessionOrigin.editor.rawValue,
         title: String? = nil,
+        jobId: String? = nil,
+        summary: String? = nil,
+        needs: String? = nil,
         label: String? = nil
     ) {
+        self.jobId = jobId
+        self.summary = summary
+        self.needs = needs
         self.contextPercent = contextPercent
         self.contextTokens = contextTokens
         self.contextWindow = contextWindow
@@ -229,6 +242,9 @@ public enum SessionsCodec {
             entrypoint: session.entrypoint,
             origin: session.origin.rawValue,
             title: session.title,
+            jobId: session.backgroundJob?.id,
+            summary: session.backgroundJob?.summary,
+            needs: session.backgroundJob?.needs,
             label: alias ?? session.displayName
         )
     }

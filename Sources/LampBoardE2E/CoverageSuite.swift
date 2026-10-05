@@ -161,6 +161,40 @@ enum CoverageSuite {
                 a.expectEqual(app.status(of: id), "absent", "no file of its own, no row")
             },
 
+            TestCase("a background session found on disk, no hook, carries its job's summary, its need, its attach id (AV2)") { a in
+                let id = "e2e-background-job"
+                let folder = LifecycleSuite.workspace
+                let job = app.home.appendingPathComponent(".claude/jobs/4b138f7d", isDirectory: true)
+                func writeJob(_ json: String) {
+                    try? FileManager.default.createDirectory(at: job, withIntermediateDirectories: true)
+                    try? Data(json.utf8).write(to: job.appendingPathComponent("state.json"))
+                }
+                // Started before the panel looked: a live file and a transcript,
+                // and no hook will ever come.
+                app.writeLiveSession(sessionId: id, cwd: folder, entrypoint: "cli", pid: 1, kind: "bg", jobId: "4b138f7d")
+                let transcript = HookPayloads.transcriptPath(id)
+                app.writeTranscript(sessionId: id, cwd: folder, title: "Check the digest link", at: transcript)
+                writeJob(#"{"sessionId":"\#(id)","state":"done","tempo":"idle","detail":"digest link checked"}"#)
+                defer {
+                    app.removeLiveSessions()
+                    try? FileManager.default.removeItem(atPath: transcript)
+                    try? FileManager.default.removeItem(at: job)
+                }
+                a.expect(app.waitUntil { app.session(id: id)?.summary == "digest link checked" },
+                         "summary: \(app.session(id: id)?.summary ?? "nil"), origin: \(app.session(id: id)?.origin ?? "absent")")
+                a.expectEqual(app.session(id: id)?.origin, "background", "adopted as a background row")
+                a.expectEqual(app.session(id: id)?.jobId, "4b138f7d", "the id claude attach takes")
+                a.expectNil(app.session(id: id)?.needs, "nothing needed while idle")
+
+                writeJob(#"{"sessionId":"\#(id)","state":"working","tempo":"blocked","detail":"digest link","needs":"pick a link target"}"#)
+                a.expect(app.waitUntil { app.session(id: id)?.needs == "pick a link target" },
+                         "needs: \(app.session(id: id)?.needs ?? "nil")")
+
+                try? FileManager.default.removeItem(at: job)
+                a.expect(app.waitUntil { app.session(id: id)?.jobId == nil }, "a job gone is gone from the row")
+                a.expect(app.status(of: id) != "absent", "and the row stays: its life is its live file's")
+            },
+
             // MARK: - 1.3 row names
 
             // The name the user gives a row is what the panel and its readers

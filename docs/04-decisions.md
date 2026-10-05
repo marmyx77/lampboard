@@ -3741,3 +3741,51 @@ folder an editor claims, with terminal sessions off, and lists it `[background]`
 **What waits (AV2).** The Agent View keeps more in `~/.claude/jobs/<id>/state.json`:
 the one-line summary it generates (`detail`), what a blocked session needs (`needs`).
 Using them, and adopting jobs started before the panel, is the next step.
+
+## D104 · A background row reads its job
+
+**Decided.** For each background session (D103), the Agent View keeps a file:
+`~/.claude/jobs/<id>/state.json`. Two of its fields go on the row's second line.
+- `needs` says what a blocked session is waiting for. It is shown while `tempo` says
+  `blocked`, and only then, because the file keeps the last need after the block is over.
+- `detail` is the one-line summary Claude Code writes of what the session has done.
+  It replaces the first line of the last answer when the row is ready or at rest.
+
+A question the hooks hold is more precise than `needs` and still comes first. A
+failure still says why it failed. A working row still names its tool, unless the job
+says the session is blocked. The summary can lag the latest answer by a moment, and
+that trade is accepted: the answer is a click away, in the Plancia.
+
+The row's menu copies `claude attach <id>`, which reopens the session in a terminal.
+It copies and does not run, the way a closed conversation's `claude --resume` is
+copied from the bar, because the panel opens no terminal of its own. The id goes
+into a shell, so it must be letters, digits, dashes and underscores, and must start
+with a letter or a digit. Anything else is no job, and a folder called `--help` is no job.
+
+**Measured on the test Mac.** A throwaway `claude --bg` with Haiku ran in a fake
+home, with terminal sessions off. One id, `ef10f0c0`, appeared in five places:
+- the folder under `~/.claude/jobs`;
+- `claude agents --json`;
+- the live file's `jobId`;
+- what `claude --bg` printed for `claude attach`;
+- the panel's `jobId`.
+
+The row read "ready · background · user request acknowledged", which is Claude
+Code's own summary. A session started before the panel is adopted from its live file
+with no hook. The end-to-end suite runs that case through summary, need and job
+removal. With the poll's job read taken out, that case fails.
+
+**What a review changed.** The first version listed the whole folder on every poll.
+The folder keeps every job ever run, so a poll read hundreds of finished jobs to
+find the few that are alive. If two jobs named the same session, the winner depended
+on listing order. Now each background row reads one file, the one its live file names:
+- a file over 256 KB is not a job file;
+- a file that names another session is not this row's job.
+
+Two smaller changes came from the same review:
+- an id may no longer start with a dash, so it cannot be read as an option;
+- format characters are flattened along with control characters, so a bidi override
+  cannot reorder what a session says it needs.
+
+The summary and the need travel in `GET /sessions`, which needs the token and
+already carries each session's last answer.

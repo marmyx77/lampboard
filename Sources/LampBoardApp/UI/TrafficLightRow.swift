@@ -39,6 +39,8 @@ struct RowActions {
     let revealInFinder: (ColumnRow) -> Void
     /// Opens the row's session in the Plancia, beside the list (D79).
     var openPlancia: (ColumnRow) -> Void = { _ in }
+    /// Copies what reopens a background session in a terminal (AV2).
+    var copyAttach: (BackgroundJob) -> Void = { _ in }
 }
 
 /// What the column tells a row about the drag in progress.
@@ -411,6 +413,13 @@ struct TrafficLightRow: View {
         if row.hostsNewConversation {
             Divider()
             Button("New conversation here", action: { actions.newConversation(row) })
+        }
+
+        // A background session reopens in a terminal with `claude attach`.
+        // Copied, not run: the panel opens no terminal of its own (D104).
+        if row.primary.origin == .background, let job = row.primary.backgroundJob {
+            Divider()
+            Button("Copy “\(job.attachCommand)”", action: { actions.copyAttach(job) })
         }
     }
 

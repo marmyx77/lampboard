@@ -778,6 +778,24 @@ Rows can be **renamed** (right-click → Rename…, or `lampboard rename <folder
 the window is still found by its title, `/sessions` still says the folder. Leave
 the name empty to go back to the original.
 
+## Sessions in the background
+
+A session started with `claude --bg`, the kind the Agent View runs with nobody
+at a terminal, is a row of its own whether terminal sessions are shown or not
+([D103](docs/04-decisions.md#d103--a-background-session-is-a-row-of-its-own)).
+It sits in no window, even when an editor has its folder open. The row is named by
+its conversation, its second line starts with "background", and a click opens its
+Plancia, where you can type to it like any other session. A background session
+started before the panel was running is found from its live file, just as a terminal one is.
+
+Claude Code keeps a one-line summary of each background session, along with what
+the session needs when it is blocked. The row reads both
+([D104](docs/04-decisions.md#d104--a-background-row-reads-its-job)). When the
+session is blocked, the row shows what it needs. When the session is resting, the
+row shows the summary instead of the first line of its last answer. The row's menu
+copies `claude attach <id>`, which reopens the session in a terminal. LampBoard
+copies the command and never opens a terminal itself.
+
 ## Any long job as a row
 
 `lampboard watch -- npm test` runs the command in your terminal, exactly as it
@@ -1498,8 +1516,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1113 domain tests, instantaneous
-swift run LampBoardE2E                # 151 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1118 domain tests, instantaneous
+swift run LampBoardE2E                # 152 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

@@ -930,13 +930,13 @@ which of the two is happening is what stops the next person hunting for a bug.
 
 | | |
 |---|---|
-| Domain tests | **1113**, instantaneous |
-| End-to-end tests | **151**, about a minute |
+| Domain tests | **1118**, instantaneous |
+| End-to-end tests | **152**, about a minute |
 | Build | clean, no warnings — CI builds with `-warnings-as-errors` |
 | Unbounded process waits | **0** — every one carries a deadline |
 | Documentation gates | **11**, each with a mutation that proves it fails |
 | Mutations committed by `bite.sh` | **27**, all caught |
-| Longest file | 791 lines, `StateStore.swift` (limit the project sets itself: 800) |
+| Longest file | 792 lines, `StateStore.swift` (limit the project sets itself: 800) |
 | Realignment pass, on the actor that draws | **~55 ms**, down from ~150 before the Codex probe moved off it; measured, not estimated |
 
 ## 27 August — sessions in a terminal
@@ -2447,3 +2447,18 @@ alone, and never sends the token for a permission: it proves it holds it, with a
 HMAC built by hand from the one hash function its runtime offers, and trusts only
 an answer signed back. On the test Mac, a hostile project's listener that always
 said allow heard nothing, and the panel's deny held.
+
+## 5 October — the sessions nobody is in front of
+
+The loop moved to the Linux machine that never sleeps; the Mac it tests on stayed
+where it was, reached over ssh. The same day showed a risk in that move: a resumed
+copy of the loop's own session worked the same branch in another terminal, until a
+stray duplicate decision gave it away. A single copy is now checked before every merge.
+
+The Agent View's background sessions (`claude --bg`) were invisible: their live file
+says `kind: "bg"`, and the rule for "someone is in front of it" refused every kind
+but `interactive`. They are now rows of their own (D103), and read what Claude Code
+keeps about them in `~/.claude/jobs` (D104): the summary it writes, what a blocked
+one needs, the id `claude attach` takes, which the row's menu copies. A throwaway
+background session on the test Mac, with Haiku, showed the same id in five places
+before any of it was trusted.

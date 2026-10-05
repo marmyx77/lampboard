@@ -463,7 +463,11 @@ final class PanelController {
                 self?.move(member, in: row, by: offset)
             },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) },
-            openPlancia: { [weak self] row in self?.openPlancia(sessionId: row.primary.id) }
+            openPlancia: { [weak self] row in self?.openPlancia(sessionId: row.primary.id) },
+            copyAttach: { job in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(job.attachCommand, forType: .string)
+            }
         )
     }
 
