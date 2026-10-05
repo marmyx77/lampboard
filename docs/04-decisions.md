@@ -3905,3 +3905,36 @@ Plancia shows sessions.
 invented conversations, `--lampmaster today`, `frame` and `cost` opened the window
 on each sheet and each was photographed: the open suggestion, the two sessions, one
 round of 5,632 tokens and the five kinds on.
+
+## D106 · Releases are signed on the test Mac, in a keychain of their own
+
+**Decided.** Marco travels, and the MacBook that held the Developer ID identities
+is often off, so he moved signing to the test Mac's `marco` account: «Sposta tutto
+tu sei autorizzato» (question 20). The two identities (Application and Installer)
+and the notarytool profile `lampboard` live there in
+`~/Library/Keychains/lampboard-release.keychain-db`. That keychain is not the login
+keychain, because nobody logs into that account. Its password sits in a file only
+`marco` can read, and `release.sh` unlocks it in its own session, as an ssh session
+needs.
+
+`release.sh` and `make-pkg.sh` take the keychain from `LAMPBOARD_NOTARY_KEYCHAIN`
+and pass it to notarytool, which otherwise looks only in the login keychain.
+`Scripts/release-remote.sh vX.Y.Z`, run from the machine the loop works on:
+- sends the tag to the mirror;
+- runs the release on that account over ssh;
+- brings the four files back for `gh release create`.
+
+Nothing secret crosses that connection.
+
+**How the identities got there.** Exported once from the MacBook's keychain by
+Marco. Over ssh that keychain refuses to export a private key ("User interaction
+is not allowed"). The export file and its password were copied machine to machine
+and never through a conversation, then deleted from both Macs once imported.
+
+The Application certificate is issued by Apple's "Developer ID Certification
+Authority" G2. The test Mac had only the older intermediate, so the identity stayed
+"not trusted" until G2, downloaded from apple.com, went into the same keychain.
+
+**Measured.** A probe binary was signed with the hardened runtime and a timestamp,
+verified strictly, and submitted to Apple through the profile in that keychain:
+`Accepted`.

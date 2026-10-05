@@ -1128,6 +1128,14 @@ The bundle it signs is a **copy**, never `dist/LampBoard.app`: macOS grants
 Accessibility and Automation to a signing identity, so signing the daily app
 with a different one would silently revoke the permissions of the panel you are
 running while you release.
+
+**From a machine that cannot sign.** On a Mac nobody logs into, the identities and
+the notarization profile live in a keychain of their own, which `release.sh`
+unlocks from a file only its owner can read (`LAMPBOARD_NOTARY_KEYCHAIN`,
+`LAMPBOARD_NOTARY_KEYCHAIN_PASSWORD_FILE`). `Scripts/release-remote.sh vX.Y.Z`
+sends the tag to the mirror, runs the release on that account over ssh, and
+brings the four files back into `dist/`; nothing secret crosses the connection
+([D106](docs/04-decisions.md#d106--releases-are-signed-on-the-test-mac-in-a-keychain-of-their-own)).
 Notarization is what forces the **hardened runtime**, which by default takes
 away exactly the two things this app does for a living — Apple Events and the
 microphone — so the script signs it with the two entitlements that give them

@@ -114,7 +114,7 @@ echo "    $(basename "$PKG") built and signed"
 if [ -n "$NOTARY_PROFILE" ]; then
     echo "▸ Notarizing (deadline $NOTARY_DEADLINE)"
     xcrun notarytool submit "$PKG" --keychain-profile "$NOTARY_PROFILE" \
-        --wait --timeout "$NOTARY_DEADLINE"
+        ${LAMPBOARD_NOTARY_KEYCHAIN:+--keychain "$LAMPBOARD_NOTARY_KEYCHAIN"} --wait --timeout "$NOTARY_DEADLINE"
     xcrun stapler staple "$PKG"
 else
     echo "▸ Not notarized: LAMPBOARD_NOTARY_PROFILE is unset."

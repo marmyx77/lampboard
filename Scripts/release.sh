@@ -25,6 +25,14 @@
 # An app-specific password is made at appleid.apple.com in two minutes and is
 # enough; an App Store Connect API key (--key/--key-id/--issuer) works too and
 # is the one to use from a machine nobody logs into.
+#
+# On a Mac nobody logs into, the identities and the profile live in a keychain
+# of their own, unlocked here from a file only its owner can read (D106):
+#
+#   export LAMPBOARD_NOTARY_KEYCHAIN=~/Library/Keychains/lampboard-release.keychain-db
+#   export LAMPBOARD_NOTARY_KEYCHAIN_PASSWORD_FILE=~/.config/lampboard-release/keychain-password
+#
+# `Scripts/release-remote.sh` runs this there from another machine.
 
 set -euo pipefail
 
@@ -102,6 +110,11 @@ DMG="$ROOT/dist/$APP_NAME-$VERSION.dmg"
 STABLE_DMG="$ROOT/dist/$APP_NAME.dmg"
 IDENTITY="${LAMPBOARD_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${LAMPBOARD_NOTARY_PROFILE:-}"
+NOTARY_KEYCHAIN="${LAMPBOARD_NOTARY_KEYCHAIN:-}"
+if [ -n "$NOTARY_KEYCHAIN" ]; then
+    security unlock-keychain -p "$(cat "${LAMPBOARD_NOTARY_KEYCHAIN_PASSWORD_FILE:?set LAMPBOARD_NOTARY_KEYCHAIN_PASSWORD_FILE}")" \
+        "$NOTARY_KEYCHAIN"
+fi
 
 # How long Apple gets before we call it a failure.
 #
@@ -188,7 +201,7 @@ if [ -n "$IDENTITY" ] && [ -n "$NOTARY_PROFILE" ]; then
     ditto -c -k --keepParent "$APP_DIR" "$ZIP"
     echo "▸ Notarizing the app (Apple takes a few minutes)…"
     xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" \
-        --wait --timeout "$NOTARY_DEADLINE"
+        ${NOTARY_KEYCHAIN:+--keychain "$NOTARY_KEYCHAIN"} --wait --timeout "$NOTARY_DEADLINE"
     xcrun stapler staple "$APP_DIR"
     rm -f "$ZIP"
     NOTARIZED=1
@@ -216,7 +229,7 @@ fi
 if [ "$NOTARIZED" = "1" ]; then
     echo "▸ Notarizing the disk image…"
     xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" \
-        --wait --timeout "$NOTARY_DEADLINE"
+        ${NOTARY_KEYCHAIN:+--keychain "$NOTARY_KEYCHAIN"} --wait --timeout "$NOTARY_DEADLINE"
     xcrun stapler staple "$DMG"
 fi
 
