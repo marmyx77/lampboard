@@ -164,7 +164,32 @@ enum TourSuite {
             t.expectEqual(answer?.optional, true, "answering LampMaster is optional while it is off")
             facts.lampMaster = true
             t.expectEqual(GettingStarted.firstSteps(facts).first { $0.id == "answer" }?.optional, false, "and expected once it is on")
-            t.expectEqual(GettingStarted.remaining(facts), 3)
+            t.expectEqual(GettingStarted.remaining(facts), 4,
+                          "accessibility, reorder, a card answered, a question asked; a session's question only once callable")
+        },
+
+        TestCase("Getting started for 1.0: writing needs the hooks, answering the mod; LampMaster asked from the panel") { t in
+            var facts = GettingStarted.Facts()
+            let prep = GettingStarted.preparation(facts).map(\.id)
+            t.expectEqual(prep, ["hooks", "accessibility", "send", "mod", "answer-from-panel", "notifications", "lampmaster",
+                                 "callable", "tour"])
+            let item = { (id: String) in GettingStarted.preparation(facts).first { $0.id == id } }
+            t.expect(item("answer-from-panel")?.detail.hasPrefix("Needs the mod.") == true, "answering says it needs the mod")
+            t.expect(item("send")?.detail.contains("Needs the hooks.") == true, "writing needs the hooks, not the mod (D81)")
+            facts.permissionsFromPanel = true
+            facts.sending = true
+            t.expect(item("answer-from-panel")?.done == false && item("send")?.done == false,
+                     "a switch on with nothing behind it is not done")
+            facts.mod = true
+            facts.hooks = true
+            t.expect(item("answer-from-panel")?.done == true && item("send")?.done == true, "ticked once it can work")
+            let mod = item("mod")?.detail ?? ""
+            t.expect(!mod.contains("reads no conversation") && !mod.contains("runs nothing"), "no longer true (D82, D113, D116)")
+            t.expect(mod.contains("ask you first") && mod.contains("lowers a session's model"), "what it can change, said")
+            t.expectEqual(GettingStarted.firstSteps(facts).map(\.id), ["rename", "reorder", "answer", "ask-panel", "ask"])
+            facts.lampMaster = true
+            facts.askedFromPanel = true
+            t.expect(GettingStarted.firstSteps(facts).first { $0.id == "ask-panel" }?.done == true, "asked from the panel")
         },
 
         TestCase("Progress survives the preferences by step id") { t in

@@ -19,12 +19,17 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
     private(set) var port = AppConfig.listenPort
     private(set) var lampMaster: LampMasterService?
     private(set) var toggleNotifications: () -> Void = {}
+    private(set) var toggleSending: () -> Void = {}
 
     /// Set once at launch by whoever owns the server and the panel.
-    func configure(port: UInt16, lampMaster: LampMasterService, toggleNotifications: @escaping () -> Void) {
+    func configure(
+        port: UInt16, lampMaster: LampMasterService, toggleNotifications: @escaping () -> Void,
+        toggleSending: @escaping () -> Void
+    ) {
         self.port = port
         self.lampMaster = lampMaster
         self.toggleNotifications = toggleNotifications
+        self.toggleSending = toggleSending
     }
 
     func show() {
@@ -62,13 +67,17 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
         facts.lampMaster = preferences.lampMasterEnabled
         facts.lampMasterCallable = LampMasterSetup.isRegistered
         facts.mod = ModSetup.isInstalled
+        facts.permissionsFromPanel = preferences.permissionsFromPanel
+        facts.sending = preferences.messageSendingEnabled
         facts.tourFinished = (UserDefaults(suiteName: TourController.domain)?.data(forKey: "progress"))
             .flatMap { try? JSONDecoder().decode(TourProgress.self, from: $0) }?.status == .finished
         facts.renamed = !preferences.rowNames.isEmpty
         facts.reordered = !preferences.rowOrder.isEmpty
         let answered: Set<LampMasterShown.Outcome> = [.accepted, .ignored, .muted, .wrong]
         facts.answeredLampMaster = files.suggestions().contains { $0.outcome.map(answered.contains) == true }
-        facts.askedFromSession = !files.asks().isEmpty
+        let asks = files.asks()
+        facts.askedFromSession = asks.contains { $0.session != LampMasterAsk.panel }
+        facts.askedFromPanel = asks.contains { $0.session == LampMasterAsk.panel }
         return facts
     }
 
@@ -81,7 +90,7 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
         case "accessibility":
             VSCodeFocuser.requestAccessibilityPermission()
         case "notifications":
-            toggleNotifications()
+            if !Preferences().notificationsEnabled { toggleNotifications() }
         case "lampmaster":
             lampMaster?.setEnabled(true)
         case "callable":
@@ -93,6 +102,16 @@ final class GettingStartedWindowController: NSObject, NSWindowDelegate {
             if case .failed(let reason) = await Task.detached(operation: { ModSetup.install() }).value {
                 return reason
             }
+        case "answer-from-panel":
+            guard ModSetup.isInstalled else { return "Install the mod first: it is what puts the asks to the panel." }
+            Preferences().permissionsFromPanel = true
+        case "send":
+            guard HookSetup.state().contains(where: { $0.outcome == .installed }) else {
+                return "Connect Claude Code first: the message goes in through the hooks."
+            }
+            // The panel's own switch, which explains what it opens before it does;
+            // only ever to turn it on, whatever this list last read.
+            if !Preferences().messageSendingEnabled { toggleSending() }
         case "tour":
             TrialLauncher.startFromMenu()
         default:
@@ -134,7 +153,7 @@ struct GettingStartedView: View {
         .onReceive(refresh) { _ in facts = controller.facts() }
     }
 
-    private static let verb = ["hooks": "Install", "accessibility": "Grant…", "mod": "Install", "tour": "Start"]
+    private static let verb = ["hooks": "Install", "accessibility": "Grant…", "mod": "Install", "tour": "Start", "send": "Turn on…"]
 
     private func section(_ title: String, _ items: [GettingStarted.Item], actions: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {

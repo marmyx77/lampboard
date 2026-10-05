@@ -145,7 +145,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.governor = governor
         GettingStartedWindowController.shared.configure(
             port: port, lampMaster: lampMaster,
-            toggleNotifications: { [weak controller] in controller?.toggleNotifications() }
+            toggleNotifications: { [weak controller] in controller?.toggleNotifications() },
+            toggleSending: { [weak controller] in controller?.toggleMessageSending() }
         )
         if let trial = TrialStage.mode {
             let tour = TourController(fresh: trial.fresh)

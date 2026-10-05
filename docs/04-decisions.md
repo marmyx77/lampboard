@@ -4598,3 +4598,38 @@ cannot point at a row that is not there.
 **Photographed on the test Mac.** On step 1 the docs-site row was ringed, and on
 "away" the ⋯ in the footer was.
 
+## D122 · Getting started says what 1.0 does
+
+**Decided.** The last part of the complete tutorial's app side. *Getting started*
+was written for 0.5 and had fallen behind in three ways.
+
+- **The mod's description was no longer true.** It said the mod reads no
+  conversation and runs nothing. The item now says what the mod can change. It
+  never runs a tool or writes a file itself. It can make Claude Code ask first:
+  before an edit to a file another session just wrote (D113), and, while the person
+  is away, before a destructive command (D116). It answers a side question or a
+  handoff from the session's conversation, read again from cache (D82, D91). And it
+  lowers a session's model when the panel is asked to (D112).
+- **Two switches were missing.** Writing to a session from the panel needs the
+  hooks (D81), not the mod; only its side question does. Answering permissions from
+  the panel needs the mod. Each is set up from here, explained before its button,
+  and ticked only when it can work, so the switch alone is not enough. Its button
+  says what to set up first if that is missing. A permission waits 55 seconds with
+  Allow and Deny; a question waits 20 with its options. Writing goes through the
+  panel's own switch, which explains what it opens before it opens it. That button,
+  like the one for notifications, only ever turns its switch on, whatever the list
+  last read.
+- **A first step was missing.** Asking LampMaster about all the sessions, from the
+  bar or the Plancia's box. It is ticked by a question recorded under `panel`
+  (D118), told apart from a session's question, which ticks its own step. It is
+  optional while LampMaster is off.
+
+The setup's order follows dependency: hooks, Accessibility, writing (which needs
+the hooks), the mod, answering (which needs the mod), then the optional rest. The
+tour is no longer "three minutes". It has twelve steps, each done by doing it. The
+review found the first version claiming that writing needed the mod and a button
+that could turn sending off, and both are fixed.
+
+**Photographed on the test Mac**, on a fake home: the new items with their buttons,
+and Accessibility already ticked.
+

@@ -27,11 +27,14 @@ public enum GettingStarted {
         public var lampMaster = false
         public var lampMasterCallable = false
         public var mod = false
+        public var permissionsFromPanel = false
+        public var sending = false
         public var tourFinished = false
         public var renamed = false
         public var reordered = false
         public var answeredLampMaster = false
         public var askedFromSession = false
+        public var askedFromPanel = false
 
         public init() {}
     }
@@ -46,6 +49,24 @@ public enum GettingStarted {
                  detail: "The Accessibility permission lets LampBoard raise the exact editor window of a session. "
                     + "Without it a click opens the editor but cannot choose the window.",
                  done: facts.accessibility, optional: false),
+            Item(id: "send", title: "Write to a session from the panel",
+                 detail: "From the Plancia or the bar (@name message), into the session's own box, as you. Needs the "
+                    + "hooks. Asking it a side question without adding a turn (@name ?question) needs the mod too.",
+                 done: facts.sending && facts.hooks, optional: true),
+            Item(id: "mod", title: "The LampBoard mod, for exact figures and answers from the panel",
+                 detail: "A small plugin inside each Claude Code session (2.1.287 and later). It tells the panel its "
+                    + "context, cost and limits as Claude Code counts them, and which tool it is running. It never "
+                    + "runs a tool or writes a file itself, and talks only to this Mac. It can make Claude Code ask "
+                    + "you first: before an edit to a file another session just wrote, and while you are away, before "
+                    + "a destructive command. It answers a side question or a handoff from the session's conversation, "
+                    + "read again from cache, and lowers a session's model when you ask the panel to. Settings shows "
+                    + "what Claude Code reads in it.",
+                 done: facts.mod, optional: true),
+            Item(id: "answer-from-panel", title: "Answer permissions from the panel",
+                 detail: "Needs the mod. A permission waits at the top of the panel with Allow and Deny, and says what "
+                    + "the call would do; a question Claude asks you waits there with its options. Unanswered — 55 "
+                    + "seconds for a permission, 20 for a question — it goes back to the session's own dialog.",
+                 done: facts.permissionsFromPanel && facts.mod, optional: true),
             Item(id: "notifications", title: "Notifications, if you want them",
                  detail: "A notification when a session asks for permission, asks you a question, or fails — "
                     + "and for a finished turn only if you ask for it in Settings.",
@@ -58,15 +79,9 @@ public enum GettingStarted {
                  detail: "Adds the lampmaster MCP server to Claude Code, so a session can ask who else is on its "
                     + "files or who solved an error before.",
                  done: facts.lampMasterCallable, optional: true),
-            Item(id: "mod", title: "The LampBoard mod, for exact figures",
-                 detail: "A small plugin inside each Claude Code session (2.1.287 and later) that tells the panel its "
-                    + "context, cost and limits as Claude Code counts them, and which tool it is running. It reads no "
-                    + "conversation and no file's contents, writes nothing, runs nothing, and talks only to this Mac. "
-                    + "Settings shows what "
-                    + "Claude Code reads in it.",
-                 done: facts.mod, optional: true),
-            Item(id: "tour", title: "Take the three-minute tour",
-                 detail: "A second panel with invented sessions, none of them yours, shows what every colour means.",
+            Item(id: "tour", title: "Take the tour",
+                 detail: "A second panel with invented sessions, none of them yours: twelve steps, each done by "
+                    + "doing it, from the colours to asking LampMaster.",
                  done: facts.tourFinished, optional: true),
         ]
     }
@@ -83,6 +98,10 @@ public enum GettingStarted {
             Item(id: "answer", title: "Answer one of LampMaster's cards",
                  detail: "Open, Ignore or Wrong: each answer teaches it what is worth your time.",
                  done: facts.answeredLampMaster, optional: !facts.lampMaster),
+            Item(id: "ask-panel", title: "Ask LampMaster about all your sessions",
+                 detail: "⌘K, then ?which session renamed the slots endpoint — or the box on its Plancia's Today. "
+                    + "A follow-up is read against the answer before.",
+                 done: facts.askedFromPanel, optional: !facts.lampMaster),
             Item(id: "ask", title: "Ask LampMaster from a session",
                  detail: "In any session: \"ask lampmaster who else is working on this file\".",
                  done: facts.askedFromSession, optional: !facts.lampMasterCallable),

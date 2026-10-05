@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,758 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    25,190 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,679 lines · 113 files   1190 cases, instantaneous
+  LampBoardCore/  20,777 lines · 164 files  pure logic, zero AppKit
+  LampBoardApp/    25,210 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,704 lines · 113 files   1191 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -988,6 +988,9 @@ its button — and the first gestures worth trying on one's own sessions. Every 
 read from state the panel already keeps (row names, row order, LampMaster's answered
 cards, the questions sessions asked), so nothing new is recorded about anybody, and
 an item is done wherever it was done. Optional ones never count as left to do.
+For 1.0 (D122) the setup also offers the mod with what it really does, answering
+from the panel and writing to sessions, and the first steps add asking LampMaster
+from the panel, told apart from a session's question by the `panel` asker.
 
 ### `Tour.swift`
 The tour's steps, every version's, and the ones this version shows: a step whose
@@ -1903,7 +1906,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1190 cases
+## `LampBoardTests/` — 1191 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
