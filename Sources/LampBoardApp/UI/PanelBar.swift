@@ -36,20 +36,30 @@ extension PanelController {
         // Through the Plancia's composer, opened on that session: the same
         // switch, the same box or mailbox, and the message seen as it goes.
         bar.onSend = { [weak self] id, message in
-            guard let self, self.session(named: id) != nil else {
+            guard let self, let session = self.session(named: id) else {
                 Diagnostics.log("bar: send to \(id) refused, no such session")
-                return false
+                return "That session is gone."
+            }
+            // On another machine: into its box there, over ssh (B3). No Plancia
+            // can show it, so the bar says where it went.
+            if let host = session.workspace.host {
+                let content = PeerBox.preamble + "\n" + message.trimmingCharacters(in: .whitespacesAndNewlines)
+                let sent = await Task.detached { RemotePeerSender.send(content: content, to: session.id, on: host) }.value
+                switch sent {
+                case .success: return "Sent to \(session.displayName) on \(host): it answers in its own window there."
+                case .failure(let error): return "Not sent to \(host): \(error.short)"
+                }
             }
             self.openPlancia(sessionId: id)
             guard let thread = self.plancia.thread, thread.sessionId == id else {
                 Diagnostics.log("bar: send to \(id) refused, its Plancia did not open")
-                return false
+                return "Its Plancia did not open."
             }
-            return thread.send(message)
+            return thread.send(message) ? nil : (thread.sendError ?? "It did not go.")
         }
         bar.onAskSession = { [weak self] id, question in
             guard let desk = self?.askDesk else { return "Asking is not available." }
-            return await desk.ask(sessionId: id, question: question)
+            return await desk.ask(sessionId: id, question: question, host: self?.session(named: id)?.workspace.host)
         }
         bar.onLayoutChange = { [weak self] in
             guard let self else { return }
@@ -99,10 +109,10 @@ extension PanelController {
     }
 
     /// What typing in the bar and `⏎` do, for `--bar-type` on a fake home:
-    /// waits up to a minute for the text to find something it can act on,
+    /// waits up to two minutes for the text to find something it can act on,
     /// then submits once. `{first}` stands for the first row's name, which a
     /// test cannot know in advance.
-    func typeIntoBar(_ text: String, attempts: Int = 30) {
+    func typeIntoBar(_ text: String, attempts: Int = 60) {
         if isCompact, !store.state.sessions.isEmpty { toggleCompact() }
         refreshBar()
         // A row that has answered once: before, there is nothing to ask it about.

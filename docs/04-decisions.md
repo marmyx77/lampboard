@@ -3289,3 +3289,18 @@ process, which raises no `UserDefaults` notification here: its tunnel came up on
 when the panel happened to write a preference of its own. The list is now also
 read on the remote poll's clock.
 
+**From the bar to a node (B3).** `@name message` and `@name ?question` reach a
+session on a node too: a script run there over ssh (`RemotePeerScripts`, in the
+shape of the hooks' scripts) finds the session's box on the terms the Mac's own
+sender uses — the session file named after its pid, the user's and not a link; the
+process running, the user's, and started when the file says; the key private and
+written for that process; the socket the user's — and writes to it. A side
+question's answer comes back through the tunnel like the node's reports. No Plancia
+can show a node's conversation, so the bar says where the message went. Tried on
+the test VM: `@lbwork ?…` answered in two seconds through the tunnel with the
+question nowhere in the node's transcript, and `@lbwork Reply with exactly the word
+MANGO.` was answered "MANGO" there. A review asked for two things, both done: the
+key is taken only with a start time that matches, as on the Mac; and a box slow to
+close after the message went counts as delivered, so a "not sent" never invites a
+second copy.
+

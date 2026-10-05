@@ -83,7 +83,9 @@ public enum CommandBar {
         case .mention(let name, let message):
             let found = Array(sessions(matching: name.lowercased(), rows: rows, now: now, namesOnly: true).prefix(shownAtOnce))
             guard !message.isEmpty else { return found }
-            let remote = Set(rows.filter(\.workspace.isRemote).map { "session:" + $0.id })
+            // A session on another machine, by row id, with the machine's name.
+            let remote = Dictionary(rows.compactMap { row in row.workspace.host.map { ("session:" + row.id, $0) } },
+                                    uniquingKeysWith: { first, _ in first })
             if message.hasPrefix("?") {
                 return asks(found, question: String(message.dropFirst()).trimmed, remote: remote,
                             sendingEnabled: sendingEnabled, askable: askable)
@@ -91,12 +93,13 @@ public enum CommandBar {
             // One line, like a title: what is about to be said is read before it is.
             let said = RowActivity.flat(message)
             return found.map { session in
-                // A session on another Mac has its box there: said, and nothing
-                // to send to (no session id), rather than a send that goes nowhere.
-                let away = remote.contains(session.id)
+                // A session on another machine has its box there, reached over
+                // ssh (B3): said, so a message is not taken to stay on this Mac.
+                let host = remote[session.id]
+                let detail = !sendingEnabled ? sendingOff
+                    : host.map { "into its conversation on \($0), as you" } ?? "into its conversation, as you"
                 return Result(id: "send:" + session.id, kind: .send, title: "Send to \(session.title): \(said)",
-                              detail: away ? sendingRemote : (sendingEnabled ? "into its conversation, as you" : sendingOff),
-                              sessionId: away ? nil : session.sessionId, action: nil, status: session.status)
+                              detail: detail, sessionId: session.sessionId, action: nil, status: session.status)
             }
         case .command(let name, _):
             return actions(matching: name)
@@ -113,15 +116,15 @@ public enum CommandBar {
 
     /// `@name ?question`: each session found, asked without disturbing it
     /// (D82) — only one whose mod said it can answer, on this Mac.
-    private static func asks(_ found: [Result], question: String, remote: Set<String>,
+    private static func asks(_ found: [Result], question: String, remote: [String: String],
                              sendingEnabled: Bool, askable: Set<String>) -> [Result] {
         guard !question.isEmpty else { return found }
         let asked = RowActivity.flat(question)
         return found.map { session in
-            let away = remote.contains(session.id)
-            let can = !away && session.sessionId.map(askable.contains) == true
-            let detail = away ? sendingRemote : !can ? askNeedsMod
-                : (sendingEnabled ? "answered from its conversation, with no turn" : sendingOff)
+            let can = session.sessionId.map(askable.contains) == true
+            let place = remote[session.id].map { " on \($0)" } ?? ""
+            let detail = !can ? askNeedsMod
+                : (sendingEnabled ? "answered from its conversation\(place), with no turn" : sendingOff)
             return Result(id: "ask:" + session.id, kind: .askSession,
                           title: "Ask \(session.title) without disturbing it: \(asked)", detail: detail,
                           sessionId: can ? session.sessionId : nil, action: nil, status: session.status)
@@ -129,7 +132,6 @@ public enum CommandBar {
     }
 
     static let sendingOff = "Turn on \"Let the panel answer your sessions\" in the panel menu first"
-    static let sendingRemote = "On another Mac: the panel cannot write there yet"
 
     /// The selection after a move, kept inside the list.
     public static func move(_ index: Int, by step: Int, count: Int) -> Int {

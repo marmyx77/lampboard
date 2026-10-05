@@ -28,8 +28,10 @@ final class PeerAskDesk: ObservableObject {
         }
     }
 
-    /// The question, through the session's box; the reply, or what went wrong.
-    func ask(sessionId: String, question: String) async -> String {
+    /// The question, through the session's box — over ssh when the session is
+    /// on another machine (B3), the answer coming back through its tunnel; the
+    /// reply, or what went wrong.
+    func ask(sessionId: String, question: String, host: String? = nil) async -> String {
         guard askable.contains(sessionId) else { return "This session's LampBoard mod cannot answer yet." }
         guard let key = TokenStore(url: AppConfig.checkKeyURL).read() else { return "LampBoard has no key to ask with." }
         let nonce = UUID().uuidString
@@ -44,15 +46,20 @@ final class PeerAskDesk: ObservableObject {
                 self?.waiting.removeValue(forKey: nonce)?.resume(returning: "No answer within a minute.")
             }
             Task.detached(priority: .userInitiated) { [weak self] in
-                let sent = sender.send(content: content, to: sessionId)
+                let failed: String? = if let host {
+                    RemotePeerSender.send(content: content, to: sessionId, on: host).failureText { "Not asked on \(host): \($0.short)." }
+                } else {
+                    sender.send(content: content, to: sessionId).failureText {
+                        $0.description.prefix(1).uppercased() + $0.description.dropFirst() + "."
+                    }
+                }
                 // Unwrapped before the hop: inside it, Swift 6 rejects the capture.
                 guard let self else { return }
                 await MainActor.run {
-                    guard case .failure(let failure) = sent else {
+                    guard let failed else {
                         return Diagnostics.log("ask \(sessionId.prefix(8)): \(question.count) chars, without a turn")
                     }
-                    let said = failure.description.prefix(1).uppercased() + failure.description.dropFirst() + "."
-                    self.waiting.removeValue(forKey: nonce)?.resume(returning: said)
+                    self.waiting.removeValue(forKey: nonce)?.resume(returning: failed)
                 }
             }
         }
@@ -65,5 +72,13 @@ final class PeerAskDesk: ObservableObject {
         case let reason?: return "It could not answer (\(reason))."
         case nil: return "It gave no answer."
         }
+    }
+}
+
+private extension Result {
+    /// The failure in words, or `nil` on success.
+    func failureText(_ words: (Failure) -> String) -> String? {
+        if case .failure(let failure) = self { return words(failure) }
+        return nil
     }
 }

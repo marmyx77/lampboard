@@ -89,15 +89,18 @@ enum CommandBarSuite {
             t.expectEqual(off.first?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
         },
 
-        TestCase("A session on another Mac is said, never sent to from here") { t in
+        TestCase("A session on another machine is sent to there, and the result says where") { t in
             let away = SessionState(id: "id-node", status: .idle, workspace: Workspace(path: "/home/dev/nodeapp", host: "node"),
                                     updatedAt: t0, statusSince: t0, origin: .terminal)
             let row = ColumnRow(id: "row-node", workspace: away.workspace, sessions: [away])
             let found = CommandBar.results(for: CommandBar.parse("@nodeapp deploy"), rows: [row], now: t0,
                                            lampMasterEnabled: true, sendingEnabled: true)
             t.expectEqual(found.first?.kind, .send)
-            t.expectNil(found.first?.sessionId, "nothing to send to")
-            t.expectEqual(found.first?.detail, "On another Mac: the panel cannot write there yet")
+            t.expectEqual(found.first?.sessionId, "id-node")
+            t.expectEqual(found.first?.detail, "into its conversation on node, as you")
+            let asked = CommandBar.results(for: CommandBar.parse("@nodeapp ?what now"), rows: [row], now: t0,
+                                           lampMasterEnabled: true, sendingEnabled: true, askable: ["id-node"])
+            t.expectEqual(asked.first?.detail, "answered from its conversation on node, with no turn")
         },
 
         TestCase("? goes to LampMaster, or says it is off") { t in

@@ -2067,3 +2067,22 @@ from `HOME`; and a test that runs a real session against a fake home sets `HOME`
 that session (with a `.claude.json` saying onboarding is done, and `claude` on the
 fake home's `~/.local/bin` for the app to install the mod with), not `LAMPBOARD_HOME`.
 
+## A Python script inside a Swift string: `\n` is Swift's first
+
+The scripts that run on another machine are Python inside Swift string literals.
+A line in one of them wrote a file ending with `\n`, typed as `\n` in the Swift
+source: Swift turned it into a real line break, and the Python string literal was
+cut in two. Every run printed nothing. A check that rebuilt the script by hand
+from the Swift file, to look at it, undid the escaping the same wrong way and
+reported it as valid; the test that runs the script with `python3`, as the node
+will, failed at once. In these literals a newline Python should see is `\\n`, and
+the only proof that a script works is to run it.
+
+## ssh's `ControlMaster` takes a tunnel's forward away from it
+
+With `ControlMaster auto` and `ControlPersist` in the person's ssh config (Lima's
+generated config has both), `ssh -N -R …` becomes a backgrounded master, hands it
+the forward, and exits 0. The tunnel reads as down while the forward lives on in
+the master; the next try finds its own port taken. A process that must own its
+forward runs with `ControlMaster=no` and `ControlPath=none`.
+

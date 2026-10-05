@@ -29,11 +29,12 @@ final class CommandBarModel: ObservableObject {
     var onAction: (CommandBar.Action) -> Void = { _ in }
     /// Asks LampMaster, the way a session does through the MCP tool.
     var onAsk: (String) async -> String = { _ in "" }
-    /// `@name message`: the message to that session, through its composer;
-    /// `false` when it did not go, and the bar keeps the text.
-    var onSend: (String, String) -> Bool = { _, _ in false }
+    /// `@name message`: the message to that session. `nil` when it went into
+    /// a Plancia that shows it; otherwise what to say in the bar, which keeps
+    /// the text — a refusal, or where a session on another machine took it.
+    var onSend: @MainActor (String, String) async -> String? = { _, _ in "Sending is not available." }
     /// `@name ?question`: the session's fork answers it, no turn (D82).
-    var onAskSession: (String, String) async -> String = { _, _ in "" }
+    var onAskSession: @MainActor (String, String) async -> String = { _, _ in "" }
     var onLayoutChange: () -> Void = {}
 
     private var rows: [ColumnRow] = []
@@ -81,10 +82,25 @@ final class CommandBarModel: ObservableObject {
             clear()
         case .send:
             // Switched off, the result says how to switch it on, and stays.
-            guard sendingEnabled, let id = result.sessionId,
-                  case .mention(_, let message) = CommandBar.parse(text), !message.isEmpty,
-                  onSend(id, message) else { return }
-            clear()
+            guard sendingEnabled, let id = result.sessionId, !asking,
+                  case .mention(_, let message) = CommandBar.parse(text), !message.isEmpty else { return }
+            let typed = text
+            asking = true
+            answer = "Sending…"
+            onLayoutChange()
+            question = Task { [weak self] in
+                guard let self else { return }
+                let said = await self.onSend(id, message)
+                // Already on its way, whatever the bar does now: said in the log
+                // when the bar no longer shows it.
+                guard !Task.isCancelled, self.isEditing, self.text == typed else {
+                    return Diagnostics.log("bar: a send finished after the bar moved on: \(said ?? "sent")")
+                }
+                self.asking = false
+                guard let said else { return self.clear() }
+                self.answer = said
+                self.onLayoutChange()
+            }
         case .askSession:
             guard sendingEnabled, let id = result.sessionId, !asking,
                   case .mention(_, let message) = CommandBar.parse(text), message.hasPrefix("?") else { return }
