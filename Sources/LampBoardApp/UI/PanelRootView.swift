@@ -61,8 +61,6 @@ struct PanelFlags {
     let mutedUntil: Date?
     let hasHidden: Bool
     let hooksInstalled: Bool
-    /// How many projects are hidden, for the ⋯'s «Show 3 hidden projects».
-    var hiddenCount = 0
 
     /// The agents on this machine with no hooks registered, by name.
     ///
@@ -74,6 +72,8 @@ struct PanelFlags {
     let canLaunchAtLogin: Bool
     /// Away, said from this menu or by a locked screen (A1).
     var isAway = false
+    /// How many projects are hidden, for the ⋯'s «Show 3 hidden projects».
+    var hiddenCount = 0
 }
 
 /// Root of the SwiftUI hierarchy hosted inside the floating panel.
