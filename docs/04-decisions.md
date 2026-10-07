@@ -4805,3 +4805,24 @@ Measured on the test Mac: a turn failing on a new home put «A red lamp: that tu
 stopped before its answer» at the top of the panel within two seconds, the bar
 saying «1 stopped», and the window grew by the band's two lines.
 
+## D128 · Words a newcomer understands
+
+**Decided.** The sixth step of the 1.1 review (U6): the glossary the review
+proposed, applied to the interface and the README.
+
+- **The six states** are named for what they mean to the person: *needs you*,
+  *done*, *stopped*, *working*, *paused*, *resting* (`awaiting`, `ready`, `failed`,
+  `working`, `waiting`, `idle` stay the names in the code, the HTTP API and the
+  tests' payloads). The legend capitalises them; a row's second line, the card and
+  the menu bar's tooltip use them.
+- **The Plancia is the Session view** wherever a person reads it: menus, tooltips,
+  VoiceOver, messages. The word stays in the code (`PlanciaView`) and the code map.
+- **The companion mod is the helper** in the interface and the README; the command
+  stays `lampboard mod`, and the files stay under `mod/`.
+- **Hooks become the connection** in the interface: *Connect…*, *Disconnected*,
+  «connected» for another Mac. The CLI and the technical documents keep *hooks*.
+- **Allowance becomes usage left**, **side question quick question**, **pinned
+  decisions project rules** (*Add a project rule for “repo”…*, *Project rules*).
+- **LampMaster keeps its name**, with «the reviewer» beside it where it is
+  introduced: its star's tooltip, Settings and the catalogue.
+

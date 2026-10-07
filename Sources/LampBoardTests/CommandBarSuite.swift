@@ -87,7 +87,7 @@ enum CommandBarSuite {
             t.expectEqual(can.first?.detail, "answered from its conversation, with no turn")
             let cannot = can.first { $0.title.contains("api-gateway") }
             t.expectNil(cannot?.sessionId, "its mod has not said it can")
-            t.expectEqual(cannot?.detail, "Its session needs the LampBoard mod 1.5.0: restart it after the update")
+            t.expectEqual(cannot?.detail, "Its session needs the LampBoard helper 1.5.0: restart it after the update")
             let off = CommandBar.results(for: CommandBar.parse("@api ?what are you on"), rows: rows, now: t0,
                                          lampMasterEnabled: true, askable: ["id-api"])
             t.expectEqual(off.first?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")

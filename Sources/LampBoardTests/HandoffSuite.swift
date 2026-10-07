@@ -31,7 +31,7 @@ enum HandoffSuite {
             t.expectEqual(found.first?.title, "Hand events over to api")
             t.expectEqual(found.first?.sessionId, "id-events")
             t.expectEqual(found.first?.targetId, "id-api")
-            t.expectEqual(found.first?.detail, "events writes it from its conversation, with no turn; you send it from api's Plancia")
+            t.expectEqual(found.first?.detail, "events writes it from its conversation, with no turn; you send it from api's Session view")
             t.expectEqual(results("/handoff events api").first?.targetId, "id-api", "the @ is optional")
         },
 
@@ -49,7 +49,7 @@ enum HandoffSuite {
         TestCase("It needs the mod's side question and sending switched on, and says which") { t in
             let noMod = results("/handoff @events @api", askable: ["id-api"]).first
             t.expectNil(noMod?.sessionId)
-            t.expectEqual(noMod?.detail, "Its session needs the LampBoard mod 1.5.0: restart it after the update")
+            t.expectEqual(noMod?.detail, "Its session needs the LampBoard helper 1.5.0: restart it after the update")
             let off = results("/handoff @events @api", sending: false).first
             t.expectNil(off?.sessionId)
             t.expectEqual(off?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")

@@ -40,7 +40,7 @@ struct LegendView: View {
                             swatch: AnyView(
                                 TrafficLightDot(status: status, calm: true).frame(width: 16)
                             ),
-                            title: status.label,
+                            title: status.label.prefix(1).uppercased() + status.label.dropFirst(),
                             detail: Self.meaning(of: status),
                             count: rows.filter { $0.status == status }.count
                         )

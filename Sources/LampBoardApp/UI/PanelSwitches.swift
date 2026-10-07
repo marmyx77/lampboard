@@ -61,9 +61,9 @@ extension PanelController {
             .joined(separator: " and ")
 
         guard Alerts.confirm(
-            title: "Install the hooks?",
+            title: "Connect \(agents)?",
             message: """
-            lampboard will register \(HookConfigMerger.defaultEvents.count) hooks in the \
+            LampBoard will register \(HookConfigMerger.defaultEvents.count) hooks in the \
             configuration of \(agents), so it knows when sessions change state.
 
             Existing hooks are preserved and a backup copy of each file is created. \
@@ -81,7 +81,7 @@ extension PanelController {
             Alerts.warn(title: "Not everything was installed", message: summary)
             return
         }
-        Alerts.info(title: "Hooks installed", message: HookSetup.summary(of: reports))
+        Alerts.info(title: "Connected", message: HookSetup.summary(of: reports))
     }
 
     func uninstallHooks() {
@@ -101,7 +101,7 @@ extension PanelController {
             return
         }
         Alerts.info(
-            title: "Hooks removed",
+            title: "Disconnected",
             message: "LampBoard will no longer receive signals from either agent."
         )
     }

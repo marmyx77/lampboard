@@ -158,7 +158,7 @@ enum RowSummarySuite {
             t.expectEqual(value(summary(group), "sessions"), "3 in this project", "the count")
             t.expectEqual(
                 summary(group).sessions,
-                ["#1 · waiting for your answer", "#2 · answer ready", "#3 · resting"],
+                ["#1 · needs you", "#2 · done", "#3 · resting"],
                 "each one named, in the order they were opened"
             )
         },
@@ -173,7 +173,7 @@ enum RowSummarySuite {
             ])
             t.expectEqual(
                 summary(group).sessions,
-                ["Fix the parser · waiting for your answer",
+                ["Fix the parser · needs you",
                  "Write the release notes · working"],
                 "the conversation, then what it is doing"
             )

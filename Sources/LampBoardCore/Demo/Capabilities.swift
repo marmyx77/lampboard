@@ -60,7 +60,7 @@ public enum Capabilities {
             item("LampMaster", "The reviewer: a look at every session once an hour, three suggestions at most.", setting: .lampMaster),
             item("Ask LampMaster", "«who renamed the slots endpoint?», with follow-ups.", tryIt: .bar("?")),
             item("Project rules", "One decision, and every session in the repository keeps to it.", helper: true,
-                 place: "A row's menu › More › Pin a decision"),
+                 place: "A row's menu › More › Add a project rule"),
             item("Hand over", "Pass what one session knows to another.", tryIt: .bar("/handoff @")),
         ]),
         Group(title: "Step away", items: [

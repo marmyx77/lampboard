@@ -23,7 +23,7 @@ extension PanelController {
         // A composer that cannot send would hold it where nothing can be done with it.
         guard preferences.messageSendingEnabled else { return copied("Sending is off in the panel") }
         openPlancia(sessionId: to)
-        guard let thread = plancia.thread, thread.sessionId == to else { return copied("Its Plancia did not open") }
+        guard let thread = plancia.thread, thread.sessionId == to else { return copied("Its Session view did not open") }
         // The person's own words stay: the handoff is not dropped on them, it is copied.
         guard !thread.hasDraft else { return copied("\(target.displayName)'s composer already has your text") }
         thread.proposed = brief

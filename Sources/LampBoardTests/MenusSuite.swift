@@ -70,7 +70,7 @@ enum MenusSuite {
             let more = titles(submenu("More", in: entries))
             t.expectEqual(more, [
                 "Open without marking as read", "Move up", "Move down", "Show in Finder",
-                "Pin a decision for “web”…", "Pinned decisions (1) ▸", "Copy “claude attach 4b1”",
+                "Add a project rule for “web”…", "Project rules (1) ▸", "Copy “claude attach 4b1”",
                 "Use Sonnet until the window resets",
             ])
         },

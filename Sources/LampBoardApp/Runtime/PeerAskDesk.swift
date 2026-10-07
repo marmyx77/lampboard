@@ -42,11 +42,11 @@ final class PeerAskDesk: ObservableObject {
     /// (5.4) proposes only an answer, never what went wrong.
     func reply(sessionId: String, question: String, host: String? = nil) async -> Reply {
         func refused(_ text: String) -> Reply { Reply(text: text, answered: false) }
-        guard askable.contains(sessionId) else { return refused("This session's LampBoard mod cannot answer yet.") }
+        guard askable.contains(sessionId) else { return refused("This session's LampBoard helper cannot answer yet.") }
         guard let key = TokenStore(url: AppConfig.checkKeyURL).read() else { return refused("LampBoard has no key to ask with.") }
         let nonce = UUID().uuidString
         guard let content = PeerAsk.message(question: question, nonce: nonce, session: sessionId, key: key) else {
-            return refused("Nothing to ask, or too long for a side question.")
+            return refused("Nothing to ask, or too long for a quick question.")
         }
         let sender = self.sender
         // Waiting before it is sent, so an answer can never arrive to nobody.

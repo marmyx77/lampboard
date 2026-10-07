@@ -175,7 +175,7 @@ public struct PlanUsage: Sendable, Equatable {
         let period = days >= 1
             ? "\(Int(days.rounded()))-day"
             : "\(Int((Double(windowMinutes) / 60.0).rounded()))-hour"
-        return "\(rounded)% of the \(period) plan allowance used"
+        return "\(rounded)% of the \(period) plan used"
     }
 }
 

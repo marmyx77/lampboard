@@ -26,7 +26,7 @@ enum RowActivitySuite {
 
         TestCase("Amber says what it asks; red why it died") { t in
             t.expectEqual(line(row(.awaiting, ask: PendingAsk(tool: "Bash", detail: "npm publish"))), "Bash: npm publish")
-            t.expectEqual(line(row(.awaiting)), "waiting for your answer")
+            t.expectEqual(line(row(.awaiting)), "needs you")
             t.expectEqual(line(row(.failed, reason: .rateLimit)), "request limit reached")
         },
 
@@ -46,7 +46,7 @@ enum RowActivitySuite {
         TestCase("At rest, the agent; on another machine, the machine too") { t in
             t.expectEqual(line(row(.idle)), "Claude Code")
             t.expectEqual(line(row(.idle, host: "buildbox", harness: .codex)), "Codex · @buildbox")
-            t.expectEqual(line(row(.awaiting, host: "buildbox")), "@buildbox · waiting for your answer")
+            t.expectEqual(line(row(.awaiting, host: "buildbox")), "@buildbox · needs you")
         },
 
         TestCase("A blank first line is skipped, and a tab keeps two words apart") { t in

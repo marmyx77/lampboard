@@ -9,11 +9,11 @@ struct RemoteHostStatus: Equatable {
 
         var label: String {
             switch self {
-            case .unknown: return "hooks: not checked yet"
-            case .checking: return "hooks: checking…"
-            case .installed: return "hooks: installed"
-            case .absent: return "hooks: not installed"
-            case .failed(let reason): return "hooks: \(reason)"
+            case .unknown: return "connection: not checked yet"
+            case .checking: return "connection: checking…"
+            case .installed: return "connected"
+            case .absent: return "not connected"
+            case .failed(let reason): return "connection: \(reason)"
             }
         }
     }
@@ -147,7 +147,7 @@ final class RemoteFleet: ObservableObject {
                     var notes = ["python \(inspection.pythonVersion)"]
                     notes.append(inspection.claudeVersion.map { "Claude Code \($0)" } ?? "Claude Code version not read")
                     if let note = NativeHookSupport.note(for: inspection.claudeVersion) { notes.append(note) }
-                    if !inspection.hasCurl { notes.append("curl missing: the hook script needs it") }
+                    if !inspection.hasCurl { notes.append("curl missing: the connection needs it") }
                     if let problem = inspection.directoryProblem { notes.append("~/.lampboard there \(problem)") }
                     if let error = inspection.error { notes.append("settings.json unreadable: \(error)") }
                     // The one question only the node can answer: where is the port
@@ -165,15 +165,15 @@ final class RemoteFleet: ObservableObject {
                         switch repair {
                         case .success(let text): notes.append(text)
                         case .failure(let error):
-                            notes.append("hooks there carry no token and could not be rewritten: \(error.short)")
+                            notes.append("the connection there carries no token and could not be rewritten: \(error.short)")
                         }
                     }
                     // A mod of another version than this app's, put there by an
                     // earlier one, is brought up to date the same way.
                     switch RemoteModInstaller.refresh(on: host, inspection: inspection) {
                     case .success(let text)?: notes.append(text)
-                    case .failure(let error)?: notes.append("mod there not updated: \(error.short)")
-                    case nil: if let version = inspection.modVersion { notes.append("mod \(version)") }
+                    case .failure(let error)?: notes.append("helper there not updated: \(error.short)")
+                    case nil: if let version = inspection.modVersion { notes.append("helper \(version)") }
                     }
                     outcome = .success("\(host): " + notes.joined(separator: "; "))
                 case .failure(let error):

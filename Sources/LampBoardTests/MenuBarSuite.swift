@@ -244,7 +244,7 @@ enum MenuBarSuite {
             ])
             t.expectEqual(
                 s.tooltip,
-                "LampBoard: 1 waiting for your answer, 1 working, 1 resting",
+                "LampBoard: 1 needs you, 1 working, 1 resting",
                 "most urgent first, and it names the state rather than the colour"
             )
         },

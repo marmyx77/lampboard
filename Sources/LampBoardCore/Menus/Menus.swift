@@ -189,10 +189,10 @@ public enum Menus {
         entries += [.item(.moveUp, "Move up"), .item(.moveDown, "Move down")]
         if !state.isRemote { entries.append(.item(.revealInFinder, "Show in Finder")) }
         if !state.isRemote, let repository = state.repository {
-            entries.append(.item(.pinDecision, "Pin a decision for “\(repository)”…"))
+            entries.append(.item(.pinDecision, "Add a project rule for “\(repository)”…"))
             if !state.pinned.isEmpty {
-                entries.append(.submenu("Pinned decisions (\(state.pinned.count))", state.pinned.enumerated().map { index, text in
-                    .item(.unpinDecision(index + 1), "Take off: \(text)")
+                entries.append(.submenu("Project rules (\(state.pinned.count))", state.pinned.enumerated().map { index, text in
+                    .item(.unpinDecision(index + 1), "Remove: \(text)")
                 }))
             }
         }

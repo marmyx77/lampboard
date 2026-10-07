@@ -53,7 +53,7 @@ extension PanelController {
             self.openPlancia(sessionId: id)
             guard let thread = self.plancia.thread, thread.sessionId == id else {
                 Diagnostics.log("bar: send to \(id) refused, its Plancia did not open")
-                return "Its Plancia did not open."
+                return "Its Session view did not open."
             }
             return thread.send(message) ? nil : (thread.sendError ?? "It did not go.")
         }

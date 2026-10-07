@@ -33,7 +33,7 @@ struct PlanciaView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 230)
-                    .accessibilityLabel("Plancia tab")
+                    .accessibilityLabel("Session view tab")
                 }
                 Spacer()
                 Button { model.pinned.toggle() } label: {
@@ -41,15 +41,15 @@ struct PlanciaView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(model.pinned ? Color.primary : StatusPalette.timeColor)
-                .tooltip(model.pinned ? "Pinned open. Click to let it close by itself." : "Keep the Plancia open")
-                .accessibilityLabel(model.pinned ? "Unpin the Plancia" : "Pin the Plancia open")
+                .tooltip(model.pinned ? "Pinned open. Click to let it close by itself." : "Keep the Session view open")
+                .accessibilityLabel(model.pinned ? "Unpin the Session view" : "Pin the Session view open")
                 Button(action: close) {
                     Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(StatusPalette.timeColor)
                 .tooltip("Back to the panel (Esc)")
-                .accessibilityLabel("Close the Plancia")
+                .accessibilityLabel("Close the Session view")
             }
             .padding(.horizontal, 10)
             .frame(height: 30)
@@ -91,7 +91,7 @@ struct PlanciaActivity: View {
 
     var body: some View {
         if log.entries.isEmpty {
-            PlanciaNote(text: "Nothing yet. Tools appear here as the session runs them, with the companion mod installed.")
+            PlanciaNote(text: "Nothing yet. Tools appear here as the session runs them, with the helper installed.")
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
@@ -145,7 +145,7 @@ struct PlanciaCost: View {
                 Text("This session").font(.system(size: 10, weight: .semibold)).foregroundStyle(StatusPalette.timeColor)
                 Text(session?.costUSD.map { RowSummary.spelled(dollars: $0) } ?? "—")
                     .font(.system(size: 12, design: .rounded))
-                Text(session?.costUSD == nil ? "The companion mod reports the cost; without it there is no figure."
+                Text(session?.costUSD == nil ? "The helper reports the cost; without it there is no figure."
                                              : "Counted by Claude Code at list price.")
                     .font(.system(size: 10)).foregroundStyle(StatusPalette.timeColor)
             }

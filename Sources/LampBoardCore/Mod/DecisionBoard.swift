@@ -19,10 +19,10 @@ public enum DecisionBoardError: Error, Equatable, Sendable {
 
     public var sentence: String {
         switch self {
-        case .empty: return "a decision needs words"
-        case .tooLong: return "a decision is one line of at most \(DecisionBoard.maxLength) characters"
-        case .duplicate: return "that decision is already pinned"
-        case .full: return "a repository holds at most \(DecisionBoard.maxPerRepository) decisions; take one off first"
+        case .empty: return "a project rule needs words"
+        case .tooLong: return "a project rule is one line of at most \(DecisionBoard.maxLength) characters"
+        case .duplicate: return "that project rule is already there"
+        case .full: return "a repository holds at most \(DecisionBoard.maxPerRepository) project rules; remove one first"
         case .badRepository: return "not a repository name"
         case .noSuchDecision: return "no decision with that number"
         case .unsaved: return "the board could not be saved"

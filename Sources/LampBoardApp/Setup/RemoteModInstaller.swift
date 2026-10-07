@@ -10,18 +10,18 @@ enum RemoteModInstaller {
     static func install(on host: String, inspection: RemoteInspection) -> Result<String, RemoteCommandError> {
         guard ModRegistration.isSupported(by: inspection.claudeVersion) else {
             let version = inspection.claudeVersion.map { "\($0)" } ?? "unknown"
-            return .failure(.remoteFailure("Claude Code there is \(version); the mod needs 2.1.287 or later"))
+            return .failure(.remoteFailure("Claude Code there is \(version); the helper needs 2.1.287 or later"))
         }
         guard let token = TokenStore().read(), let key = TokenStore(url: AppConfig.checkKeyURL).read() else {
-            return .failure(.remoteFailure("this panel has no token or permission key to give the mod there"))
+            return .failure(.remoteFailure("this panel has no token or permission key to give the helper there"))
         }
         return run(on: host, RemoteModScripts.payload(token: token, port: inspection.port, checkKey: key))
-            .map { "mod \(ModFiles.version) installed on \(host), reporting through the tunnel" }
+            .map { "helper \(ModFiles.version) installed on \(host), reporting through the tunnel" }
     }
 
     /// Takes it out there, and the three files it read.
     static func uninstall(on host: String, inspection: RemoteInspection) -> Result<String, RemoteCommandError> {
-        run(on: host, RemoteModScripts.removal(port: inspection.port)).map { "mod removed from \(host)" }
+        run(on: host, RemoteModScripts.removal(port: inspection.port)).map { "helper removed from \(host)" }
     }
 
     /// At launch, like the hooks' token: a node whose mod is older than this
@@ -30,7 +30,7 @@ enum RemoteModInstaller {
     static func refresh(on host: String, inspection: RemoteInspection) -> Result<String, RemoteCommandError>? {
         guard ModSetup.isInstalled, let there = inspection.modVersion,
               let theirs = ReleaseVersion(there), let ours = ReleaseVersion(ModFiles.version), theirs < ours else { return nil }
-        return install(on: host, inspection: inspection).map { _ in "mod there brought from \(there) to \(ModFiles.version)" }
+        return install(on: host, inspection: inspection).map { _ in "helper there brought from \(there) to \(ModFiles.version)" }
     }
 
     private static func run(on host: String, _ payload: [String: Any]) -> Result<Void, RemoteCommandError> {
@@ -58,7 +58,7 @@ extension RemoteHookInstaller {
             guard ModSetup.isInstalled else { return hooks }
             switch inspect(host).flatMap({ RemoteModInstaller.install(on: host, inspection: $0) }) {
             case .success(let mod): return hooks + "; " + mod
-            case .failure(let error): return hooks + "; mod not installed there: " + error.short
+            case .failure(let error): return hooks + "; helper not installed there: " + error.short
             }
         }
     }
@@ -72,7 +72,7 @@ extension RemoteHookInstaller {
         return uninstall(on: host).map { hooks in
             switch mod {
             case .success(let text): return text.isEmpty ? hooks : hooks + "; " + text
-            case .failure(let error): return hooks + "; mod there not removed: " + error.short
+            case .failure(let error): return hooks + "; helper there not removed: " + error.short
             }
         }
     }

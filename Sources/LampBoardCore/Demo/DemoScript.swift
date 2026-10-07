@@ -195,7 +195,7 @@ extension DemoScript {
     /// What a session answers a side question with, in the trial.
     public func sideAnswer(for session: String) -> String {
         session == sessions[2].id ? Self.eventsAnswer
-            : "In the trial only events answers a side question. Your own sessions answer from their conversation."
+            : "In the demo only events answers a quick question. Your own sessions answer from their conversation."
     }
 
     /// What LampMaster answers in the trial, whatever was asked.

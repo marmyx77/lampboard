@@ -53,7 +53,7 @@ enum WaitingQueueSuite {
         TestCase("An amber row with nothing said is a permission all the same") { t in
             let cards = WaitingQueue.cards(sessions: [row("a", .awaiting)], suggestions: [], now: at(1))
             t.expectEqual(kinds(cards), [.permission])
-            t.expectEqual(cards.first?.line, "waiting for your answer")
+            t.expectEqual(cards.first?.line, "needs you")
         },
 
         TestCase("A working row is in the queue only once it is stuck") { t in

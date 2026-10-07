@@ -11,15 +11,15 @@ extension PanelController {
         let pinned = board.current.decisions(for: repository)
         let listing = pinned.isEmpty
             ? ""
-            : "\n\nPinned now:\n" + pinned.enumerated().map { "\($0.offset + 1). \($0.element.text)" }.joined(separator: "\n")
+            : "\n\nRules now:\n" + pinned.enumerated().map { "\($0.offset + 1). \($0.element.text)" }.joined(separator: "\n")
         guard let text = Alerts.ask(
-            title: "Pin a decision for “\(repository)”",
-            message: "Every session working in this repository reads it with its next prompt, through the companion "
-                + "mod, and keeps to it unless you say otherwise. One line, at most \(DecisionBoard.maxLength) characters."
+            title: "Add a project rule for “\(repository)”",
+            message: "Every session working in this repository reads it with its next prompt, through the helper, "
+                + "and keeps to it unless you say otherwise. One line, at most \(DecisionBoard.maxLength) characters."
                 + listing,
             initialValue: "",
             placeholder: "Every timestamp is stored in UTC.",
-            confirmTitle: "Pin"
+            confirmTitle: "Add"
         ) else { return }
         apply(.pin(repository: repository, text: text), on: board)
     }
@@ -29,10 +29,10 @@ extension PanelController {
         let pinned = board.current.decisions(for: repository)
         guard pinned.indices.contains(number - 1) else { return }
         guard Alerts.confirm(
-            title: "Take this decision off “\(repository)”?",
+            title: "Remove this project rule from “\(repository)”?",
             message: "“\(pinned[number - 1].text)”\n\nSessions that were told about it read that it no longer "
-                + "applies, if it was the last one; otherwise they read the board as it now is.",
-            confirmTitle: "Take Off"
+                + "applies, if it was the last one; otherwise they read the rules as they now are.",
+            confirmTitle: "Remove"
         ) else { return }
         apply(.remove(repository: repository, number: number), on: board)
     }

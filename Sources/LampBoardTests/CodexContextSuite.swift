@@ -138,14 +138,14 @@ enum CodexContextSuite {
             t.expectEqual(usage?.usedPercent, 12.0, "percent")
             t.expectEqual(usage?.windowMinutes, 10_080, "window minutes")
             t.expectEqual(usage?.plan, "prolite", "plan")
-            t.expectEqual(usage?.sentence, "12% of the 7-day plan allowance used", "sentence")
+            t.expectEqual(usage?.sentence, "12% of the 7-day plan used", "sentence")
         },
 
         TestCase("A fraction of a percent keeps its decimal") { t in
             // Rounding 0.4 to zero would say the allowance is untouched when it
             // is not, and the whole point of the figure is the direction it moves.
             let usage = PlanUsage(usedPercent: 0.4, windowMinutes: 10_080, plan: nil)
-            t.expectEqual(usage.sentence, "0.4% of the 7-day plan allowance used", "sentence")
+            t.expectEqual(usage.sentence, "0.4% of the 7-day plan used", "sentence")
         },
 
         // MARK: What the harness cannot say

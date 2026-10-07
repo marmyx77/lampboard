@@ -24,7 +24,7 @@ extension CommandLineInterface {
                                               with them (--model sonnet|opus, --last N; spends tokens)
           lampboard search --reset          take the search index away (the panel builds it again)
           lampboard week                    the last seven days in a paragraph, from the same index
-          lampboard usage                   ask Anthropic how much of the allowance is gone,
+          lampboard usage                   ask Anthropic how much of the plan is used,
                                               on this Mac and on every node, and print it
           lampboard next                    raise the window of the next waiting session
           lampboard open <n>                raise the project bound to slot n

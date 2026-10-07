@@ -44,9 +44,9 @@ extension PanelController {
 
         if wanted {
             Alerts.info(
-                title: "The panel will now ask Anthropic about your allowance",
+                title: "The panel will now ask Anthropic how much of your plan is left",
                 message: """
-                Every \(Int(AppConfig.usagePollInterval / 60)) minutes or so lampboard asks                 api.anthropic.com how much of your account's allowance is gone — the same                 figures /usage shows — and draws them under the column.
+                Every \(Int(AppConfig.usagePollInterval / 60)) minutes or so lampboard asks                 api.anthropic.com how much of your plan is used — the same                 figures /usage shows — and draws them under the column.
 
                 It signs the request with the token Claude Code already keeps in your                 keychain. It only reads it: renewing that token could sign you out of                 Claude Code, so if the token is too old the strip simply goes quiet until                 Claude Code refreshes it.
 

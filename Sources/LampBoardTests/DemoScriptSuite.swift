@@ -63,7 +63,7 @@ enum DemoScriptSuite {
         TestCase("A side question to events and a question to LampMaster have the script's answers; nothing else does") { t in
             let script = DemoScript.standard
             t.expect(script.sideAnswer(for: "demo-events-03").contains("/api/v2/slots"), "events knows the calendar")
-            t.expect(script.sideAnswer(for: "demo-docs-0001").hasPrefix("In the trial"), "another session: said plainly")
+            t.expect(script.sideAnswer(for: "demo-docs-0001").hasPrefix("In the demo"), "another session: said plainly")
             t.expect(script.lampMasterAnswer.contains("api"), "LampMaster names who renamed it")
             t.expect(DemoScriptCheck.problems(script).isEmpty, "the answers hold nothing real")
         },

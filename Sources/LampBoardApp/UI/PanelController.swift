@@ -651,7 +651,7 @@ final class PanelController {
                 row.isTerminal
                     ? "\u{201C}\(row.displayName)\u{201D} runs in a terminal: start the new conversation there."
                     : row.primary.origin == .background
-                    ? "\u{201C}\(row.displayName)\u{201D} runs in the background: open it in the Plancia, or start one with claude --bg."
+                    ? "\u{201C}\(row.displayName)\u{201D} runs in the background: open it in its Session view, or start one with claude --bg."
                     : "\u{201C}\(row.displayName)\u{201D} does not host Claude Code conversations."
             )
             return

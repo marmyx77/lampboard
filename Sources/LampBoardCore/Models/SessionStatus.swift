@@ -50,15 +50,19 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     /// tooltip's summary is assembled in Core where a test can reach it.
     public var label: String {
         switch self {
+        // The words of the 1.1 glossary (U6, D128): what the state means for
+        // the person, not for the process.
         case .idle: return "resting"
         case .working: return "working"
-        case .waiting: return "waiting on background work"
+        // Paused on its own work — a shell, a monitor, a subagent — that will
+        // wake it; nothing for the person to do yet.
+        case .waiting: return "paused"
         // Neutral with respect to the reason: it covers both the permission
         // request and a dialog opened by an MCP server, without having to
         // propagate the cause.
-        case .awaiting: return "waiting for your answer"
-        case .ready: return "answer ready"
-        case .failed: return "turn interrupted"
+        case .awaiting: return "needs you"
+        case .ready: return "done"
+        case .failed: return "stopped"
         }
     }
 

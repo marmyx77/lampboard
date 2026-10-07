@@ -22,8 +22,8 @@ session is doing now. The letter in the ring is the
 model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT model of the Codex row at the
 bottom. The bar at the top counts what waits for you — sessions asking, answers to
 read, turns that stopped — and ends with LampMaster's star; a permission the panel
-holds opens under its own row, with Allow and Deny. Under the rows, the account's
-allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
+holds opens under its own row, with Allow and Deny. Under the rows, the usage left
+on the account. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
 starts the demo — the real app on a temporary home, playing a script of invented
 projects, reachable only that way — and captures its window, so the image can never contain
 anybody's real work and never falls behind the panel it shows. The band at the top
@@ -38,12 +38,12 @@ says so on the picture itself.
 
 | Color | State | Meaning |
 |---|---|---|
-| 🟠 blinking amber | `awaiting` | Claude is waiting for an answer from you — a permission, or a dialog opened by an MCP server. It is the only state that blocks the work, and the only one that blinks. |
-| 🟢 green | `ready` | The turn has finished: there is an answer to read. |
-| 🔴 solid red | `failed` | The turn stopped without producing anything: rate limit, overload, authentication error. |
-| 🟡 yellow | `working` | Claude is processing or running tools. |
-| 🔵 soft blue | `waiting` | The turn is over, but something Claude started is still running — a shell, a monitor on a CI run, a subagent — and will wake it. Nothing for you to do yet. |
-| ◯ grey ring | `idle` | Resting: the session is at rest. Nothing to read. After twelve hours at rest, a row folds into one *Resting* line at the foot of the column. |
+| 🟠 blinking amber | *needs you* (`awaiting`) | Claude is waiting for an answer from you — a permission, or a dialog opened by an MCP server. It is the only state that blocks the work, and the only one that blinks. |
+| 🟢 green | *done* (`ready`) | The turn has finished: there is an answer to read. |
+| 🔴 solid red | *stopped* (`failed`) | The turn stopped without producing anything: rate limit, overload, authentication error. |
+| 🟡 yellow | *working* | Claude is processing or running tools. |
+| 🔵 soft blue | *paused* (`waiting`) | The turn is over, but something Claude started is still running — a shell, a monitor on a CI run, a subagent — and will wake it. Nothing for you to do yet. |
+| ◯ grey ring | *resting* (`idle`) | Resting: the session is at rest. Nothing to read. After twelve hours at rest, a row folds into one *Resting* line at the foot of the column. |
 
 The table is in order of urgency; the column is not — rows keep the order **you**
 gave them, and a state lights a row up where it is. Green does not
@@ -64,9 +64,9 @@ nothing you can do about a rate limit until it expires.
 
 Two shapes say what the colour cannot. A **dashed** yellow light is a session at
 work that has sat on one tool for a quarter of an hour or more: a long build, or a
-command waiting on input. A **hollow** light is a session the companion mod does not
+command waiting on input. A **hollow** light is a session the helper does not
 speak for, while other sessions have it: its colour comes from the hooks alone, and
-what needs the mod is not there for it, usually because it started before the mod
+what needs the helper is not there for it, usually because it started before the helper
 was installed. The legend, *What the lights mean…*, draws both
 ([D115](docs/04-decisions.md#d115--the-lights-shape-dashed-when-stuck-hollow-without-the-mod)).
 
@@ -96,8 +96,8 @@ Codex writes `model_context_window` into the same record as the token count, so 
 Codex percentage rests on nothing of ours — no table, no calibration, nothing a
 vendor can invalidate without telling anybody. The card says so.
 
-With the companion mod installed (below), a Claude Code session counts its own
-context and the mod passes the figure on: **`reported`**, the number Claude Code's
+With the helper installed (below), a Claude Code session counts its own
+context and the helper passes the figure on: **`reported`**, the number Claude Code's
 status line shows. Nothing read from the transcript afterwards replaces it.
 
 ## The marks beside the name
@@ -118,7 +118,7 @@ At most a few, and only when they say something:
   ([D108](docs/04-decisions.md#d108--a-row-counts-the-answers-nobody-has-read)).
 
 **Before two sessions write the same file.** The ⚠ says it after the fact. With
-the companion mod, a session about to edit a file that another live session wrote
+the helper, a session about to edit a file that another live session wrote
 in the last two hours is stopped first, even when it would have edited on its own:
 it asks you, and a line at its foot says why, such as "notes.txt was written by
 “api” 12 minutes ago: check with it before changing it". In auto mode the question
@@ -136,7 +136,7 @@ promise, and the card says so rather than leaving you to find out.
 |---|---|---|
 | Where its sessions live | `~/.claude` | `~/.codex` |
 | Context ring | measured denominator, with a confidence | **window declared by the harness** |
-| Plan allowance | not on disk anywhere | in the card |
+| Usage left | not on disk anywhere | in the card |
 | Amber says *what* is being asked | no, by our choice: see below | **yes**, `Bash: git push origin main` |
 | Red, when a turn fails | yes | **never**: Codex publishes no error event at all |
 | Blue, while background agents work | yes | yes |
@@ -287,7 +287,7 @@ is key and this one never is. Resting on a row opens a card: the name, the state
 the machine and the folder underneath a name you chose, the exact figure with the
 tokens behind it, the model with its version, what the row is waiting on, its
 slot and the command that opens it, what the conversation has cost when the
-companion mod is installed (summed over a project's conversations, at list price),
+helper is installed (summed over a project's conversations, at list price),
 and — on a group — what each session in it is doing.
 
 While the pointer is on a row, a folder glyph appears between the timestamp and
@@ -303,7 +303,7 @@ the one that sends the panel to the menu bar or brings it back. On the right, in
 the drag handles' column, the legend — what the six colours and the two rings
 mean, with a live count of each — and the menu.
 
-## How much of your allowance is left
+## Usage left: how much of your plan remains
 
 **Off by default.** Turned on, a strip appears at the foot of the column with
 three bars: the rolling five-hour window Claude Code calls the session limit, the
@@ -324,7 +324,7 @@ readings, or with no climb in them, it says nothing rather than guess
 
 **Lowering a session until the reset.** A row whose session runs on Opus or Sonnet
 offers, in its menu, *Use Sonnet until the window resets (13:10)*, or Haiku for a
-Sonnet session. Chosen, the companion mod runs that session one model lower from
+Sonnet session. Chosen, the helper runs that session one model lower from
 its next turn until the window resets, then lets it go back on its own model.
 Choosing the item again gives the model back sooner. The session in focus is never
 offered. Nothing is lowered without your click
@@ -342,8 +342,8 @@ account, and two machines signed into the same account draw one group. Each node
 is asked **on the node** — only the three percentages come back over the tunnel,
 never the credential.
 
-**With the companion mod, no request at all.** A Claude Code session counts its
-account's session and week windows on every response, and the mod passes them on:
+**With the helper, no request at all.** A Claude Code session counts its
+account's session and week windows on every response, and the helper passes them on:
 with it installed the strip draws those two bars for this Mac with the switch off,
 since nothing leaves the Mac to get them. They are taken only from sessions on
 Claude Code's default configuration — a session with a `CLAUDE_CONFIG_DIR` of its
@@ -550,14 +550,14 @@ the same line arrives as a notification: "While you were away (1h 20m): 2 earlie
 answers (api, docs-site), 1 earlier failure (billing), $2.10 spent." What the rows
 still say — an answer still green, a session still asking — is not repeated, and when
 there is nothing else there is no line. The first click on the panel puts it away
-([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)). With the companion mod,
+([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)). With the helper,
 while you are away, a command that would delete recursively, force-push, discard
 changes or run as root waits for you, even where your settings would let it run on
 its own. The session shows why, and the dialog is there when you come back
 ([D116](docs/04-decisions.md#d116--away-a-destructive-command-waits-for-the-person)).
 
 **One session in focus.** *Focus on this session*, in a row's menu or as a button in
-its Plancia, puts that session in the foreground and marks its row with a pin.
+its Session view, puts that session in the foreground and marks its row with a pin.
 While it is there, the other sessions' notifications wait. Their rows still change
 colour; they just do not interrupt you. When you take the focus off, one
 notification says what waited: "While you were focused: 1 waiting for you (api), 2
@@ -667,7 +667,7 @@ panel. Until you do, the window reads and nothing else — no listener, no
 mailbox, nothing that can start a turn in your name. The dialog says why before
 you agree to it.
 
-With it on, there is a composer — in this window and in the Plancia — and it
+With it on, there is a composer — in this window and in the Session view — and it
 writes into the session you are looking at, the real one you have been talking to
 all along.
 
@@ -681,11 +681,11 @@ the session's own permissions: it can ask for work, never grant itself more. It
 appears in the conversation as yours.
 
 **From the bar**, with sending on and without opening anything first: `⌘K`, then `@name` and the
-message — `@api run the tests` — and `⏎`. The Plancia opens on that session and the
+message — `@api run the tests` — and `⏎`. The Session view opens on that session and the
 message goes through its composer, so you see it arrive and the answer come back.
 
-**Asking without disturbing**: `@name ?question` asks the session a side question
-and shows the answer right there in the bar. The session's LampBoard mod (1.5.0)
+**Asking without disturbing**: `@name ?question` asks the session a quick question
+and shows the answer right there in the bar. The session's LampBoard helper (1.5.0)
 takes the question before the session sees it and answers it with a fork over the
 conversation — no turn, nothing added to it, the conversation read from cache —
 so a session in the middle of work is not interrupted ([D82](docs/04-decisions.md)).
@@ -696,7 +696,7 @@ question costs the session's account the conversation read again from cache —
 some tens of thousands of cached tokens on a long session.
 
 **Asking LampMaster**: `?question` in the bar, or the box on *Today* in
-LampMaster's Plancia, asks it about all your sessions at once: "which conversation
+LampMaster's Session view, asks it about all your sessions at once: "which conversation
 renamed slots?". The box keeps a conversation: a follow-up, "and what did it keep
 for the old name?", is read against the last three answers, until *New
 conversation*. Asked from the panel, LampMaster also gets what the search index
@@ -709,7 +709,7 @@ Sonnet, under the same switch, hourly limits and daily tokens as a session's
 without a turn, for what the second needs — what it understood, decided and left,
 the files it touched — and puts it in the second session's composer, to read, change
 and send. It is never sent by itself; to a session on another machine it is copied
-([D91](docs/04-decisions.md)). From inside a session, `/handoff <name>` (mod 1.9.0)
+([D91](docs/04-decisions.md)). From inside a session, `/handoff <name>` (helper 1.9.0)
 does the same in the other direction: this session writes its own handoff and it
 waits in the named session's composer.
 
@@ -818,18 +818,18 @@ Measured on the node this panel watches: nine command hooks under the old name,
 alive and posting through the tunnel, that a repair knowing only the current name
 read as *nothing installed*.
 
-**The companion mod goes there too**, when it is on here and the machine's Claude
-Code is 2.1.287 or later: *Install hooks* (or `lampboard remote install`) also puts
-the mod into that machine's Claude Code with its own `claude plugin`, and the three
+**The helper goes there too**, when it is on here and the machine's Claude
+Code is 2.1.287 or later: *Connect…* (or `lampboard remote install`) also puts
+the helper into that machine's Claude Code with its own `claude plugin`, and the three
 files it reads into `~/.lampboard` there, owner-only — this panel's token, the
 tunnel's port and the permission key. Its sessions then report their context, cost
 and limits through the tunnel, and their permissions come to this panel
 like a local session's ([D83](docs/04-decisions.md)). From the bar, `@name message`
 and `@name ?question` reach a node's sessions too, over ssh into their own message
-box; the bar says where the message went, and a side question's answer comes back
+box; the bar says where the message went, and a quick question's answer comes back
 through the tunnel. A machine that runs a
-LampBoard panel of its own is left alone. The launch brings a node's mod up to this
-app's version; `remote uninstall` takes the mod out with the hooks. The tunnel keeps
+LampBoard panel of its own is left alone. The launch brings a node's helper up to this
+app's version; `remote uninstall` takes the helper out with the hooks. The tunnel keeps
 an ssh connection of its own, whatever your `ControlMaster` settings say, so a host
 reached only through a master you authenticated by hand needs key login straight
 through.
@@ -884,7 +884,7 @@ at a terminal, is a row of its own whether terminal sessions are shown or not
 ([D103](docs/04-decisions.md#d103--a-background-session-is-a-row-of-its-own)).
 It sits in no window, even when an editor has its folder open. The row is named by
 its conversation, its second line starts with "background", and a click opens its
-Plancia, where you can type to it like any other session. A background session
+Session view, where you can type to it like any other session. A background session
 started before the panel was running is found from its live file, just as a terminal one is.
 
 Claude Code keeps a one-line summary of each background session, along with what
@@ -905,10 +905,11 @@ with its exit code otherwise. The row sits with the sessions of the same folder;
 they carry passwords). With no panel running, the
 command runs anyway and says so once ([D70](docs/04-decisions.md)).
 
-## The companion mod
+## The helper
 
-Claude Code 2.1.287 and later run plugins of function hooks inside each session,
-and LampBoard carries one: `lampboard mod install` puts it into every Claude Code on
+The helper is LampBoard's companion mod: Claude Code 2.1.287 and later run plugins
+of function hooks inside each session, and LampBoard carries one. Settings › Claude
+Code & Codex installs it, and so does `lampboard mod install`, into every Claude Code on
 this Mac, through Claude Code's own `claude plugin` commands. From then on each
 session tells the panel its context as Claude Code counts it, what it has cost, the
 account's rate-limit windows, which tool it is running, and why it ended. A working
@@ -918,12 +919,12 @@ left waiting on input.
 
 It reads the home, LampBoard's token, port and permission key, and of a running tool its name and
 the first line of its shell command or its file path — no conversation, no file's
-contents; the panel masks anything in a command that looks like a secret — writes
-nothing, runs nothing, adds nothing to a conversation but the decisions you pinned
-(below), and talks only to
+contents; the panel masks anything in a command that looks like a secret — never
+runs a tool or writes a file itself, adds nothing to a conversation but the project
+rules (below), and talks only to
 `127.0.0.1`, and only once that port answers as LampBoard. `claude plugin validate
 --strict ~/.lampboard/mod-marketplace/mod` lists exactly that. The colours of the
-rows still come from the hooks, with or without the mod
+rows still come from the hooks, with or without the helper
 ([D65](docs/04-decisions.md)). `lampboard mod uninstall` takes it out, and
 `uninstall-hooks` takes it out with the hooks.
 
@@ -943,7 +944,7 @@ is you away rather than a session waiting
 ([D109](docs/04-decisions.md#d109--the-week-in-tiles-with-the-time-sessions-waited-on-you)).
 
 **A line above every session's prompt.** While another session waits for you — a
-permission, a question, a stuck or failed turn — the mod draws one line above the
+permission, a question, a stuck or failed turn — the helper draws one line above the
 prompt of the others: `⚑ LampBoard · 1: docs-site: Bash: npm publish`. A digit at an
 empty prompt brings this panel up on that session; nothing is answered from the
 line. In the terminal and the Claude app (one chat at a time there); not in VS Code,
@@ -962,29 +963,30 @@ never changed. What the call would do, when that is known without running it, is
 read from the command's first line — a command that "deletes recursively" or
 "force-pushes", or "more lines unseen" when it goes on past that line; an edit's "−3
 +5 lines". A red ⚠ beside the line marks the dangerous ones, its tooltip says why,
-and the session's Plancia shows it in full ([D87](docs/04-decisions.md)). A fixed list of
+and its Session view shows it in full ([D87](docs/04-decisions.md)). A fixed list of
 spellings, not a guarantee. A question Claude asks you with two to four options waits there the
 same way for 20 seconds, its options as buttons and on the digit keys, and the one
-you pick is your answer ([D86](docs/04-decisions.md)). The mod proves the ask with a key of its own,
+you pick is your answer ([D86](docs/04-decisions.md)). The helper proves the ask with a key of its own,
 `~/.lampboard/check-key`, which it sends nowhere, and believes only an answer
 signed with it, so nothing else listening on that port can say *allow*; it finds
 the panel from your home folder, which a project's settings cannot move
 ([D80](docs/04-decisions.md)).
 
-**Decisions every session keeps to.** When you settle something in one session,
+**Project rules every session keeps to.** When you settle something in one session,
 for example "every timestamp is stored in UTC", the parallel sessions in the same
-repository don't know it. `lampboard decide <repo> <text>` pins it on the board.
-With its next prompt, each session working in that repository reads the board as
+repository don't know it. A project rule — `lampboard decide <repo> <text>`, or a
+row's menu — puts it on the repository's board. With its next prompt, each session
+working in that repository reads the rules as
 context the model gets and you don't see. It reads it once each time the board
-changes, not with every prompt. When a pinned decision is taken off, a session that
+changes, not with every prompt. When a project rule is taken off, a session that
 was told about it is told it no longer applies.
 
-A repository holds at most twenty decisions, one line each, because whatever is
-pinned enters every one of its conversations. From the panel, right-click a row:
-choose *Pin a decision for “repo”…* to add one, or open *Pinned decisions* to take
+A repository holds at most twenty project rules, one line each, because each one
+enters every one of its conversations. From the panel, right-click a row:
+choose *Add a project rule for “repo”…* to add one, or open *Project rules* to take
 one off. From a terminal, `lampboard decisions` lists them and
 `lampboard undecide <repo> <n>` takes one off. The board lives in
-`~/.lampboard/decisions.json`, owner-only. The mod asks for the board with the
+`~/.lampboard/decisions.json`, owner-only. The helper asks for the board with the
 permission key and takes it only when it is signed with that key, so nothing else
 listening on the port can put words in front of a model
 ([D105](docs/04-decisions.md#d105--a-decision-pinned-for-a-repository-reaches-every-session-in-it)).
@@ -1337,7 +1339,7 @@ Then drag the app to the Trash. `uninstall-hooks` reaches both configurations �
 `~/.claude/settings.json` and `~/.codex/hooks.json` — and removes only the
 registrations it added, leaving the rest of each file alone; the `tccutil` lines
 take the authorizations back, which the Trash does not do on its own, and the
-companion mod and the `lampmaster` MCP server go with the hooks, and a
+helper and the `lampmaster` MCP server go with the hooks, and a
 record left behind is what makes a later reinstall behave strangely.
 
 ## How it works
@@ -1560,7 +1562,7 @@ lampboard uninstall-hooks          remove the registrations (the script stays on
 lampboard status                   configuration and detected sessions
 lampboard selftest                 check the whole chain and report what's missing
 lampboard sessions                 the column as the running app sees it
-lampboard usage                    ask Anthropic how much of the allowance is gone, here and on every node
+lampboard usage                    ask Anthropic how much of the plan is used, here and on every node
 lampboard terminal on|off|status   rows for claude started in a terminal
 lampboard rename <folder> [name]   the panel's word for a row; no name restores it
 lampboard decide <repo> <text>     pin a decision every session in that repository reads
@@ -1574,7 +1576,7 @@ lampboard new <n>                  open a new conversation in slot n's project
 lampboard chat <n>                 open the extended view on slot n
 lampboard focus <workspace>        reproduce the click and explain what happens
 lampboard focus <workspace> --dry-run    diagnose without activating anything
-lampboard mod install|uninstall|status   the companion mod in every Claude Code session
+lampboard mod install|uninstall|status   the helper (the companion mod) in every Claude Code session
 lampboard watch [--name N] -- <command>  the command as a row: yellow, then green on 0 or red
 lampboard help
 ```

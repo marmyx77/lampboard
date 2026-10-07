@@ -169,7 +169,7 @@ enum AccountLimitsReader {
         switch await ask(endpoint, token: token) {
         case .answer(let data):
             guard let limits = AccountLimits.decode(data) else {
-                return .quiet("the allowance answer could not be read")
+                return .quiet("the usage service's answer could not be read")
             }
             return .report(
                 AllowanceReport(account: account, machine: localMachine, limits: limits)
@@ -182,9 +182,9 @@ enum AccountLimitsReader {
         case .throttled:
             return .throttled
         case .status(let status):
-            return .quiet("the allowance service answered \(status)")
+            return .quiet("the usage service answered \(status)")
         case .unreachable:
-            return .quiet("the allowance could not be reached")
+            return .quiet("the usage service could not be reached")
         }
     }
 

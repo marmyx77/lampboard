@@ -143,7 +143,7 @@ public enum CommandBar {
         }
     }
 
-    static let askNeedsMod = "Its session needs the LampBoard mod 1.5.0: restart it after the update"
+    static let askNeedsMod = "Its session needs the LampBoard helper 1.5.0: restart it after the update"
 
     /// `@name ?question`: each session found, asked without disturbing it
     /// (D82) — only one whose mod said it can answer, on this Mac.
@@ -180,7 +180,7 @@ public enum CommandBar {
         let can = from.sessionId.map(askable.contains) == true
         let detail = !can ? askNeedsMod : !sendingEnabled ? sendingOff
             : "\(from.title) writes it from its conversation, with no turn; "
-                + (host.map { "copied for \(to.title) on \($0)" } ?? "you send it from \(to.title)'s Plancia")
+                + (host.map { "copied for \(to.title) on \($0)" } ?? "you send it from \(to.title)'s Session view")
         return [Result(id: "handoff:\(from.id):\(to.id)", kind: .handoff, title: "Hand \(from.title) over to \(to.title)",
                        detail: detail, sessionId: can && sendingEnabled ? from.sessionId : nil, action: nil,
                        status: from.status, targetId: to.sessionId)]

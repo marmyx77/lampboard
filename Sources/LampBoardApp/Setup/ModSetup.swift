@@ -62,7 +62,7 @@ enum ModSetup {
         let version = ClaudeCodeInstallation.installedVersion()
         guard ModRegistration.isSupported(by: version) else {
             return "Claude Code \(version.map { "\($0)" } ?? "") is older than \(ModRegistration.firstRelease), "
-                + "the first with mods. The hooks keep the panel working meanwhile."
+                + "the first that can run the helper. The connection keeps the panel working meanwhile."
         }
         return nil
     }
@@ -87,7 +87,7 @@ enum ModSetup {
         }
         if case .failed(let reason)? = outcome {
             Diagnostics.log("mod refresh failed: \(reason)")
-            try? "The LampBoard mod could not be updated: \(reason)".write(to: problemURL, atomically: true, encoding: .utf8)
+            try? "The LampBoard helper could not be updated: \(reason)".write(to: problemURL, atomically: true, encoding: .utf8)
         }
     }
 
@@ -116,7 +116,7 @@ enum ModSetup {
     private static func uninstallUnlocked() -> Outcome {
         let outcomes = ModRegistration.uninstallSteps.map(claude)
         guard !isPresent else {
-            return outcomes.first { $0 != .done } ?? .failed("Claude Code still lists the LampBoard mod.")
+            return outcomes.first { $0 != .done } ?? .failed("Claude Code still lists the LampBoard helper.")
         }
         try? FileManager.default.removeItem(at: folder)
         try? FileManager.default.removeItem(at: problemURL)
