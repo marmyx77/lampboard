@@ -747,7 +747,7 @@ final class PanelController {
 
         if wanted {
             guard Alerts.confirm(
-                title: "Let the panel answer your sessions?",
+                title: "Send messages to sessions?",
                 message: """
                 You will be able to type and dictate into the conversation window \
                 and the Plancia. A session of Claude Code 2.1.224 or later takes the \

@@ -35,6 +35,7 @@ struct Preferences {
         static let permissionsFromPanel = "permissions.panel"
         static let bandHidden = "band.hidden"
         static let searchOff = "search.off"
+        static let safetyCatchOff = "away.safetyCatchOff"
         static let mutedUntil = "notify.mutedUntil"
         static let focusedSession = "focus.session"
         static let awayManual = "away.manual"
@@ -359,6 +360,13 @@ struct Preferences {
     var bandEnabled: Bool {
         get { !defaults.bool(forKey: Key.bandHidden) }
         nonmutating set { defaults.set(!newValue, forKey: Key.bandHidden) }
+    }
+
+    /// The safety catch while away (D116): on unless switched off in Settings,
+    /// Acting from the panel (U3).
+    var safetyCatch: Bool {
+        get { !defaults.bool(forKey: Key.safetyCatchOff) }
+        nonmutating set { defaults.set(!newValue, forKey: Key.safetyCatchOff) }
     }
 
     /// The search index (0.7): kept up unless switched off; local, no token.

@@ -1,168 +1,150 @@
 import LampBoardCore
 import SwiftUI
 
-/// The Settings window's content: LampMaster, the companion mod, the menu bar
-/// and notifications, then the remote machines, as one form.
+/// The Settings window's content (U3): the nine sections of `SettingsCatalog`
+/// down the side, the chosen one on the right.
 struct SettingsView: View {
+    @ObservedObject var model: SettingsModel
     @ObservedObject var fleet: RemoteFleet
     let lampMaster: LampMasterService
-    var preferences = Preferences()
-
-    @State private var showsTerminalSessions = Preferences().showsTerminalSessions
-    @State private var newHost = ""
-    @State private var addError: String?
-    /// The machine whose hooks are about to be installed; the alert asks first,
-    /// because this writes a file on another computer.
-    @State private var installTarget: String?
 
     var body: some View {
-        Form {
-            LampMasterSettings(service: lampMaster)
-            ModSettings()
-            AlertSettings()
-            Section {
-                Text("""
-                Sessions running on another machine reach the panel through an ssh \
-                tunnel this app opens and keeps open: a loopback port of your own over \
-                there, checked after every connect to be bound to nothing else. The machine \
-                needs ssh key login (no password prompt), python3 and curl. Add it, then \
-                install the hooks there.
-                """)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-                if fleet.hosts.isEmpty {
-                    Text("No machines yet.").foregroundStyle(.secondary)
-                }
-
-                ForEach(fleet.hosts, id: \.self) { host in
-                    hostRow(host)
-                }
-
-                HStack {
-                    TextField("name as ssh knows it: node, or user@host", text: $newHost)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit(add)
-                    Button("Add", action: add)
-                        .disabled(newHost.trimmed.isEmpty)
-                }
-                if let addError {
-                    Text(addError).font(.caption).foregroundStyle(.red)
-                }
-            } header: {
-                Text("Remote machines")
-            } footer: {
-                Text("""
-                A machine's sessions appear when they speak, because their hooks reach this Mac \
-                through the tunnel, and leave when the machine says the process is gone. \
-                Clicking one raises its Remote-SSH window here, if one is open.
-                """)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Show terminal sessions", isOn: $showsTerminalSessions)
-                    .onChange(of: showsTerminalSessions) { _, wanted in
-                        preferences.showsTerminalSessions = wanted
+        HStack(spacing: 0) {
+            sidebar
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(model.section).font(.title2.weight(.semibold))
+                    if let current = SettingsCatalog.sections.first(where: { $0.title == model.section }), current.warns {
+                        Label(current.title == "LampMaster"
+                              ? "Sends parts of your conversations to Anthropic, with your own sign-in."
+                              : "These act on your sessions. Each is off until you turn it on.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.callout)
+                            .foregroundStyle(.orange)
                     }
-            } header: {
-                Text("Terminal sessions")
-            } footer: {
-                Text("""
-                A `claude` started in a terminal (Terminal, iTerm2, Ghostty, a tmux or \
-                zellij pane) in a folder no editor window has open gets a row of its own, \
-                named by its conversation. The panel follows the switch within five seconds. \
-                Clicking such a row will ask, once per terminal application, for the \
-                Automation permission that lets the panel select its tab.
-                """)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                    pane
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .formStyle(.grouped)
-        .frame(minWidth: 580, minHeight: 340)
-        .alert(
-            "Install the hooks on \(installTarget ?? "")?",
-            isPresented: Binding(get: { installTarget != nil }, set: { if !$0 { installTarget = nil } })
-        ) {
-            Button("Install") {
-                if let host = installTarget { fleet.run(.install, on: host) }
-                installTarget = nil
+        .frame(minWidth: 760, minHeight: 460)
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(SettingsCatalog.sections, id: \.title) { section in
+                Button { model.section = section.title } label: {
+                    HStack(spacing: 8) {
+                        Circle().fill(tint(section)).frame(width: 8, height: 8)
+                        Text(section.title).font(.system(size: 13))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 28)
+                    .background(RoundedRectangle(cornerRadius: 6)
+                        .fill(model.section == section.title ? Color.accentColor.opacity(0.22) : .clear))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(model.section == section.title ? [.isSelected, .isButton] : .isButton)
             }
-            Button("Cancel", role: .cancel) { installTarget = nil }
-        } message: {
-            Text(
-                "lampboard will write ~/.lampboard/hook.sh and register "
-                + "\(HookConfigMerger.defaultEvents.count) hooks in ~/.claude/settings.json on "
-                + "\(installTarget ?? "that machine"), over ssh. A dated backup of that file is left there, "
-                + "and nothing is written if the file changes in the meantime. The panel can show that "
-                + "machine's sessions; it cannot answer them."
-            )
+            Spacer()
+        }
+        .padding(10)
+        .frame(width: 210)
+        .background(Color.primary.opacity(0.04))
+    }
+
+    @ViewBuilder
+    private var pane: some View {
+        switch model.section {
+        case "Panel": PanelPane(model: model)
+        case "Clicks & keys": ClicksPane(model: model)
+        case "Alerts": AlertsPane(model: model)
+        case "Claude Code & Codex": AgentsPane(model: model)
+        case "Acting from the panel": ActingPane(model: model)
+        case "LampMaster": SettingsGroupBox(title: SettingsCatalog.section(of: .lampMaster).groups[0].title, warns: true) {
+            LampMasterSettings(service: lampMaster)
+        }
+        case "Other Macs": OtherMacsPane(fleet: fleet)
+        case "Privacy & data": PrivacyPane(model: model)
+        default: AboutPane(model: model)
         }
     }
 
-    private func add() {
-        addError = fleet.add(newHost)
-        if addError == nil { newHost = "" }
+    private func tint(_ section: SettingsCatalog.Section) -> Color {
+        switch section.title {
+        case "Panel", "Clicks & keys": return .blue
+        case "Alerts", "Acting from the panel": return .orange
+        case "Claude Code & Codex": return .green
+        case "LampMaster": return StatusPalette.lampMasterTint
+        default: return .gray
+        }
     }
+}
 
-    private func hostRow(_ host: String) -> some View {
-        let status = fleet.status[host] ?? RemoteHostStatus()
-        return VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
-                Text(host).font(.headline)
-                if status.busy { ProgressView().controlSize(.small) }
-                Spacer()
-                Button("Check", action: { fleet.run(.check, on: host) })
-                if status.hooks == .installed {
-                    Button("Remove hooks", action: { fleet.run(.uninstall, on: host) })
-                } else {
-                    Button("Install hooks…", action: { installTarget = host })
-                }
-                Button(action: { fleet.remove(host) }) {
-                    Image(systemName: "minus.circle")
-                }
-                .buttonStyle(.borderless)
-                .help("Forget this machine. The hooks installed there stay until you remove them.")
+/// A group of settings under its title, in a rounded box; orange-edged when what
+/// is inside acts on the sessions or leaves the Mac.
+struct SettingsGroupBox<Content: View>: View {
+    let title: String
+    var warns = false
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if !title.isEmpty {
+                Text(title.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             }
-            .disabled(status.busy)
+            VStack(alignment: .leading, spacing: 12) { content() }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(warns ? Color.orange.opacity(0.7) : Color.primary.opacity(0.08), lineWidth: 1))
+        }
+    }
+}
 
-            HStack(spacing: 14) {
-                Label(status.tunnel.label, systemImage: tunnelSymbol(status.tunnel))
-                Label(status.hooks.label, systemImage: hooksSymbol(status.hooks))
+/// One setting: its name and its control on a line, what it does under them.
+/// The name and the line come from `SettingsCatalog`, and nowhere else.
+struct SettingRow<Control: View>: View {
+    let id: SettingsCatalog.ID
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        let item = SettingsCatalog.item(id)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(item.label)
+                Spacer(minLength: 12)
+                control()
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            if let message = status.message {
-                Text(message)
-                    .font(.caption)
+            if !item.help.isEmpty {
+                Text(item.help)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 4)
     }
+}
 
-    private func tunnelSymbol(_ state: RemoteTunnel.State) -> String {
-        switch state {
-        case .up: return "link"
-        case .starting: return "ellipsis.circle"
-        case .down: return "exclamationmark.triangle"
-        case .exposed: return "exclamationmark.shield"
-        case .stopped: return "link.badge.plus"
-        }
-    }
+/// A setting that is a switch.
+struct SettingToggle: View {
+    let id: SettingsCatalog.ID
+    let isOn: Bool
+    var enabled = true
+    let set: (Bool) -> Void
 
-    private func hooksSymbol(_ hooks: RemoteHostStatus.Hooks) -> String {
-        switch hooks {
-        case .installed: return "checkmark.circle"
-        case .absent: return "circle"
-        case .checking, .unknown: return "questionmark.circle"
-        case .failed: return "xmark.circle"
+    var body: some View {
+        SettingRow(id: id) {
+            Toggle("", isOn: Binding(get: { isOn }, set: set))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .disabled(!enabled)
+                .accessibilityLabel(SettingsCatalog.item(id).label)
         }
     }
 }

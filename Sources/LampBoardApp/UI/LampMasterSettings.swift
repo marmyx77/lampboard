@@ -1,8 +1,8 @@
 import LampBoardCore
 import SwiftUI
 
-/// LampMaster's section of Settings: the switch, and what it costs, said
-/// before it is pressed.
+/// Settings › LampMaster: the switch, and what it costs, said before it is
+/// pressed. Names from `SettingsCatalog` (U3).
 ///
 /// The sentence is on screen whether or not the switch is on, because the
 /// choice it describes — pieces of conversations sent to Anthropic, the
@@ -18,11 +18,8 @@ struct LampMasterSettings: View {
     @State private var setupError: String?
 
     var body: some View {
-        Section {
-            Toggle("Let LampMaster look at the sessions", isOn: Binding(
-                get: { service.snapshot.enabled },
-                set: { service.setEnabled($0) }
-            ))
+        VStack(alignment: .leading, spacing: 10) {
+            SettingToggle(id: .lampMaster, isOn: service.snapshot.enabled) { service.setEnabled($0) }
 
             Text("""
             Once an hour — and at once, up to six times a day, when a session starts repeating \
@@ -39,10 +36,7 @@ struct LampMasterSettings: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
-            Toggle("Let every Claude Code session ask LampMaster", isOn: Binding(
-                get: { callable },
-                set: { wanted in Task { await setCallable(wanted) } }
-            ))
+            SettingToggle(id: .lampMasterAsk, isOn: callable) { wanted in Task { await setCallable(wanted) } }
             Text("""
             Adds lampmaster to Claude Code as an MCP server, for all your projects. A session can \
             then ask who else is on its files, who worked on a topic, who hit the same error — \
@@ -58,12 +52,12 @@ struct LampMasterSettings: View {
                 Text(setupError).font(.caption).foregroundStyle(.red)
             }
 
-            Picker("Every", selection: $minutes) {
+            Picker(SettingsCatalog.item(.lampMasterEvery).label, selection: $minutes) {
                 ForEach([30, 60, 90, 120], id: \.self) { Text("\($0) minutes").tag($0) }
             }
             .onChange(of: minutes) { _, value in preferences.lampMasterInterval = TimeInterval(value * 60) }
 
-            Picker("Model", selection: $model) {
+            Picker(SettingsCatalog.item(.lampMasterModel).label, selection: $model) {
                 Text("Opus — finds the links between sessions").tag("opus")
                 Text("Sonnet — faster and cheaper").tag("sonnet")
             }
@@ -93,8 +87,9 @@ struct LampMasterSettings: View {
                     }
                 }
             }
-        } header: {
-            Text("LampMaster")
+            if muted.isEmpty {
+                SettingRow(id: .lampMasterMuted) { Text("None").foregroundStyle(.secondary) }
+            }
         }
         // A card's "don't suggest this kind" publishes the service's state; the
         // list here follows it rather than keeping what it saw when it opened.

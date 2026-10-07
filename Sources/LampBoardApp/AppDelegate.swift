@@ -26,7 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
-    private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster)
+    private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster,
+                                                               panel: { [weak self] in self?.panelController })
     /// Built with the panel, because it counts what the panel is showing.
     private var legendWindow: LegendWindowController?
     /// The nonces of the handoffs taken (D91): a proof heard twice counts once.
@@ -181,7 +182,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Opens the window at launch: for the screenshots, and for a check on a
         // Mac where nobody is there to click the menu.
         if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
-        if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
+        // `--settings [section]` opens Settings, on a section when one is named.
+        if let index = CommandLine.arguments.firstIndex(of: "--settings") {
+            let next = CommandLine.arguments.indices.contains(index + 1) ? CommandLine.arguments[index + 1] : nil
+            settingsWindow.show(section: next.flatMap { $0.hasPrefix("--") ? nil : $0 })
+        }
         if CommandLine.arguments.contains("--legend") { legendWindow?.show() }
         // LampMaster's Plancia on one of its sheets (D96): `--lampmaster today`.
         if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
@@ -478,7 +483,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onModHold: { [awayFlag] body, nonce, proof, key in
                 guard let request = HoldExchange.provenRequest(body, nonce: nonce, proof: proof, key: key),
                       let nonce else { return "" }
-                let reason = HoldExchange.reason(command: request.command, cut: request.cut, away: awayFlag.isAway)
+                // The switch in Settings, read where the answer is made (U3).
+                let reason = HoldExchange.reason(command: request.command, cut: request.cut,
+                                                 away: awayFlag.isAway && Preferences().safetyCatch)
                 return HoldExchange.answer(reason: reason, nonce: nonce, key: key)
             }
         )

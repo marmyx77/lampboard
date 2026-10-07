@@ -2,8 +2,10 @@ import Combine
 import LampBoardCore
 import SwiftUI
 
-/// The companion mod's section of Settings: the switch, what the mod does said
-/// before it is pressed, and Claude Code's own reading of it on request (5.10).
+/// The helper (the companion mod) in Settings › Claude Code & Codex: the switch,
+/// what it does said before it is pressed, and Claude Code's own reading of it on
+/// request (5.10). Answering from the panel and the line above each prompt, which
+/// need it, have their own places since 1.1 (U3).
 ///
 /// Off until switched on, like LampMaster: the mod runs inside every session
 /// somebody opens, and that is theirs to agree to, having read what it does.
@@ -13,32 +15,24 @@ struct ModSettings: View {
     @State private var working = false
     @State private var problem: String?
     @State private var reading: ModTrust.Reading?
-    @State private var permissions = Preferences().permissionsFromPanel
-    @State private var band = Preferences().bandEnabled
     /// Getting started, the command line or the launch refresh can change it
     /// while this window is open: read again every few seconds.
     private let refresh = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        Section {
-            Toggle("Install the LampBoard mod in Claude Code", isOn: Binding(
-                get: { installed },
-                set: { wanted in Task { await set(wanted) } }
-            ))
-            .disabled(working)
+        VStack(alignment: .leading, spacing: 8) {
+            SettingToggle(id: .helper, isOn: installed, enabled: !working) { wanted in Task { await set(wanted) } }
 
             Text("""
-            Claude Code 2.1.287 and later run small plugins inside each session. LampBoard's \
-            tells this panel each session's context as Claude Code counts it, what the session \
-            has cost, your plan's limits, which tool it is running and why it ended. It reads \
-            LampBoard's token, port and permission key, and of a running tool its name and the first line of \
-            its shell command (anything that looks like a secret masked) or its file path — \
-            no conversation, no file's contents — writes nothing, runs nothing, \
-            and talks only to 127.0.0.1, once that port answers as \
-            LampBoard. It adds nothing to the context of your sessions. One exception you ask \
-            for: a question typed in the bar as @name ?question, with sending on, is answered \
-            by a side look over that session's conversation — no turn, nothing added to it — \
-            and only the answer comes back here. Sessions already open pick it up after a restart.
+            Claude Code 2.1.287 and later run small plugins inside each session. The helper tells \
+            this panel each session's exact context, its cost, your plan's limits, the tool it is \
+            running and why a turn ended. Of a running tool it reads the name and the first line of \
+            its command (anything that looks like a secret masked) or its file path — never a \
+            conversation, never a file's contents — and it talks only to this Mac. It never runs a \
+            tool or writes a file itself. It can make Claude Code ask you first: before an edit to a \
+            file another session has just written, and, while you are away, before a destructive \
+            command. With the switches under Acting from the panel, it carries your answers to \
+            permissions and questions. Sessions already open pick it up after a restart.
             """)
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -65,39 +59,6 @@ struct ModSettings: View {
                 Text(problem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
 
-            // Said before it is switched on (D73): it decides what runs.
-            Text("""
-            With the mod installed, a session about to ask you whether it may run something can \
-            ask this panel first. The ask opens under the session's row with Allow and Deny, also \
-            on the A and D keys, for up to 55 seconds; unanswered, the session shows its own \
-            dialog, as it always did. A question Claude asks you with two to four options \
-            waits there too, its options on the digit keys, for up to 20 seconds. Only what Claude Code would have asked you: nothing it \
-            allows or refuses by itself is ever changed. Sessions with the mod pick it up at once.
-            """)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            Toggle("Answer permissions and questions from the panel", isOn: Binding(
-                get: { permissions },
-                set: { permissions = $0; Preferences().permissionsFromPanel = $0 }
-            ))
-            .disabled(!installed && !permissions)
-
-            Toggle("Show what waits elsewhere above each session's prompt", isOn: Binding(
-                get: { band },
-                set: { band = $0; Preferences().bandEnabled = $0 }
-            ))
-            Text("""
-            While another session waits for you — a permission, a question, a stuck or failed \
-            turn — a line above the prompt of the others says so, in the terminal and in the \
-            Claude app (one chat at a time there). A digit at an empty prompt opens it in this \
-            panel; nothing is answered from the line. Not in VS Code, where mods draw nothing.
-            """)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        } header: {
-            Text("The LampBoard mod")
         }
         .onAppear(perform: reload)
         .onReceive(refresh) { _ in if !working { reload() } }
