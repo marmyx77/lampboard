@@ -294,7 +294,7 @@ enum MailboxDisabledSuite {
         TestCase("A refusal names itself and says where the switch is") { t in
             let description = MailboxError.disabled.description
             t.expect(!description.isEmpty, "silent refusal")
-            t.expect(description.contains("panel menu"), "no way to act on it: \(description)")
+            t.expect(description.contains("Settings › Acting from the panel"), "no way to act on it: \(description)")
         },
 
         TestCase("Disabled is a distinct outcome, not a generic failure") { t in
