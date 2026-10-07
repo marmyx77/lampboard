@@ -60,7 +60,6 @@ extension PanelController {
         plancia.open(session, store: store)
         planciaAwaySince = nil
         rebuildContent()
-        tour?.handle(.planciaOpened(session: session.id))
     }
 
     /// What the Plancia header's buttons do (UX §5): the row's own actions.
@@ -96,7 +95,6 @@ extension PanelController {
     func toggleFocus(sessionId: String) {
         preferences.focusedSession = preferences.focusedSession == sessionId ? nil : sessionId
         onFocusChanged?(preferences.focusedSession)
-        if preferences.focusedSession != nil { tour?.handle(.focused) }
         rebuildContent()
     }
 
@@ -154,7 +152,6 @@ extension PanelController {
             toggleCompact()
         } else if let id = queue.cards.first?.sessionIds.first ?? currentRendering.rows.first?.primary.id {
             openPlancia(sessionId: id)
-            if plancia.isOpen { tour?.handle(.depthReachedPlancia) }
         } else {
             toggleCompact()
         }

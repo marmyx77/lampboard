@@ -89,10 +89,10 @@ enum PanelMetricsSuite {
             )
         },
 
-        TestCase("The tutorial's band is counted line by line, and only in a trial") { t in
+        TestCase("The band at the top is counted line by line, and only while it is there") { t in
             let blocks = [block()]
             t.expectEqual(
-                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, tourLines: 3, sizes: sizes)
+                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, bandLines: 3, sizes: sizes)
                     - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes),
                 51, "three lines of seventeen points"
             )
@@ -127,6 +127,16 @@ enum PanelMetricsSuite {
                           20 + 2, "the line and its gap")
             t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, resting: (true, 3), sizes: sizes) - none,
                           4 * (20 + 2), "the line and three rows")
+        },
+
+        TestCase("An empty column is as tall as what it says to do, and no taller once rows come") { t in
+            let empty = PanelMetrics.height(ofBlocks: [], extras: 0, showsIssue: false, empty: 70, sizes: sizes)
+            t.expectEqual(empty - PanelMetrics.height(ofBlocks: [], extras: 0, showsIssue: false, sizes: sizes), 50,
+                          "seventy points of guidance in place of a twenty-point row")
+            t.expectEqual(PanelMetrics.height(ofBlocks: [block(), block(), block(), block()], extras: 0, showsIssue: false,
+                                              empty: 70, sizes: sizes),
+                          PanelMetrics.height(ofBlocks: [block(), block(), block(), block()], extras: 0, showsIssue: false,
+                                              sizes: sizes), "rows taller than it: it changes nothing")
         },
 
         TestCase("The bar is its field, and its results and answer while something is typed") { t in

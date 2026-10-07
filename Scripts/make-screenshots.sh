@@ -16,7 +16,7 @@
 # **The states.** A hand-taken shot shows whatever the machine happened to be
 # doing. The panel has six states and three ring conditions, and the one worth
 # photographing — six different colours at once — has never once happened by
-# accident. The tutorial's trial plays them, deliberately, from its script.
+# accident. The demo plays them, deliberately, from its script.
 #
 # **It works with the screen locked.** `screencapture -l <window>` asks the window
 # server for that window's backing store, which is drawn whether or not anybody
@@ -45,14 +45,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# The sessions are the tutorial's script, `Sources/LampBoardCore/Demo/DemoScript.swift`:
+# The sessions are the demo's script, `Sources/LampBoardCore/Demo/DemoScript.swift`:
 # one place for demo data, checked by the tests to hold nothing real (D64). The
 # trial sets the stage itself — an editor lock per project, a stand-in process per
 # session, the transcripts and the Codex rollout — and plays the script into its
 # own server twenty times faster, so the six states below are the reducer's own.
-# `--trial-fresh` starts the band at step one and leaves anybody's progress alone.
 echo "▸ Starting the trial on port $PORT"
-env LAMPBOARD_HOME="$HOME_DIR" "$BIN" --trial --trial-fresh --trial-pace 20 --port "$PORT" --skip-setup-prompt &
+env LAMPBOARD_HOME="$HOME_DIR" "$BIN" --trial --trial-pace 20 --port "$PORT" --skip-setup-prompt &
 APP_PID=$!
 for _ in $(seq 1 40); do
     curl -sf --max-time 1 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1 && break

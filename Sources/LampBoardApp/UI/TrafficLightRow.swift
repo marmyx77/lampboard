@@ -51,6 +51,8 @@ struct RowActions {
     var toggleFocus: (ColumnRow) -> Void = { _ in }
     /// Copies what reopens a background session in a terminal (AV2).
     var copyAttach: (BackgroundJob) -> Void = { _ in }
+    /// Takes the sample rows away (U4).
+    var removeSamples: () -> Void = {}
 }
 
 /// What the column tells a row about the drag in progress.
@@ -232,11 +234,11 @@ struct TrafficLightRow: View {
                 // alternative was carrying it on every row for ever, on rows
                 // where it cannot even work — a session on another machine has a
                 // path, and it is not a path on this Mac.
-                if hovering, !row.workspace.isRemote {
+                if hovering, !row.workspace.isRemote, !isSample {
                     folderButton
                 }
 
-                if let drag {
+                if let drag, !isSample {
                     handle(drag)
                 }
             }
@@ -386,6 +388,9 @@ struct TrafficLightRow: View {
     /// without an escape hatch one click too many erases an answer nobody read.
     /// The menu entry exists because a modifier nobody discovers is dead code.
     private func activate() {
+        // A sample has no folder, no conversation and no window: whatever the
+        // modifiers, a click only reads it (U4).
+        if isSample { actions.open(row); return }
         let modifiers = NSEvent.modifierFlags
 
         // A project holding several conversations is a heading, and a plain click
@@ -424,7 +429,21 @@ struct TrafficLightRow: View {
 
     /// The row's menu (U3): eight entries, the ways of keeping it quiet under
     /// Quiet and the rarer things under More, built in Core (`Menus.row`).
+    @ViewBuilder
     private var menu: some View {
+        // A sample row's menu offers the one thing that makes sense for an
+        // invented row: taking the samples away. Hide, rename, focus and the rest
+        // would write preferences about a folder that does not exist (U4).
+        if isSample {
+            Button("Remove the samples", action: actions.removeSamples)
+        } else {
+            realMenu
+        }
+    }
+
+    private var isSample: Bool { Samples.isSample(row.primary.id) }
+
+    private var realMenu: some View {
         let repository = row.workspace.isRemote ? nil : row.primary.git?.repo
         let job = row.primary.origin == .background ? row.primary.backgroundJob : nil
         let state = RowMenuState(

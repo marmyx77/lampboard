@@ -1,18 +1,18 @@
 # Code map
 
-~69,300 lines of Swift across five targets. For each file: what it contains, why
+~68,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  21,337 lines · 168 files  pure logic, zero AppKit
-  LampBoardApp/    25,766 lines · 142 files   shell: AppKit, network, windows
-  LampBoardTests/  17,115 lines · 119 files   1222 cases, instantaneous
-  LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
+  LampBoardCore/  21,200 lines · 168 files  pure logic, zero AppKit
+  LampBoardApp/    25,619 lines · 141 files   shell: AppKit, network, windows
+  LampBoardTests/  17,068 lines · 120 files   1219 cases, instantaneous
+  LampBoardE2E/    4,690 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
 
-No file exceeds 795 lines. The limit the project sets itself is 800.
+No file exceeds 792 lines. The limit the project sets itself is 800.
 
 ---
 
@@ -997,7 +997,7 @@ first out.
 
 ## `Demo/`
 
-The invented sessions and the tutorial's tour (D64). One place for demo data, so
+The invented sessions of the demo and the samples, and the first minute (D64, D126). One place for demo data, so
 one place to check that it holds nothing real.
 
 ### `DemoScript.swift`
@@ -1012,25 +1012,17 @@ It also holds the answers the trial plays where a mod or a model would answer (D
 the permission api asks for, events' side answer and LampMaster's reply, checked
 by the same rule.
 
-### `GettingStarted.swift`
-The two lists of *Getting started*: the real setup — hooks, the Accessibility
-permission, and the switches that send something off the Mac, each explained before
-its button — and the first gestures worth trying on one's own sessions. Every tick is
-read from state the panel already keeps (row names, row order, LampMaster's answered
-cards, the questions sessions asked), so nothing new is recorded about anybody, and
-an item is done wherever it was done. Optional ones never count as left to do.
-For 1.0 (D122) the setup also offers the mod with what it really does, answering
-from the panel and writing to sessions, and the first steps add asking LampMaster
-from the panel, told apart from a session's question by the `panel` asker.
+### `Welcome.swift`
+The first minute (U4, D126): seven screens — connect, the first lamp, three colours,
+the click, answering from the panel, ⌘K, alerts —, each with one idea and a button
+that does what is still missing, read from what the Mac shows, and *Next* once it is
+done. Codex is named only where it is installed.
 
-### `Tour.swift`
-The tour's steps, every version's, and the ones this version shows: a step whose
-feature is not installed yet is not shown. A step moves on with its own gesture —
-the row clicked, `⌘⇧L` reaching the Plancia, a result chosen in the bar, a session
-put in focus, *I'm away* left again, the card answered — and with nothing else;
-there is no "Next" (D119). Each sentence fits the band's two lines.
-Progress is kept by step id, so a version that adds steps still resumes at the
-right one, and never leaves the Mac.
+### `Samples.swift`
+Three sample rows for the real panel (D126): api, docs-site and events under a
+folder no project has, api working, then answering, then asking, so the three
+colours play out in twenty seconds; a clicked one rests. Added to what the column
+draws (`TrafficLightState.adding`), never to the store.
 
 ## `Seat/`
 
@@ -1648,16 +1640,8 @@ forwarded to the running panel with the token, as the hooks do, carrying
 failure comes back as a tool error the calling model can read, never a dead server.
 `mcp install | uninstall | status` manage its entry in Claude Code (D63).
 
-### `TrialLauncher.swift` · 76
-`lampboard tour`: starts the tutorial's trial panel beside the real one, as a second
-process of this binary on a temporary home and a free port, so the two never share
-anything (D64). `--json` prints the script for the site and the screenshots. The
-same start serves *Take the tour…* in Settings › About & help and the offer made right after the
-hooks are installed; neither appears inside a trial, where a tour would stack
-panels.
-
 ### `CommandLineInterface.swift` · 759
-The commands and their dispatch: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename, mcp, mod, watch, tour. `--port` is read only before a `--`, so a watched command's own `--port` stays its own. `new` and `chat` share `runSlotCommand`; `open` stays separate
+The commands and their dispatch: install-hooks, uninstall-hooks, status, selftest, focus, next, open, new, chat, sessions, remote, terminal, rename, mcp, mod, watch, demo-script. `--port` is read only before a `--`, so a watched command's own `--port` stays its own. `new` and `chat` share `runSlotCommand`; `open` stays separate
 because a bare `open` lists the assignments, which is a different command wearing
 the same name. `focus --dry-run` diagnoses without moving any windows.
 
@@ -1707,7 +1691,8 @@ there, the hooks are registered — and it names the link that broke.
 | `DecisionBoardService.swift` | 80 | the decision board on disk, `~/.lampboard/decisions.json` (D105): read at launch, written whole through a `0600` file renamed into place, under a lock because the server's threads reach it; an unreadable file set aside as `.unreadable`, not overwritten by the next pin; `/decisions` answered with the board as it now is, or why not |
 | `GovernorService.swift` | 58 | the governor's plan on disk, `~/.lampboard/governor.json` (D112): 0600, renamed into place, read again when the file changes, under a lock because the server's threads ask it |
 | `LampMasterFiles.swift` | 181 | `~/.lampboard/lampmaster/`: rounds, suggestions with their outcomes, the notebook, the last 200 frames — read back for the bench (D102) —, the last day's questions. The folder is `0700` because the frames quote conversations |
-| `TrialStage.swift` | 199 | the trial: an editor lock per invented project, a stand-in process per session — for the Codex one, the app itself run as `codex trial-hold <rollout>` through a hard link, since a Codex session lives only while a process of that name holds its rollout open — a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard tour` named |
+| `SampleStage.swift` | 60 | the sample rows while they are in the panel: when they came, which were clicked, a tick each second for twenty seconds so their colours play out (D126) |
+| `TrialStage.swift` | 199 | the demo the screenshots and the end-to-end suite are taken on, behind `--trial` on a fake home only — no menu or setting opens it since 1.1 (D126): an editor lock per invented project, a stand-in process per session — for the Codex one, the app itself run as `codex trial-hold <rollout>` through a hard link, since a Codex session lives only while a process of that name holds its rollout open — a transcript with a title, LampMaster's demo card, then every beat posted to the app's own `/signal`. **Refused without `LAMPBOARD_HOME`**, where it would put invented sessions into the real `~/.claude`; on quit the stand-ins end and the home goes, but only a home `lampboard demo-script` named |
 | `SupportDirectoryMigration.swift` | 60 | carries `remotes` and `inbox` over from the support directory of the previous name — both unrecoverable elsewhere, both failing silently |
 | `SnapshotBox.swift` | 27 | lock-protected copy for the server |
 | `TokenStore.swift` | 78 | `0600` token, **regenerated** if the permissions are wide |
@@ -1874,7 +1859,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | File | Lines | What |
 |---|---|---|
 | `PanelController.swift` | 788 | holds everything together; row and panel actions |
-| `PanelSwitches.swift` | 101 | the menu's switches that reach outside the panel — presence, terminal sessions, launch at login — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
+| `PanelSwitches.swift` | 165 | the switches that reach outside the panel — presence, terminal sessions, launch at login, sending messages with its dialog and the delivery hook it registers (D81) — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 88 | what waits, wired in (D74, D124): its cards from the store and the asks the panel holds — LampMaster's suggestions stay out, they are its star in the bar —, Allow, Deny and a question's choice handed to the permission desk, `O` raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when an ask under a row comes or goes and every thirty seconds for rows that fold by time; the line said on return put away at the panel's first gesture; the «Resting» line opened or folded |
 | `CommandBarView.swift` | 208 | the bar at the top of the wide panel (D77): at rest a button saying `Search`, then the count of what waits (a click shows only those rows), LampMaster's star — dim, or lit with its number, a click opening its view (D124) — and `⌘K`; opened, a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc`; the week as six tiles above its projects (D109) |
 | `PanelDecisions.swift` | 49 | the decision board from a row's menu (D105): pin a line for the row's repository, the ones already pinned shown in the question; one taken off from *Pinned decisions*, confirmed first; the same service the command line reaches, an error said in the panel |
@@ -1916,14 +1901,13 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
 | `SettingsView.swift` | 168 | the Settings window's content (D125): the nine sections of `SettingsCatalog` down the side, the chosen one on the right with an orange line when it acts on the sessions or leaves the Mac; the group box, a setting's row (name and control on a line, what it does under them, from the catalogue) and a switch's |
+| `WelcomeWindow.swift` | 220 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
 | `SettingsPanes.swift` | 284 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 125 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 70 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
 | `SettingsWindowController.swift` | 121 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
 | `LampMasterSettings.swift` | 114 | Settings › LampMaster: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
 | `ModSettings.swift` | 91 | the helper's switch in Settings › Claude Code & Codex, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
-| `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from Settings › About & help (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
-| `TourBand.swift` | 161 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. `tourRing` rings what the step speaks of — a row, the bar, the allowance, LampMaster, the panel's menu — breathing unless motion is reduced, never taking a click (D121). In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line in the narrow panel, only while it is on, never blinking — advice is not a session waiting: its star, what the last round found and the open count, of fixed height, counted by `PanelMetrics.height`; in the wide panel it is a star in the bar (D124) |
 | `LampMasterPlancia.swift` | 213 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |
 | `LampMasterCardViews.swift` | 173 | the cards, in LampMaster's Plancia (D97; a window of their own until then, D61): the kind, the sentence, the evidence behind a disclosure, the sessions as buttons, the words a click would propose or ask, the action, *Ask without disturbing* with its answer in the card when the session's mod can answer (D85), *Ignore*, *Wrong*, *Don't suggest this kind*. what a card can ask the panel to do |
@@ -1940,7 +1924,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1222 cases
+## `LampBoardTests/` — 1219 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1966,7 +1950,6 @@ script, before it was split. The most important ones:
 | `RemotePeerScriptsSuite` | a message into a node session's box, run for real with `python3` against a Unix socket a listener holds: the key's line then the words, from `lampboard`; another session's id, a key others can read, a session file and key with no start time, a malformed id or nothing to send, refused and said |
 | `SessionCardSuite` · `LampMasterSignalsSuite` | a transcript read into a card, a line cut between two reads, what counts as saved; every signal on both sides of its threshold |
 | `LampMasterFrameSuite` · `LampMasterAdviceSuite` | who enters the frame and in what order, detail given up before sessions; evidence that is not in the frame never reaches the panel |
-| `TourSuite` | the script holding nothing real and catching what would be, a beat as the hook's payload, the steps the trial can show, every sentence within the band's two lines, a step moving only on its own gesture, skip and resume |
 | `RemoteTranscriptScriptSuite` | the paths asked for; the asks as base64, a path that is not a transcript's not sent; the answer only for what was asked and only when its numbers add up — no overflow, sign, fraction or boolean; whole lines only |
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |
@@ -1975,6 +1958,8 @@ script, before it was split. The most important ones:
 | `BarCountSuite` | the bar's count by kind and by session, plural, a held ask counted, the held asks by session for the lines under the rows (D124) |
 | `MenusSuite` | the ⋯'s seven entries with ⌘, on Settings, what is on checked, the hidden projects only when there are some; a row's eight with Quiet and More, nothing needing this Mac's files on a remote row, Don't blink only where something blinks; the lamp's, its summary, the other home (D125) |
 | `SettingsCatalogSuite` | nine sections in order, one id and one name per setting and a line for each, the two marked sections, a menu's switch named as Settings names it (D125) |
+| `WelcomeSuite` | the seven screens and their buttons, Codex named only where it is, the samples marked and under their own folder, their colours playing out, added to the column's state and never to the store's (D126) |
+| `DemoScriptSuite` | the demo's script holding nothing real and catching what would be, a beat as the hook's payload, LampMaster's demo card, the allowance line, the permission and the answers it plays (D64, D120) |
 | `AllowanceLinesSuite` | the session window unless another limit is spent, no line for a window that has not started, the fullest limit without a session window, short names that stay unique (D123) |
 | `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123) |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
@@ -2068,7 +2053,7 @@ rather than the 1 of an ordinary failure, because the two mean different things.
 | `SearchE2ESuite` | `lampboard search` on a fake home's transcripts: a conversation found by its words and its name, by an unaccented word, never by a reminder; nothing found said; the index owner-only; `lampboard week` counting and naming this week's conversation, one ten days old left out, no prompt quoted |
 | `PermissionE2ESuite` | a permission key of its own, not the token; an ask without the key's proof, or proven with the token, answered `ask`, unsigned; a new installation answering `ask` at once; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once; a question waiting for a choice, answered signed, Allow refused for it |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own; `/handoff` refusing a missing token, a `GET` and a proof made with the token, and taking one made with the permission key; the decision board pinned, listed and taken off from the command line, a port in its words kept, its file 0600; `/mod/decisions` answering a proven session with its repository's board, signed, nothing without the proof or with the token as key, no answer for a session it does not know, nothing pinned for one with no repository (D105) |
-| `TrialE2ESuite` | the trial playing the script into the four states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `tour --json` printing a script that holds nothing real |
+| `TrialE2ESuite` | the demo playing the script into the states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `demo-script` printing a script that holds nothing real (D126) |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; `who_knows` naming a twenty-day-old conversation from the search index without its words; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments, a failure another project met before reaching its frame as a precedent from the index (D92), a kind passed over for two weeks switched off with why (D95), the bench replaying a saved round and naming what the new answer lost (D102): the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token; a failure repeated three times bringing a quick round with Sonnet at the turn's end, and a second turn's end within the minute bringing none |
 
@@ -2123,7 +2108,7 @@ or answers anything, it does nothing and says nothing. `claude plugin validate
 | `Scripts/build-app.sh` | bundle into `dist/`, stable signature when available, with a deadline |
 | `Scripts/create-signing-identity.sh` | persistent certificate, **idempotent and self-verifying** |
 | `Scripts/make-icon.py` | draws the icon at every size macOS asks for and writes `Resources/LampBoard.icns`; `--preview` adds the small-size contact sheet |
-| `Scripts/make-screenshots.sh` | the README's images, taken from the tutorial's trial: the real app on a temporary home playing `DemoScript`, the one place demo data lives (D64), with `--trial-fresh` so the band always shows step one and nobody's progress moves; `screencapture -l` reads the window's backing store, which works with the screen locked. `LAMPBOARD_BIN` points it at a build other than the bundle. The widest **visible** window of the process: a text field leaves a hidden, wider one behind |
+| `Scripts/make-screenshots.sh` | the README's images, taken from the demo: the real app on a temporary home playing `DemoScript`, the one place demo data lives (D64), under a band that says DEMO (D126); `screencapture -l` reads the window's backing store, which works with the screen locked. `LAMPBOARD_BIN` points it at a build other than the bundle. The widest **visible** window of the process: a text field leaves a hidden, wider one behind |
 | `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
 | `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/release-remote.sh` | the release cut on the Mac that signs, from any machine that reaches it (D106): the tag to the mirror, `release.sh` run over ssh with that account's own keychain, the four files brought back into `dist/` |

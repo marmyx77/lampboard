@@ -61,13 +61,9 @@ final class LampMasterService: ObservableObject {
     @Published var conversation: [LampMasterAsk.Exchange] = []
     /// The trial's answer to any question (D120): a trial never runs a model.
     var scripted: ((String) -> String)?
-    /// Told when the person's question was answered: the tour's last step.
-    var onAsked: (() -> Void)?
     /// A question of that conversation being answered, and why the last failed.
     @Published var conversing: String?
     @Published var conversationError: String?
-    /// Told when a card is answered, whatever the answer: the tour's last step.
-    var onReact: (() -> Void)?
     /// The port this panel listens on, which the MCP server's entry must name.
     var port = AppConfig.listenPort
     private var timer: Timer?
@@ -156,7 +152,6 @@ final class LampMasterService: ObservableObject {
 
     /// The user's reaction to a suggestion on screen.
     func react(to id: String, with outcome: LampMasterShown.Outcome) {
-        onReact?()
         let shown = files.suggestions()
         if outcome == .muted, let kind = shown.first(where: { $0.id == id })?.suggestion.kind {
             preferences.lampMasterMuted.insert(kind)

@@ -11,7 +11,7 @@ import SwiftUI
 final class PanelController {
 
     let store: StateStore
-    private let installer: HookInstaller
+    let installer: HookInstaller
     let preferences: Preferences
     let panel: FloatingPanel
 
@@ -78,7 +78,8 @@ final class PanelController {
     var onOpenLampMaster: (() -> Void)?
     /// The focus moved (G1): the notifier says what waited.
     var onFocusChanged: ((String?) -> Void)?
-    var tour: TourController?
+    /// The three sample rows, while they are in the panel (U4).
+    let samples = SampleStage()
 
     var onNotificationToggle: ((Bool) -> Void)?
 
@@ -122,6 +123,7 @@ final class PanelController {
         observeAllowance()
         wireQueue()
         wireBar()
+        samples.onChange = { [weak self] in self?.rebuildContent() }
         wirePlancia()
         observeLampMaster()
         observePanelMoves()
@@ -259,7 +261,8 @@ final class PanelController {
             .store(in: &cancellables)
     }
 
-    /// The rows exactly as the panel is drawing them at this moment.
+    /// The real rows as the panel is drawing them at this moment: the sample
+    /// rows (U4) are left out, since nothing but the column may see them.
     ///
     /// The legend counts through this rather than through the state, so that a
     /// census and a column can never disagree: same renderer, same options, same
@@ -304,7 +307,7 @@ final class PanelController {
             rowActions: makeRowActions(),
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { [weak self] in self?.openLampMasterPlancia() },
-            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), tour: tour,
+            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), samples: samples,
             queue: compact ? nil : queue, bar: compact ? nil : bar,
             plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading, activity: activity,
             openInEditor: { [weak self] id in
@@ -345,7 +348,7 @@ final class PanelController {
     /// Recomputes the height keeping the top edge fixed: the panel grows downwards,
     /// so the corner the user put it in doesn't move.
     func resizeToFit(_ state: TrafficLightState) {
-        let rendering = ColumnLayout.render(state, options: columnOptions, now: Date())
+        let rendering = ColumnLayout.render(state.adding(samples.sessions()), options: columnOptions, now: Date())
         // The service rows — hidden summary, filter note — take up as much space
         // as the others and have to be counted, otherwise the last one ends up
         // clipped.
@@ -372,9 +375,12 @@ final class PanelController {
             height: planciaHeight(Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
                 allowanceLines: allowance.reports.filter { AllowanceLines.shown(in: $0) != nil }.count,
-                showsLampMaster: compact && showsLampMaster, tourLines: tour == nil ? 0 : TourBand.lines,
+                showsLampMaster: compact && showsLampMaster, bandLines: samples.isOn || TrialStage.mode != nil ? 1 : 0,
                 resting: (rendering.resting != nil, rendering.resting.map { $0.isOpen ? $0.rows.count : 0 } ?? 0),
-                bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil)
+                bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil),
+                empty: !compact && rendering.rows.isEmpty && rendering.hidden == nil && rendering.resting == nil
+                    && rendering.filteredOut == 0
+                    ? Layout.emptyGuidance : 0
             ))
         )
 
@@ -500,7 +506,8 @@ final class PanelController {
             copyAttach: { job in
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(job.attachCommand, forType: .string)
-            }
+            },
+            removeSamples: { [weak self] in self?.samples.stop() }
         )
     }
 
@@ -732,62 +739,5 @@ final class PanelController {
         preferences.notificationsEnabled = wanted
         onNotificationToggle?(wanted)
         rebuildContent()
-    }
-
-    /// Turns answering from the panel on or off.
-    ///
-    /// Turning it **on** registers the delivery hook; turning it off removes it,
-    /// so the resting state of a machine that never opted in has no listener, no
-    /// mailbox and no way for anything to start a turn in the user's name.
-    ///
-    /// The dialog says what it costs, because this is the one switch here whose
-    /// default is about safety rather than noise.
-    func toggleMessageSending() {
-        let wanted = !preferences.messageSendingEnabled
-
-        if wanted {
-            guard Alerts.confirm(
-                title: "Send messages to sessions?",
-                message: """
-                You will be able to type and dictate into the conversation window \
-                and the Plancia. A session of Claude Code 2.1.224 or later takes the \
-                message at once through its own message box; an older one at the end \
-                of its next turn. Either way the session acts on it with every \
-                permission it already has: one that runs without asking will run \
-                its tools at once.
-
-                What it costs: for older sessions, delivery works through a file in ~/.lampboard/inbox, \
-                and the reader cannot tell who wrote it. While this is on, anything \
-                running under your account can start a turn that speaks with your \
-                voice and your tools. Other accounts on this Mac are kept out; \
-                processes of your own cannot be.
-
-                Off, there is no listener and no mailbox at all, and the window \
-                still shows you every conversation.
-                """,
-                confirmTitle: "Turn on"
-            ) else { return }
-        }
-
-        preferences.messageSendingEnabled = wanted
-        reinstallHooksForMessageSending()
-        rebuildContent()
-        refreshBar()
-    }
-
-    /// Re-registers the hooks so the delivery listener follows the switch.
-    ///
-    /// Claude Code alone, and deliberately: message delivery rides a second
-    /// `Stop` hook that answers a mailbox, and Codex has no path back into a
-    /// session to answer through. Everything else about installing goes through
-    /// `HookSetup` and reaches both agents; this one thing is not shared because
-    /// only one agent has it.
-    private func reinstallHooksForMessageSending() {
-        guard installer.isInstalled() else { return }
-        do {
-            try installer.install(includeMessageDelivery: preferences.messageSendingEnabled)
-        } catch {
-            store.reportError(error.localizedDescription)
-        }
     }
 }

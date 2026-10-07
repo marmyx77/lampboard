@@ -99,14 +99,17 @@ public enum PanelMetrics {
     ///   it is switched on. One line the height of the issue strip, counted for the
     ///   same reason as the allowance: uncounted, it takes the last row's room. In
     ///   the wide panel LampMaster is a star in the bar (U2) and costs nothing here.
-    /// - Parameter tourLines: the tutorial's band in a trial, in lines of the
-    ///   issue strip's height; zero everywhere else.
+    /// - Parameter bandLines: the band at the top while sample rows are in the
+    ///   panel (U4), or in the demo used for screenshots, in lines of the issue
+    ///   strip's height; zero everywhere else.
     /// - Parameter resting: the line of rows at rest (U2), and the rows listed
     ///   under it while it is open, one plain line each.
+    /// - Parameter empty: how tall the empty column's guidance is, when there is
+    ///   nothing else to draw (U4).
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
-        allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0,
-        resting: (shown: Bool, open: Int) = (false, 0), bar: CGFloat = 0, sizes: Sizes
+        allowanceLines: Int = 0, showsLampMaster: Bool = false, bandLines: Int = 0,
+        resting: (shown: Bool, open: Int) = (false, 0), bar: CGFloat = 0, empty: CGFloat = 0, sizes: Sizes
     ) -> CGFloat {
         let restingLines = (resting.shown ? 1 : 0) + resting.open
         let all = blocks + Array(repeating: sizes.row, count: extras + restingLines)
@@ -116,10 +119,11 @@ public enum PanelMetrics {
                 + CGFloat(allowanceLines - 1) * 2
                 + 4
             : 0
-        return max(content, sizes.row)
+        // An empty column says what to do (U4), in more than a row's height.
+        return max(content, max(sizes.row, empty))
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
             + (showsLampMaster ? sizes.issueStrip : 0)
-            + CGFloat(tourLines) * sizes.issueStrip
+            + CGFloat(bandLines) * sizes.issueStrip
             + bar
     }
 

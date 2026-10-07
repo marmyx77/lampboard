@@ -26,9 +26,8 @@ enum CommandLineInterface {
         case modSetup(verb: String)
         /// `watch [--name N] -- command…`: the command as a row (D70).
         case watch(arguments: [String], port: UInt16)
-        /// The tutorial's trial panel on invented sessions, or with `--json` the
-        /// script it plays (D64).
-        case tour(json: Bool)
+        /// The demo's invented sessions, as JSON (D64, D126).
+        case demoScript
         case focus(workspaceName: String, dryRun: Bool)
         case next(port: UInt16)
         /// `nil` lists the assignments instead of opening one.
@@ -73,8 +72,10 @@ enum CommandLineInterface {
         case "trial-hold":
             guard let path = args.dropFirst().first else { return .help }
             return .trialHold(path: path)
-        case "tour":
-            return .tour(json: args.contains("--json"))
+        // The invented sessions the screenshots and the demo play, as JSON: the
+        // site and the tests read them; there is no second panel any more (U4).
+        case "demo-script":
+            return .demoScript
         case "lampmaster":
             guard args.dropFirst().first == "bench" else { return .help }
             let value = { (flag: String) in args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil } }
@@ -187,8 +188,9 @@ enum CommandLineInterface {
         case .watch(let arguments, let port):
             return CommandLineWatch.run(arguments, port: port)
 
-        case .tour(let json):
-            return TrialLauncher.run(json: json)
+        case .demoScript:
+            print(DemoScript.standard.json())
+            return 0
 
         case .focus(let workspaceName, let dryRun):
             return runFocus(workspaceName: workspaceName, dryRun: dryRun)

@@ -43,8 +43,7 @@ extension CommandLineInterface {
           lampboard watch [--name N] -- <command>
                                             run a command as a row: yellow while it runs,
                                               green when it exits 0, red otherwise
-          lampboard tour [--json]           a trial panel on invented sessions, beside yours;
-                                              --json prints the script it plays
+          lampboard demo-script             the invented sessions of the screenshots, as JSON
           lampboard help                    show this text
 
         OPTIONS

@@ -2,12 +2,13 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// The tutorial's trial in the real binary: the invented sessions reach their
+/// The demo in the real binary — the invented sessions the screenshots are taken
+/// on, behind `--trial` on a fake home only since 1.1 (U4): they reach their
 /// colours through the server and the reducer, and quitting leaves nothing.
 enum TrialE2ESuite {
 
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
-        TestSuite("E2E · tutorial trial", [
+        TestSuite("E2E · demo stage", [
 
             TestCase("the trial plays the script into the panel's real states") { t in
                 let trial = AppUnderTest(binaryURL: binaryURL, port: port)
@@ -58,9 +59,9 @@ enum TrialE2ESuite {
                 try? FileManager.default.removeItem(at: home)
             },
 
-            TestCase("tour --json prints the script, and it holds nothing real") { t in
+            TestCase("demo-script prints the script, and it holds nothing real") { t in
                 let trial = AppUnderTest(binaryURL: binaryURL, port: port)
-                let printed = trial.runCommand(["tour", "--json"])
+                let printed = trial.runCommand(["demo-script"])
                 t.expectEqual(printed.status, 0)
                 let script = try? JSONDecoder().decode(DemoScript.self, from: Data(printed.output.utf8))
                 t.expectEqual(script?.sessions.count, 6, "the six invented sessions")

@@ -105,4 +105,61 @@ extension PanelController {
             message: "LampBoard will no longer receive signals from either agent."
         )
     }
+
+    /// Turns answering from the panel on or off.
+    ///
+    /// Turning it **on** registers the delivery hook; turning it off removes it,
+    /// so the resting state of a machine that never opted in has no listener, no
+    /// mailbox and no way for anything to start a turn in the user's name.
+    ///
+    /// The dialog says what it costs, because this is the one switch here whose
+    /// default is about safety rather than noise.
+    func toggleMessageSending() {
+        let wanted = !preferences.messageSendingEnabled
+
+        if wanted {
+            guard Alerts.confirm(
+                title: "Send messages to sessions?",
+                message: """
+                You will be able to type and dictate into the conversation window \
+                and the Plancia. A session of Claude Code 2.1.224 or later takes the \
+                message at once through its own message box; an older one at the end \
+                of its next turn. Either way the session acts on it with every \
+                permission it already has: one that runs without asking will run \
+                its tools at once.
+
+                What it costs: for older sessions, delivery works through a file in ~/.lampboard/inbox, \
+                and the reader cannot tell who wrote it. While this is on, anything \
+                running under your account can start a turn that speaks with your \
+                voice and your tools. Other accounts on this Mac are kept out; \
+                processes of your own cannot be.
+
+                Off, there is no listener and no mailbox at all, and the window \
+                still shows you every conversation.
+                """,
+                confirmTitle: "Turn on"
+            ) else { return }
+        }
+
+        preferences.messageSendingEnabled = wanted
+        reinstallHooksForMessageSending()
+        rebuildContent()
+        refreshBar()
+    }
+
+    /// Re-registers the hooks so the delivery listener follows the switch.
+    ///
+    /// Claude Code alone, and deliberately: message delivery rides a second
+    /// `Stop` hook that answers a mailbox, and Codex has no path back into a
+    /// session to answer through. Everything else about installing goes through
+    /// `HookSetup` and reaches both agents; this one thing is not shared because
+    /// only one agent has it.
+    func reinstallHooksForMessageSending() {
+        guard installer.isInstalled() else { return }
+        do {
+            try installer.install(includeMessageDelivery: preferences.messageSendingEnabled)
+        } catch {
+            store.reportError(error.localizedDescription)
+        }
+    }
 }

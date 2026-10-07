@@ -342,7 +342,6 @@ extension PanelController {
             toggleAway: { [weak self] in
                 guard let self, let away = self.away else { return }
                 away.toggle()
-                self.tour?.handle(.awayToggled(on: away.isAway))
                 self.rebuildContent()
             },
             dismissAwayNote: { [weak self] in

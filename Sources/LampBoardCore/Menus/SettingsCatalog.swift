@@ -22,7 +22,7 @@ public enum SettingsCatalog {
         case lampMaster, lampMasterEvery, lampMasterModel, lampMasterAsk, lampMasterMuted
         case otherMacs
         case usage, updates, searchIndex
-        case version, gettingStarted, legend, clearList
+        case version, gettingStarted, samples, legend, clearList
     }
 
     public struct Item: Equatable, Sendable {
@@ -136,7 +136,8 @@ public enum SettingsCatalog {
         Section(title: "About & help", warns: false, groups: [
             Group(title: "", items: [
                 i(.version, "LampBoard", "Signed and notarized. MIT licence."),
-                i(.gettingStarted, "Getting started", "The first steps, and what is set up."),
+                i(.gettingStarted, "Getting started", "The seven first screens again: connecting, the colours, the click, answering, ⌘K."),
+                i(.samples, "Practice with samples", "Three invented rows in your panel, marked as samples, removed with one click."),
                 i(.legend, "What the lights mean", "The colours and rings of the column, with how many of each there are now."),
                 i(.clearList, "Clear the list", "Empties the column. Asks first; a session comes back with its next signal."),
             ]),

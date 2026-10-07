@@ -18,8 +18,12 @@ struct TrafficLightColumn: View {
     let onRevealHidden: () -> Void
     /// Files two live sessions both wrote lately, by session (R3a).
     var conflicts: [String: [FileConflicts.Conflict]] = [:]
-    /// The tour, in a trial: a row it points at is ringed (D121).
-    var tour: TourController? = nil
+    /// The sample rows, added to what the column draws and to nothing else (U4).
+    @ObservedObject var samples: SampleStage
+    /// Whether Claude Code is connected, and how to connect it, for the empty
+    /// column's guidance (U4).
+    var connected = true
+    var connect: () -> Void = {}
     /// What waits, for the asks drawn under their rows and the row J and K are
     /// on (U2); nil in the narrow panel.
     var queue: WaitingQueueModel? = nil
@@ -70,7 +74,7 @@ struct TrafficLightColumn: View {
     /// and not `now`, which ticks once a minute: the window is sized from the
     /// same call (`PanelController.resizeToFit`), and the two must agree.
     private var rendering: ColumnRendering {
-        ColumnLayout.render(store.state, options: options, now: Date())
+        ColumnLayout.render(store.state.adding(samples.sessions()), options: options, now: Date())
     }
 
     var body: some View {
@@ -159,7 +163,6 @@ struct TrafficLightColumn: View {
                         actions: actions,
                         drag: drag
                     )
-                    .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
                     if let queue { InlineAskView(queue: queue, sessionIds: row.sessions.map(\.id)) }
                 }
                 .overlay {
@@ -220,7 +223,6 @@ struct TrafficLightColumn: View {
                 actions: actions,
                 drag: nil
             )
-            .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
 
             if open {
                 ForEach(row.members.prefix(Layout.subRowCap)) { member in
@@ -494,28 +496,52 @@ struct TrafficLightColumn: View {
         .tooltip("The “only what's waiting” filter is hiding \(count) sessions that are idle or working.")
     }
 
-    /// No sessions seen yet: almost always means the hooks aren't installed.
+    /// Nothing to show. In the wide panel it says what to do (U4): connect
+    /// Claude Code when nothing is connected — the 1.0 panel said only «waiting
+    /// for sessions», and that usually meant «not connected» —, otherwise start a
+    /// session, or put three sample rows in. Its height is `Layout.emptyGuidance`,
+    /// which the window counts.
+    @ViewBuilder
     private func emptyState(filteredOut: Int) -> some View {
-        HStack(spacing: 7) {
-            Circle()
-                .strokeBorder(Color.secondary.opacity(0.5), lineWidth: 1)
-                .frame(width: Layout.dotSize, height: Layout.dotSize)
-
-            if !compact {
-                Text(filteredOut > 0 ? "none waiting" : "waiting for sessions")
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                    .lineLimit(1)
+        if compact || filteredOut > 0 {
+            HStack(spacing: 7) {
+                Circle()
+                    .strokeBorder(Color.secondary.opacity(0.5), lineWidth: 1)
+                    .frame(width: Layout.dotSize, height: Layout.dotSize)
+                if !compact {
+                    Text("none waiting")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(Color.primary.opacity(0.72))
+                        .lineLimit(1)
+                }
             }
+            .frame(height: Layout.rowHeight)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 6)
+            .tooltip(filteredOut > 0
+                     ? "The “only what's waiting” filter is on and \(filteredOut) sessions are asking for nothing."
+                     : "No sessions yet. Widen the panel to see what to do.")
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(connected ? "Connected." : "No lamps yet.")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                Text(connected
+                     ? "Start or restart a Claude Code session: its lamp appears here."
+                     : "Connect Claude Code, so each session can tell the panel what it is doing.")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(StatusPalette.timeColor)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Button(connected ? "No session at hand? Practice with samples" : "Connect Claude Code") {
+                    if connected { samples.start() } else { connect() }
+                }
+                .font(.system(size: 11, weight: .semibold))
+            }
+            .padding(.horizontal, 6)
+            .frame(height: Layout.emptyGuidance)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: Layout.rowHeight)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 6)
-        .tooltip(
-            filteredOut > 0
-                ? "The “only what's waiting” filter is on and \(filteredOut) sessions are asking for nothing."
-                : "No sessions detected.\nIf Claude Code is running, check that the hooks are installed (right-click menu)."
-        )
     }
 }
 

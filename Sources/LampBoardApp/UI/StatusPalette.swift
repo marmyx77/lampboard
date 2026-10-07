@@ -380,6 +380,9 @@ enum Layout {
     /// kind of thing it is on one line, what it asks on the second.
     static let planciaCard: CGFloat = 32
 
+    /// The empty column's guidance in the wide panel (U4): two lines and a button.
+    static let emptyGuidance: CGFloat = 78
+
     /// An ask the panel holds, under its row (U2): what the call would do on one
     /// line, Allow and Deny — or the question's options — beside it.
     static let inlineAsk: CGFloat = 24
@@ -409,13 +412,13 @@ enum Layout {
 
     static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
-        showsLampMaster: Bool = false, tourLines: Int = 0, resting: (shown: Bool, open: Int) = (false, 0),
-        bar: CGFloat = 0
+        showsLampMaster: Bool = false, bandLines: Int = 0, resting: (shown: Bool, open: Int) = (false, 0),
+        bar: CGFloat = 0, empty: CGFloat = 0
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
-            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines,
-            resting: resting, bar: bar, sizes: sizes
+            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, bandLines: bandLines,
+            resting: resting, bar: bar, empty: empty, sizes: sizes
         )
     }
 

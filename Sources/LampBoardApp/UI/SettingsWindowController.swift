@@ -113,6 +113,9 @@ final class SettingsModel: ObservableObject {
         refresh()
     }
 
+    /// Three sample rows in the real panel (U4).
+    func startSamples() { panel()?.startSamples() }
+
     /// For the preferences the panel draws from without an action of its own.
     func redraw() {
         panel()?.rebuildContent()

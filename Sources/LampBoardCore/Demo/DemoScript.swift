@@ -1,12 +1,12 @@
 import Foundation
 
-/// The invented sessions the tutorial, the screenshots and the site's demo are
+/// The invented sessions the screenshots, the end-to-end demo and the site are
 /// played from: one place for demo data, so one place to check that it holds
 /// nothing real.
 ///
 /// A script is beats in time. Each beat is a hook payload, the same JSON the
 /// installed hooks send, so the trial panel reaches its states through the
-/// same server and the same reducer as the real one: a colour the tutorial
+/// same server and the same reducer as the real one: a colour the demo
 /// shows is a colour the panel really produces.
 public struct DemoScript: Codable, Sendable, Equatable {
 
@@ -59,7 +59,7 @@ public struct DemoScript: Codable, Sendable, Equatable {
     public let account: String
     public let allowanceUsed: Double
     public let allowanceResetMinutes: Int
-    /// What LampMaster suggests at the end of the tour.
+    /// What LampMaster suggests in the demo.
     public let suggestion: LampMasterAdvice.Suggestion
 
     public init(
@@ -133,7 +133,7 @@ public struct DemoScript: Codable, Sendable, Equatable {
 
 extension DemoScript {
 
-    /// The tour's script, and the README's picture: six invented projects, one
+    /// The demo's script, and the README's picture: six invented projects, one
     /// in each of the panel's six states, the last one a Codex session.
     public static let standard = DemoScript(
         sessions: [

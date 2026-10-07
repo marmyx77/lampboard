@@ -99,8 +99,8 @@ struct PanelRootView: View {
     var lampMasterActions: LampMasterActions? = nil
     /// What the Plancia header's buttons do.
     var planciaActions: PlanciaActions? = nil
-    /// The tutorial, in a trial only.
-    var tour: TourController? = nil
+    /// The three sample rows, while they are in the panel (U4).
+    @ObservedObject var samples: SampleStage
     /// What waits: the asks under their rows, the bar's count; nil in the narrow panel.
     var queue: WaitingQueueModel? = nil
     /// The bar at the top; nil in the narrow panel.
@@ -138,19 +138,19 @@ struct PanelRootView: View {
 
     private var column: some View {
         VStack(spacing: 0) {
-            if let tour { TourBand(tour: tour, compact: flags.compact) }
+            if samples.isOn || TrialStage.mode != nil {
+                SampleBand(demo: TrialStage.mode != nil, compact: flags.compact, remove: samples.stop)
+            }
             // The bar carries what the queue and LampMaster's row used to say above
             // the rows: how many wait, and the reviewer's star (U2).
             if let bar {
                 CommandBarView(model: bar, queue: queue, onlyWaiting: flags.onlyWaiting,
                                toggleOnlyWaiting: actions.toggleOnlyWaiting,
                                lampMaster: lampMaster, openLampMaster: openLampMaster)
-                    .tourRing(tour, at: .bar)
             }
             // The narrow panel has no bar: LampMaster keeps its line there.
             if let lampMaster, flags.compact {
                 LampMasterStrip(service: lampMaster, compact: true, open: openLampMaster)
-                    .tourRing(tour, at: .lampMaster)
             }
             TrafficLightColumn(
                 store: store,
@@ -164,14 +164,14 @@ struct PanelRootView: View {
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain,
                 conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:],
-                tour: tour,
+                samples: samples,
+                connected: flags.hooksInstalled,
+                connect: actions.installHooks,
                 queue: queue,
                 toggleResting: actions.toggleResting
             )
-            AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
-                           reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
+            AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
                            forecasts: allowance.forecasts)
-                .tourRing(tour, at: .allowance)
             issueStrip
             footer
         }
@@ -364,7 +364,6 @@ struct PanelRootView: View {
             help: "Options and Settings: the same menu as a right-click on the panel's edge",
             action: openMenuUnderPointer
         )
-        .tourRing(tour, at: .panelMenu)
     }
 
     /// Opens the panel's context menu where the pointer is.
@@ -474,4 +473,39 @@ private struct PanelBackground: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+/// The line at the top while invented rows are in the panel: «Samples», and the
+/// way to take them away (U4). In the demo used for screenshots it says so
+/// instead, so a picture taken there never passes for somebody's real sessions.
+private struct SampleBand: View {
+    let demo: Bool
+    let compact: Bool
+    let remove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(compact ? "S" : demo ? "DEMO · invented sessions" : "Samples · three invented rows")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(StatusPalette.lampMasterTint)
+                .lineLimit(1)
+            if !compact {
+                Spacer(minLength: 4)
+                if !demo {
+                    Button("Remove", action: remove)
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(StatusPalette.fixTint)
+                        .accessibilityLabel("Remove the sample rows")
+                }
+            }
+        }
+        .padding(.horizontal, compact ? 4 : Layout.panelPadding + 6)
+        .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
+        .frame(height: Layout.issueStripHeight)
+        .contentShape(Rectangle())
+        .onTapGesture { if compact && !demo { remove() } }
+        .tooltip(demo ? "The rows here are invented, played from a script for pictures and tests."
+                      : "Three invented rows that show the panel at work. Click Remove to take them away.")
+    }
 }

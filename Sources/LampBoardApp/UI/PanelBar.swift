@@ -11,7 +11,6 @@ import LampBoardCore
 extension PanelController {
 
     func wireBar() {
-        bar.onChose = { [weak self] in self?.tour?.handle(.barChose) }
         bar.onOpenSession = { [weak self] id in
             guard let self, let session = self.session(named: id) else { return }
             self.activate(session: session)
@@ -19,8 +18,8 @@ extension PanelController {
         bar.onAction = { [weak self] action in
             switch action {
             case .settings: self?.onOpenSettings?()
-            case .gettingStarted: GettingStartedWindowController.shared.show()
-            case .tour: TrialLauncher.startFromMenu()
+            case .gettingStarted: WelcomeWindowController.shared.show()
+            case .samples: self?.startSamples()
             case .checkForUpdates: self?.checkForUpdates()
             case .legend: self?.onOpenLegend?()
             // Said in the bar itself, by the model.
@@ -76,11 +75,8 @@ extension PanelController {
             return self.propose(handoff: Handoff.brief(from: source.displayName, text: reply.text), to: to)
         }
         bar.onAskSession = { [weak self] id, question in
-            // The trial's sessions are invented: the script answers (D120).
-            if let tour = self?.tour {
-                tour.handle(.sideQuestionAnswered(session: id))
-                return DemoScript.standard.sideAnswer(for: id)
-            }
+            // The demo's sessions are invented: the script answers (D120).
+            if TrialStage.mode != nil { return DemoScript.standard.sideAnswer(for: id) }
             guard let desk = self?.askDesk else { return "Asking is not available." }
             return await desk.ask(sessionId: id, question: question, host: self?.session(named: id)?.workspace.host)
         }
@@ -193,6 +189,6 @@ extension PanelController {
     func refreshBar() {
         bar.update(rows: currentRendering.rows, lampMasterEnabled: lampMaster?.snapshot.enabled ?? false,
                    sendingEnabled: preferences.messageSendingEnabled,
-                   askable: tour != nil ? Set(DemoScript.standard.sessions.map(\.id)) : askDesk?.askable ?? [])
+                   askable: TrialStage.mode != nil ? Set(DemoScript.standard.sessions.map(\.id)) : askDesk?.askable ?? [])
     }
 }

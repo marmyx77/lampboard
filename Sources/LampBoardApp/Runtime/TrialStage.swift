@@ -19,10 +19,6 @@ enum TrialStage {
         /// How much faster than written the script plays: 1 for a person,
         /// more for the end-to-end suite and the screenshots.
         let pace: Double
-        /// Start the tour from its first step and keep nothing: for the
-        /// screenshots, which must look the same whoever takes them, and must
-        /// not move anybody's own progress.
-        let fresh: Bool
     }
 
     static var mode: Mode? {
@@ -31,7 +27,7 @@ enum TrialStage {
         let pace = arguments.firstIndex(of: "--trial-pace").flatMap { index in
             index + 1 < arguments.count ? Double(arguments[index + 1]) : nil
         }
-        return Mode(pace: max(1, min(pace ?? 1, 100)), fresh: arguments.contains("--trial-fresh"))
+        return Mode(pace: max(1, min(pace ?? 1, 100)))
     }
 
     /// A process standing in for each session's `claude`: the sweep keeps only
@@ -197,7 +193,7 @@ enum TrialStage {
         try? FileManager.default.removeItem(at: AppConfig.homeDirectory)
     }
 
-    /// The temporary homes `lampboard tour` creates are named so, and only those
-    /// are ever deleted: a trial started by hand on another home keeps it.
+    /// Temporary homes named so, and only those, are deleted when the demo quits:
+    /// a demo started by hand on another home keeps it.
     static let homePrefix = "lampboard-trial-"
 }

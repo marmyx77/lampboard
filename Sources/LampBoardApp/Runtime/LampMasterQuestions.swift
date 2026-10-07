@@ -73,7 +73,6 @@ extension LampMasterService {
             let answer = scripted(question)
             files.record(.init(at: now, session: LampMasterAsk.panel, question: question, answer: answer), now: now)
             publish(running: snapshot.running)
-            onAsked?()
             return (answer, false)
         }
         let sessions = await cards.sessions(live: rows().compactMap(Self.live), now: now)
@@ -194,7 +193,7 @@ extension LampMasterService {
         let rendered = LampMasterAsk.render(LampMasterAsk.screen(answer, frame: text, ids: ids))
         files.replace(booked, with: .init(at: now, session: asker, question: question, answer: rendered, tokens: run.tokens))
         publish(running: snapshot.running)
-        if fromPanel { onAsked?() }
+
         return (rendered, false)
     }
 

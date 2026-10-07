@@ -268,10 +268,10 @@ struct AboutPane: View {
                 }
             }
             SettingRow(id: .gettingStarted) {
-                HStack {
-                    Button("Open…") { GettingStartedWindowController.shared.show() }
-                    if TrialStage.mode == nil { Button("Take the tour…") { TrialLauncher.startFromMenu() } }
-                }
+                Button("Open…") { WelcomeWindowController.shared.show() }
+            }
+            SettingRow(id: .samples) {
+                Button("Start") { model.startSamples() }
             }
             SettingRow(id: .legend) { Button("Open…") { model.run { $0.openLegend() } } }
             SettingRow(id: .clearList) { Button("Clear…") { model.run { $0.clearSessions() } } }

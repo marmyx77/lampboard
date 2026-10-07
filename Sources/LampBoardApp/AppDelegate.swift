@@ -127,9 +127,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lampMaster.start()
         if let trial { TrialStage.play(.standard, port: port, pace: trial.pace) }
 
-        if !headless && trial == nil && shouldPromptForInstallation {
+        // The first launch opens the welcome, always (U4): connected or not,
+        // from the README's terminal or from a click.
+        if !headless && trial == nil && shouldWelcome {
             preferences.wasSetupPromptShown = true
-            promptForInstallation()
+            WelcomeWindowController.shared.show()
         }
     }
 
@@ -144,25 +146,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.searchIndex = searchIndex
         controller.decisionBoard = decisions
         controller.governor = governor
-        GettingStartedWindowController.shared.configure(
-            port: port, lampMaster: lampMaster,
-            toggleNotifications: { [weak controller] in controller?.toggleNotifications() },
-            toggleSending: { [weak controller] in controller?.toggleMessageSending() }
-        )
-        if let trial = TrialStage.mode {
-            let tour = TourController(fresh: trial.fresh)
-            if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--tour-step"),
-               CommandLine.arguments.indices.contains(index + 1) {
-                tour.show(stepId: CommandLine.arguments[index + 1])
-            }
-            controller.tour = tour
-            store.onSeen = { [weak tour] id in tour?.handle(.rowOpened(session: id)) }
-            lampMaster.onReact = { [weak tour] in tour?.handle(.lampMasterAnswered) }
+        WelcomeWindowController.shared.configure(port: port, panel: { [weak controller] in controller })
+        if TrialStage.mode != nil {
             // What a mod or a model would answer, from the script (D120).
             lampMaster.scripted = { _ in DemoScript.standard.lampMasterAnswer }
-            lampMaster.onAsked = { [weak tour] in tour?.handle(.lampMasterAsked) }
-            permissions.onAnswered = { [weak tour] id in tour?.handle(.permissionAnswered(session: id)) }
-            stageTrialPermission(tour: tour)
+            stageTrialPermission()
         }
         // In the panel, beside the list (UX §4): no window of its own.
         controller.onOpenLampMaster = { [weak controller] in controller?.openLampMasterPlancia() }
@@ -181,13 +169,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Opens the window at launch: for the screenshots, and for a check on a
         // Mac where nobody is there to click the menu.
-        if CommandLine.arguments.contains("--getting-started") { GettingStartedWindowController.shared.show() }
+        // `--getting-started [step]` opens the welcome, on a step by number.
+        if let index = CommandLine.arguments.firstIndex(of: "--getting-started") {
+            let number = CommandLine.arguments.indices.contains(index + 1) ? Int(CommandLine.arguments[index + 1]) : nil
+            WelcomeWindowController.shared.show(step: number.flatMap { Welcome.Step(rawValue: $0 - 1) } ?? .welcome)
+        }
         // `--settings [section]` opens Settings, on a section when one is named.
         if let index = CommandLine.arguments.firstIndex(of: "--settings") {
             let next = CommandLine.arguments.indices.contains(index + 1) ? CommandLine.arguments[index + 1] : nil
             settingsWindow.show(section: next.flatMap { $0.hasPrefix("--") ? nil : $0 })
         }
         if CommandLine.arguments.contains("--legend") { legendWindow?.show() }
+        // The three sample rows at launch: for pictures, and for a check on a Mac
+        // nobody can click (U4).
+        if CommandLine.arguments.contains("--samples") { controller.startSamples() }
         // LampMaster's Plancia on one of its sheets (D96): `--lampmaster today`.
         if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
            let sheet = LampMasterPlanciaContent.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
@@ -288,24 +283,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// The trial's permission card (D120): put on the desk while the tour stands
-    /// on "allow" and api waits, again whenever it went back unanswered; the
-    /// decision is `Tour.trialPermission`'s.
-    private func stageTrialPermission(tour: TourController) {
-        let timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self, weak tour] timer in
+    /// The demo's permission (D120): put on the desk while api waits, and again
+    /// whenever it went back unanswered, so a picture or a test can find it there.
+    private func stageTrialPermission() {
+        let timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] timer in
             MainActor.assumeIsolated {
-                guard let self, let tour, let held = DemoScript.standard.heldPermission(now: Date()) else {
+                guard let self, let held = DemoScript.standard.heldPermission(now: Date()) else {
                     return timer.invalidate()
                 }
-                switch Tour.trialPermission(
-                    tour.progress, steps: tour.steps,
-                    waiting: self.store.state.sessions[held.sessionId]?.status == .awaiting,
-                    shown: self.permissions.pending.contains { $0.sessionId == held.sessionId }
-                ) {
-                case .stage: self.permissions.stage(held)
-                case .wait: break
-                case .stop: timer.invalidate()
-                }
+                let waiting = self.store.state.sessions[held.sessionId]?.status == .awaiting
+                let shown = self.permissions.pending.contains { $0.sessionId == held.sessionId }
+                if waiting && !shown { self.permissions.stage(held) }
             }
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -329,15 +317,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
 
-    /// The offer appears exactly once: anyone who declines still has the entry in
-    /// the context menu, and anyone launching the app at login doesn't want a
-    /// dialog waiting for a click on every sign-in.
-    private var shouldPromptForInstallation: Bool {
-        // Every agent on this machine, not just Claude Code. Asked of the
-        // Claude installer alone, a person with Codex installed and Claude
-        // already registered was never offered the other half and never told it
-        // was missing.
-        !skipSetupPrompt && !preferences.wasSetupPromptShown && HookSetup.needsInstalling()
+    /// The welcome opens once, at the first launch, whatever is installed: anyone
+    /// launching the app at login does not want a window waiting on every sign-in,
+    /// and Settings › About & help opens it again.
+    private var shouldWelcome: Bool {
+        !skipSetupPrompt && !preferences.wasSetupPromptShown
     }
 
     /// Starting the app while it is already running: show the panel.
@@ -504,51 +488,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - First run
-
-    /// Without registered hooks the panel would stay empty forever, and the user
-    /// would have no way of working out why: better to say so straight away.
-    private func promptForInstallation() {
-        let agents = HookSetup.state()
-            .filter { $0.outcome != .notPresent }
-            .map(\.harness.displayName)
-            .joined(separator: " and ")
-
-        let installed = Alerts.confirm(
-            title: "One last step",
-            message: """
-            \(agents) do not know lampboard exists yet. To make the traffic \
-            lights react, \(HookConfigMerger.defaultEvents.count) hooks have to be \
-            registered in each one's own configuration.
-
-            Existing hooks are preserved and a backup copy is created. You can \
-            remove them at any time from the panel's context menu (right-click).
-            """,
-            confirmTitle: "Install the hooks"
-        )
-        guard installed else { return }
-
-        let reports = HookSetup.install(port: port)
-        if HookSetup.hasFailure(in: reports) {
-            // Named per agent rather than as one failure: one working and the
-            // other not is a normal state, and the person has to be able to see
-            // which is which.
-            Alerts.warn(title: "Not everything was installed", message: HookSetup.summary(of: reports))
-            return
-        }
-        Alerts.info(
-            title: "Done",
-            message: """
-            \(HookSetup.summary(of: reports))
-
-            Sessions that are already open pick up the new configuration the \
-            next time they start.
-            """
-        )
-        // Right after the hooks, the one moment somebody is certainly looking at
-        // LampBoard for the first time: the rest of the setup, and the tour.
-        GettingStartedWindowController.shared.show()
-    }
 }
 
 // MARK: - Crossing over to the main actor

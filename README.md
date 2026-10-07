@@ -24,8 +24,8 @@ bottom. The bar at the top counts what waits for you — sessions asking, answer
 read, turns that stopped — and ends with LampMaster's star; a permission the panel
 holds opens under its own row, with Allow and Deny. Under the rows, the account's
 allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
-starts the tutorial's trial — the real app on a temporary home, playing a script of
-invented projects — and captures its window, so the image can never contain
+starts the demo — the real app on a temporary home, playing a script of invented
+projects, reachable only that way — and captures its window, so the image can never contain
 anybody's real work and never falls behind the panel it shows. The band at the top
 says so on the picture itself.
 
@@ -268,7 +268,8 @@ and this panel floats above screens that get shared.
 
 ### Installing Codex's hooks
 
-`lampboard install-hooks` installs both, wherever both are present. Then one step
+Connecting — from the welcome window, Settings, or `lampboard install-hooks` — installs
+both, wherever both are present. Then one step
 that cannot be automated:
 
 > **Codex will not run a hook it has not been told to trust, and says nothing
@@ -988,20 +989,23 @@ permission key and takes it only when it is signed with that key, so nothing els
 listening on the port can put words in front of a model
 ([D105](docs/04-decisions.md#d105--a-decision-pinned-for-a-repository-reaches-every-session-in-it)).
 
-## The tutorial
+## The first minute
 
-*Take the tour…*, in Settings › About & help, opens a second panel on
-invented sessions: the real app on a temporary home, marked TRIAL at the top. A
-band says one thing at a time, and each step moves on only when you do it: click
-the green row, then the amber one; allow its `npm publish` from the panel; press
-`⌘⇧L` until the Plancia opens; right-click `events` › *Open in the Plancia*; `⌘K`,
-`@ev`, Return; ask `@events` a side question; point at the allowance; put a session
-in focus; say *I'm away* and come back; answer LampMaster's card; ask LampMaster a
-question. Where a real panel would wait on the mod or a model, the trial plays an
-answer written in advance, and says so: a trial never runs a model. *Skip*
-leaves it, and it resumes where you stopped. A teal ring shows where each step
-points: a row, the bar, the allowance, LampMaster or the panel's menu. Nothing in it touches your sessions
-([D64](docs/04-decisions.md), [D119](docs/04-decisions.md#d119--the-tour-for-10-every-gesture-done-for-real)).
+The first launch opens a small window of seven screens, each with one idea and one
+button that does what is still missing: connect Claude Code (and Codex, where it is
+installed); wait for the first lamp, or put three sample rows in the panel; the
+three colours worth knowing; the click that brings the right window forward, and
+the Accessibility permission it needs; answering a permission from the panel, and
+the helper that takes; ⌘K; and alerts only when a session needs you. A screen whose
+step is already done says *Next*. Settings › About & help opens it again
+([D126](docs/04-decisions.md#d126--the-first-minute-on-your-own-sessions)).
+
+**Practice with samples** puts three invented rows at the top of the real panel —
+api, docs-site, events — marked by a band that says *Samples*, with *Remove* beside
+it. api works, then has an answer, then asks, so the three colours play out in
+twenty seconds; a click on a sample reads it. They are drawn and nothing else: no
+notification, count or LampMaster round ever sees them. In 1.0 this was a second
+copy of the app, opened over the real panel; it is gone.
 
 ## Installation
 
@@ -1009,10 +1013,11 @@ points: a row, the bar, the allowance, LampMaster or the panel's menu. Nothing i
 brew tap marmyx77/tap
 brew trust marmyx77/tap
 brew install --cask lampboard
-lampboard install-hooks
+open -a LampBoard
 ```
 
-That is the whole of it. The middle line is not ceremony: since Homebrew 6 a
+That is the whole of it: the first launch connects Claude Code from its welcome
+window. The middle line is not ceremony: since Homebrew 6 a
 cask from a third-party tap is refused until the tap is trusted, and the refusal
 names neither the cask nor a reason a newcomer can act on. Measured here on
 Homebrew 6.0.20 — without it, `brew install` ends at *Refusing to load cask …
@@ -1113,9 +1118,9 @@ below 128 px are not the large one shrunk: they get flat discs, drawn larger,
 because at that scale the gradient and the halo land between pixels and only mute
 the colour.
 
-On first launch the app offers to register the hooks with **every agent on this
-machine**: `~/.claude/settings.json` for Claude Code, and `~/.codex/hooks.json`
-where Codex is present. You can also do it from a terminal:
+On first launch the welcome window connects **every agent on this machine** with
+one button: `~/.claude/settings.json` for Claude Code, and `~/.codex/hooks.json`
+where Codex is present. A script that sets up many Macs can do it from a terminal:
 
 ```bash
 dist/LampBoard.app/Contents/MacOS/lampboard install-hooks
@@ -1665,7 +1670,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1222 domain tests, instantaneous
+swift run LampBoardTests              # 1219 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

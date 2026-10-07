@@ -11,17 +11,23 @@ import AppKit
 extension PanelController {
 
     func activate(_ row: ColumnRow, markSeen: Bool, opensTab: Bool = true) {
+        // A sample has no window behind it: a click reads it, as a click on a
+        // real answer would, and that is all (U4).
+        if Samples.isSample(row.primary.id) {
+            if markSeen { row.sessionIdsToClear.forEach(samples.markSeen) }
+            return
+        }
         if markSeen {
             // Only the sessions that were in the most urgent state: you haven't
             // seen the others in the group, and clearing them would be a loss.
             for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
         }
 
-        // In a trial there is no window behind an invented session: being
-        // marked as seen is the whole gesture the tour teaches. Reaching for an
-        // editor would only raise a warning — modal, so it also held off the
-        // trial's own quit until somebody dismissed it (measured on the test Mac).
-        if tour != nil { return }
+        // In the demo there is no window behind an invented session: being
+        // marked as seen is the whole gesture. Reaching for an editor would only
+        // raise a warning — modal, so it also held off the demo's own quit until
+        // somebody dismissed it (measured on the test Mac).
+        if TrialStage.mode != nil { return }
 
         // A watched command has no window: seeing its result is the gesture. In a
         // project row it may be the most urgent member, and the click then goes

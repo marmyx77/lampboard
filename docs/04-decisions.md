@@ -4740,3 +4740,40 @@ writing to them, and an error message turned up as a menu entry.
   away (D116) has a switch of its own, on by default. The menus are built in Core
   (`Menus`), where a test counts them.
 
+## D126 · The first minute, on your own sessions
+
+**Decided.** The fourth step of the 1.1 review (U4), on the rule *learn when it
+matters*. In 1.0 Getting started opened by itself only when the hooks were
+installed from the first launch's alert; the README said to install them from the
+terminal, so for most people it never opened, and neither did the tour. The tour
+then played in a second copy of the app, in the same corner as the real panel and
+nearly identical to it; each *Take the tour…* stacked another, and after *Skip*
+the only way out was the last of twenty-five menu entries, named like the real
+app's Quit.
+
+- **A welcome window opens at the first launch, always**, connected or not: seven
+  screens, one idea and one button each — connect Claude Code (and Codex where it
+  is installed), the first lamp, three colours, the click and its Accessibility
+  permission, answering from the panel and the helper it takes, ⌘K, alerts. The
+  button does what is missing and says *Next* once it is done, read from the Mac
+  every second (`Welcome`). It replaces the alerts «One last step» and «Done» and
+  Getting started; Settings › About & help opens it again.
+- **Practice with samples**: three invented rows at the top of the real panel,
+  under a band that says *Samples* with *Remove*. api works, then answers, then
+  asks; a click reads a sample. They are added to what the column draws and to
+  what sizes the window, never to the store, so no notification, count, search
+  or LampMaster round sees them (`Samples`, `SampleStage`).
+- **The empty panel says what to do**: «No lamps yet» with *Connect Claude Code*,
+  or, connected, «Start or restart a Claude Code session» with the samples.
+- **The second app and the twelve-step tour are gone.** The demo stage stays for
+  the screenshots and the end-to-end suite, behind `--trial` on a fake home only,
+  with a band that says *DEMO* so a picture taken there never passes for real.
+  `lampboard tour` became `lampboard demo-script`, which only prints the script.
+- **The README installs with one line less**: the app connects itself from its
+  welcome; `install-hooks` stays for scripts that set up many Macs.
+
+Measured on the test Mac, with the screen locked, so through launch options rather
+than clicks: the welcome on a new home opens on «See every agent at a glance» with
+*Connect Claude Code*; the empty panel says «No lamps yet»; `--samples` puts the
+three rows in, and twenty seconds later api is amber with «Bash: npm publish».
+

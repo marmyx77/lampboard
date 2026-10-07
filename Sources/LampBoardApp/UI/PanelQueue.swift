@@ -90,4 +90,12 @@ extension PanelController {
         preferences.showsResting.toggle()
         rebuildContent()
     }
+
+    /// Three sample rows in the real panel (U4), in the wide panel where their
+    /// second lines can be read.
+    func startSamples() {
+        show()
+        if isCompact { toggleCompact() }
+        samples.start()
+    }
 }

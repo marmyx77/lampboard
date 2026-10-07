@@ -24,8 +24,6 @@ final class StateStore: ObservableObject {
     /// What happened while the person was away, said on their return (A1) until
     /// they click it away; in the issue's place when there is no issue.
     @Published var awayNote: String?
-    /// Told when a row is opened: the tutorial's tour moves on with it.
-    var onSeen: ((String) -> Void)?
 
     private let windowReader: IDEWindowReader
     let liveSessionReader: LiveSessionReader
@@ -533,7 +531,6 @@ final class StateStore: ObservableObject {
 
     /// The user opened the session: the unread states are cleared.
     func markSeen(sessionId: String) {
-        onSeen?(sessionId)
         apply(.markSeen(sessionId: sessionId), now: clock())
     }
 
