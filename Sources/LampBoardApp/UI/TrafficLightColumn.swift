@@ -20,6 +20,11 @@ struct TrafficLightColumn: View {
     var conflicts: [String: [FileConflicts.Conflict]] = [:]
     /// The tour, in a trial: a row it points at is ringed (D121).
     var tour: TourController? = nil
+    /// What waits, for the asks drawn under their rows and the row J and K are
+    /// on (U2); nil in the narrow panel.
+    var queue: WaitingQueueModel? = nil
+    /// Opens or closes the «Resting» line (U2).
+    var toggleResting: () -> Void = {}
 
     /// Reference moment for the time labels.
     ///
@@ -61,15 +66,18 @@ struct TrafficLightColumn: View {
     /// shows.
     private static let memberPitch = Layout.subRowHeight + Layout.rowSpacing
 
+    /// With the clock, so rows at rest for half a day fold (U2). The wall clock
+    /// and not `now`, which ticks once a minute: the window is sized from the
+    /// same call (`PanelController.resizeToFit`), and the two must agree.
     private var rendering: ColumnRendering {
-        ColumnLayout.render(store.state, options: options)
+        ColumnLayout.render(store.state, options: options, now: Date())
     }
 
     var body: some View {
         let rendering = self.rendering
 
         return Group {
-            if rendering.rows.isEmpty && rendering.hidden == nil {
+            if rendering.rows.isEmpty && rendering.hidden == nil && rendering.resting == nil {
                 emptyState(filteredOut: rendering.filteredOut)
             } else {
                 content(rendering)
@@ -91,6 +99,16 @@ struct TrafficLightColumn: View {
             VStack(spacing: Layout.rowSpacing) {
                 ForEach(Array(rendering.rows.enumerated()), id: \.element.id) { index, row in
                     block(row, at: index, in: rendering.rows)
+                }
+
+                if let resting = rendering.resting {
+                    RestingRow(summary: resting, compact: compact, toggle: toggleResting)
+                    if resting.isOpen {
+                        ForEach(resting.rows) { row in
+                            TrafficLightRow(row: row, compact: compact, now: now,
+                                            flags: flags(for: row, expanded: false, singleLine: true), actions: actions)
+                        }
+                    }
                 }
 
                 if let hidden = rendering.hidden {
@@ -131,15 +149,22 @@ struct TrafficLightColumn: View {
             narrowBlock(row, at: index, in: rows, holdsMany: holdsMany, open: open)
         } else {
             VStack(spacing: Layout.rowSpacing) {
-                TrafficLightRow(
-                    row: row,
-                    compact: false,
-                    now: now,
-                    flags: flags(for: row, expanded: open),
-                    actions: actions,
-                    drag: drag
-                )
-                .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
+                // The row and the ask it holds are one piece: no gap between them.
+                VStack(spacing: 0) {
+                    TrafficLightRow(
+                        row: row,
+                        compact: false,
+                        now: now,
+                        flags: flags(for: row, expanded: open),
+                        actions: actions,
+                        drag: drag
+                    )
+                    .tourRing(tour) { Tour.rings(row.sessions.map(\.id), $0) }
+                    if let queue { InlineAskView(queue: queue, sessionIds: row.sessions.map(\.id)) }
+                }
+                .overlay {
+                    if let queue { SelectionRing(queue: queue, sessionIds: Set(row.sessions.map(\.id))) }
+                }
 
                 if open { conversations(of: row) }
             }
@@ -339,7 +364,8 @@ struct TrafficLightColumn: View {
                 rowCount: row.count,
                 shownConversations: shown,
                 hasTail: open && row.members.count > shown,
-                compact: compact
+                compact: compact,
+                asks: row.sessions.contains { queue?.inlineSessions.contains($0.id) == true }
             )
         }
     }
@@ -415,7 +441,7 @@ struct TrafficLightColumn: View {
         )
     }
 
-    private func flags(for row: ColumnRow, expanded: Bool) -> RowFlags {
+    private func flags(for row: ColumnRow, expanded: Bool, singleLine: Bool = false) -> RowFlags {
         RowFlags(
             isHidden: options.hidden.contains(row.workspace.key),
             isMuted: mutedWorkspaces.contains(row.workspace.key),
@@ -424,7 +450,8 @@ struct TrafficLightColumn: View {
             isExpanded: expanded,
             conflict: conflictLine(for: row),
             isFocused: focusedSession.map { id in row.sessions.contains { $0.id == id } } ?? false,
-            modInUse: store.state.sessions.values.contains { $0.context?.confidence == .reported }
+            modInUse: store.state.sessions.values.contains { $0.context?.confidence == .reported },
+            singleLine: singleLine
         )
     }
 
@@ -542,5 +569,61 @@ private struct HiddenSummaryRow: View {
         }
         lines.append("Click to bring them all back into the column.")
         return lines.joined(separator: "\n")
+    }
+}
+
+/// The line the rows at rest for half a day fold into (U2): a grey ring, then
+/// «Resting · 3 — legacy-import, billing-worker, checkout-api». A click opens it.
+private struct RestingRow: View {
+    let summary: RestingSummary
+    let compact: Bool
+    let toggle: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 7) {
+            TrafficLightDot(status: .idle)
+            if !compact {
+                Image(systemName: summary.isOpen ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(StatusPalette.timeColor)
+                Text(summary.line)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(StatusPalette.timeColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+            }
+        }
+        .padding(.horizontal, 6)
+        .frame(height: Layout.rowHeight)
+        .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.white.opacity(hovering ? 0.12 : 0))
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture(perform: toggle)
+        .tooltip(summary.line + ". At rest for twelve hours or more. Click to " + (summary.isOpen ? "fold them." : "list them."))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(summary.line)
+        .accessibilityValue(summary.isOpen ? "expanded" : "collapsed")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// The ring around the row J and K are on, while the panel has the keys (U2).
+private struct SelectionRing: View {
+    @ObservedObject var queue: WaitingQueueModel
+    let sessionIds: Set<String>
+
+    var body: some View {
+        if !queue.selectedSessions.isDisjoint(with: sessionIds) {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(StatusPalette.color(for: .awaiting).opacity(0.7), lineWidth: 1)
+                .allowsHitTesting(false)
+        }
     }
 }

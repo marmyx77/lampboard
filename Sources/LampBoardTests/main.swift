@@ -14,6 +14,8 @@ let suites: [TestSuite] = [
     PanelPlacementSuite.suite,
     TooltipPlacementSuite.suite,
     AllowanceLinesSuite.suite,
+    RestingFoldSuite.suite,
+    BarCountSuite.suite,
     ClaudeDesktopSuite.suite,
     DesktopWorktreeSuite.suite,
     SessionCardSuite.suite,

@@ -14,7 +14,7 @@ struct PlanciaView: View {
     var lampMasterActions: LampMasterActions? = nil
     /// What the header's buttons do (UX §5): go to its window, hand it over, mute it.
     var actions: PlanciaActions? = nil
-    /// "Waiting for you", for the card of this session pinned at the top (UX §5).
+    /// What waits, for the card of this session pinned at the top (UX §5).
     var queue: WaitingQueueModel? = nil
 
     enum Tab: String, CaseIterable { case thread = "Thread", activity = "Activity", cost = "Cost" }
@@ -252,7 +252,7 @@ struct PlanciaHeaderView: View {
     }
 }
 
-/// The session's own card from "Waiting for you", pinned under its header (UX
+/// The session's own waiting card, pinned under its header (UX
 /// §5): the same card, the same armed buttons, answered from here as from the
 /// queue. Nothing when the session waits for nothing.
 struct PlanciaPendingCard: View {

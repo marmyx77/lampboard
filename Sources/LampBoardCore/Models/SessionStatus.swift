@@ -5,7 +5,8 @@ import Foundation
 /// The semantics are deliberate: green does not mean "all good", it means
 /// "there is an answer you haven't read yet".
 public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
-    /// Session at rest: no work in progress, nothing to read. Dim red.
+    /// Session at rest: no work in progress, nothing to read. Hollow grey (U2):
+    /// the dim red it used to be read as a broken session.
     case idle
 
     /// Claude is thinking or running tools. Yellow.
@@ -49,7 +50,7 @@ public enum SessionStatus: String, Sendable, Equatable, CaseIterable, Codable {
     /// tooltip's summary is assembled in Core where a test can reach it.
     public var label: String {
         switch self {
-        case .idle: return "idle"
+        case .idle: return "resting"
         case .working: return "working"
         case .waiting: return "waiting on background work"
         // Neutral with respect to the reason: it covers both the permission

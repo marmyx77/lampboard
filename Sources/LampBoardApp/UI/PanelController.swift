@@ -26,7 +26,7 @@ final class PanelController {
     /// The lamp in the menu bar. It exists whether or not the panel lives up
     /// there: two surfaces, one column, and the switch for each is its own.
     let lamp = MenuBarLamp()
-    /// "Waiting for you", above the rows (D74). Wired in `PanelQueue.swift`.
+    /// What waits (D74): held asks under their rows, the bar's count (D124). Wired in `PanelQueue.swift`.
     let queue = WaitingQueueModel()
     /// The bar at the top of the wide panel (D77). Wired in `PanelBar.swift`.
     let bar = CommandBarModel()
@@ -269,18 +269,21 @@ final class PanelController {
     }
 
     /// The layout options derived from the preferences.
-    private var columnOptions: ColumnOptions {
+    var columnOptions: ColumnOptions {
         ColumnOptions(
             onlyWaiting: preferences.showsOnlyWaiting,
             order: preferences.rowOrder,
             hidden: preferences.hiddenWorkspaces,
             names: preferences.rowNames,
-            conversationOrder: preferences.conversationOrder
+            conversationOrder: preferences.conversationOrder,
+            showsResting: preferences.showsResting
         )
     }
 
     /// The options the current content was built with.
     private var renderedOptions: ColumnOptions?
+    /// The rows folded under «Resting» when the content was last built (D124).
+    private(set) var restingDrawn: [String] = []
 
     /// The account's allowance. Created whatever the preference says, and asked
     /// nothing until `apply(enabled:)` is told otherwise: an object that exists is
@@ -312,6 +315,7 @@ final class PanelController {
         )
         panel.contentView = NSHostingView(rootView: root)
         renderedOptions = columnOptions
+        restingDrawn = ColumnLayout.render(store.state, options: columnOptions, now: Date()).resting?.rows.map(\.id) ?? []
         resizeToFit(store.state)
     }
 
@@ -340,7 +344,7 @@ final class PanelController {
     /// Recomputes the height keeping the top edge fixed: the panel grows downwards,
     /// so the corner the user put it in doesn't move.
     func resizeToFit(_ state: TrafficLightState) {
-        let rendering = ColumnLayout.render(state, options: columnOptions)
+        let rendering = ColumnLayout.render(state, options: columnOptions, now: Date())
         // The service rows — hidden summary, filter note — take up as much space
         // as the others and have to be counted, otherwise the last one ends up
         // clipped.
@@ -357,7 +361,8 @@ final class PanelController {
                 rowCount: row.count,
                 shownConversations: shown,
                 hasTail: open && row.members.count > shown,
-                compact: compact
+                compact: compact,
+                asks: row.sessions.contains { queue.inlineSessions.contains($0.id) }
             )
         }
 
@@ -365,10 +370,9 @@ final class PanelController {
             width: plancia.isOpen ? PanelDepth.plancia.width : Layout.width(compact: compact),
             height: planciaHeight(Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
-                allowanceLines: allowance.reports.count, showsLampMaster: showsLampMaster,
-                lampMasterRow: compact ? nil : Layout.wideRowHeight,
-                tourLines: tour == nil ? 0 : TourBand.lines,
-                queueCards: compact ? 0 : queue.drawnCards, queueMore: !compact && queue.hiddenCount > 0,
+                allowanceLines: allowance.reports.filter { AllowanceLines.shown(in: $0) != nil }.count,
+                showsLampMaster: compact && showsLampMaster, tourLines: tour == nil ? 0 : TourBand.lines,
+                resting: (rendering.resting != nil, rendering.resting.map { $0.isOpen ? $0.rows.count : 0 } ?? 0),
                 bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil)
             ))
         )

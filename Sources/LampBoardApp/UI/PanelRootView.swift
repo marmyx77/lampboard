@@ -40,6 +40,8 @@ struct PanelActions {
     /// "I'm away" (A1), and the line said on return clicked away.
     var toggleAway: () -> Void = {}
     var dismissAwayNote: () -> Void = {}
+    /// Opens or closes the «Resting» line at the foot of the column (U2).
+    var toggleResting: () -> Void = {}
 }
 
 /// The menu's checkmarks, gathered together so twelve of them don't travel separately.
@@ -97,7 +99,7 @@ struct PanelRootView: View {
     var planciaActions: PlanciaActions? = nil
     /// The tutorial, in a trial only.
     var tour: TourController? = nil
-    /// "Waiting for you"; nil in the narrow panel.
+    /// What waits: the asks under their rows, the bar's count; nil in the narrow panel.
     var queue: WaitingQueueModel? = nil
     /// The bar at the top; nil in the narrow panel.
     var bar: CommandBarModel? = nil
@@ -135,18 +137,18 @@ struct PanelRootView: View {
     private var column: some View {
         VStack(spacing: 0) {
             if let tour { TourBand(tour: tour, compact: flags.compact) }
-            if let bar { CommandBarView(model: bar).tourRing(tour, at: .bar) }
-            if let queue { WaitingQueueSection(model: queue) }
-            // LampMaster first, fixed, its own glyph (UX §4): a row in the wide
-            // panel, its line in the narrow one.
-            if let lampMaster {
-                if flags.compact {
-                    LampMasterStrip(service: lampMaster, compact: true, open: openLampMaster)
-                        .tourRing(tour, at: .lampMaster)
-                } else {
-                    LampMasterRow(service: lampMaster, selected: plancia?.showsLampMaster == true, open: openLampMaster)
-                        .tourRing(tour, at: .lampMaster)
-                }
+            // The bar carries what the queue and LampMaster's row used to say above
+            // the rows: how many wait, and the reviewer's star (U2).
+            if let bar {
+                CommandBarView(model: bar, queue: queue, onlyWaiting: flags.onlyWaiting,
+                               toggleOnlyWaiting: actions.toggleOnlyWaiting,
+                               lampMaster: lampMaster, openLampMaster: openLampMaster)
+                    .tourRing(tour, at: .bar)
+            }
+            // The narrow panel has no bar: LampMaster keeps its line there.
+            if let lampMaster, flags.compact {
+                LampMasterStrip(service: lampMaster, compact: true, open: openLampMaster)
+                    .tourRing(tour, at: .lampMaster)
             }
             TrafficLightColumn(
                 store: store,
@@ -160,7 +162,9 @@ struct PanelRootView: View {
                 expandedRows: expandedRows,
                 onRevealHidden: actions.showHiddenAgain,
                 conflicts: activity.map { FileConflicts.find($0.logs, live: Set(store.state.sessions.keys), now: Date()) } ?? [:],
-                tour: tour
+                tour: tour,
+                queue: queue,
+                toggleResting: actions.toggleResting
             )
             AllowanceStrip(onInspect: tour.map { tour in { tour.handle(.allowanceInspected) } },
                            reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,

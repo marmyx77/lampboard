@@ -30,27 +30,37 @@ enum AwaySuite {
             t.expectEqual(ledger.failed, ["docs"])
         },
 
-        TestCase("Back, one line: how long, the answers, what still waits, the failures and what it cost") { t in
+        TestCase("Back, one line of what the rows no longer show: earlier answers, earlier failures, the cost") { t in
             let start = state([session("api", .working, cost: 1.0), session("docs", .working, cost: 0.5)])
             var ledger = AwayLedger(since: t0, state: start)
             ledger.observe(state([session("api", .ready, cost: 1.4), session("docs", .failed, cost: 0.7)]))
             let back = state([session("api", .awaiting, cost: 2.6), session("docs", .failed, cost: 0.7)])
             ledger.observe(back)
             let line = ledger.summary(now: t0.addingTimeInterval(80 * 60), state: back) { $0 }
-            t.expectEqual(line, "While you were away (1h 20m): 1 answer (api), 1 waiting for you (api), 1 failed (docs), $1.80 spent.")
+            // api's answer is gone from its row (it asks now); docs is still red,
+            // and what still waits is amber on its row: neither is repeated (U2).
+            t.expectEqual(line, "While you were away (1h 20m): 1 earlier answer (api), $1.80 spent.")
         },
 
-        TestCase("Nothing happened: said in as many words; a session that came and went is still counted") { t in
+        TestCase("What the rows still say is not said again; a failure since restarted is") { t in
+            let start = state([session("api", .working), session("docs", .working)])
+            var ledger = AwayLedger(since: t0, state: start)
+            ledger.observe(state([session("api", .ready), session("docs", .failed)]))
+            let back = state([session("api", .ready), session("docs", .working)])
+            ledger.observe(back)
+            t.expectEqual(ledger.summary(now: t0.addingTimeInterval(600), state: back) { $0 },
+                          "While you were away (10m): 1 earlier failure (docs).")
+        },
+
+        TestCase("Nothing the rows do not already show: no line at all, never «nothing happened»") { t in
             let quiet = state([session("api", .idle)])
             let ledger = AwayLedger(since: t0, state: quiet)
-            t.expectEqual(ledger.summary(now: t0.addingTimeInterval(600), state: quiet) { $0 },
-                          "While you were away (10m): nothing happened.")
+            t.expectNil(ledger.summary(now: t0.addingTimeInterval(600), state: quiet) { $0 })
             var busy = AwayLedger(since: t0, state: quiet)
-            busy.observe(state([session("api", .idle), session("new", .ready, cost: 0.2)]))
-            t.expect(busy.summary(now: t0.addingTimeInterval(600), state: state([session("api", .idle)])) { $0 }
-                .contains("1 answer (new)"), "an answer counts even from a session that has gone since")
-            t.expect(ledger.summary(now: t0.addingTimeInterval(20), state: quiet) { $0 }.hasPrefix("While you were away (under a minute)"),
-                     "not \"(0m)\"")
+            busy.observe(state([session("api", .idle), session("new", .ready)]))
+            t.expectEqual(busy.summary(now: t0.addingTimeInterval(20), state: state([session("api", .idle)])) { $0 },
+                          "While you were away (under a minute): 1 earlier answer (new).",
+                          "an answer counts even from a session that has gone since; not \"(0m)\"")
         },
     ])
 }

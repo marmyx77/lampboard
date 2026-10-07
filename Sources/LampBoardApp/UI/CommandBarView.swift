@@ -6,6 +6,13 @@ import SwiftUI
 /// the keyboard; `↑` `↓` choose, `⏎` opens, `Esc` empties it.
 struct CommandBarView: View {
     @ObservedObject var model: CommandBarModel
+    /// What waits, counted at the bar's end (U2); a click shows only those rows.
+    var queue: WaitingQueueModel? = nil
+    var onlyWaiting = false
+    var toggleOnlyWaiting: () -> Void = {}
+    /// LampMaster's star at the bar's end (U2), while it is switched on.
+    var lampMaster: LampMasterService? = nil
+    var openLampMaster: () -> Void = {}
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -13,21 +20,25 @@ struct CommandBarView: View {
             if model.isEditing {
                 field
             } else {
-                Button { model.focus() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 10, weight: .semibold))
-                        Text("Search · @session · ?LampMaster").font(.system(size: 11, design: .rounded))
-                        Spacer(minLength: 4)
-                        Text("⌘K").font(.system(size: 10, design: .rounded)).monospacedDigit()
+                HStack(spacing: 6) {
+                    Button { model.focus() } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass").font(.system(size: 10, weight: .semibold))
+                            Text("Search").font(.system(size: 11, design: .rounded))
+                            Spacer(minLength: 4)
+                        }
+                        .contentShape(Rectangle())
                     }
-                    .foregroundStyle(StatusPalette.timeColor)
-                    .padding(.horizontal, 7)
-                    .frame(height: Layout.barField)
-                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(StatusPalette.blockWell))
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Search sessions and actions")
+                    if let queue { BarCount(queue: queue, onlyWaiting: onlyWaiting, toggle: toggleOnlyWaiting) }
+                    if let lampMaster { LampMasterStar(service: lampMaster, open: openLampMaster) }
+                    Text("⌘K").font(.system(size: 10, design: .rounded)).monospacedDigit()
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Search sessions and actions")
+                .foregroundStyle(StatusPalette.timeColor)
+                .padding(.horizontal, 7)
+                .frame(height: Layout.barField)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(StatusPalette.blockWell))
             }
 
             if !model.shownResults.isEmpty {
@@ -143,3 +154,56 @@ private struct WeekTiles: View {
     }
 }
 
+/// «1 needs you · 2 to read» at the end of the bar (U2): the count the queue's
+/// cards used to make by being there. A click shows only those rows; a second one
+/// shows them all again.
+private struct BarCount: View {
+    @ObservedObject var queue: WaitingQueueModel
+    let onlyWaiting: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        if let line = queue.countLine {
+            Button(action: toggle) {
+                Text(line)
+                    .font(.system(size: 10, weight: onlyWaiting ? .semibold : .regular, design: .rounded))
+                    .foregroundStyle(onlyWaiting ? Color.primary.opacity(0.9) : StatusPalette.timeColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .buttonStyle(.plain)
+            .layoutPriority(1)
+            .tooltip(onlyWaiting ? "Showing only these. Click to show every row." : "Click to show only these rows.")
+            .accessibilityLabel(line)
+        }
+    }
+}
+
+/// LampMaster, the reviewer, as a star at the end of the bar (U2): dim while it
+/// has nothing to say, lit with a number when it has suggestions. It used to be a
+/// row of its own, thirty-eight points tall, that mostly said «Nothing to report».
+/// A click opens its view beside the list, where the suggestions and their
+/// actions are.
+private struct LampMasterStar: View {
+    @ObservedObject var service: LampMasterService
+    let open: () -> Void
+
+    var body: some View {
+        if service.snapshot.enabled {
+            let count = service.snapshot.open.count
+            Button(action: open) {
+                HStack(spacing: 2) {
+                    Image(systemName: "sparkle").font(.system(size: 10, weight: .semibold))
+                    if count > 0 { Text("\(count)").font(.system(size: 10, weight: .bold)).monospacedDigit() }
+                }
+                .foregroundStyle(count > 0 ? StatusPalette.lampMasterTint : StatusPalette.timeColor.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+            .tooltip("LampMaster, the reviewer: " + LampMasterLine.text(
+                open: count, last: service.snapshot.lastRound, running: service.snapshot.running,
+                time: { $0.formatted(date: .omitted, time: .shortened) }) + ". Click to open it beside the list.")
+            .accessibilityLabel(count > 0 ? "LampMaster, \(count) suggestions" : "LampMaster")
+            .contextMenu { Button("Ask LampMaster now") { service.request(.asked) } }
+        }
+    }
+}

@@ -31,20 +31,34 @@ public struct AwayLedger: Sendable, Equatable {
         }
     }
 
-    /// "While you were away (1h 20m): 3 answers (api, docs), 1 waiting for you
-    /// (api), 1 failed (billing), $2.10 spent." The sessions are named by `name`.
-    public func summary(now: Date, state: TrafficLightState, name: (String) -> String) -> String {
+    /// "While you were away (1h 20m): 2 earlier answers (api, docs), 1 earlier
+    /// failure (billing), $2.10 spent." The sessions are named by `name`.
+    ///
+    /// Only what the rows no longer show (U2). An answer still green on its row,
+    /// a failure still red, a session still amber: the column says those, and a
+    /// line that repeated them was the «notification of the notification» the
+    /// 1.1 review found. And nothing at all when there is nothing else to say —
+    /// never «nothing happened», which reads as a fault.
+    public func summary(now: Date, state: TrafficLightState, name: (String) -> String) -> String? {
         let gone = now.timeIntervalSince(since)
         let head = "While you were away (\(gone < 60 ? "under a minute" : WeekSummary.duration(gone)))"
-        let answered = answers.keys.sorted()
-        let waiting = state.sessions.values.filter { $0.status == .awaiting }.map(\.id).sorted()
+        // A session still showing an answer shows one of them: the rest are earlier.
+        let earlier = answers.compactMap { id, count -> (String, Int)? in
+            let shown = state.sessions[id]?.status == .ready ? 1 : 0
+            return count > shown ? (id, count - shown) : nil
+        }.sorted { $0.0 < $1.0 }
+        let earlierFailures = failed.filter { state.sessions[$0]?.status != .failed }.sorted()
         let spent = lastCost.reduce(0.0) { $0 + max(0, $1.value - (costAtStart[$1.key] ?? 0)) }
         var parts: [String] = []
-        let total = answers.values.reduce(0, +)
-        if total > 0 { parts.append("\(total) answer\(total == 1 ? "" : "s") (\(answered.map(name).joined(separator: ", ")))") }
-        if !waiting.isEmpty { parts.append("\(waiting.count) waiting for you (\(waiting.map(name).joined(separator: ", ")))") }
-        if !failed.isEmpty { parts.append("\(failed.count) failed (\(failed.sorted().map(name).joined(separator: ", ")))") }
+        let total = earlier.reduce(0) { $0 + $1.1 }
+        if total > 0 {
+            parts.append("\(total) earlier answer\(total == 1 ? "" : "s") (\(earlier.map { name($0.0) }.joined(separator: ", ")))")
+        }
+        if !earlierFailures.isEmpty {
+            let count = earlierFailures.count
+            parts.append("\(count) earlier failure\(count == 1 ? "" : "s") (\(earlierFailures.map(name).joined(separator: ", ")))")
+        }
         if spent >= 0.01 { parts.append(String(format: "$%.2f spent", spent)) }
-        return parts.isEmpty ? head + ": nothing happened." : head + ": " + parts.joined(separator: ", ") + "."
+        return parts.isEmpty ? nil : head + ": " + parts.joined(separator: ", ") + "."
     }
 }

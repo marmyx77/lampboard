@@ -2,7 +2,7 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// "Waiting for you": what the queue at the top of the panel holds, in which
+/// What waits for you: what the queue behind the rows and the bar holds, in which
 /// order, and what a key does to it (UX §3).
 enum WaitingQueueSuite {
 
@@ -138,6 +138,18 @@ enum WaitingQueueSuite {
             t.expectEqual(cursor.press(.open, cards: cards), .open(sessionId: "p"))
         },
 
+        TestCase("On a row both amber and held, A answers the held ask: one session, one answer (U2)") { t in
+            let cards = WaitingQueue.cards(sessions: [row("p", .awaiting, since: 0)], suggestions: [],
+                                           asks: [held("p", "toolu_1", at: 3)], now: at(5))
+            var cursor = WaitingQueue.Cursor()
+            t.expectEqual(cards.map(\.call), ["toolu_1"], "one card for one session asking: J and K stop once on its row")
+            t.expectEqual(cursor.press(.allow, cards: cards), .answer(sessionId: "p", call: "toolu_1", .allow))
+            let other = WaitingQueue.cards(sessions: [row("p", .awaiting), row("q", .working)], suggestions: [],
+                                           asks: [held("q", "toolu_2", at: 3)], now: at(5))
+            var elsewhere = WaitingQueue.Cursor(selected: other.firstIndex { $0.call == nil } ?? 0)
+            t.expectEqual(elsewhere.press(.allow, cards: other), .unavailable, "never another session's ask")
+        },
+
         TestCase("An ask the panel held that left unanswered went back to the terminal") { t in
             let before = WaitingQueue.cards(sessions: [row("p", .working)], suggestions: [], asks: [held("p", "toolu_1")], now: at(5))
             let after = WaitingQueue.cards(sessions: [row("p", .awaiting)], suggestions: [], now: at(60))
@@ -230,14 +242,6 @@ enum WaitingQueueSuite {
             let stuck = WaitingQueue.cards(sessions: [row("w", .working, tool: RunningTool(tool: "Bash", detail: "make", since: at(0)))],
                                            suggestions: [], now: at(20 * 60))
             t.expect(WaitingQueue.resolvedElsewhere(before: stuck, after: [], actedOn: []).isEmpty, "the tool ended")
-        },
-
-        TestCase("Four cards are drawn, around the one selected, and the rest are counted") { t in
-            t.expectEqual(WaitingQueue.window(count: 3, selected: 0), 0..<3, "all of a short queue")
-            t.expectEqual(WaitingQueue.window(count: 9, selected: 0), 0..<4)
-            t.expectEqual(WaitingQueue.window(count: 9, selected: 5), 2..<6, "the selected one is always drawn")
-            t.expectEqual(WaitingQueue.window(count: 9, selected: 8), 5..<9)
-            t.expectEqual(WaitingQueue.window(count: 0, selected: 0), 0..<0)
         },
 
         TestCase("A card gone without the panel acting on it was resolved elsewhere") { t in

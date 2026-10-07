@@ -89,15 +89,6 @@ enum PanelMetricsSuite {
             )
         },
 
-        TestCase("In the wide panel LampMaster is a row at the top, counted with the gap under it") { t in
-            let blocks = [block()]
-            t.expectEqual(
-                PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, showsLampMaster: true, lampMasterRow: 36, sizes: sizes)
-                    - PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes),
-                36 + sizes.spacing, "a row and its gap"
-            )
-        },
-
         TestCase("The tutorial's band is counted line by line, and only in a trial") { t in
             let blocks = [block()]
             t.expectEqual(
@@ -118,19 +109,24 @@ enum PanelMetricsSuite {
                           30 + 2 * (10 + 2) + 6, "an opened project: the row, its conversations, the inset")
         },
 
-        TestCase("The queue is counted card by card, with its «more» line") { t in
-            let withQueue = PanelMetrics.Sizes(
+        TestCase("An ask held for a row is drawn under it, in the wide panel only") { t in
+            let withAsks = PanelMetrics.Sizes(
                 row: 20, subRow: 10, spacing: 2, blockInset: 3,
-                tail: 16, padding: 8, footer: 25, issueStrip: 17, queueCard: 30
+                tail: 16, padding: 8, footer: 25, issueStrip: 17, inlineAsk: 28, wideRow: 30
             )
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 1, shownConversations: 0, hasTail: false, compact: false,
+                                                   asks: true, sizes: withAsks), 30 + 28)
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 1, shownConversations: 0, hasTail: false, compact: true,
+                                                   asks: true, sizes: withAsks), 20, "no buttons in the narrow panel")
+        },
+
+        TestCase("The resting line is one row; opened, one more per row under it") { t in
             let blocks = [block()]
-            let none = PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: withQueue)
-            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false,
-                                              queueCards: 2, sizes: withQueue) - none, 2 * 30 + 2 + 8,
-                          "two cards, the gap between them, and the padding above the queue")
-            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false,
-                                              queueCards: 4, queueMore: true, sizes: withQueue) - none,
-                          4 * 30 + 4 * 2 + 17 + 8, "four cards and a line saying how many more, a gap before it too")
+            let none = PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, sizes: sizes)
+            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, resting: (true, 0), sizes: sizes) - none,
+                          20 + 2, "the line and its gap")
+            t.expectEqual(PanelMetrics.height(ofBlocks: blocks, extras: 0, showsIssue: false, resting: (true, 3), sizes: sizes) - none,
+                          4 * (20 + 2), "the line and three rows")
         },
 
         TestCase("The bar is its field, and its results and answer while something is typed") { t in

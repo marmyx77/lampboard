@@ -1,8 +1,12 @@
 import AppKit
 import LampBoardCore
 
-/// "Waiting for you" as the panel holds it: the cards, which one is selected,
+/// What waits for you, as the panel holds it: the cards, which one is selected,
 /// when each was first shown, and the keys while the panel has them (D74).
+///
+/// Since 1.1 the cards are not drawn above the rows (U2): a held ask is drawn
+/// under its own row, J and K move a highlight down the rows that wait, and the
+/// bar says how many. The model is the same; only where it shows changed.
 ///
 /// Every decision is `WaitingQueue`'s; this keeps its state between refreshes,
 /// redraws when a card arms, and turns keys into the panel's own actions.
@@ -45,11 +49,23 @@ final class WaitingQueueModel: ObservableObject {
     private var resolvedTimer: Timer?
     private var monitor: Any?
 
-    var window: Range<Int> { WaitingQueue.window(count: cards.count, selected: cursor.selected) }
-    var visible: [WaitingCard] { Array(cards[window]) }
-    var hiddenCount: Int { cards.count - window.count }
-    /// What the panel's height has to make room for.
-    var drawnCards: Int { visible.count + resolved.count }
+    /// The asks the panel holds, by session, each drawn under its row (U2).
+    var held: [String: WaitingCard] { WaitingQueue.held(in: cards) }
+    /// A held ask answered somewhere else, under its row for a moment.
+    var resolvedHeld: [String: WaitingCard] {
+        WaitingQueue.held(in: resolved).filter { held[$0.key] == nil }
+    }
+    /// The sessions with something drawn under their row: what the panel's
+    /// height has to make room for.
+    var inlineSessions: Set<String> { Set(held.keys).union(resolvedHeld.keys) }
+    /// The bar's count.
+    var countLine: String? { WaitingQueue.countLine(cards) }
+
+    /// The sessions of the card J and K are on, while the panel has the keys.
+    var selectedSessions: Set<String> {
+        guard keyboardActive, cards.indices.contains(cursor.selected) else { return [] }
+        return Set(cards[cursor.selected].sessionIds)
+    }
 
     func isArmed(_ card: WaitingCard) -> Bool { arming.isArmed(card, now: Date()) }
     func isSelected(_ card: WaitingCard) -> Bool {
@@ -69,7 +85,7 @@ final class WaitingQueueModel: ObservableObject {
         let next = WaitingQueue.cards(sessions: sessions, suggestions: suggestions, asks: asks, now: now)
         arming.update(next, now: now)
         guard next != cards else { return }
-        let before = (drawn: drawnCards, more: hiddenCount > 0)
+        let before = inlineSessions
         let gone = WaitingQueue.resolvedElsewhere(before: cards, after: next, actedOn: actedOn, returned: returned)
         var followed = moved ? cursor : WaitingQueue.Cursor()
         if moved { followed.follow(from: cards, to: next) }
@@ -78,7 +94,7 @@ final class WaitingQueueModel: ObservableObject {
         cards = next
         if !gone.isEmpty { show(resolved: gone) }
         scheduleArming(now: now)
-        if before != (drawnCards, hiddenCount > 0) { onLayoutChange() }
+        if before != inlineSessions { onLayoutChange() }
     }
 
     /// A click on a card: what `O` does, once the card is armed.

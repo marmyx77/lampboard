@@ -81,10 +81,10 @@ public enum Tour {
                  anchor: .allowance, waitsFor: .allowanceInspected, teaches: .allowance),
             Step(id: "focus", text: "One session in focus, the others wait: right-click a row › Focus on this session.",
                  anchor: .row(session: events), waitsFor: .focused, teaches: .focus),
-            Step(id: "away", text: "Going out? Panel menu › I'm away: nothing interrupts. Choose it again: one line sums it up.",
+            Step(id: "away", text: "Going out? Panel menu › I'm away: nothing interrupts. Choose it again to be back.",
                  anchor: .panelMenu, waitsFor: .awayToggled(on: false), teaches: .away),
-            Step(id: "lampmaster", text: "LampMaster looks at every session hourly and suggests at most three things. Answer its card.",
-                 anchor: .lampMaster, waitsFor: .lampMasterAnswered, teaches: .lampMaster),
+            Step(id: "lampmaster", text: "LampMaster looks at every session hourly. Click the star in the bar and answer its card.",
+                 anchor: .bar, waitsFor: .lampMasterAnswered, teaches: .lampMaster),
             Step(id: "ask", text: "Ask LampMaster about all your sessions: ⌘K, then ?who renamed the slots endpoint.",
                  anchor: .bar, waitsFor: .lampMasterAsked, teaches: .lampMasterAsk),
         ]

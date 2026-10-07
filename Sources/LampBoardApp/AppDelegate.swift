@@ -314,7 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let away = AwayMonitor(store: store, preferences: preferences, flag: awayFlag)
         notifier?.isAway = { [weak away] in away?.isAway ?? false }
         away.onBack = { [weak self] line in
-            if self?.preferences.notificationsEnabled == true { self?.notifier?.deliverSummary(line) }
+            if let line, self?.preferences.notificationsEnabled == true { self?.notifier?.deliverSummary(line) }
             self?.panelController?.rebuildContent()
             if let store = self?.store { self?.panelController?.resizeToFit(store.state) }
         }

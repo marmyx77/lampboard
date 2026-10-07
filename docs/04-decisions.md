@@ -4667,3 +4667,41 @@ stays in 1.1. Five experts tried the product from scratch on 7 October 2026.
 What 1.1 removes is not fixed here: the queue's names and cut texts go with the
 queue (U2), the stacked trials and their missing exit with the trial (U4).
 
+## D124 · The panel without its copies
+
+**Decided.** The second step of the 1.1 review (U2), on the rule *the row is the
+notification*: something appears outside its row only when it can do there what
+the row cannot.
+
+- **The queue above the rows is gone.** Every card repeated a row underneath it,
+  with its name and its second line — the «notification of the notification» the
+  review found. The one thing in it no row could do was answer an ask the panel
+  holds, so that moved under its own row: one line with the call, a red ⚠ when it
+  is dangerous, Deny and Allow or the question's options, inert for 0.6 seconds
+  as before (`InlineAskView`). The model behind the queue stayed (D74): `J` and
+  `K` now move a ring down the rows that wait, `A` and `D` answer, `O` opens. On a
+  row both amber and held, `A` answers the held ask of that same session.
+- **The bar counts instead**: «1 needs you · 2 to read · 1 stopped», by session.
+  A click shows only those rows; another shows them all.
+- **LampMaster is a star at the end of the bar**, dim with nothing to say, lit
+  with its number when it has suggestions; a click opens its view beside the list.
+  Its row, thirty-eight points that mostly said «Nothing to report», is gone. The
+  narrow panel keeps its line, having no bar.
+- **At rest is a grey ring, «resting».** It was the failure's red at 45%, and on
+  dark glass it read as a broken session; reading a green answer turned the row
+  «red». Red is now only a turn that failed.
+- **Twelve hours at rest folds a row** into one line at the foot of the column,
+  «Resting · 3 — legacy-import, billing-worker, checkout-api», in the user's order.
+  A click lists them under it, one line each. A project with any session not at
+  rest never folds; a bound key still finds a folded row. The window is
+  remeasured every thirty seconds, since a row folds by time alone.
+- **The line said on return says only what the rows no longer show**: earlier
+  answers (a session answered and moved on, or closed), earlier failures, the cost.
+  What waits is amber on its row and is not repeated. With nothing else to say
+  there is no line — never «nothing happened». It goes at the first click on the
+  panel.
+
+Measured on the test Mac, in the trial: the panel went from 551 to 371 points for
+the same six sessions; a held permission opened under its row, Allow answered it
+and the panel shrank back.
+

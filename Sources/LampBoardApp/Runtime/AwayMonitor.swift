@@ -15,7 +15,8 @@ final class AwayMonitor {
     private var timer: Timer?
     private var watching: AnyCancellable?
     /// Said on return, for the notification and for the panel to make room.
-    var onBack: (String) -> Void = { _ in }
+    /// Back: the line, or nil when the rows already say everything (U2).
+    var onBack: (String?) -> Void = { _ in }
     private let awayNow: AwayFlag
 
     init(store: StateStore, preferences: Preferences, flag: AwayFlag) {

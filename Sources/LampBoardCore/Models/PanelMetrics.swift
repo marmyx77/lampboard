@@ -28,8 +28,9 @@ public enum PanelMetrics {
         public let issueStrip: CGFloat
         /// One line of the allowance strip, drawn once per signed-in account.
         public let allowanceLine: CGFloat
-        /// One card of "Waiting for you" (D74).
-        public let queueCard: CGFloat
+        /// A permission or question the panel holds, drawn under its row with
+        /// Allow and Deny (U2), in place of the queue's card above the rows.
+        public let inlineAsk: CGFloat
         /// A project's row in the wide panel, which carries a second line (D76);
         /// `nil` where it is as tall as the narrow one.
         public let wideRow: CGFloat?
@@ -37,9 +38,9 @@ public enum PanelMetrics {
         public init(
             row: CGFloat, subRow: CGFloat, spacing: CGFloat, blockInset: CGFloat,
             tail: CGFloat, padding: CGFloat, footer: CGFloat, issueStrip: CGFloat,
-            allowanceLine: CGFloat = 0, queueCard: CGFloat = 0, wideRow: CGFloat? = nil
+            allowanceLine: CGFloat = 0, inlineAsk: CGFloat = 0, wideRow: CGFloat? = nil
         ) {
-            self.queueCard = queueCard
+            self.inlineAsk = inlineAsk
             self.wideRow = wideRow
             self.row = row
             self.subRow = subRow
@@ -61,15 +62,18 @@ public enum PanelMetrics {
     /// until two projects are open, and then it is half a row.
     ///
     /// The narrow panel has no fill, so it has no inset.
+    /// - Parameter asks: an ask the panel holds for this row, drawn under it
+    ///   (U2). Only in the wide panel: the narrow one has no room for buttons.
     public static func blockHeight(
         rowCount: Int,
         shownConversations: Int,
         hasTail: Bool,
         compact: Bool,
+        asks: Bool = false,
         sizes: Sizes
     ) -> CGFloat {
         let inset = (!compact && rowCount > 1) ? sizes.blockInset * 2 : 0
-        let row = compact ? sizes.row : (sizes.wideRow ?? sizes.row)
+        let row = (compact ? sizes.row : (sizes.wideRow ?? sizes.row)) + (asks && !compact ? sizes.inlineAsk : 0)
         guard shownConversations > 0 else { return row + inset }
         return row
             + CGFloat(shownConversations) * (sizes.subRow + sizes.spacing)
@@ -91,27 +95,21 @@ public enum PanelMetrics {
     ///   panel taller — it takes the room from the rows, and the projects at the
     ///   bottom of the column simply go off the end. Reported in exactly those
     ///   terms the first time the strip shipped.
-    /// - Parameter showsLampMaster: LampMaster's line, drawn while it is
-    ///   switched on. One line the height of the issue strip, counted for the
-    ///   same reason as the allowance: uncounted, it takes the last row's room.
-    /// - Parameter lampMasterRow: in the wide panel LampMaster is the first row
-    ///   (UX §4), this tall, with a gap under it; `nil` for the narrow panel's line.
+    /// - Parameter showsLampMaster: LampMaster's line in the narrow panel, while
+    ///   it is switched on. One line the height of the issue strip, counted for the
+    ///   same reason as the allowance: uncounted, it takes the last row's room. In
+    ///   the wide panel LampMaster is a star in the bar (U2) and costs nothing here.
     /// - Parameter tourLines: the tutorial's band in a trial, in lines of the
     ///   issue strip's height; zero everywhere else.
-    /// - Parameters queueCards, queueMore: the cards of "Waiting for you" drawn
-    ///   above the rows, and whether a line says how many more there are. Above
-    ///   the rows, so uncounted they would push the last project off the end.
-    ///   The queue takes a padding above it; the column's own is the gap below.
+    /// - Parameter resting: the line of rows at rest (U2), and the rows listed
+    ///   under it while it is open, one plain line each.
     public static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool,
-        allowanceLines: Int = 0, showsLampMaster: Bool = false, lampMasterRow: CGFloat? = nil, tourLines: Int = 0,
-        queueCards: Int = 0, queueMore: Bool = false, bar: CGFloat = 0, sizes: Sizes
+        allowanceLines: Int = 0, showsLampMaster: Bool = false, tourLines: Int = 0,
+        resting: (shown: Bool, open: Int) = (false, 0), bar: CGFloat = 0, sizes: Sizes
     ) -> CGFloat {
-        let queue = queueCards > 0
-            ? CGFloat(queueCards) * sizes.queueCard + CGFloat(queueCards - 1) * sizes.spacing
-                + (queueMore ? sizes.spacing + sizes.issueStrip : 0) + sizes.padding
-            : 0
-        let all = blocks + Array(repeating: sizes.row, count: extras)
+        let restingLines = (resting.shown ? 1 : 0) + resting.open
+        let all = blocks + Array(repeating: sizes.row, count: extras + restingLines)
         let content = all.reduce(0, +) + CGFloat(max(all.count - 1, 0)) * sizes.spacing
         let allowance = allowanceLines > 0
             ? CGFloat(allowanceLines) * sizes.allowanceLine
@@ -120,9 +118,9 @@ public enum PanelMetrics {
             : 0
         return max(content, sizes.row)
             + sizes.padding * 2 + sizes.footer + (showsIssue ? sizes.issueStrip : 0) + allowance
-            + (showsLampMaster ? lampMasterRow.map { $0 + sizes.spacing } ?? sizes.issueStrip : 0)
+            + (showsLampMaster ? sizes.issueStrip : 0)
             + CGFloat(tourLines) * sizes.issueStrip
-            + queue + bar
+            + bar
     }
 
     /// The bar at the top of the wide panel (D77): a padding above it, its field,

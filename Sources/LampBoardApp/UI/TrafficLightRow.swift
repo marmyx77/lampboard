@@ -82,6 +82,9 @@ struct RowFlags {
     var isFocused = false
     /// Some session's mod is heard from, so a silent one can be drawn hollow (R4).
     var modInUse = false
+    /// One line even in the wide panel: a row listed under «Resting» (U2), whose
+    /// second line had nothing to say but the name of its agent.
+    var singleLine = false
 }
 
 /// One row of the column: a light and, in expanded mode, the project name with
@@ -105,7 +108,7 @@ struct TrafficLightRow: View {
 
     /// The row's own height: the folder, the grip and the handle are as tall as
     /// it, or a third of a wide row is a place the pointer cannot grab.
-    private var height: CGFloat { compact ? Layout.rowHeight : Layout.wideRowHeight }
+    private var height: CGFloat { compact || flags.singleLine ? Layout.rowHeight : Layout.wideRowHeight }
 
     private var accessibilitySentence: String {
         var parts = [row.displayName, row.status.label, activity]
@@ -215,11 +218,13 @@ struct TrafficLightRow: View {
                             .layoutPriority(1)
                             .monospacedDigit()
                     }
-                    Text(activity)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(StatusPalette.timeColor)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    if !flags.singleLine {
+                        Text(activity)
+                            .font(.system(size: 10, design: .rounded))
+                            .foregroundStyle(StatusPalette.timeColor)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
 
                 // Appears under the pointer and takes eighteen points off the

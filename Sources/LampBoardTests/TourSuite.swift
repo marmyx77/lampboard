@@ -98,7 +98,7 @@ enum TourSuite {
             t.expectEqual(anchors["command"], .bar)
             t.expectEqual(anchors["away"], .panelMenu)
             t.expectEqual(anchors["allowance"], .allowance)
-            t.expectEqual(anchors["lampmaster"], .lampMaster)
+            t.expectEqual(anchors["lampmaster"], .bar, "its star is in the bar since 1.1 (D124)")
             t.expect(Tour.rings(["x", "demo-events-03"], .row(session: "demo-events-03")), "a row holding it is ringed")
             t.expect(!Tour.rings(["demo-api-00002"], .row(session: "demo-events-03")), "another row is not")
             t.expect(!Tour.rings(["demo-events-03"], .bar), "the bar is not a row")

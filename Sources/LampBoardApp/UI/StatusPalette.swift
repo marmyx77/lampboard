@@ -45,12 +45,14 @@ enum StatusPalette {
 
     static func color(for status: SessionStatus) -> Color {
         switch status {
-        // `failed` shares the hue of `idle`: nothing is coming from either of them.
-        // What tells them apart is brightness and glow, the same grammar the
-        // palette already uses for urgency — so the difference reads in compact
-        // mode too, where there is no text.
-        case .idle, .failed:
+        // Red is a turn that failed, and nothing else. A session at rest was the
+        // same red, dimmed, and on dark glass it read as broken: clicking a green
+        // answer to read it turned the row "red" (U2). At rest is grey now, and
+        // drawn hollow, so it reads as an empty place rather than a faint fault.
+        case .failed:
             return Color(red: 0.85, green: 0.24, blue: 0.24)
+        case .idle:
+            return Color(white: 0.62)
         case .working:
             return Color(red: 0.98, green: 0.75, blue: 0.16)
         case .awaiting:
@@ -83,9 +85,9 @@ enum StatusPalette {
         }
     }
 
-    /// Opacity at rest: the idle state stays readable without catching the eye.
+    /// Opacity at rest: the resting ring stays readable without catching the eye.
     static func opacity(for status: SessionStatus) -> Double {
-        status == .idle ? 0.45 : 1.0
+        status == .idle ? 0.75 : 1.0
     }
 
     /// Glow radius. Only the states asking for attention have one.
@@ -370,14 +372,17 @@ enum Layout {
             row: rowHeight, subRow: subRowHeight, spacing: rowSpacing,
             blockInset: blockInset, tail: tailHeight, padding: panelPadding,
             footer: footerHeight, issueStrip: issueStripHeight,
-            allowanceLine: allowanceLine, queueCard: queueCard, wideRow: wideRowHeight
+            allowanceLine: allowanceLine, inlineAsk: inlineAsk, wideRow: wideRowHeight
         )
     }
 
-    /// One card of "Waiting for you" (D74): the project and what kind of thing
-    /// it is on one line, what it asks on the second. Two lines because the ask
-    /// is the point, and a name beside it in 240 points leaves it three words.
-    static let queueCard: CGFloat = 32
+    /// A session's pending card at the top of its Plancia: the project and what
+    /// kind of thing it is on one line, what it asks on the second.
+    static let planciaCard: CGFloat = 32
+
+    /// An ask the panel holds, under its row (U2): what the call would do on one
+    /// line, Allow and Deny — or the question's options — beside it.
+    static let inlineAsk: CGFloat = 24
 
     /// The "and N more" line under a project showing more than it can.
     static let tailHeight: CGFloat = 16
@@ -394,23 +399,23 @@ enum Layout {
     /// How tall one row draws. Delegates, because arithmetic that decides whether
     /// a row can be seen is not drawing and belongs where a test can call it.
     static func blockHeight(
-        rowCount: Int, shownConversations: Int, hasTail: Bool, compact: Bool
+        rowCount: Int, shownConversations: Int, hasTail: Bool, compact: Bool, asks: Bool = false
     ) -> CGFloat {
         PanelMetrics.blockHeight(
             rowCount: rowCount, shownConversations: shownConversations,
-            hasTail: hasTail, compact: compact, sizes: sizes
+            hasTail: hasTail, compact: compact, asks: asks, sizes: sizes
         )
     }
 
     static func height(
         ofBlocks blocks: [CGFloat], extras: Int, showsIssue: Bool, allowanceLines: Int = 0,
-        showsLampMaster: Bool = false, lampMasterRow: CGFloat? = nil, tourLines: Int = 0, queueCards: Int = 0,
-        queueMore: Bool = false, bar: CGFloat = 0
+        showsLampMaster: Bool = false, tourLines: Int = 0, resting: (shown: Bool, open: Int) = (false, 0),
+        bar: CGFloat = 0
     ) -> CGFloat {
         PanelMetrics.height(
             ofBlocks: blocks, extras: extras, showsIssue: showsIssue,
-            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, lampMasterRow: lampMasterRow, tourLines: tourLines,
-            queueCards: queueCards, queueMore: queueMore, bar: bar, sizes: sizes
+            allowanceLines: allowanceLines, showsLampMaster: showsLampMaster, tourLines: tourLines,
+            resting: resting, bar: bar, sizes: sizes
         )
     }
 

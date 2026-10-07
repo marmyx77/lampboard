@@ -118,7 +118,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1200 cases, instantaneous. They verify Core.
+1212 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
@@ -143,7 +143,7 @@ shows, and which one a click opens; the rows themselves keep the user's order (D
 | 2 | `failed` | turn cut short, nothing to read | solid red |
 | 3 | `working` | processing | yellow |
 | 4 | `waiting` | the turn is over; work Claude started is still running and will wake it | soft blue |
-| 5 | `idle` | at rest | dim red |
+| 5 | `idle` | at rest ("resting"); folded under one line after twelve hours | grey ring |
 
 Three properties govern the behavior, and they live on `SessionStatus`:
 

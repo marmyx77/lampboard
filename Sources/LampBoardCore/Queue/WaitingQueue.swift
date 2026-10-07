@@ -1,6 +1,6 @@
 import Foundation
 
-/// One thing in "Waiting for you": a session's ask, a stuck or failed turn,
+/// One thing that waits for you: a session's ask, a stuck or failed turn,
 /// answers to read, or LampMaster's suggestion (UX §3).
 public struct WaitingCard: Sendable, Equatable, Identifiable {
 
@@ -78,6 +78,12 @@ public enum WaitingQueue {
                 continue
             }
         }
+        // An amber row whose ask the panel also holds is one session asking: the
+        // held card answers it, and an amber twin beside it made J and K stop
+        // twice on the same row once the cards moved into the rows (U2).
+        let heldSessions = Set(asks.map(\.sessionId))
+        cards.removeAll { $0.call == nil && ($0.kind == .permission || $0.kind == .question)
+            && $0.sessionIds.allSatisfy(heldSessions.contains) }
         cards += readyCards(ready)
         if let shown = LampMasterLedger.open(suggestions).first {
             cards.append(WaitingCard(
@@ -88,16 +94,32 @@ public enum WaitingQueue {
         return cards.sorted { ($0.kind, $0.appearedAt, $0.id) < ($1.kind, $1.appearedAt, $1.id) }
     }
 
-    /// The most cards drawn at once: past four, a queue pushes the column it
-    /// sits on off the screen, and the fifth thing is never what you do next.
-    public static let shownAtOnce = 4
+    /// The bar's count, which replaced the cards above the rows (U2): «1 needs
+    /// you · 2 to read · 1 stopped». The rows say which; this says how many, and
+    /// a click on it shows only those rows. Nil when nothing waits.
+    public static func countLine(_ cards: [WaitingCard]) -> String? {
+        // Sessions, not cards: an amber row whose ask the panel also holds is
+        // two cards and one session asking.
+        let needs = Set(cards.filter { $0.kind == .permission || $0.kind == .question }.flatMap(\.sessionIds)).count
+        let toRead = cards.filter { $0.kind == .ready || $0.kind == .readyGroup }.reduce(0) { $0 + $1.sessionIds.count }
+        let stopped = cards.filter { $0.kind == .failed }.count
+        var parts: [String] = []
+        if needs > 0 { parts.append("\(needs) \(needs == 1 ? "needs" : "need") you") }
+        if toRead > 0 { parts.append("\(toRead) to read") }
+        if stopped > 0 { parts.append("\(stopped) stopped") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
 
-    /// Which cards are drawn: the first four, or four ending at the selected
-    /// one once it is further down.
-    public static func window(count: Int, selected: Int) -> Range<Int> {
-        guard count > shownAtOnce else { return 0..<count }
-        let end = min(max(selected + 1, shownAtOnce), count)
-        return (end - shownAtOnce)..<end
+    /// The asks the panel holds, by session: the rows that draw Allow and Deny
+    /// under themselves (U2). An amber row is not here — its dialog is in its
+    /// terminal, and nothing on the panel can answer it.
+    public static func held(in cards: [WaitingCard]) -> [String: WaitingCard] {
+        var bySession: [String: WaitingCard] = [:]
+        for card in cards where card.call != nil {
+            guard let session = card.sessionIds.first, bySession[session] == nil else { continue }
+            bySession[session] = card
+        }
+        return bySession
     }
 
     public static func isArmed(appearedAt: Date, now: Date) -> Bool {
@@ -211,15 +233,26 @@ public enum WaitingQueue {
                 default: return .none
                 }
             case .allow, .deny:
+                let card = Self.heldTwin(of: card, in: cards)
                 guard let call = card.call, card.options.isEmpty, let session = card.sessionIds.first else { return .unavailable }
                 return .answer(sessionId: session, call: call, key == .allow ? .allow : .deny)
             case .option(let number):
+                let card = Self.heldTwin(of: card, in: cards)
                 guard let call = card.call, card.options.indices.contains(number - 1), let session = card.sessionIds.first
                 else { return .unavailable }
                 return .choose(sessionId: session, call: call, index: number - 1)
             case .always, .reply:
                 return .unavailable
             }
+        }
+
+        /// The card itself when it carries a call; otherwise the held ask of the
+        /// same session, if the panel holds one. Since the asks moved under their
+        /// rows (U2) a session can be an amber card and a held one at once, and a
+        /// key pressed on it means the one the panel can answer.
+        private static func heldTwin(of card: WaitingCard, in cards: [WaitingCard]) -> WaitingCard {
+            guard card.call == nil, card.kind == .permission || card.kind == .question else { return card }
+            return cards.first { $0.call != nil && $0.sessionIds == card.sessionIds } ?? card
         }
 
         public mutating func follow(from before: [WaitingCard], to after: [WaitingCard]) {

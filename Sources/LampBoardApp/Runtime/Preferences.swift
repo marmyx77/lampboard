@@ -18,6 +18,7 @@ struct Preferences {
         static let setupPromptShown = "setup.promptShown"
         static let opensSessionTab = "click.opensSessionTab"
         static let onlyWaiting = "panel.onlyWaiting"
+        static let showsResting = "column.showsResting"
         /// Read only, as the seed of `rowOrder` for whoever upgrades from the
         /// pinned-rows version.
         static let pinnedWorkspaces = "panel.pinnedWorkspaces"
@@ -187,6 +188,12 @@ struct Preferences {
     var showsOnlyWaiting: Bool {
         get { defaults.bool(forKey: Key.onlyWaiting) }
         nonmutating set { defaults.set(newValue, forKey: Key.onlyWaiting) }
+    }
+
+    /// Whether the «Resting» line at the foot of the column is opened (U2).
+    var showsResting: Bool {
+        get { defaults.bool(forKey: Key.showsResting) }
+        nonmutating set { defaults.set(newValue, forKey: Key.showsResting) }
     }
 
     /// The column's order, by project path. Position `i` is drawn `i`-th and is

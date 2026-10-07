@@ -172,7 +172,7 @@ struct LegendView: View {
         case .waiting:
             return "The turn is over and nothing needs you: background work is still registered and will wake the session when it lands."
         case .idle:
-            return "At rest. Nothing to read, nothing to answer."
+            return "Resting: a grey ring. Nothing to read, nothing to answer. After twelve hours at rest a row folds into the «Resting» line at the foot of the column."
         case .failed:
             return "The turn ended without an answer: interrupted, or it hit an error. The right-hand cell says which."
         }

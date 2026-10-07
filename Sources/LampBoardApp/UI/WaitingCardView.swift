@@ -1,47 +1,9 @@
 import LampBoardCore
 import SwiftUI
 
-/// "Waiting for you", above the rows (D74): one card per thing that needs the
-/// user, most urgent first, at most four drawn and the rest counted.
-///
-/// Only in the wide panel. At 35 points there is room for a light and nothing
-/// to say beside it, and the column already says which rows want somebody.
-struct WaitingQueueSection: View {
-    @ObservedObject var model: WaitingQueueModel
-
-    var body: some View {
-        if !model.cards.isEmpty || !model.resolved.isEmpty {
-            VStack(spacing: Layout.rowSpacing) {
-                ForEach(model.visible) { card in
-                    WaitingCardView(card: card, selected: model.isSelected(card), armed: model.isArmed(card), resolved: false,
-                                    onAnswer: { model.answer(card, $0) }, onChoose: { model.choose(card, $0) })
-                        // Not on a held permission: a click on its Allow must
-                        // never also raise the session (a review finding). `O`
-                        // still opens it.
-                        .onTapGesture { if card.call == nil { model.click(card) } }
-                }
-                ForEach(model.resolved) { card in
-                    WaitingCardView(card: card, selected: false, armed: false, resolved: true)
-                }
-                if model.hiddenCount > 0 {
-                    Text(model.hiddenCount == 1 ? "1 more waiting" : "\(model.hiddenCount) more waiting")
-                        .font(.system(size: 10))
-                        .foregroundStyle(StatusPalette.timeColor)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.leading, 6)
-                        .frame(height: Layout.issueStripHeight)
-                }
-            }
-            .padding(.horizontal, Layout.panelPadding)
-            .padding(.top, Layout.panelPadding)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Waiting for you")
-        }
-    }
-}
-
 /// One card: the project and the kind of thing on the first line, what it asks
-/// on the second.
+/// on the second. Drawn at the top of a session's Plancia (D79); in the column a
+/// held ask is a line under its row instead (`InlineAskView`, U2).
 struct WaitingCardView: View {
     let card: WaitingCard
     let selected: Bool
@@ -77,7 +39,7 @@ struct WaitingCardView: View {
                             .foregroundStyle(PermissionImpact.warns(impact) ? StatusPalette.color(for: .failed) : StatusPalette.timeColor)
                             .lineLimit(1)
                             .truncationMode(.tail)
-                            .help(impact)
+                            .tooltip(impact)
                     }
                     if card.more > 0 {
                         Text("+\(card.more)").font(.system(size: 9, weight: .bold)).monospacedDigit().foregroundStyle(tint)
@@ -100,12 +62,12 @@ struct WaitingCardView: View {
                     // What is allowed keeps both ends: `curl … | sh` must not
                     // lose its tail beside the Allow button.
                     .truncationMode(card.call == nil ? .tail : .middle)
-                    .help(card.call == nil ? "" : card.line)
+                    .tooltip(card.line)
             }
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
-        .frame(height: Layout.queueCard)
+        .frame(height: Layout.planciaCard)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -138,7 +100,7 @@ struct WaitingCardView: View {
             .frame(height: 13)
             .background(Capsule().fill(StatusPalette.blockEdge))
             .disabled(!armed)
-            .help("\(option) (\(index + 1))")
+            .tooltip("\(option) (\(index + 1))")
             .accessibilityLabel(option)
     }
 
@@ -152,7 +114,7 @@ struct WaitingCardView: View {
             .frame(height: 13)
             .background(Capsule().fill(verdict == .allow ? tint.opacity(0.28) : StatusPalette.blockEdge))
             .disabled(!armed)
-            .help(verdict == .allow ? "Allow this call (A)" : "Deny this call (D)")
+            .tooltip(verdict == .allow ? "Allow this call (A)" : "Deny this call (D)")
             .accessibilityLabel(verdict == .allow ? "Allow" : "Deny")
     }
 

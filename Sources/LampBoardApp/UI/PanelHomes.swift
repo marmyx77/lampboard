@@ -368,7 +368,8 @@ extension PanelController {
                 self.store.awayNote = nil
                 self.rebuildContent()
                 self.resizeToFit(self.store.state)
-            }
+            },
+            toggleResting: { [weak self] in self?.toggleResting() }
         )
     }
 }

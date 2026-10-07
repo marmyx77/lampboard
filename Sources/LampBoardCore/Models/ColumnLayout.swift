@@ -223,18 +223,23 @@ public struct ColumnOptions: Sendable, Equatable {
     /// somebody would have to go looking for.
     public let conversationOrder: [String: [String]]
 
+    /// Whether the line of rows at rest is opened (U2).
+    public let showsResting: Bool
+
     public init(
         onlyWaiting: Bool = false,
         order: [String] = [],
         hidden: Set<String> = [],
         names: [String: String] = [:],
-        conversationOrder: [String: [String]] = [:]
+        conversationOrder: [String: [String]] = [:],
+        showsResting: Bool = false
     ) {
         self.onlyWaiting = onlyWaiting
         self.order = order
         self.hidden = hidden
         self.names = names
         self.conversationOrder = conversationOrder
+        self.showsResting = showsResting
     }
 
     /// The name to show a row. The row is a project, so this is the project's.
@@ -272,6 +277,25 @@ public struct HiddenSummary: Sendable, Equatable {
     public var needsAttention: Bool { status.clearsOnFocus }
 }
 
+/// The rows at rest for half a day, folded into one line at the foot of the
+/// column (U2): «Resting · 3 — legacy-import, billing-worker, checkout-api».
+///
+/// Three rows of dim red that had been still for a day and a half read as three
+/// broken sessions, and pushed the ones at work down the column. Folded, they are
+/// one grey line; opened, they are listed under it, one line each.
+public struct RestingSummary: Sendable, Equatable {
+    /// In the user's order.
+    public let rows: [ColumnRow]
+    public let isOpen: Bool
+
+    /// After this long with every session at rest, a row folds.
+    public static let after: TimeInterval = 12 * 3_600
+
+    public var line: String {
+        "Resting · \(rows.count) — " + rows.map(\.displayName).joined(separator: ", ")
+    }
+}
+
 /// The result of the computation: what is visible and what was set aside.
 public struct ColumnRendering: Sendable, Equatable {
     public let rows: [ColumnRow]
@@ -280,6 +304,16 @@ public struct ColumnRendering: Sendable, Equatable {
     /// How many sessions the "only what's waiting" filter excluded.
     /// Worth stating, rather than letting you believe there are no others.
     public let filteredOut: Int
+
+    /// The rows at rest for half a day, out of `rows` (U2).
+    public let resting: RestingSummary?
+
+    public init(rows: [ColumnRow], hidden: HiddenSummary?, filteredOut: Int, resting: RestingSummary? = nil) {
+        self.rows = rows
+        self.hidden = hidden
+        self.filteredOut = filteredOut
+        self.resting = resting
+    }
 
     public static let empty = ColumnRendering(rows: [], hidden: nil, filteredOut: 0)
 
@@ -293,7 +327,7 @@ public struct ColumnRendering: Sendable, Equatable {
     /// With grouping off several rows share a slot; the most urgent wins, which
     /// is what `sorted` already put first and what a click on the group does.
     public func row(inSlot slot: Int) -> ColumnRow? {
-        rows.first { $0.slot == slot }
+        rows.first { $0.slot == slot } ?? resting?.rows.first { $0.slot == slot }
     }
 
     /// The slots that currently have a row, in order, one entry per slot.
@@ -316,9 +350,12 @@ public struct ColumnRendering: Sendable, Equatable {
 /// "scale" phase lives here, where it can be verified without drawing anything.
 public enum ColumnLayout {
 
+    /// - Parameter now: the clock that decides which rows have rested long
+    ///   enough to fold (U2). `nil` folds nothing.
     public static func render(
         _ state: TrafficLightState,
-        options: ColumnOptions
+        options: ColumnOptions,
+        now: Date? = nil
     ) -> ColumnRendering {
         let all = state.ordered
         guard !all.isEmpty else { return .empty }
@@ -333,12 +370,21 @@ public enum ColumnLayout {
             : grouped
 
         let removed = grouped.filter { row in !filtered.contains { $0.id == row.id } }
+        let ordered = sorted(filtered, options: options)
+        let resting = now.map { now in ordered.filter { isResting($0, now: now) } } ?? []
 
         return ColumnRendering(
-            rows: sorted(filtered, options: options),
+            rows: ordered.filter { row in !resting.contains { $0.id == row.id } },
             hidden: summary(of: putAside, options: options),
-            filteredOut: removed.reduce(0) { $0 + $1.count }
+            filteredOut: removed.reduce(0) { $0 + $1.count },
+            resting: resting.isEmpty ? nil : RestingSummary(rows: resting, isOpen: options.showsResting)
         )
+    }
+
+    /// Every session at rest, and the newest of them still for `RestingSummary.after`.
+    private static func isResting(_ row: ColumnRow, now: Date) -> Bool {
+        row.sessions.allSatisfy { $0.status == .idle }
+            && now.timeIntervalSince(row.updatedAt) >= RestingSummary.after
     }
 
     // MARK: - Building the rows

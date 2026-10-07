@@ -20,9 +20,10 @@ states, and a ring on each row showing how full its context window is.">
 A project in each state, a ring on every row, and under each name what that
 session is doing now. The letter in the ring is the
 model — `S`onnet, `O`pus, `H`aiku, and `G` for the GPT model of the Codex row at the
-bottom. Above the rows, what waits for you, most urgent
-first: a session asking, a turn that failed, an answer to read, and LampMaster's
-suggestion last. Then LampMaster, the first row, with what its last round found; under the rows, the account's allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
+bottom. The bar at the top counts what waits for you — sessions asking, answers to
+read, turns that stopped — and ends with LampMaster's star; a permission the panel
+holds opens under its own row, with Allow and Deny. Under the rows, the account's
+allowance. That picture is not a screenshot somebody took: `Scripts/make-screenshots.sh`
 starts the tutorial's trial — the real app on a temporary home, playing a script of
 invented projects — and captures its window, so the image can never contain
 anybody's real work and never falls behind the panel it shows. The band at the top
@@ -42,23 +43,24 @@ says so on the picture itself.
 | 🔴 solid red | `failed` | The turn stopped without producing anything: rate limit, overload, authentication error. |
 | 🟡 yellow | `working` | Claude is processing or running tools. |
 | 🔵 soft blue | `waiting` | The turn is over, but something Claude started is still running — a shell, a monitor on a CI run, a subagent — and will wake it. Nothing for you to do yet. |
-| 🔴 dim red | `idle` | The session is at rest. Nothing to read. |
+| ◯ grey ring | `idle` | Resting: the session is at rest. Nothing to read. After twelve hours at rest, a row folds into one *Resting* line at the foot of the column. |
 
 The table is in order of urgency; the column is not — rows keep the order **you**
 gave them, and a state lights a row up where it is. Green does not
 mean "all good", it means "there is something you haven't seen yet". Clicking the
-traffic light returns the session to dim red: you've seen it.
+traffic light returns the session to a grey ring: you've seen it.
 
 Blue is the one state that says *neither* "working" nor "done". Before it existed,
 a session that had stopped and was waiting an hour for a CI run stayed yellow the
 whole hour — and yellow reads as "Claude is thinking". The tooltip says what the
 row is waiting on: `waiting on monitor ×2, shell`.
 
-`failed` and `idle` share the hue and are told apart by brightness and glow — the
-same grammar the palette uses for urgency, so the difference reads in compact
-mode too, where there is no text. It sits **below** `ready` because a ready answer
-is consumed at once, whereas there is nothing you can do about a rate limit until
-it expires.
+Red is a turn that failed and nothing else. A session at rest used to be the same
+red, dimmed, and on the dark panel it read as broken: reading a green answer turned
+its row "red". At rest is a grey ring now
+([D124](docs/04-decisions.md#d124--the-panel-without-its-copies)). `failed` sits
+**below** `ready` because a ready answer is consumed at once, whereas there is
+nothing you can do about a rate limit until it expires.
 
 Two shapes say what the colour cannot. A **dashed** yellow light is a session at
 work that has sat on one tool for a quarter of an hour or more: a long build, or a
@@ -420,9 +422,8 @@ silences the movement up here too, and not the colour.
 many sessions want you — waiting, finished to read, failed — and how many are at
 work, zeros included, since "nothing waits, three at work" is half of the answer.
 
-At rest it is a hollow ring that follows the menu bar's own light rather than the
-column's dim red. Dim red works among a dozen rows, where it reads as *this one
-is resting*; alone beside the clock it reads as a fault.
+At rest it is a hollow ring that follows the menu bar's own light, like the
+column's grey ring of a resting row.
 
 Right-clicking the lamp opens a short menu: where the panel lives, the
 conversations, Settings, hiding the lamp, and quitting. Everything else is in the
@@ -542,9 +543,11 @@ is meant for someone across the room, who would not see a banner
 **I'm away.** Say so in the panel's menu, *I'm away: hold alerts, sum up when I'm
 back*, or just lock the screen: after three minutes locked you count as away. While
 you are, no notification interrupts, and the panel counts what happens. When you
-come back, one line at the foot of the panel says it, and the same line arrives as a
-notification: "While you were away (1h 20m): 3 answers (api, docs-site), 1 waiting
-for you (api), 1 failed (billing), $2.10 spent." A click puts the line away
+come back, one line at the foot of the panel says what the rows no longer show, and
+the same line arrives as a notification: "While you were away (1h 20m): 2 earlier
+answers (api, docs-site), 1 earlier failure (billing), $2.10 spent." What the rows
+still say — an answer still green, a session still asking — is not repeated, and when
+there is nothing else there is no line. The first click on the panel puts it away
 ([D114](docs/04-decisions.md#d114--im-away-nothing-interrupts-one-line-on-return)). With the companion mod,
 while you are away, a command that would delete recursively, force-push, discard
 changes or run as root waits for you, even where your settings would let it run on
@@ -818,7 +821,7 @@ Code is 2.1.287 or later: *Install hooks* (or `lampboard remote install`) also p
 the mod into that machine's Claude Code with its own `claude plugin`, and the three
 files it reads into `~/.lampboard` there, owner-only — this panel's token, the
 tunnel's port and the permission key. Its sessions then report their context, cost
-and limits through the tunnel, and their permissions come to this panel's queue
+and limits through the tunnel, and their permissions come to this panel
 like a local session's ([D83](docs/04-decisions.md)). From the bar, `@name message`
 and `@name ?question` reach a node's sessions too, over ssh into their own message
 box; the bar says where the message went, and a side question's answer comes back
@@ -947,15 +950,17 @@ where mods draw nothing. Settings, under the mod, turns it off
 
 **Permissions from the panel**, off until you switch it on in Settings, under the
 mod. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
-put to the panel first: it waits at the top of the panel with **Allow** and
-**Deny** (or `A` and `D` once you have clicked the panel), inert for the first
-0.6 seconds so a click meant for something else never answers it. Unanswered in
-55 seconds, it goes back to the session's own dialog, and the card says so. Only
+put to the panel first: it opens under the session's own row with **Allow** and
+**Deny** (or `A` and `D` once you have clicked the panel; `J` and `K` move between
+the rows that wait), inert for the first 0.6 seconds so a click meant for something
+else never answers it. Unanswered in 55 seconds, it goes back to the session's own
+dialog, and the line says so. Only
 what the engine would have asked you: a call it allows or refuses by itself is
-never changed. Beside Allow the card says what the call would do when that is known
-without running it, from the command's first line — a command that "deletes
-recursively" or "force-pushes", in red, or "more lines unseen" when it goes on past
-that line; an edit's "−3 +5 lines" ([D87](docs/04-decisions.md)). A fixed list of
+never changed. What the call would do, when that is known without running it, is
+read from the command's first line — a command that "deletes recursively" or
+"force-pushes", or "more lines unseen" when it goes on past that line; an edit's "−3
++5 lines". A red ⚠ beside the line marks the dangerous ones, its tooltip says why,
+and the session's Plancia shows it in full ([D87](docs/04-decisions.md)). A fixed list of
 spellings, not a guarantee. A question Claude asks you with two to four options waits there the
 same way for 20 seconds, its options as buttons and on the digit keys, and the one
 you pick is your answer ([D86](docs/04-decisions.md)). The mod proves the ask with a key of its own,
@@ -1659,7 +1664,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1200 domain tests, instantaneous
+swift run LampBoardTests              # 1212 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

@@ -38,7 +38,7 @@ struct TrafficLightDot: View {
     /// opacity returns to rest in that same render, unanimated; by the time the
     /// flag flips there is no opacity change left to animate, so the running
     /// animation is never replaced and keeps pulsing under every colour that
-    /// follows — yellow, green, and finally the red of an idle row.
+    /// follows — yellow, green, and finally the ring of a resting row.
     ///
     /// Here the blinking dot is a different view. When the status stops blinking
     /// the view is removed, and a removed view takes its animations with it.
@@ -74,6 +74,16 @@ struct TrafficLightDot: View {
     /// working yellow for one stuck on a tool.
     @ViewBuilder
     private var disc: some View {
+        // At rest is always a grey ring (U2): an empty place, not a faint fault.
+        if status == .idle {
+            Circle().strokeBorder(color, lineWidth: 2)
+        } else {
+            styled
+        }
+    }
+
+    @ViewBuilder
+    private var styled: some View {
         switch style {
         case .solid:
             Circle().fill(color)

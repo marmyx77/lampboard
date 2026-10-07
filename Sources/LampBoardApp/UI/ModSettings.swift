@@ -68,7 +68,7 @@ struct ModSettings: View {
             // Said before it is switched on (D73): it decides what runs.
             Text("""
             With the mod installed, a session about to ask you whether it may run something can \
-            ask this panel first. The ask waits in "Waiting for you" with Allow and Deny, also \
+            ask this panel first. The ask opens under the session's row with Allow and Deny, also \
             on the A and D keys, for up to 55 seconds; unanswered, the session shows its own \
             dialog, as it always did. A question Claude asks you with two to four options \
             waits there too, its options on the digit keys, for up to 20 seconds. Only what Claude Code would have asked you: nothing it \
