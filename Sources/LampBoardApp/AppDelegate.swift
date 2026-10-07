@@ -147,6 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.decisionBoard = decisions
         controller.governor = governor
         WelcomeWindowController.shared.configure(port: port, panel: { [weak controller] in controller })
+        CapabilitiesWindowController.shared.configure(
+            panel: { [weak controller] in controller },
+            openSettings: { [weak self] id in self?.settingsWindow.show(section: SettingsCatalog.section(of: id).title) }
+        )
         if TrialStage.mode != nil {
             // What a mod or a model would answer, from the script (D120).
             lampMaster.scripted = { _ in DemoScript.standard.lampMasterAnswer }

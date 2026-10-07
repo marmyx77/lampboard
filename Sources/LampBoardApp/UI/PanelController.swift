@@ -80,6 +80,8 @@ final class PanelController {
     var onFocusChanged: ((String?) -> Void)?
     /// The three sample rows, while they are in the panel (U4).
     let samples = SampleStage()
+    /// The tip at the top, when one is due (U5).
+    let tips = TipStage()
 
     var onNotificationToggle: ((Bool) -> Void)?
 
@@ -123,7 +125,11 @@ final class PanelController {
         observeAllowance()
         wireQueue()
         wireBar()
-        samples.onChange = { [weak self] in self?.rebuildContent() }
+        // Only remeasured: the views observe the samples themselves, and
+        // rebuilding the content would take the bar's focus from under a
+        // person typing in it.
+        samples.onChange = { [weak self] in guard let self else { return }; self.resizeToFit(self.store.state) }
+        wireTips()
         wirePlancia()
         observeLampMaster()
         observePanelMoves()
@@ -307,7 +313,7 @@ final class PanelController {
             rowActions: makeRowActions(),
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { [weak self] in self?.openLampMasterPlancia() },
-            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), samples: samples,
+            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), samples: samples, tips: tips,
             queue: compact ? nil : queue, bar: compact ? nil : bar,
             plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading, activity: activity,
             openInEditor: { [weak self] id in
@@ -375,7 +381,7 @@ final class PanelController {
             height: planciaHeight(Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
                 allowanceLines: allowance.reports.filter { AllowanceLines.shown(in: $0) != nil }.count,
-                showsLampMaster: compact && showsLampMaster, bandLines: samples.isOn || TrialStage.mode != nil ? 1 : 0,
+                showsLampMaster: compact && showsLampMaster, bandLines: (samples.isOn || TrialStage.mode != nil ? 1 : 0) + (tips.current == nil ? 0 : (compact ? 1 : TipBand.lines)),
                 resting: (rendering.resting != nil, rendering.resting.map { $0.isOpen ? $0.rows.count : 0 } ?? 0),
                 bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil),
                 empty: !compact && rendering.rows.isEmpty && rendering.hidden == nil && rendering.resting == nil

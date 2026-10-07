@@ -19,7 +19,7 @@ public enum MenuEntry: Equatable, Sendable {
 /// What a menu entry does. The App maps each one to its action.
 public enum MenuCommand: Equatable, Sendable {
     // The panel's ⋯ and the lamp
-    case openConversations, legend, onlyWaiting, muteForAnHour, resumeAlerts, away, showHidden, settings, quit
+    case openConversations, legend, capabilities, onlyWaiting, muteForAnHour, resumeAlerts, away, showHidden, settings, quit
     case openPanel, toggleHome
     // A row
     case open, read, sessionView, newConversation, rename, hide
@@ -105,12 +105,13 @@ public struct RowMenuState: Equatable, Sendable {
 /// The three menus of the panel (U3).
 public enum Menus {
 
-    /// The panel's ⋯: the things of every day, and Settings for the rest. Seven
-    /// entries, an eighth while some projects are hidden.
+    /// The panel's ⋯: the things of every day, and Settings for the rest. Eight
+    /// entries, a ninth while some projects are hidden.
     public static func panel(_ state: PanelMenuState, time: (Date) -> String) -> [MenuEntry] {
         var entries: [MenuEntry] = [
             .item(.openConversations, "Open the conversations…"),
             .item(.legend, "What the lights mean…"),
+            .item(.capabilities, "What LampBoard can do…"),
             .divider,
             .item(.onlyWaiting, SettingsCatalog.item(.onlyWaiting).label, checked: state.onlyWaiting),
             quiet(mutedUntil: state.mutedUntil, time: time),

@@ -36,6 +36,7 @@ struct Preferences {
         static let bandHidden = "band.hidden"
         static let searchOff = "search.off"
         static let safetyCatchOff = "away.safetyCatchOff"
+        static let tipsShown = "tips.shown"
         static let mutedUntil = "notify.mutedUntil"
         static let focusedSession = "focus.session"
         static let awayManual = "away.manual"
@@ -360,6 +361,15 @@ struct Preferences {
     var bandEnabled: Bool {
         get { !defaults.bool(forKey: Key.bandHidden) }
         nonmutating set { defaults.set(!newValue, forKey: Key.bandHidden) }
+    }
+
+    /// The tips already shown, by name, with when (U5): each once, one a day.
+    var tipsShown: [String: Date] {
+        get {
+            (defaults.dictionary(forKey: Key.tipsShown) as? [String: Double] ?? [:])
+                .mapValues { Date(timeIntervalSince1970: $0) }
+        }
+        nonmutating set { defaults.set(newValue.mapValues(\.timeIntervalSince1970), forKey: Key.tipsShown) }
     }
 
     /// The safety catch while away (D116): on unless switched off in Settings,

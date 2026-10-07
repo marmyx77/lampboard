@@ -38,10 +38,10 @@ enum MenusSuite {
 
     static let suite = TestSuite("Menus", [
 
-        TestCase("The panel's ⋯: seven entries, Settings with ⌘, before the way out") { t in
+        TestCase("The panel's ⋯: eight entries, Settings with ⌘, before the way out") { t in
             let entries = Menus.panel(quiet, time: { _ in "14:30" })
             t.expectEqual(titles(entries), [
-                "Open the conversations…", "What the lights mean…", "Show only what's waiting",
+                "Open the conversations…", "What the lights mean…", "What LampBoard can do…", "Show only what's waiting",
                 "Mute alerts for an hour", "I'm away", "Settings…", "Quit LampBoard",
             ])
             t.expect(entries.contains { if case .item(.settings, _, _, _, ",") = $0 { return true }; return false },

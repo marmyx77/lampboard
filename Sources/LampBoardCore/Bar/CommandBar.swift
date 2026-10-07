@@ -18,13 +18,14 @@ public enum CommandBar {
     }
 
     public enum Action: String, Sendable, CaseIterable {
-        case settings, gettingStarted, samples, checkForUpdates, legend, week
+        case settings, gettingStarted, samples, capabilities, checkForUpdates, legend, week
 
         public var title: String {
             switch self {
             case .settings: return "Settings"
             case .gettingStarted: return "Getting started"
             case .samples: return "Practice with samples"
+            case .capabilities: return "What LampBoard can do"
             case .checkForUpdates: return "Check for updates"
             case .legend: return "What the colours mean"
             case .week: return "This week"
@@ -37,6 +38,7 @@ public enum CommandBar {
             case .settings: return ["settings", "preferences", "options"]
             case .gettingStarted: return ["getting", "started", "setup", "hooks"]
             case .samples: return ["samples", "practice", "tour", "tutorial", "demo"]
+            case .capabilities: return ["can", "features", "catalogue", "catalog", "what"]
             case .checkForUpdates: return ["update", "upgrade", "version"]
             case .legend: return ["legend", "colours", "colors", "help"]
             case .week: return ["week", "weekly", "summary", "recap"]

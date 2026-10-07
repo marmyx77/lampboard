@@ -1,13 +1,13 @@
 # Code map
 
-~68,900 lines of Swift across five targets. For each file: what it contains, why
+~69,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  21,200 lines · 168 files  pure logic, zero AppKit
-  LampBoardApp/    25,619 lines · 141 files   shell: AppKit, network, windows
-  LampBoardTests/  17,068 lines · 120 files   1219 cases, instantaneous
+  LampBoardCore/  21,353 lines · 170 files  pure logic, zero AppKit
+  LampBoardApp/    25,904 lines · 143 files   shell: AppKit, network, windows
+  LampBoardTests/  17,142 lines · 121 files   1227 cases, instantaneous
   LampBoardE2E/    4,690 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -1018,6 +1018,17 @@ the click, answering from the panel, ⌘K, alerts —, each with one idea and a 
 that does what is still missing, read from what the Mac shows, and *Next* once it is
 done. Codex is named only where it is installed.
 
+### `Tips.swift`
+A line the first time something is on the panel (U5, D127): a session asking, a
+turn stopping, four fifths of the window used, six rows, a fold — the most urgent
+first, each once, one a day at most, and `holds` to take it away once its thing is
+over.
+
+### `Capabilities.swift`
+What LampBoard can do, in six groups by what a person wants (D127): each capability
+in a sentence, whether it needs the helper, the switch that turns it on, the gesture
+*Try* does, or where it is when it is a gesture rather than a switch.
+
 ### `Samples.swift`
 Three sample rows for the real panel (D126): api, docs-site and events under a
 folder no project has, api working, then answering, then asking, so the three
@@ -1878,7 +1889,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `TrafficLightColumn.swift` | 628 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 477 | the bar with the count of what waits and LampMaster's star (D124); in the narrow panel LampMaster's line; the column; the panel's ⋯ built from `Menus.panel` (D125), and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 556 | the bar with the count of what waits and LampMaster's star (D124); in the narrow panel LampMaster's line; the column; the panel's ⋯ built from `Menus.panel` (D125), and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 90 | the dot, the silenceable blink, and the ring for an open ear; solid, dashed when stuck, hollow without the mod, inside its own eleven points (D115); a grey ring at rest (D124) |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 204 | what the six colours and the two rings mean, counted live (D31); the light's two shapes, and `--legend` opens it for a photograph (D115) |
@@ -1902,6 +1913,8 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
 | `SettingsView.swift` | 168 | the Settings window's content (D125): the nine sections of `SettingsCatalog` down the side, the chosen one on the right with an orange line when it acts on the sessions or leaves the Mac; the group box, a setting's row (name and control on a line, what it does under them, from the catalogue) and a switch's |
 | `WelcomeWindow.swift` | 220 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
+| `CapabilitiesWindow.swift` | 134 | «What LampBoard can do» (D127): the six groups, a badge for what needs the helper, *Try* doing the gesture in the real panel — the bar opened with its first characters typed, the samples, the legend — and *Turn on…* opening the switch in Settings, installing the helper first when it is the helper's |
+| `PanelTips.swift` | 70 | the tip at the top of the panel (D127): asked when the state changes and every half minute, never in the demo, only while the panel is on screen and the bar not being typed in; gone by itself when its thing is over; two lines and *Got it*, one line with a bulb in the narrow panel; remeasured, never rebuilt; shown tips kept by name with when |
 | `SettingsPanes.swift` | 284 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 125 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 70 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
@@ -1924,7 +1937,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1219 cases
+## `LampBoardTests/` — 1227 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1956,10 +1969,11 @@ script, before it was split. The most important ones:
 | `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
 | `RestingFoldSuite` | rows at rest for twelve hours folded into one line in the user's order, opened under it, a working session keeping its project out, a bound key still finding a folded row, nothing folded without a clock or under the filter, «resting» as the word (D124) |
 | `BarCountSuite` | the bar's count by kind and by session, plural, a held ask counted, the held asks by session for the lines under the rows (D124) |
-| `MenusSuite` | the ⋯'s seven entries with ⌘, on Settings, what is on checked, the hidden projects only when there are some; a row's eight with Quiet and More, nothing needing this Mac's files on a remote row, Don't blink only where something blinks; the lamp's, its summary, the other home (D125) |
+| `MenusSuite` | the ⋯'s eight entries with ⌘, on Settings, what is on checked, the hidden projects only when there are some; a row's eight with Quiet and More, nothing needing this Mac's files on a remote row, Don't blink only where something blinks; the lamp's, its summary, the other home (D125) |
 | `SettingsCatalogSuite` | nine sections in order, one id and one name per setting and a line for each, the two marked sections, a menu's switch named as Settings names it (D125) |
 | `WelcomeSuite` | the seven screens and their buttons, Codex named only where it is, the samples marked and under their own folder, their colours playing out, added to the column's state and never to the store's (D126) |
 | `DemoScriptSuite` | the demo's script holding nothing real and catching what would be, a beat as the hook's payload, LampMaster's demo card, the allowance line, the permission and the answers it plays (D64, D120) |
+| `LearnSuite` | a tip the first time its thing is on screen and none otherwise, each once, one a day, the most urgent first, every sentence within two lines, holding only while its thing does; the catalogue's six groups, one name each, each capability tried, turned on or found, the helper's marked (D127) |
 | `AllowanceLinesSuite` | the session window unless another limit is spent, no line for a window that has not started, the fullest limit without a session window, short names that stay unique (D123) |
 | `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123) |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |

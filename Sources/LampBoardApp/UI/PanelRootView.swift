@@ -101,6 +101,8 @@ struct PanelRootView: View {
     var planciaActions: PlanciaActions? = nil
     /// The three sample rows, while they are in the panel (U4).
     @ObservedObject var samples: SampleStage
+    /// The tip at the top, when one is due (U5).
+    @ObservedObject var tips: TipStage
     /// What waits: the asks under their rows, the bar's count; nil in the narrow panel.
     var queue: WaitingQueueModel? = nil
     /// The bar at the top; nil in the narrow panel.
@@ -138,6 +140,9 @@ struct PanelRootView: View {
 
     private var column: some View {
         VStack(spacing: 0) {
+            if let tip = tips.current {
+                TipBand(tip: tip, compact: flags.compact, dismiss: tips.dismiss)
+            }
             if samples.isOn || TrialStage.mode != nil {
                 SampleBand(demo: TrialStage.mode != nil, compact: flags.compact, remove: samples.stop)
             }
@@ -403,6 +408,7 @@ struct PanelRootView: View {
         switch command {
         case .openConversations: actions.openExtended()
         case .legend: actions.openLegend()
+        case .capabilities: CapabilitiesWindowController.shared.show()
         case .onlyWaiting: actions.toggleOnlyWaiting()
         case .muteForAnHour: actions.muteForAnHour()
         case .resumeAlerts: actions.clearMute()
@@ -509,3 +515,42 @@ private struct SampleBand: View {
                       : "Three invented rows that show the panel at work. Click Remove to take them away.")
     }
 }
+
+/// One tip, the first time what it speaks of happens (U5): two lines at the top
+/// of the panel, and *Got it*. In the narrow panel a light bulb, its sentence a
+/// hover away, a click putting it away.
+struct TipBand: View {
+    static let lines = 2
+    let tip: Tips.Tip
+    let compact: Bool
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "lightbulb")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(StatusPalette.lampMasterTint)
+            if !compact {
+                Text(tip.text)
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundStyle(Color.primary.opacity(0.8))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("Got it", action: dismiss)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(StatusPalette.fixTint)
+            }
+        }
+        .padding(.horizontal, compact ? 4 : Layout.panelPadding + 6)
+        .padding(.top, 3)
+        .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
+        .frame(height: Layout.issueStripHeight * CGFloat(compact ? 1 : Self.lines), alignment: .top)
+        .contentShape(Rectangle())
+        .onTapGesture { if compact { dismiss() } }
+        .tooltip(tip.text)
+        .accessibilityElement(children: .combine)
+    }
+}
+

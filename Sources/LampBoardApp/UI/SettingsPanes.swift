@@ -270,6 +270,9 @@ struct AboutPane: View {
             SettingRow(id: .gettingStarted) {
                 Button("Open…") { WelcomeWindowController.shared.show() }
             }
+            SettingRow(id: .capabilities) {
+                Button("Open…") { CapabilitiesWindowController.shared.show() }
+            }
             SettingRow(id: .samples) {
                 Button("Start") { model.startSamples() }
             }

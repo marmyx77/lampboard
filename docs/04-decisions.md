@@ -4777,3 +4777,31 @@ than clicks: the welcome on a new home opens on «See every agent at a glance» 
 *Connect Claude Code*; the empty panel says «No lamps yet»; `--samples` puts the
 three rows in, and twenty seconds later api is amber with «Bash: npm publish».
 
+## D127 · Learning when it matters
+
+**Decided.** The fifth step of the 1.1 review (U5). In 1.0 the strong features were
+behind switches and commands people never met, and what there was to learn was
+taught up front, in a twelve-step tour on invented sessions.
+
+- **A tip the first time something is on the panel**, at the top, two lines and
+  *Got it*: a session asking («click it, or answer from here with the helper»),
+  a turn stopping, four fifths of the five-hour window used, six rows or more, a
+  row folding under *Resting*. The most urgent first, each once, one a day at most
+  (`Tips`); never in the demo. Offered only while the panel is on screen and
+  nobody is typing in the bar, and taken away by itself once its thing is over —
+  a «session waits» line after the answer would be the stale copy U2 removed. The
+  band is remeasured, not rebuilt, so a tip never takes the bar's focus. Being
+  away has no tip: it can only begin with the screen locked, where nobody reads.
+- **«What LampBoard can do»**, from the panel's ⋯ (which has eight entries now),
+  Settings › About & help and the bar: every capability by what a person wants —
+  answer sooner, stay out of trouble, spend less, work across sessions, step
+  away, look back and far —, each in a sentence, marked when it needs the helper.
+  *Try* does the gesture in the real panel (the bar opened on `@`, `?`, `week`,
+  `/handoff`; the legend); *Turn on…* opens its switch in Settings, installing the
+  helper first when it is the helper's; a gesture that is not a switch says where
+  it is (`Capabilities`).
+
+Measured on the test Mac: a turn failing on a new home put «A red lamp: that turn
+stopped before its answer» at the top of the panel within two seconds, the bar
+saying «1 stopped», and the window grew by the band's two lines.
+

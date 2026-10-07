@@ -94,7 +94,7 @@ extension PanelController {
     /// Three sample rows in the real panel (U4), in the wide panel where their
     /// second lines can be read.
     func startSamples() {
-        show()
+        summon()
         if isCompact { toggleCompact() }
         samples.start()
     }

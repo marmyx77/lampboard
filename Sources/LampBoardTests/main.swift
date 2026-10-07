@@ -20,6 +20,7 @@ let suites: [TestSuite] = [
     SettingsCatalogSuite.suite,
     WelcomeSuite.suite,
     DemoScriptSuite.suite,
+    LearnSuite.suite,
     ClaudeDesktopSuite.suite,
     DesktopWorktreeSuite.suite,
     SessionCardSuite.suite,

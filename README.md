@@ -500,8 +500,8 @@ rather than spent on focus. A double-click counts as one — the second click is
 dropped.
 
 Click **⋯** under the rows — or right-click **on the panel's margins** — for the
-panel's menu, seven entries: the conversations, what the lights mean, *Show only
-what's waiting*, *Mute alerts for an hour*, *I'm away*, **Settings…** (⌘,) and Quit
+panel's menu, eight entries: the conversations, what the lights mean, *What
+LampBoard can do*, *Show only what's waiting*, *Mute alerts for an hour*, *I'm away*, **Settings…** (⌘,) and Quit
 — and, while some projects are hidden, the way to show them again. Every other
 switch is in Settings, a window of nine sections — Panel, Clicks & keys, Alerts,
 Claude Code & Codex, Acting from the panel, LampMaster, Other Macs, Privacy & data,
@@ -1006,6 +1006,19 @@ it. api works, then has an answer, then asks, so the three colours play out in
 twenty seconds; a click on a sample reads it. They are drawn and nothing else: no
 notification, count or LampMaster round ever sees them. In 1.0 this was a second
 copy of the app, opened over the real panel; it is gone.
+
+**Learning when it matters.** The first time something is on the panel — a session
+asks, a turn stops, four fifths of the five-hour window are gone, six rows are
+open, a row folds under *Resting* — two lines at the top say what it means and what
+can be done, with *Got it*. Each tip once, one a day at most, only while the panel
+is on screen and nobody is typing in it, and gone by itself once its thing is over ([D127](docs/04-decisions.md#d127--learning-when-it-matters)).
+
+**What LampBoard can do**, in the panel's ⋯ and in Settings › About & help, lists
+every capability by what you want — answer sooner, stay out of trouble, spend less,
+work across sessions, step away, look back and far —, each in a sentence, saying
+whether it needs the helper, with *Try*, which does the gesture in the real panel,
+and *Turn on…*, which opens its switch in Settings and installs the helper first
+when it is the helper's.
 
 ## Installation
 
@@ -1670,7 +1683,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1219 domain tests, instantaneous
+swift run LampBoardTests              # 1227 domain tests, instantaneous
 swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

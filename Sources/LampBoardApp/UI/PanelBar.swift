@@ -20,6 +20,7 @@ extension PanelController {
             case .settings: self?.onOpenSettings?()
             case .gettingStarted: WelcomeWindowController.shared.show()
             case .samples: self?.startSamples()
+            case .capabilities: CapabilitiesWindowController.shared.show()
             case .checkForUpdates: self?.checkForUpdates()
             case .legend: self?.onOpenLegend?()
             // Said in the bar itself, by the model.
@@ -157,6 +158,18 @@ extension PanelController {
         panel.makeKey()
         guard !isCompact else { return }
         bar.focus()
+    }
+
+    /// The bar opened with `text` typed, for the catalogue's *Try* (U5): the
+    /// panel widened and brought up key, the field ready for the rest.
+    func openBar(typing text: String) {
+        // `summon`, never `show`: that one is the panel's start-up, and run
+        // again it wires every observer a second time.
+        summon()
+        if isCompact { toggleCompact() }
+        panel.makeKey()
+        bar.focus()
+        bar.text = text
     }
 
     /// What typing in the bar and `⏎` do, for `--bar-type` on a fake home:
