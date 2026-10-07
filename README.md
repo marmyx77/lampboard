@@ -385,11 +385,11 @@ either case.
 has always been and what it still is by default.
 
 **Under a lamp in the menu bar**, opening and closing when you click it, the way
-a menu does. The button under the rows moves it either way, and so does *Live in
-the menu bar* in the panel's menu. Coming back, the panel returns to the corner
+a menu does. The button under the rows moves it either way, and so does *Panel
+lives in* in Settings › Panel. Coming back, the panel returns to the corner
 you last left it in rather than to wherever the drop-down was hanging.
 
-**The lamp is a separate switch** (*Show a lamp in the menu bar*), because the
+**The lamp is a separate switch** (*Show a lamp in the menu bar*, in Settings), because the
 panel floats below the system menus and a full-screen editor covers it: somebody
 who keeps the panel out all day may still want the lamp for those moments. Only
 one direction is forced — a panel that lives in the menu bar keeps its lamp,
@@ -418,16 +418,18 @@ blink: a session merely working is the ordinary condition of the machine, and a
 signal that is on most of the day is not a signal. *Don't blink* on a project
 silences the movement up here too, and not the colour.
 
-*Count in the menu bar*, in Settings, puts `2 · 3` beside the lamp instead: how
+*Count beside the lamp*, in Settings › Panel, puts `2 · 3` beside the lamp instead: how
 many sessions want you — waiting, finished to read, failed — and how many are at
 work, zeros included, since "nothing waits, three at work" is half of the answer.
 
 At rest it is a hollow ring that follows the menu bar's own light, like the
 column's grey ring of a resting row.
 
-Right-clicking the lamp opens a short menu: where the panel lives, the
-conversations, Settings, hiding the lamp, and quitting. Everything else is in the
-panel, one click away.
+Right-clicking the lamp opens a short menu: how many sessions wait and how many
+work, the panel, the conversations, the two ways of keeping quiet — *Mute alerts for
+an hour* and *I'm away* —, where the panel lives, Settings and Quit. *Put the panel
+in its own window* stays there as the way back if the drop-down ever cannot be
+opened ([D125](docs/04-decisions.md#d125--one-place-for-every-switch)).
 
 The drop-down closes when you click elsewhere, because that is what makes it a
 drop-down rather than a window hanging off an icon. That is the whole difference
@@ -475,36 +477,35 @@ Without this limit, grouping would be a loss: you open the project for the
 permission, and the other session's ready answer disappears without your having
 read it.
 
-You can switch it off from the menu (`One row per project`) if you prefer one row
-per session.
-
 ## What to show and what not to
 
-Right-click **on a row**:
+Right-click **on a row**: eight entries, the ways of keeping it quiet under
+*Quiet* and the rarer things under *More*.
 
 | Entry | What it does |
 |---|---|
-| Read here — opens the conversations | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
 | Open | same as the click |
-| Open without marking as read | same as alt+click |
-| Mark as unread | remedies one click too many |
-| Move up / Move down | the drag, in words |
+| Read the conversation | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
+| Open in Session view | the session close up, beside the list |
+| New conversation here | opens a new Claude tab in the project |
 | Rename… | the name you want to read; the session, its window and its folder keep theirs — leave it empty to go back |
 | Hide | the row is collected into the summary |
-| Don't blink | stops the movement, **not** the color |
-| Don't alert me for this project | silences the notifications, **not** the color |
-| New conversation here | opens a new Claude tab in the project |
+| Quiet ▸ | *Don't alert me* silences the notifications, *Don't blink* the movement — **not** the colour —, *Focus on this session* puts it in front |
+| More ▸ | open without marking as read (alt+click), mark as unread, move up or down (the drag, in words), show in Finder, pin a decision, copy the attach command of a background session, a lighter model until the window resets |
 
 One click is enough, even when you are working in another window: the panel
 makes itself key before the click is dispatched, so the first click is delivered
 rather than spent on focus. A double-click counts as one — the second click is
 dropped.
 
-Click the **gear** under the rows — or right-click **on the panel's margins** —
-for the general menu: compact mode,
-grouping, the "only what's waiting" filter, terminal sessions, notifications,
-presence, hooks, launch at login — and **Settings…**, the window for what does
-not fit a menu: the remote machines and the terminal-sessions switch.
+Click **⋯** under the rows — or right-click **on the panel's margins** — for the
+panel's menu, seven entries: the conversations, what the lights mean, *Show only
+what's waiting*, *Mute alerts for an hour*, *I'm away*, **Settings…** (⌘,) and Quit
+— and, while some projects are hidden, the way to show them again. Every other
+switch is in Settings, a window of nine sections — Panel, Clicks & keys, Alerts,
+Claude Code & Codex, Acting from the panel, LampMaster, Other Macs, Privacy & data,
+About & help — each switch with one name and a line under it saying what it does
+([D125](docs/04-decisions.md#d125--one-place-for-every-switch)).
 
 **Hidden projects don't disappear.** They are collected into a summary row that
 **lights up** when one of them asks for attention. That is not an aesthetic
@@ -540,8 +541,8 @@ unlocked, never while you type, and never while you are away, muted or in focus.
 is meant for someone across the room, who would not see a banner
 ([D117](docs/04-decisions.md#d117--a-session-waiting-said-aloud-to-someone-away-from-the-keys)).
 
-**I'm away.** Say so in the panel's menu, *I'm away: hold alerts, sum up when I'm
-back*, or just lock the screen: after three minutes locked you count as away. While
+**I'm away.** Say so with *I'm away* in the panel's ⋯ or the lamp's menu, or just
+lock the screen: after three minutes locked you count as away. While
 you are, no notification interrupts, and the panel counts what happens. When you
 come back, one line at the foot of the panel says what the rows no longer show, and
 the same line arrives as a notification: "While you were away (1h 20m): 2 earlier
@@ -660,8 +661,8 @@ it stays open.
 
 ### Writing back
 
-**Off by default.** Turn it on from the panel menu → *Let the panel answer your
-sessions*. Until you do, the window reads and nothing else — no listener, no
+**Off by default.** Turn on *Send messages to sessions* in Settings › Acting from the
+panel. Until you do, the window reads and nothing else — no listener, no
 mailbox, nothing that can start a turn in your name. The dialog says why before
 you agree to it.
 
@@ -762,7 +763,7 @@ in System Settings › Keyboard › Dictation.
 See [D14](docs/04-decisions.md), [D15](docs/04-decisions.md),
 [D18](docs/04-decisions.md) and [Contracts/assumptions.md](Contracts/assumptions.md).
 
-**Suppress phone push notifications while you're at the Mac.** Claude Code skips
+**Skip Claude Code's phone pushes while I'm at this Mac** (Settings › Alerts). Claude Code skips
 the push notifications if the file named by `CLAUDE_CLIENT_PRESENCE_FILE` exists;
 the panel creates it while you're there and deletes it when you lock the screen.
 This one inverts a built-in behavior, and if the detection gets it wrong the
@@ -781,8 +782,8 @@ registered there, the hook posts to `127.0.0.1`, the server listens on
 barriers, all by design — and reading the machine over ssh, the first answer,
 gave rows that never changed colour and that a click could not open.
 
-Now the machine's hooks **reach this Mac**. Right-click the panel → **Settings…**,
-add the machine under the name ssh knows it by, and press **Install hooks**:
+Now the machine's hooks **reach this Mac**. In **Settings › Other Macs** add the
+machine under the name ssh knows it by, and press **Connect…**:
 lampboard writes the hook script and registers it in that machine's
 `~/.claude/settings.json` (dated backup, atomic write, refused if the file changed
 in between), and keeps a reverse ssh tunnel open so that a loopback port *of your
@@ -841,7 +842,7 @@ and no longer consulted. See
 
 ## Sessions in a terminal
 
-Off by default. `Show terminal sessions` (panel menu, Settings, or `lampboard
+Off by default. *Show sessions started in a terminal* (Settings › Panel, or `lampboard
 terminal on`) gives a row to every `claude` started by hand in a folder no editor
 window has open — Terminal, iTerm2, Ghostty, a tmux or zellij pane. The row is
 named by its conversation title, carries a small terminal glyph, and is anchored
@@ -945,11 +946,11 @@ permission, a question, a stuck or failed turn — the mod draws one line above 
 prompt of the others: `⚑ LampBoard · 1: docs-site: Bash: npm publish`. A digit at an
 empty prompt brings this panel up on that session; nothing is answered from the
 line. In the terminal and the Claude app (one chat at a time there); not in VS Code,
-where mods draw nothing. Settings, under the mod, turns it off
+where mods draw nothing. Settings › Claude Code & Codex turns it off
 ([D84](docs/04-decisions.md)).
 
-**Permissions from the panel**, off until you switch it on in Settings, under the
-mod. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
+**Permissions from the panel**, off until you switch on *Answer permission prompts
+and questions* in Settings › Acting from the panel. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
 put to the panel first: it opens under the session's own row with **Allow** and
 **Deny** (or `A` and `D` once you have clicked the panel; `J` and `K` move between
 the rows that wait), inert for the first 0.6 seconds so a click meant for something
@@ -989,7 +990,7 @@ listening on the port can put words in front of a model
 
 ## The tutorial
 
-*Take the tour…*, in the panel's menu or the lamp's, opens a second panel on
+*Take the tour…*, in Settings › About & help, opens a second panel on
 invented sessions: the real app on a temporary home, marked TRIAL at the top. A
 band says one thing at a time, and each step moves on only when you do it: click
 the green row, then the amber one; allow its `npm publish` from the panel; press
@@ -1137,7 +1138,7 @@ what the app does is a permission you have no reason to grant.
 
 | What | What it is used for | If you refuse |
 |---|---|---|
-| **Nine lines in each agent's own configuration** | `~/.claude/settings.json`, and `~/.codex/hooks.json` where Codex is present: they tell the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Remove the hooks* in the menu, or `lampboard uninstall-hooks`. |
+| **Nine lines in each agent's own configuration** | `~/.claude/settings.json`, and `~/.codex/hooks.json` where Codex is present: they tell the panel when a session changes state. Existing hooks are kept and a dated backup is written. | The column stays empty; nothing else works either. Undo: *Disconnect…* in Settings › Claude Code & Codex, or `lampboard uninstall-hooks`. |
 | **Accessibility** | macOS calls it "controlling your computer". It is used for one thing: bringing the editor window of the row you clicked to the front. | The click still activates the editor, but cannot choose which window — you land wherever you were last. |
 | **Automation** | Reading window titles, to tell your projects apart. One entry per application it has to ask: System Events for editors, plus a terminal application for its own tabs. | Same as above: the application comes forward, the right window does not. |
 | **Notifications** *(optional)* | Alerting you when a session blocks while you are elsewhere. | The panel still shows it; nothing pops up. |
@@ -1266,7 +1267,7 @@ back, and nothing else.
 
 ### Updating it
 
-*Check for updates…* in the panel's menu. It asks GitHub what the latest release
+*Check for updates…* in Settings › About & help. It asks GitHub what the latest release
 is and says one of three things: you are on it, there is a newer one, or the
 question could not be answered.
 
