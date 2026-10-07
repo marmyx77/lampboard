@@ -1113,12 +1113,15 @@ vocabulary rather than being only an initial — and the lamps sit along the pat
 the eye takes anyway, urgency falling as it goes: the orange that is asking for
 you, the green that has an answer, the yellow that is working, the blue that is
 waiting on something it started, then the two reds. Those two are the same hue at
-two brightnesses, which is how the column itself separates a turn that failed
-from a session at rest.
+two brightnesses: a turn that failed, and the dim red a session at rest had until
+1.1. The column now draws rest as a grey ring
+([D124](docs/04-decisions.md#d124--the-panel-without-its-copies)); the icon keeps
+the red, because a grey lamp in the foot of the letter reads as a stroke switched
+off.
 
 A letter needs every stroke lit, so this is the one drawing here that shows a
 pose the panel never strikes: with half the lamps dark the L breaks in two. The
-resting red is dimmed and never switched off for the same reason — a hole in the
+last red is dimmed and never switched off for the same reason — a hole in the
 foot reads as a letter fading out.
 
 It is generated rather than drawn because the rules that keep it readable are
