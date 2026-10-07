@@ -54,10 +54,14 @@ struct AllowanceStrip: View {
     private var namesAccounts: Bool { reports.count > 1 }
 
     var body: some View {
-        if !reports.isEmpty {
+        if reports.contains(where: { AllowanceLines.shown(in: $0) != nil }) {
             VStack(spacing: 2) {
-                ForEach(reports, id: \.label) { report in
-                    line(report)
+                // By position: two machines that cannot say which account they
+                // are signed into carry the same label, and a duplicate id is a
+                // row SwiftUI draws twice or not at all.
+                let names = AllowanceLines.names(for: reports.map(\.label))
+                ForEach(Array(reports.enumerated()), id: \.offset) { index, report in
+                    line(report, name: names[index])
                 }
             }
             .padding(.horizontal, Layout.panelPadding)
@@ -78,12 +82,12 @@ struct AllowanceStrip: View {
     }
 
     @ViewBuilder
-    private func line(_ report: AllowanceReport) -> some View {
-        if let limit = shown(in: report) {
+    private func line(_ report: AllowanceReport, name: String) -> some View {
+        if let limit = AllowanceLines.shown(in: report) {
             HStack(spacing: 6) {
                 if namesAccounts && !compact {
-                    // The local part alone. The domain is the half that repeats.
-                    Text(shortName(report.label))
+                    // The local part alone, unless two accounts share it (U1).
+                    Text(name)
                         .font(Self.face)
                         .foregroundStyle(Color.primary.opacity(0.42))
                         .lineLimit(1)
@@ -121,14 +125,14 @@ struct AllowanceStrip: View {
                         Text(String(clock))
                             .font(Self.face.monospacedDigit())
                             .foregroundStyle(StatusPalette.warningTint)
-                            .frame(width: 44, alignment: .trailing)
+                            .frame(width: Self.timeWidth, alignment: .trailing)
                             .tooltip(warning)
                             .accessibilityLabel(warning)
                     } else {
                         Text(reset(limit))
                             .font(Self.face.monospacedDigit())
                             .foregroundStyle(StatusPalette.timeColor)
-                            .frame(width: 34, alignment: .trailing)
+                            .frame(width: Self.timeWidth, alignment: .trailing)
                     }
                 }
             }
@@ -144,37 +148,20 @@ struct AllowanceStrip: View {
         }
     }
 
-    /// Above this a limit counts as spent, and takes the line from the session
-    /// window. Not 100: a week at 94% will stop the work before it resets, and a
-    /// strip that waited for the round number would tell somebody at the moment it
-    /// stopped being useful.
-    private static let spent = 90
-
-    /// The session window, unless something else is spent.
-    private func shown(in report: AllowanceReport) -> AccountLimits.Limit? {
-        let limits = report.limits.limits
-        let binding = limits
-            .filter { $0.span != .session && $0.percent >= Self.spent }
-            .max { $0.percent < $1.percent }
-        return binding ?? limits.first { $0.span == .session } ?? limits.max { $0.percent < $1.percent }
-    }
-
     /// The row's own face. Asked for in those words: the strip was set two sizes
     /// smaller than the projects above it and read as a footnote to them, when it
     /// is the one line that says how long the whole column has left.
     private static let face = Font.system(size: 12, weight: .regular, design: .rounded)
+
+    /// One width for the last column, whether it says when the window resets or
+    /// when it runs out: two widths made the lines of one strip two ragged columns.
+    private static let timeWidth: CGFloat = 44
 
     /// How long until this limit starts again, in the column's own shorthand.
     private func reset(_ limit: AccountLimits.Limit) -> String {
         guard let resetsAt = limit.resetsAt else { return "—" }
         let remaining = resetsAt.timeIntervalSince(Date())
         return remaining > 0 ? ShortSpan.label(seconds: remaining) : "now"
-    }
-
-    /// `design@example.com` → `design`. A machine name carries no `@` and is
-    /// returned whole.
-    private func shortName(_ label: String) -> String {
-        label.split(separator: "@").first.map(String.init) ?? label
     }
 
     private func track(_ limit: AccountLimits.Limit) -> some View {

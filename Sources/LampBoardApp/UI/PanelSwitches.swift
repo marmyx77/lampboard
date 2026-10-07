@@ -85,6 +85,13 @@ extension PanelController {
     }
 
     func uninstallHooks() {
+        // One click in a long menu should not cut every session off (U1).
+        guard Alerts.confirm(
+            title: "Disconnect Claude Code and Codex?",
+            message: "LampBoard removes its lines from their settings and stops receiving signals. "
+                + "The rows stay until their sessions end. You can connect again at any time.",
+            confirmTitle: "Disconnect"
+        ) else { return }
         let reports = HookSetup.remove()
         rebuildContent()
         guard !HookSetup.hasFailure(in: reports) else {
@@ -95,7 +102,7 @@ extension PanelController {
         }
         Alerts.info(
             title: "Hooks removed",
-            message: "lampboard will no longer receive signals from either agent."
+            message: "LampBoard will no longer receive signals from either agent."
         )
     }
 }

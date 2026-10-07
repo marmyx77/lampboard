@@ -31,6 +31,14 @@ enum Tooltip {
     private static var panel: NSPanel?
     private static var pending: DispatchWorkItem?
     private static var dismissals: Any?
+    /// Where the pointer was when the card was last shown or replaced. An exit
+    /// reported with the pointer still there was not the pointer leaving (U1).
+    private static var shownAt: NSPoint?
+    /// The window the card explains, and a check every second that it is still
+    /// there under the pointer: an exit that never comes — the panel ordered out
+    /// under a still pointer — must not strand the card.
+    private static weak var owner: NSWindow?
+    private static var watchdog: Timer?
 
     /// What a tooltip can be: a sentence, or a row's whole second layer.
     enum Content {
@@ -70,7 +78,34 @@ enum Tooltip {
     static func hide() {
         pending?.cancel()
         pending = nil
+        shownAt = nil
+        owner = nil
+        watchdog?.invalidate()
+        watchdog = nil
         panel?.orderOut(nil)
+    }
+
+    /// Whether the window being explained is still on screen under the pointer.
+    private static var ownerStillThere: Bool {
+        guard let owner else { return false }
+        return owner.isVisible && owner.frame.contains(NSEvent.mouseLocation)
+    }
+
+    /// The pointer left the thing being explained — or so a hover handler says.
+    ///
+    /// SwiftUI also reports an exit when it rebuilds the view under a pointer
+    /// that has not moved: measured on the test Mac, a card left alone vanished
+    /// after about seven seconds, with nothing touched. A pointer that has not
+    /// moved has not left anything, so that exit is ignored. A row that moves
+    /// away under a still pointer is dealt with where the rows are ordered
+    /// (`TrafficLightColumn` hides the card when the order changes), and a scroll
+    /// or a click by the dismissal monitor below.
+    static func pointerLeft() {
+        if let shownAt, panel?.isVisible == true, NSEvent.mouseLocation == shownAt, ownerStillThere {
+            Diagnostics.log("tooltip: exit with a still pointer ignored")
+            return
+        }
+        hide()
     }
 
     // MARK: - Internals
@@ -84,7 +119,20 @@ enum Tooltip {
         hosting.frame = NSRect(origin: .zero, size: size)
         panel.contentView = hosting
         panel.setContentSize(size)
-        panel.setFrameOrigin(origin(for: size))
+        let owner = window(under: NSEvent.mouseLocation)
+        // One level above the window it explains, whichever level that is: the
+        // panel sits higher in the menu bar than floating, and a card one level
+        // short went under it (U1). With nothing to explain, back to floating,
+        // below the system menus.
+        panel.level = owner.map { NSWindow.Level(rawValue: $0.level.rawValue + 1) } ?? .floating
+        panel.setFrameOrigin(origin(for: size, beside: owner))
+        shownAt = NSEvent.mouseLocation
+        Self.owner = owner
+        if watchdog == nil {
+            watchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+                MainActor.assumeIsolated { if !ownerStillThere { hide() } }
+            }
+        }
         // `orderFrontRegardless` and never `makeKey`: the point of the panel this
         // belongs to is that nothing here ever takes the focus.
         panel.orderFrontRegardless()
@@ -161,8 +209,7 @@ enum Tooltip {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        // Above the panel it explains, below the system menus. A tooltip that a
-        // context menu opens behind would be a tooltip covering the menu.
+        // Until it is shown beside something: then one level above that.
         panel.level = .floating
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
@@ -173,23 +220,22 @@ enum Tooltip {
         return panel
     }
 
-    /// Below and to the right of the pointer, kept inside the screen it is on.
-    ///
-    /// Cocoa's origin is bottom-left, so "below the pointer" is a *smaller* y —
-    /// the sign that is wrong in every first version of this function.
-    private static func origin(for size: NSSize) -> NSPoint {
+    /// Beside the window being explained, never over it: `TooltipPlacement`.
+    private static func origin(for size: NSSize, beside owner: NSWindow?) -> NSPoint {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        let anchor = owner?.frame ?? NSRect(origin: mouse, size: .zero)
+        let screen = owner?.screen ?? NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         let bounds = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        return TooltipPlacement.origin(size: size, anchor: anchor, pointer: mouse, screen: bounds)
+    }
 
-        var x = mouse.x + 14
-        var y = mouse.y - size.height - 12
-
-        if x + size.width > bounds.maxX { x = max(bounds.minX, mouse.x - size.width - 14) }
-        // No room underneath — the pointer is near the bottom of the screen —
-        // so it goes above instead of being clamped into a strip it does not fit.
-        if y < bounds.minY { y = min(bounds.maxY - size.height, mouse.y + 18) }
-        return NSPoint(x: x, y: y)
+    /// This app's frontmost window under the pointer, the card itself aside.
+    /// The panel first: an invisible helper window of the app's — a status
+    /// item's, an overlay — must never become what the card is anchored to.
+    private static func window(under point: NSPoint) -> NSWindow? {
+        let candidates = NSApp.windows.filter { $0 !== panel && $0.isVisible && $0.frame.contains(point) }
+        return candidates.first { $0 is FloatingPanel }
+            ?? candidates.filter { $0.isOpaque || $0.hasShadow }.max { $0.level.rawValue < $1.level.rawValue }
     }
 
     /// A click or a scroll takes it away.
@@ -254,7 +300,7 @@ extension View {
 
     private func tooltip(_ content: Tooltip.Content) -> some View {
         onHover { inside in
-            if inside { Tooltip.show(content) } else { Tooltip.hide() }
+            if inside { Tooltip.show(content) } else { Tooltip.pointerLeft() }
         }
     }
 }

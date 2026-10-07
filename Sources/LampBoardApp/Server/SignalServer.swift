@@ -13,7 +13,7 @@ enum SignalServerError: LocalizedError {
         case .invalidPort(let port):
             return "Invalid port: \(port)"
         case .portInUse(let port):
-            return "Port \(port) is already taken. Is another instance of lampboard running?"
+            return "Port \(port) is already taken. Is another instance of LampBoard running?"
         case .failed(let reason):
             return "Server startup failed: \(reason)"
         }

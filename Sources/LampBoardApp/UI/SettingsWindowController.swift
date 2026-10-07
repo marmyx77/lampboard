@@ -32,7 +32,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "lampboard Settings"
+        window.title = "LampBoard Settings"
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(fleet: fleet, lampMaster: lampMaster))
         window.delegate = self

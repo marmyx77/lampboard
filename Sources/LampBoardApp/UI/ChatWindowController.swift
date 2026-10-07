@@ -90,7 +90,7 @@ final class ChatWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "lampboard"
+        window.title = "LampBoard"
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("lampboard-extended")

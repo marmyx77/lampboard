@@ -483,7 +483,7 @@ struct PanelRootView: View {
 
         Divider()
 
-        Button("Quit lampboard", action: actions.quit)
+        Button("Quit LampBoard", action: actions.quit)
     }
 
     /// Switch entries are distinguished by a checkmark.

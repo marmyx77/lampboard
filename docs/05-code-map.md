@@ -1,13 +1,13 @@
 # Code map
 
-~67,600 lines of Swift across five targets. For each file: what it contains, why
+~68,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,777 lines · 164 files  pure logic, zero AppKit
-  LampBoardApp/    25,210 lines · 139 files   shell: AppKit, network, windows
-  LampBoardTests/  16,704 lines · 113 files   1191 cases, instantaneous
+  LampBoardCore/  20,898 lines · 166 files  pure logic, zero AppKit
+  LampBoardApp/    25,262 lines · 139 files   shell: AppKit, network, windows
+  LampBoardTests/  16,832 lines · 115 files   1200 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -337,6 +337,11 @@ One account's allowance and where it was read, plus the rule that collapses two
 readings of the same account into one. The local reading is kept, because its age
 is the one this app controls.
 
+### `AllowanceLines.swift` · 64
+Which limit each account's line shows (the session window, unless another is spent),
+no line for a window that has not started, and a short name per account that stays
+unique when two addresses share the part before the @ (U1, D123).
+
 ### `RemoteAllowanceScript.swift`
 The Python that reads another machine's allowance, run there over ssh. **The
 request is made on the far side** and only the answer crosses the wire: pulling the
@@ -536,6 +541,14 @@ project is not a forgotten one.
 It blinks for exactly the three states a click clears — the three that mean
 *there is news here nobody has taken in*. Yellow and blue never blink, because a
 signal that is on for most of the day is not a signal.
+
+### `TooltipPlacement.swift` · 57
+Where a card explaining something in the panel goes: beside the panel, never over
+it (U1, D123). On the right when it fits, else the left, else under, else above;
+only its height follows the pointer.
+
+> **Anchoring it to the pointer again** brings back the clipped card: the pointer is
+> always inside the panel, so a card that turns left lands on the panel's own rows.
 
 ### `MenuBarPlacement.swift` · 68
 Whether the lamp the system agreed to show is a lamp anybody can see.
@@ -1866,7 +1879,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 204 | what the six colours and the two rings mean, counted live (D31); the light's two shapes, and `--legend` opens it for a photograph (D115) |
 | `LegendWindowController.swift` | 57 | owns the legend window |
-| `Tooltip.swift` | 243 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32) |
+| `Tooltip.swift` | 283 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32); one level above the window it explains, beside it, and not taken away by an exit the pointer did not make (D123) |
 | `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 57 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
@@ -1906,7 +1919,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1191 cases
+## `LampBoardTests/` — 1200 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1937,6 +1950,8 @@ script, before it was split. The most important ones:
 | `BackgroundSessionSuite` | `kind: bg` admitted and other non-interactive kinds not, an SDK entrypoint still out; named by its title, its second line saying background (D103); a job file read for its summary, its need while blocked and its id, an id unfit for a shell or read as an option refused, a bidi override flattened, the live file's `jobId` kept only when safe; the row's line from the job, a held question still first; the job attached to a background row only (AV2) |
 | `UnreadAnswersSuite` | each answer nobody read adds one and a prompt starts again; looking clears it and *mark as unread* brings back one; a failed turn or one still waiting on work adds nothing; the row's `✉n` from two on, none on a row at work (R3c, D108) |
 | `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
+| `AllowanceLinesSuite` | the session window unless another limit is spent, no line for a window that has not started, the fullest limit without a session window, short names that stay unique (D123) |
+| `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123) |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
 | `GovernorSuite` | one step down by family and nowhere past Haiku; lowered until the reset and back after it or when taken off; the session in focus kept; the mod heard only proven, the model only signed; the file's round trip, expired entries dropped (D112) |
 | `RadarSuite` | another live session's latest write of the file within two hours, never one's own, an old one or a closed session's; the sentence with a flattened name; the request proven for its session and file, the answer signed (D113) |

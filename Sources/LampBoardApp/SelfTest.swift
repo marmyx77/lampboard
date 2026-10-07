@@ -24,7 +24,7 @@ enum SelfTest {
         // reached the handler". A false alarm, raised at the one moment somebody
         // runs a diagnosis — when they already suspect something is broken.
         if let running = probeRunningInstance(port: port) {
-            print("• a lampboard is already listening on \(AppConfig.listenHost):\(port)")
+            print("• a LampBoard is already listening on \(AppConfig.listenHost):\(port)")
             switch running {
             case .status(204):
                 print("✓ the running panel accepts signals (HTTP 204)")

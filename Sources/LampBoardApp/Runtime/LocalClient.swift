@@ -24,7 +24,7 @@ enum LocalClient {
                 It is created the first time the panel starts: is it running?
                 """
             case .notRunning:
-                return "lampboard is not running."
+                return "LampBoard is not running."
             case .unauthorized:
                 return """
                 Token rejected. If you restarted the app after deleting the token \

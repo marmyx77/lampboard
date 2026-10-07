@@ -78,6 +78,10 @@ struct TrafficLightColumn: View {
         .padding(Layout.panelPadding)
         .frame(width: Layout.width(compact: compact))
         .onReceive(tick) { now = $0 }
+        // A card describes the row that was under the pointer. When rows
+        // reorder, arrive or leave, another one may be there now and the card
+        // would describe the wrong session (U1).
+        .onChange(of: rendering.rows.map(\.id)) { Tooltip.hide() }
     }
 
     // MARK: - Rows

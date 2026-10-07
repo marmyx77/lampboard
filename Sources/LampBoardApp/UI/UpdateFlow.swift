@@ -16,7 +16,7 @@ enum UpdateFlow {
         switch await UpdateChecker.check() {
         case .upToDate(let current):
             Alerts.warn(
-                title: "lampboard is up to date",
+                title: "LampBoard is up to date",
                 message: "Version \(current) is the latest release."
             )
 

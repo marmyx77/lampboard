@@ -493,7 +493,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ?? error.localizedDescription
             Diagnostics.log("server did not start: \(message)")
             guard !headless else { return }
-            Alerts.warn(title: "lampboard cannot receive signals", message: message)
+            Alerts.warn(title: "LampBoard cannot receive signals", message: message)
         }
     }
 

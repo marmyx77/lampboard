@@ -4633,3 +4633,37 @@ that could turn sending off, and both are fixed.
 **Photographed on the test Mac**, on a fake home: the new items with their buttons,
 and Accessibility already ticked.
 
+## D123 · The card beside the panel, and the defects that outlive 1.1
+
+**Decided.** The first step of the 1.1 review (U1): what was broken in 1.0 and
+stays in 1.1. Five experts tried the product from scratch on 7 October 2026.
+
+- **The card went under the panel.** It was placed below and to the right of the
+  pointer, and the pointer is always inside the panel: when the card turned left it
+  landed on the panel's rows. In the menu bar the panel sits at `.popUpMenu`, above
+  the card's `.floating`, so the card was drawn under it and came out cut. It is now
+  one level above the window it explains, and anchored to that window's edge: right
+  when it fits, else left, else under, else above. Only its height follows the
+  pointer (`TooltipPlacement`). Measured on the test Mac: card at x 758–1076, panel
+  from 1084, one layer above.
+- **The card vanished after about seven seconds.** SwiftUI reports a hover exit when
+  it rebuilds the view under a still pointer. An exit with the pointer where it was
+  when the card appeared is ignored, as long as the window it explains is still on
+  screen under the pointer (checked every second, so a panel put away under a still
+  pointer takes its card with it). When rows reorder, arrive or leave, the card is
+  taken away, because another row may be under the pointer now. Measured: the card stays 13 seconds
+  and more with the pointer still.
+- **Two accounts called the same.** The line kept the part before the @, so two
+  addresses became «marco» and «marco». It now keeps the domain when the local parts
+  collide, and the whole address when nothing shorter tells them apart.
+- **«0% —»**, a window that has not started, is no longer a line. A spent weekly
+  limit still is: it stops the work whatever the session window says.
+- **The two last columns were 44 and 34 points wide.** One width now.
+- **Remove the hooks and Clear the list asked nothing.** Both confirm first.
+- **LampBoard is spelt LampBoard** in every window title, alert and menu entry; the
+  command stays `lampboard`. LampMaster's two token figures are formatted the same
+  way.
+
+What 1.1 removes is not fixed here: the queue's names and cut texts go with the
+queue (U2), the stacked trials and their missing exit with the trial (U4).
+

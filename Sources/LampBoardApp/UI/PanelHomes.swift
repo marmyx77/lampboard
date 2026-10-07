@@ -346,7 +346,15 @@ extension PanelController {
                 self?.preferences.hiddenWorkspaces = []
                 self?.rebuildContent()
             },
-            clearSessions: { [weak self] in self?.store.reset() },
+            clearSessions: { [weak self] in
+                // Emptying the column is not undoable: ask first (U1).
+                guard Alerts.confirm(
+                    title: "Clear the list?",
+                    message: "Every row leaves the panel. A session comes back with its next signal.",
+                    confirmTitle: "Clear"
+                ) else { return }
+                self?.store.reset()
+            },
             checkForUpdates: { [weak self] in self?.checkForUpdates() },
             quit: { NSApp.terminate(nil) },
             toggleAway: { [weak self] in

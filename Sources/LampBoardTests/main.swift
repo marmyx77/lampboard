@@ -12,6 +12,8 @@ Instrument.prove()
 let suites: [TestSuite] = [
     PathNormalizerSuite.suite,
     PanelPlacementSuite.suite,
+    TooltipPlacementSuite.suite,
+    AllowanceLinesSuite.suite,
     ClaudeDesktopSuite.suite,
     DesktopWorktreeSuite.suite,
     SessionCardSuite.suite,

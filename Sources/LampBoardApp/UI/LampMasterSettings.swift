@@ -31,7 +31,7 @@ struct LampMasterSettings: View {
             with your own Claude Code sign-in, for at most three suggestions: a session that \
             knows what another needs, one that waits or is stuck, two on the same work, work \
             done and saved, a problem solved before. That sends pieces of your conversations \
-            to Anthropic and spends your allowance: about 7,000 tokens a round, never more \
+            to Anthropic and spends your allowance: about \(7_000.formatted(.number)) tokens a round, never more \
             than \(LampMasterSchedule.dailyTokenCap.formatted(.number)) a day. A round with \
             nothing new is skipped for free. Nothing is done without your click.
             """)
