@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  21,337 lines · 168 files  pure logic, zero AppKit
-  LampBoardApp/    25,751 lines · 142 files   shell: AppKit, network, windows
+  LampBoardApp/    25,766 lines · 142 files   shell: AppKit, network, windows
   LampBoardTests/  17,115 lines · 119 files   1222 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
@@ -1652,7 +1652,7 @@ failure comes back as a tool error the calling model can read, never a dead serv
 `lampboard tour`: starts the tutorial's trial panel beside the real one, as a second
 process of this binary on a temporary home and a free port, so the two never share
 anything (D64). `--json` prints the script for the site and the screenshots. The
-same start serves the menus' *Take the tour…* and the offer made right after the
+same start serves *Take the tour…* in Settings › About & help and the offer made right after the
 hooks are installed; neither appears inside a trial, where a tour would stack
 panels.
 
@@ -1919,10 +1919,10 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `SettingsPanes.swift` | 284 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 125 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 70 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
-| `SettingsWindowController.swift` | 104 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
+| `SettingsWindowController.swift` | 121 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
 | `LampMasterSettings.swift` | 114 | Settings › LampMaster: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
 | `ModSettings.swift` | 91 | the helper's switch in Settings › Claude Code & Codex, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
-| `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
+| `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from Settings › About & help (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 161 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. `tourRing` rings what the step speaks of — a row, the bar, the allowance, LampMaster, the panel's menu — breathing unless motion is reduced, never taking a click (D121). In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line in the narrow panel, only while it is on, never blinking — advice is not a session waiting: its star, what the last round found and the open count, of fixed height, counted by `PanelMetrics.height`; in the wide panel it is a star in the bar (D124) |
 | `LampMasterPlancia.swift` | 213 | LampMaster's Plancia (D96, D97): the cards, Today, Frame and Cost, chosen at the top, read from its files each time they are drawn; `--lampmaster <sheet>` opens the Plancia on one |

@@ -32,7 +32,9 @@ struct ModSettings: View {
             tool or writes a file itself. It can make Claude Code ask you first: before an edit to a \
             file another session has just written, and, while you are away, before a destructive \
             command. With the switches under Acting from the panel, it carries your answers to \
-            permissions and questions. Sessions already open pick it up after a restart.
+            permissions and questions; and a question you type in the bar as @name ?question is \
+            answered by a side look over that session's conversation — no turn, nothing added to \
+            it — and only the answer comes back here. Sessions already open pick it up after a restart.
             """)
             .font(.callout)
             .foregroundStyle(.secondary)

@@ -4731,7 +4731,8 @@ writing to them, and an error message turned up as a menu entry.
 - **The lamp's menu** says what waits and what works, then the panel, the
   conversations, the two ways of keeping quiet, where the panel lives — *Put the
   panel in its own window* is the way back if the drop-down ever cannot be opened
-  —, Settings and Quit. Hiding the lamp moved to Settings.
+  —, Settings and Quit. Hiding the lamp moved to Settings, and so did Getting
+  started and the tour, which left both menus for About & help.
 - **One name per switch**: a menu that offers a switch takes the name Settings
   gives it; writing to sessions is *Send messages to sessions*, answering their
   prompts *Answer permission prompts and questions*. The search index, which had

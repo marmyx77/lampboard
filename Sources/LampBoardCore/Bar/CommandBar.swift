@@ -194,7 +194,7 @@ public enum CommandBar {
         return exact.count == 1 ? exact : found
     }
 
-    static let sendingOff = "Turn on \"Let the panel answer your sessions\" in the panel menu first"
+    static let sendingOff = "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first"
 
     /// The selection after a move, kept inside the list.
     public static func move(_ index: Int, by step: Int, count: Int) -> Int {

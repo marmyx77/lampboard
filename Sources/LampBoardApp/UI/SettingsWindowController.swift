@@ -26,8 +26,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// - Parameter section: the section to open on, by title; the last one
     ///   looked at otherwise.
     func show(section: String? = nil) {
-        if let section, SettingsCatalog.sections.contains(where: { $0.title == section }) { model.section = section }
-        model.refresh()
+        if let section, let match = SettingsCatalog.sections.first(where: { $0.title.lowercased() == section.lowercased() }) {
+            model.section = match.title
+        }
+        model.start()
         if let window {
             bringToFront(window)
             return
@@ -63,6 +65,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window = nil
+        model.stop()
     }
 }
 
@@ -82,11 +85,25 @@ final class SettingsModel: ObservableObject {
 
     init(panel: @escaping () -> PanelController?) {
         self.panel = panel
+    }
+
+    /// Reads the panel now and every second, while the window is open only.
+    func start() {
+        refresh()
+        guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
     }
 
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    /// Publishes every second even when nothing changed, on purpose: the panes
+    /// also read preferences no flag carries (the band, the safety catch, the
+    /// index), and another window can change those while this one is open.
     func refresh() { flags = panel()?.panelFlags }
 
     /// Runs one of the panel's actions, then reads the panel again.

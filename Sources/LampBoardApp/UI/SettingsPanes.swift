@@ -79,7 +79,6 @@ struct PanelPane: View {
 struct ClicksPane: View {
     @ObservedObject var model: SettingsModel
     private let preferences = Preferences()
-    @State private var shortcut = Preferences().barShortcut
 
     var body: some View {
         if let flags = model.flags {
@@ -93,14 +92,14 @@ struct ClicksPane: View {
                 }
                 SettingToggle(id: .sessionTab, isOn: flags.opensSessionTab) { _ in model.run { $0.toggleSessionTab() } }
                 SettingRow(id: .barShortcut) {
-                    Picker("", selection: $shortcut) {
+                    Picker("", selection: Binding(get: { preferences.barShortcut }, set: { value in
+                        preferences.barShortcut = value
+                        NotificationCenter.default.post(name: .barShortcutChanged, object: nil)
+                        model.refresh()
+                    })) {
                         ForEach(BarShortcut.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .labelsHidden().fixedSize()
-                    .onChange(of: shortcut) { _, value in
-                        preferences.barShortcut = value
-                        NotificationCenter.default.post(name: .barShortcutChanged, object: nil)
-                    }
                 }
             }
         }
@@ -128,7 +127,7 @@ struct AlertsPane: View {
             }
             SettingsGroupBox(title: groupTitle(.mute)) {
                 SettingRow(id: .mute) {
-                    if let until = flags.mutedUntil, until > Date() {
+                    if let until = flags.mutedUntil {
                         Button("Resume (muted until \(until.formatted(date: .omitted, time: .shortened)))") {
                             model.run { $0.clearMute() }
                         }
@@ -182,7 +181,6 @@ private struct SilencedProjects: View {
 
 struct AgentsPane: View {
     @ObservedObject var model: SettingsModel
-    @State private var band = Preferences().bandEnabled
 
     var body: some View {
         if let flags = model.flags {
@@ -203,9 +201,9 @@ struct AgentsPane: View {
             }
             SettingsGroupBox(title: groupTitle(.helper)) {
                 ModSettings()
-                SettingToggle(id: .band, isOn: band) { value in
-                    band = value
+                SettingToggle(id: .band, isOn: Preferences().bandEnabled) { value in
                     Preferences().bandEnabled = value
+                    model.refresh()
                 }
             }
         }
@@ -214,8 +212,6 @@ struct AgentsPane: View {
 
 struct ActingPane: View {
     @ObservedObject var model: SettingsModel
-    @State private var permissions = Preferences().permissionsFromPanel
-    @State private var safety = Preferences().safetyCatch
 
     var body: some View {
         if let flags = model.flags {
@@ -223,13 +219,14 @@ struct ActingPane: View {
                 SettingToggle(id: .sendMessages, isOn: flags.messageSendingEnabled) { _ in
                     model.run { $0.toggleMessageSending() }
                 }
+                let permissions = Preferences().permissionsFromPanel
                 SettingToggle(id: .answerPrompts, isOn: permissions, enabled: ModSetup.isInstalled || permissions) { value in
-                    permissions = value
                     Preferences().permissionsFromPanel = value
+                    model.refresh()
                 }
-                SettingToggle(id: .safetyCatch, isOn: safety) { value in
-                    safety = value
+                SettingToggle(id: .safetyCatch, isOn: Preferences().safetyCatch) { value in
                     Preferences().safetyCatch = value
+                    model.refresh()
                 }
             }
         }
@@ -238,18 +235,17 @@ struct ActingPane: View {
 
 struct PrivacyPane: View {
     @ObservedObject var model: SettingsModel
-    @State private var indexed = Preferences().searchIndexed
 
     var body: some View {
         if let flags = model.flags {
             SettingsGroupBox(title: groupTitle(.usage)) {
                 SettingToggle(id: .usage, isOn: flags.usageEnabled) { _ in model.run { $0.toggleUsage() } }
-                SettingRow(id: .updates) { Text("Off").foregroundStyle(.secondary) }
+                SettingRow(id: .updates) { Text("Only when you ask").foregroundStyle(.secondary) }
             }
             SettingsGroupBox(title: groupTitle(.searchIndex)) {
-                SettingToggle(id: .searchIndex, isOn: indexed) { value in
-                    indexed = value
+                SettingToggle(id: .searchIndex, isOn: Preferences().searchIndexed) { value in
                     Preferences().searchIndexed = value
+                    model.refresh()
                 }
             }
         }

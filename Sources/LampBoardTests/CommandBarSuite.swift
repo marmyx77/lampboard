@@ -73,7 +73,7 @@ enum CommandBarSuite {
             t.expectEqual(on.map(\.kind), [.send, .send], "api and api-gateway, each a send")
             let off = CommandBar.results(for: CommandBar.parse("@api run the tests"), rows: rows, now: t0, lampMasterEnabled: true)
             t.expectEqual(off.first?.kind, .send)
-            t.expectEqual(off.first?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
+            t.expectEqual(off.first?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")
             let bare = CommandBar.results(for: CommandBar.parse("@api"), rows: rows, now: t0, lampMasterEnabled: true, sendingEnabled: true)
             t.expectEqual(bare.first?.kind, .session, "a name alone finds the session")
         },
@@ -90,7 +90,7 @@ enum CommandBarSuite {
             t.expectEqual(cannot?.detail, "Its session needs the LampBoard mod 1.5.0: restart it after the update")
             let off = CommandBar.results(for: CommandBar.parse("@api ?what are you on"), rows: rows, now: t0,
                                          lampMasterEnabled: true, askable: ["id-api"])
-            t.expectEqual(off.first?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
+            t.expectEqual(off.first?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")
         },
 
         TestCase("A session on another machine is sent to there, and the result says where") { t in

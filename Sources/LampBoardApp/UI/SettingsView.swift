@@ -18,7 +18,7 @@ struct SettingsView: View {
                     if let current = SettingsCatalog.sections.first(where: { $0.title == model.section }), current.warns {
                         Label(current.title == "LampMaster"
                               ? "Sends parts of your conversations to Anthropic, with your own sign-in."
-                              : "Sending and answering are off until you turn them on.",
+                              : "Sending and answering are off until you turn them on; the safety catch is on.",
                               systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
                             .foregroundStyle(.orange)

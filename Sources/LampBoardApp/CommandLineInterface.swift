@@ -282,7 +282,7 @@ enum CommandLineInterface {
         }
 
         print()
-        print("  Turn them on from the panel menu (right-click on the margins).")
+        print("  Turn them on in Settings › Panel, or: lampboard terminal on.")
     }
 
     private static func shortTime(_ date: Date) -> String {
@@ -738,7 +738,7 @@ enum CommandLineInterface {
     static func reportRemoteHosts() {
         let hosts = Preferences().remoteHosts
         guard !hosts.isEmpty else {
-            print("\nRemote hosts: none configured (panel menu → Settings…)")
+            print("\nRemote hosts: none configured (Settings › Other Macs)")
             return
         }
         print("\nRemote hosts (their hooks reach this Mac through the tunnel; presence read over ssh):")

@@ -224,8 +224,8 @@ struct ChatView: View {
                 )
             } else if !session.canSend {
                 notice(
-                    "reading only: turn on \"Let the panel answer your sessions\" "
-                        + "in the panel menu",
+                    "reading only: turn on \"Send messages to sessions\" "
+                        + "in Settings › Acting from the panel",
                     icon: "lock",
                     tint: StatusPalette.timeColor
                 )

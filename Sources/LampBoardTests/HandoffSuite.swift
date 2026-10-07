@@ -52,7 +52,7 @@ enum HandoffSuite {
             t.expectEqual(noMod?.detail, "Its session needs the LampBoard mod 1.5.0: restart it after the update")
             let off = results("/handoff @events @api", sending: false).first
             t.expectNil(off?.sessionId)
-            t.expectEqual(off?.detail, "Turn on \"Let the panel answer your sessions\" in the panel menu first")
+            t.expectEqual(off?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")
         },
 
         TestCase("To a session on another machine the handoff is copied, since it has no Plancia here") { t in
