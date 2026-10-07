@@ -422,87 +422,41 @@ struct TrafficLightRow: View {
         actions.openChat(row)
     }
 
-    @ViewBuilder
+    /// The row's menu (U3): eight entries, the ways of keeping it quiet under
+    /// Quiet and the rarer things under More, built in Core (`Menus.row`).
     private var menu: some View {
-        // The transcript of a remote session is on the other machine, and a new
-        // conversation opens in the local editor: neither entry can mean anything
-        // for a row that lives elsewhere, so neither is offered.
-        if !row.workspace.isRemote {
-            Button("Read here: opens the conversations", action: { actions.openChat(row) })
-        }
-        Button("Open", action: { actions.open(row) })
-        if !row.workspace.isRemote, !compact {
-            Button("Open in the Plancia", action: { actions.openPlancia(row) })
-        }
-        Button("Open without marking as read", action: { actions.peek(row) })
-
-        if row.status == .idle {
-            Button("Mark as unread", action: { actions.markUnread(row) })
-        }
-
-        Divider()
-
-        // The drag with words, for whoever prefers a menu to a handle. Same
-        // arrangement, same persistence.
-        Button("Move up", action: { actions.move(row, -1) })
-        Button("Move down", action: { actions.move(row, 1) })
-        Button(row.alias == nil ? "Rename…" : "Rename… (“\(row.workspace.name)” underneath)",
-               action: { actions.rename(row) })
-
-        // Absent, not disabled, on a row that lives elsewhere: the folder is on
-        // that machine, and a greyed entry would still be a promise.
-        if !row.workspace.isRemote {
-            Button("Show in Finder", action: { actions.revealInFinder(row) })
-        }
-
-        Button(flags.isHidden ? "✓ Hide" : "Hide",
-               action: { actions.toggleHidden(row) })
-
-        if row.status == .awaiting {
-            Button(flags.isCalm ? "✓ Don't blink" : "Don't blink",
-                   action: { actions.toggleCalmBlink(row) })
-        }
-
-        if flags.notificationsEnabled {
-            Button(flags.isMuted ? "✓ Don't alert me for this project" : "Don't alert me for this project",
-                   action: { actions.toggleMuted(row) })
-        }
-
-        Button(flags.isFocused ? "✓ Focus on this session" : "Focus on this session",
-               action: { actions.toggleFocus(row) })
-
-        if let offer = actions.governorOffer(row) {
-            Button(offer.title, action: { actions.toggleModel(row) })
-        }
-
-        // Only where a new Claude conversation can actually be opened: not on
-        // another machine, not in a terminal, and not on a surface that hosts
-        // some other agent.
-        if row.hostsNewConversation {
-            Divider()
-            Button("New conversation here", action: { actions.newConversation(row) })
-        }
-
-        // The repository's decision board (D105). Local rows only: a session on
-        // another machine reads the board of the panel over there, if any.
-        if !row.workspace.isRemote, let repository = row.primary.git?.repo {
-            Divider()
-            Button("Pin a decision for “\(repository)”…", action: { actions.pinDecision(repository) })
-            let pinned = actions.decisions(repository)
-            if !pinned.isEmpty {
-                Menu("Pinned decisions (\(pinned.count))") {
-                    ForEach(Array(pinned.enumerated()), id: \.offset) { index, text in
-                        Button("Take off: \(text)", action: { actions.unpinDecision(repository, index + 1) })
-                    }
-                }
+        let repository = row.workspace.isRemote ? nil : row.primary.git?.repo
+        let job = row.primary.origin == .background ? row.primary.backgroundJob : nil
+        let state = RowMenuState(
+            isRemote: row.workspace.isRemote, compact: compact, alias: row.alias, folder: row.workspace.name,
+            status: row.status, isHidden: flags.isHidden, isCalm: flags.isCalm, isMuted: flags.isMuted,
+            isFocused: flags.isFocused, notificationsEnabled: flags.notificationsEnabled,
+            hostsNewConversation: row.hostsNewConversation, repository: repository,
+            pinned: repository.map(actions.decisions) ?? [], attachCommand: job?.attachCommand,
+            modelOffer: actions.governorOffer(row)?.title
+        )
+        return MenuEntriesView(entries: Menus.row(state)) { command in
+            switch command {
+            case .open: actions.open(row)
+            case .read: actions.openChat(row)
+            case .sessionView: actions.openPlancia(row)
+            case .newConversation: actions.newConversation(row)
+            case .rename: actions.rename(row)
+            case .hide: actions.toggleHidden(row)
+            case .dontAlert: actions.toggleMuted(row)
+            case .dontBlink: actions.toggleCalmBlink(row)
+            case .focus: actions.toggleFocus(row)
+            case .peek: actions.peek(row)
+            case .markUnread: actions.markUnread(row)
+            case .moveUp: actions.move(row, -1)
+            case .moveDown: actions.move(row, 1)
+            case .revealInFinder: actions.revealInFinder(row)
+            case .pinDecision: if let repository { actions.pinDecision(repository) }
+            case .unpinDecision(let number): if let repository { actions.unpinDecision(repository, number) }
+            case .copyAttach: if let job { actions.copyAttach(job) }
+            case .toggleModel: actions.toggleModel(row)
+            default: break
             }
-        }
-
-        // A background session reopens in a terminal with `claude attach`.
-        // Copied, not run: the panel opens no terminal of its own (D104).
-        if row.primary.origin == .background, let job = row.primary.backgroundJob {
-            Divider()
-            Button("Copy “\(job.attachCommand)”", action: { actions.copyAttach(job) })
         }
     }
 

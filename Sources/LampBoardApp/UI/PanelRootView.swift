@@ -61,6 +61,8 @@ struct PanelFlags {
     let mutedUntil: Date?
     let hasHidden: Bool
     let hooksInstalled: Bool
+    /// How many projects are hidden, for the ⋯'s «Show 3 hidden projects».
+    var hiddenCount = 0
 
     /// The agents on this machine with no hooks registered, by name.
     ///
@@ -385,115 +387,32 @@ struct PanelRootView: View {
         }
     }
 
-    @ViewBuilder
+    /// The panel's ⋯ (U3): seven entries, built in Core (`Menus.panel`).
+    /// Everything that used to follow them lives in Settings.
     private var menu: some View {
-        // First, and on its own, because it is the only entry that opens something
-        // rather than changing how this panel looks. Everything below it is a
-        // setting; this is the door.
-        Button("Open the conversations…", action: actions.openExtended)
-        Button("What the lights mean…", action: actions.openLegend)
-        if tour == nil {
-            Button("Getting started…") { GettingStartedWindowController.shared.show() }
-            Button("Take the tour…") { TrialLauncher.startFromMenu() }
-        }
-        Button("Settings…", action: actions.openSettings)
-
-        Divider()
-
-        Button(check(flags.compact, "Traffic lights only"), action: actions.toggleCompact)
-        Button(
-            check(flags.home == .menuBar, "Live in the menu bar"),
-            action: actions.toggleHome
+        MenuEntriesView(
+            entries: Menus.panel(
+                PanelMenuState(onlyWaiting: flags.onlyWaiting, mutedUntil: flags.mutedUntil,
+                               isAway: flags.isAway, hiddenCount: flags.hiddenCount),
+                time: Self.time
+            ),
+            perform: perform
         )
-        Button(
-            check(flags.showsMenuBarIcon, "Show a lamp in the menu bar"),
-            action: actions.toggleMenuBarIcon
-        )
-        Button(check(flags.onlyWaiting, "Show only what's waiting"), action: actions.toggleOnlyWaiting)
-        Button(check(flags.showsTerminalSessions, "Show terminal sessions"), action: actions.toggleTerminalSessions)
-        // The wording says what it costs, not just what it does: VS Code asks for
-        // confirmation on every invocation, and for sessions with no Claude panel —
-        // the integrated-terminal ones — the extension opens a new tab instead of
-        // reusing one.
-        Button(
-            check(flags.opensSessionTab, "Click also opens the tab (VS Code asks for confirmation)"),
-            action: actions.toggleSessionTab
-        )
-
-        if flags.hasHidden {
-            Button("Bring hidden projects back into the column", action: actions.showHiddenAgain)
-        }
-
-        Divider()
-
-        Button(check(flags.notificationsEnabled, "Alert me when a session gets blocked"),
-               action: actions.toggleNotifications)
-
-        Button(check(flags.isAway, "I'm away: hold alerts, sum up when I'm back"), action: actions.toggleAway)
-
-        if flags.notificationsEnabled {
-            if let until = flags.mutedUntil {
-                Button("Resume alerts (muted until \(Self.time(until)))",
-                       action: actions.clearMute)
-            } else {
-                Button("Mute alerts for one hour", action: actions.muteForAnHour)
-            }
-        }
-
-        Button(check(flags.presenceEnabled, "Suppress phone push notifications while I'm at the Mac"),
-               action: actions.togglePresence)
-
-        Button(check(flags.usageEnabled, "Show how much of your allowance is left…"),
-               action: actions.toggleUsage)
-
-        Divider()
-
-        if flags.hooksInstalled {
-            Button(
-                check(flags.messageSendingEnabled, "Let the panel answer your sessions…"),
-                action: actions.toggleMessageSending
-            )
-
-            Button("Remove the hooks", action: actions.uninstallHooks)
-        } else {
-            Button(
-                flags.hooksMissingFrom.isEmpty
-                    ? "Install the hooks…"
-                    : "Install the hooks (\(flags.hooksMissingFrom.joined(separator: " and ")))…",
-                action: actions.installHooks
-            )
-        }
-
-        if flags.canLaunchAtLogin {
-            Button(check(flags.launchesAtLogin, "Launch at login"), action: actions.toggleLaunchAtLogin)
-        }
-
-        if !VSCodeFocuser.hasAccessibilityPermission {
-            Button("Grant the Accessibility permission…", action: actions.requestAccessibility)
-        }
-
-        Button("Clear the list", action: actions.clearSessions)
-
-        // Never automatic, and never silent. macOS grants Accessibility to a
-        // signing identity, so a replacement signed with ours inherits the run
-        // of the machine without asking anybody: an app with that permission
-        // asks before it replaces itself.
-        Button("Check for updates…", action: actions.checkForUpdates)
-
-        if let error = store.lastError {
-            Divider()
-            Text(error)
-        }
-
-        Divider()
-
-        Button("Quit LampBoard", action: actions.quit)
     }
 
-    /// Switch entries are distinguished by a checkmark.
-    /// SwiftUI offers no `Toggle` inside `contextMenu` that looks right here.
-    private func check(_ on: Bool, _ title: String) -> String {
-        on ? "✓ \(title)" : title
+    private func perform(_ command: MenuCommand) {
+        switch command {
+        case .openConversations: actions.openExtended()
+        case .legend: actions.openLegend()
+        case .onlyWaiting: actions.toggleOnlyWaiting()
+        case .muteForAnHour: actions.muteForAnHour()
+        case .resumeAlerts: actions.clearMute()
+        case .away: actions.toggleAway()
+        case .showHidden: actions.showHiddenAgain()
+        case .settings: actions.openSettings()
+        case .quit: actions.quit()
+        default: break
+        }
     }
 
     private static func time(_ date: Date) -> String {

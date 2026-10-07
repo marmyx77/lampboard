@@ -144,53 +144,35 @@ extension PanelController {
         }
     }
 
-    /// The lamp's own menu, on a right-click.
-    ///
-    /// Deliberately short. The panel carries every switch this app has, and it is
-    /// one click away; what belongs up here is the handful of things somebody
-    /// would want *without* opening it — where the panel lives, whether the lamp
-    /// stays, and the way out.
+    /// The lamp's own menu, on a right-click (U3): what waits, the panel, the two
+    /// ways of keeping quiet, where the panel lives, Settings and the way out.
+    /// Built in Core (`Menus.lamp`). «Put the panel in its own window» stays here
+    /// as the way back if the drop-down ever cannot be opened.
     func lampMenu() -> NSMenu {
-        let menu = NSMenu()
         menuTargets = []
-
-        func add(_ title: String, enabled: Bool = true, tip: String? = nil, _ run: @escaping () -> Void) {
-            let target = MenuAction(run)
-            menuTargets.append(target)
-            let item = NSMenuItem(title: title, action: #selector(MenuAction.fire), keyEquivalent: "")
-            item.target = target
-            item.isEnabled = enabled
-            item.toolTip = tip
-            menu.addItem(item)
+        let counts = currentSummary.counts
+        let state = LampMenuState(
+            wanting: counts.filter { $0.key.clearsOnFocus }.values.reduce(0, +),
+            working: counts[.working] ?? 0,
+            home: home, mutedUntil: preferences.mutedUntil, isAway: away?.isAway ?? false
+        )
+        let time = { (date: Date) in date.formatted(date: .omitted, time: .shortened) }
+        return NSMenu.from(Menus.lamp(state, time: time), targets: &menuTargets) { [weak self] command in
+            guard let self else { return }
+            let actions = self.makeActions()
+            switch command {
+            case .openPanel: self.summon()
+            case .openConversations: self.openExtendedWindow()
+            case .muteForAnHour: actions.muteForAnHour()
+            case .resumeAlerts: actions.clearMute()
+            case .away: actions.toggleAway()
+            case .toggleHome: self.toggleHome()
+            case .settings: self.onOpenSettings?()
+            case .quit: NSApp.terminate(nil)
+            default: break
+            }
         }
-
-        add(home == .menuBar
-            ? "Put the panel back in its own window"
-            : "Put the panel in the menu bar") { [weak self] in self?.toggleHome() }
-        add("Open the conversations…") { [weak self] in self?.openExtendedWindow() }
-        add("Settings…") { [weak self] in self?.onOpenSettings?() }
-        // Not inside a trial: a tour started from the tour would stack panels.
-        if TrialStage.mode == nil {
-            add("Getting started…") { GettingStartedWindowController.shared.show() }
-            add("Take the tour…") { TrialLauncher.startFromMenu() }
-        }
-        menu.addItem(.separator())
-        // Greyed rather than absent when it would strand the panel: an entry that
-        // disappears teaches nothing, and this one has a reason worth reading.
-        add("Hide this lamp",
-            enabled: home != .menuBar,
-            tip: home == .menuBar
-                ? "The panel lives up here, so nothing else could bring it back."
-                : nil) { [weak self] in self?.toggleMenuBarIcon() }
-        menu.addItem(.separator())
-        add("Quit LampBoard") { NSApp.terminate(nil) }
-
-        // A menu built with `autoenablesItems` on asks a validator about every
-        // entry and greys the ones nobody answers for, which here is all of them.
-        menu.autoenablesItems = false
-        return menu
     }
-
 
     /// The lamp was clicked: down if it was up, up if it was down.
     ///

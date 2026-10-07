@@ -319,7 +319,7 @@ final class PanelController {
         resizeToFit(store.state)
     }
 
-    private var panelFlags: PanelFlags {
+    var panelFlags: PanelFlags {
         PanelFlags(
             compact: compact,
             home: home,
@@ -337,7 +337,8 @@ final class PanelController {
             hooksMissingFrom: HookSetup.missingNames(),
             launchesAtLogin: LaunchAtLogin.isEnabled,
             canLaunchAtLogin: LaunchAtLogin.availability != .needsBundle,
-            isAway: away?.isAway ?? false
+            isAway: away?.isAway ?? false,
+            hiddenCount: preferences.hiddenWorkspaces.count
         )
     }
 

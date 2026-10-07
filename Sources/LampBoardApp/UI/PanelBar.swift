@@ -117,10 +117,14 @@ extension PanelController {
             self.resizeToFit(self.store.state)
         }
         barKeys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.panel.isKeyWindow, !self.isCompact,
-                  event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command,
-                  event.charactersIgnoringModifiers?.lowercased() == "k" else { return event }
-            self.bar.focus()
+            guard let self, self.panel.isKeyWindow,
+                  event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command else { return event }
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            // ⌘, as everywhere on the Mac, and as the ⋯ menu says (U3).
+            case ",": self.onOpenSettings?()
+            case "k" where !self.isCompact: self.bar.focus()
+            default: return event
+            }
             return nil
         }
         barHotKey = GlobalHotKey { [weak self] in self?.summonBar() }
