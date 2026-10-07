@@ -4705,3 +4705,37 @@ Measured on the test Mac, in the trial: the panel went from 551 to 371 points fo
 the same six sessions; a held permission opened under its row, Allow answered it
 and the panel shrank back.
 
+## D125 · One place for every switch
+
+**Decided.** The third step of the 1.1 review (U3), on the rule *a place for every
+thing*. In 1.0 the switches were in four places — the panel's ⋯, the Settings
+window, Getting started and a row's menu —, the ⋯ had twenty-three to twenty-five
+entries in no order, one switch had three names («Live in the menu bar», «Put the
+panel in the menu bar» and a tooltip's), «Let the panel answer your sessions» meant
+writing to them, and an error message turned up as a menu entry.
+
+- **Settings is a window of nine sections**, like Sancho's: Panel, Clicks & keys,
+  Alerts, Claude Code & Codex, Acting from the panel, LampMaster, Other Macs,
+  Privacy & data, About & help; 880 by 560, the sections down the side. Every
+  setting has a name and a line under it saying what it does. The two sections
+  that act on the sessions or send something off the Mac carry an orange edge.
+  The names and lines live in Core (`SettingsCatalog`); the window draws them.
+- **The ⋯ has seven entries**: the conversations, what the lights mean, *Show only
+  what's waiting*, *Mute alerts for an hour* (or *Resume alerts*, with the time),
+  *I'm away*, *Settings…* with ⌘, — which also works in the panel — and *Quit
+  LampBoard*; an eighth, *Show 3 hidden projects*, while some are.
+- **A row's menu has eight**: Open, Read the conversation, Open in Session view,
+  New conversation here, Rename…, Hide, *Quiet ▸* (Don't alert me, Don't blink,
+  Focus) and *More ▸* (the rest: without marking as read, mark as unread, move,
+  Finder, decisions, the attach command, a lighter model).
+- **The lamp's menu** says what waits and what works, then the panel, the
+  conversations, the two ways of keeping quiet, where the panel lives — *Put the
+  panel in its own window* is the way back if the drop-down ever cannot be opened
+  —, Settings and Quit. Hiding the lamp moved to Settings.
+- **One name per switch**: a menu that offers a switch takes the name Settings
+  gives it; writing to sessions is *Send messages to sessions*, answering their
+  prompts *Answer permission prompts and questions*. The search index, which had
+  no switch anywhere but a preference, is in Privacy & data; the safety catch while
+  away (D116) has a switch of its own, on by default. The menus are built in Core
+  (`Menus`), where a test counts them.
+

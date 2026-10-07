@@ -1,13 +1,13 @@
 # Code map
 
-~68,500 lines of Swift across five targets. For each file: what it contains, why
+~69,300 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  20,990 lines · 166 files  pure logic, zero AppKit
-  LampBoardApp/    25,481 lines · 140 files   shell: AppKit, network, windows
-  LampBoardTests/  16,967 lines · 117 files   1212 cases, instantaneous
+  LampBoardCore/  21,337 lines · 168 files  pure logic, zero AppKit
+  LampBoardApp/    25,751 lines · 142 files   shell: AppKit, network, windows
+  LampBoardTests/  17,115 lines · 119 files   1222 cases, instantaneous
   LampBoardE2E/    4,689 lines · 20 files   159 cases, the real binary
   TestKit/            369 lines ·  4 files   minimal assertions
 ```
@@ -33,6 +33,24 @@ is what makes the e2e tests possible without touching the real `~/.claude`.
 > `liveSessionPollInterval` (5 s) are tuned to real use with a dozen sessions:
 > lowering the first makes live rows disappear, raising the second leaves dead
 > rows clickable.
+
+## `Menus/`
+
+### `Menus.swift` · 200
+The three menus as data (U3, D125): the panel's ⋯ with seven entries (an eighth
+while projects are hidden), a row's with eight and two submenus — *Quiet* for the
+ways of keeping it quiet, *More* for the rarer things —, and the lamp's, with what
+waits, the panel, the two ways of keeping quiet, where the panel lives, Settings
+and Quit. The App only draws what it is given (`MenuEntriesView`).
+
+> **Adding an entry here** is adding it to a menu a test counts: the ⋯ had grown to
+> twenty-five entries one reasonable addition at a time.
+
+### `SettingsCatalog.swift` · 150
+Every setting, its section, its group, its one name and the line saying what it
+does: nine sections, from Panel to About & help, the two that act on the sessions
+or leave the Mac marked. The Settings window draws from it, and a menu that offers
+a switch takes its name from here (D125).
 
 ## `Models/`
 
@@ -1863,19 +1881,19 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelGovernor.swift` | 59 | the governor from a row's menu (D112): *Use Sonnet until the window resets (13:10)* for a local Claude Code session with a known model, never the one in focus; chosen again, its own model back |
 | `PanelPlancia.swift` | 197 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, LampMaster's from its row, asking for a round if the last is stale (D97), the header's buttons wired to the row's own actions (D98), on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
 | `PlanciaView.swift` | 270 | LampMaster's Plancia under its own name and star (D97), or a session's under its header — lamp, name, the line of facts, *Go*, *Hand over*, *Mute* (D98), its waiting card pinned under it (D101) — drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
-| `PanelBar.swift` | 189 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard, the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
+| `PanelBar.swift` | 189 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingCardView.swift` | 150 | one waiting card, drawn at the top of a session's Plancia: a card dimmed until it is armed and outlined while selected with the keyboard; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip; VoiceOver reads the kind, the project and the ask |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 165 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 194 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; the time the window runs out in place of the reset, in orange, when that is first (D111) |
-| `TrafficLightRow.swift` | 596 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle, menu; in its menu, for a local row in a repository, *Pin a decision…* and *Pinned decisions* (D105) |
+| `TrafficLightRow.swift` | 596 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row` — eight entries, *Quiet* and *More* (D125), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 628 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 198 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
-| `PanelRootView.swift` | 549 | the bar with the count of what waits and LampMaster's star (D124); in the narrow panel LampMaster's line; the column; the general menu, and the strip under the rows: width on the left, legend and menu on the right |
+| `PanelRootView.swift` | 477 | the bar with the count of what waits and LampMaster's star (D124); in the narrow panel LampMaster's line; the column; the panel's ⋯ built from `Menus.panel` (D125), and the strip under the rows: width on the left, legend and menu on the right |
 | `TrafficLightDot.swift` | 90 | the dot, the silenceable blink, and the ring for an open ear; solid, dashed when stuck, hollow without the mod, inside its own eleven points (D115); a grey ring at rest (D124) |
 | `ContextRing.swift` | 77 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 204 | what the six colours and the two rings mean, counted live (D31); the light's two shapes, and `--legend` opens it for a photograph (D115) |
@@ -1887,7 +1905,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PermissionRequest.swift` | 73 | explains a permission — use, cost of refusing, way back — then opens the pane that grants it |
 | `StatusPalette.swift` | 417 | colors and measurements, and the dark appearance the panel is held in whatever the Mac is set to (D43) |
 | `FloatingPanel.swift` | 122 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
-| `PanelHomes.swift` | 364 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, and the list of every switch the menus offer |
+| `PanelHomes.swift` | 364 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, the lamp's menu built from `Menus.lamp` (D125), and the list of every switch the panel offers, which the menus and Settings call |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
@@ -1897,11 +1915,13 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `ChatView.swift` | 323 | bubbles, activity lines, the composer, which takes LampMaster's proposed text, once, when it is empty; its header left to the Plancia, which draws its own (D98) |
 | `MarkdownView.swift` | 157 | draws the blocks; inline markup goes to `AttributedString` |
 | `DictationButton.swift` | 97 | the microphone, and the box that hides the macOS-26 seam |
-| `AlertSettings.swift` | 56 | the menu bar counter and the notification for a finished turn, both off until asked for (5.6), and the bar's shortcut from any app, off until chosen (D77) |
-| `SettingsView.swift` | 168 | the Settings form: LampMaster first, the companion mod, the menu bar and notifications, then remote machines, their state, the buttons; the "Show terminal sessions" switch |
-| `SettingsWindowController.swift` | 59 | owns the Settings window; activates the app so it comes up in front |
-| `LampMasterSettings.swift` | 114 | LampMaster's section: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
-| `ModSettings.swift` | 130 | the companion mod's switch, what it does said before it is pressed, the switch for permissions from the panel with its sentence above it (D73, D80), the band's switch with what it shows (D84), and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
+| `SettingsView.swift` | 168 | the Settings window's content (D125): the nine sections of `SettingsCatalog` down the side, the chosen one on the right with an orange line when it acts on the sessions or leaves the Mac; the group box, a setting's row (name and control on a line, what it does under them, from the catalogue) and a switch's |
+| `SettingsPanes.swift` | 284 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
+| `OtherMacsPane.swift` | 125 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
+| `MenuEntriesView.swift` | 70 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
+| `SettingsWindowController.swift` | 104 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
+| `LampMasterSettings.swift` | 114 | Settings › LampMaster: the switch with the sentence that says what it sends and spends, on screen before it is pressed (D60); the second switch, which lets every session ask it (D63); how often, which model, the kinds switched off — by the person or by themselves, with why (D95) — and "Suggest again", which restarts a kind's count |
+| `ModSettings.swift` | 91 | the helper's switch in Settings › Claude Code & Codex, what it does said before it is pressed, and on request Claude Code's own reading of the version this app carries (`claude plugin validate`), with the installed version when they differ and a refresh that failed at launch. Re-read every three seconds: Getting started, the command line or the launch refresh can change it while the window is open |
 | `GettingStartedWindow.swift` | 169 | *Getting started*, opened after the hooks are installed and from both menus (`--getting-started` opens it at launch, for screenshots and for a Mac nobody is clicking). A window rather than a list in the panel, for the reason of D61; the ticks are read again every two seconds, because the Accessibility permission arrives from System Settings and not from a click here |
 | `TourBand.swift` | 161 | the tutorial's band at the top of a trial panel, always there so a screenshot taken there never passes for real sessions: where the tour is, the step's sentence, Skip, Resume, Quit trial. `TourController` keeps the progress by step id in a domain of its own, because every trial starts on a fresh home; the panel's gestures move it on (D119). `show(stepId:)`, for `--tour-step`, puts it on one step and keeps nothing, so a photograph never replaces the person's own place. `tourRing` rings what the step speaks of — a row, the bar, the allowance, LampMaster, the panel's menu — breathing unless motion is reduced, never taking a click (D121). In a trial, opening a row only marks it seen: there is no editor behind an invented folder, and the warning that said so was modal and held off the trial's own quit |
 | `LampMasterStrip.swift` | 62 | LampMaster's line in the narrow panel, only while it is on, never blinking — advice is not a session waiting: its star, what the last round found and the open count, of fixed height, counted by `PanelMetrics.height`; in the wide panel it is a star in the bar (D124) |
@@ -1920,7 +1940,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1212 cases
+## `LampBoardTests/` — 1222 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -1953,6 +1973,8 @@ script, before it was split. The most important ones:
 | `FocusSuite` | without a focus everything passes, with one only its session; what waits kept once per session and kind; the summary in one line, the most urgent first, nothing when nothing waited, and only what is still so (D110) |
 | `RestingFoldSuite` | rows at rest for twelve hours folded into one line in the user's order, opened under it, a working session keeping its project out, a bound key still finding a folded row, nothing folded without a clock or under the filter, «resting» as the word (D124) |
 | `BarCountSuite` | the bar's count by kind and by session, plural, a held ask counted, the held asks by session for the lines under the rows (D124) |
+| `MenusSuite` | the ⋯'s seven entries with ⌘, on Settings, what is on checked, the hidden projects only when there are some; a row's eight with Quiet and More, nothing needing this Mac's files on a remote row, Don't blink only where something blinks; the lamp's, its summary, the other home (D125) |
+| `SettingsCatalogSuite` | nine sections in order, one id and one name per setting and a line for each, the two marked sections, a menu's switch named as Settings names it (D125) |
 | `AllowanceLinesSuite` | the session window unless another limit is spent, no line for a window that has not started, the fullest limit without a session window, short names that stay unique (D123) |
 | `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123) |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
