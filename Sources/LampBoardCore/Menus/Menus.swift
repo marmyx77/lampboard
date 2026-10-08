@@ -19,7 +19,7 @@ public enum MenuEntry: Equatable, Sendable {
 /// What a menu entry does. The App maps each one to its action.
 public enum MenuCommand: Equatable, Sendable {
     // The panel's ⋯ and the lamp
-    case openConversations, legend, capabilities, onlyWaiting, muteForAnHour, resumeAlerts, away, showHidden, settings, quit
+    case openConversations, newSession, legend, capabilities, onlyWaiting, muteForAnHour, resumeAlerts, away, showHidden, settings, quit
     case openPanel, toggleHome
     // A row
     case open, read, sessionView, newConversation, rename, hide
@@ -112,6 +112,7 @@ public enum Menus {
     public static func panel(_ state: PanelMenuState, time: (Date) -> String) -> [MenuEntry] {
         var entries: [MenuEntry] = [
             .item(.openConversations, "Open the conversations…"),
+            .item(.newSession, "New session…", shortcut: "n"),
             .item(.legend, "What the lights mean…"),
             .item(.capabilities, "What LampBoard can do…"),
             .divider,
@@ -191,7 +192,7 @@ public enum Menus {
 
     private static func moreEntries(_ state: RowMenuState) -> [MenuEntry] {
         var entries: [MenuEntry] = []
-        if !state.isRemote { entries.append(.item(.startHere, "New conversation in LampBoard")) }
+        entries.append(.item(.startHere, "New conversation in LampBoard"))
         entries.append(.item(.peek, "Open without marking as read"))
         if state.status == .idle { entries.append(.item(.markUnread, "Mark as unread")) }
         entries += [.item(.moveUp, "Move up"), .item(.moveDown, "Move down")]

@@ -261,7 +261,9 @@ enum LiveTargetSuite {
             t.expect(arguments.contains("ForwardAgent=no") && arguments.contains("BatchMode=yes"), "the same hardening as every ssh")
             t.expect(arguments.contains("ConnectTimeout=10"), "a dead machine says so instead of freezing the window")
             t.expectEqual(Array(arguments.suffix(3)), ["--", "bestia",
-                          "PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\" tmux attach-session -t '=awevents:1.0'"])
+                          NewSession.posix("PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\" tmux attach-session -t '=awevents:1.0'")],
+                          "under sh, whatever the login shell over there")
+            t.expect(arguments.last?.hasPrefix("sh -c 'PATH=") == true, arguments.last ?? "")
         },
 
         TestCase("What crosses a shell carries the target quoted: zsh expands a word that begins with =") { t in
@@ -324,6 +326,100 @@ enum LiveTargetSuite {
             let report = try? RemoteSessionsDecoder.report(from: Data(json.utf8), host: "bestia", at: t0)
             t.expectEqual(report?.sessions.first?.tmux, place)
             t.expectNil(report?.sessions.last?.tmux, "a name tmux could not take back")
+        },
+
+        TestCase("A tmux session LampBoard started is known by its tag: one window, whatever its name over there") { t in
+            let panes = TmuxPlace.panes("411\tweb-2\t1\t0\t0123456789abcdef\n412\tweb\t0\t0\t\n413\tx\t0\t0\tNOT;HEX\n")
+            t.expectEqual(panes[411]?.launch, "0123456789abcdef")
+            t.expectNil(panes[412]?.launch, "the person's own session has no tag")
+            t.expectNotNil(panes[413], "a tag that is not one is dropped, the place kept")
+            t.expectNil(panes[413]?.launch)
+            let started = LiveTarget.starting(host: "box", folder: "/home/dev/web", name: "web", launch: "0123456789abcdef")
+            let placed = LiveTarget.tmux(host: "box", place: panes[411]!, sessionId: "s")
+            t.expectEqual(started?.key, placed.key, "the row's Open here brings forward the window that started it")
+            t.expect(TmuxPlace.paneFormat.hasSuffix("\t#{@lampboard}"), "the tag is asked for")
+            let json = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","activityEpoch":1,"tmux":{"session":"web-2","window":1,"pane":0,"launch":"0123456789abcdef"}}]}"#
+            let report = try? RemoteSessionsDecoder.report(from: Data(json.utf8), host: "box", at: t0)
+            t.expectEqual(report?.sessions.first?.tmux?.launch, "0123456789abcdef")
+        },
+    ])
+}
+
+/// Starting a session from LampBoard (D133): on this Mac in the background, on
+/// another machine inside tmux, where it outlives the window and the ssh.
+enum NewSessionSuite {
+
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+    static func session(_ id: String, _ path: String, host: String? = nil, minutes: Double) -> SessionState {
+        SessionState(id: id, status: .idle, workspace: Workspace(path: path, host: host),
+                     updatedAt: t0.addingTimeInterval(minutes * 60), statusSince: t0)
+    }
+
+    static let suite = TestSuite("New session", [
+
+        TestCase("The places offered: each machine's folders, the most recent first, each once") { t in
+            let state = TrafficLightState(sessions: [
+                "a": session("a", "/Users/dev/web", minutes: 1),
+                "b": session("b", "/Users/dev/api", minutes: 5),
+                "c": session("c", "/Users/dev/web", minutes: 9),
+                "d": session("d", "/home/dev/awevents", host: "box", minutes: 3),
+            ])
+            let here = NewSession.recentFolders(in: state, host: nil)
+            t.expectEqual(here, ["/Users/dev/web", "/Users/dev/api"])
+            t.expectEqual(NewSession.recentFolders(in: state, host: "box"), ["/home/dev/awevents"])
+        },
+
+        TestCase("A tmux name from a folder: what tmux reads as one name, and not one already there") { t in
+            t.expectEqual(NewSession.tmuxName(for: "/home/dev/ai-act lab", taken: []), "ai-act-lab")
+            t.expectEqual(NewSession.tmuxName(for: "/home/dev/web", taken: ["web", "web-2"]), "web-3")
+            t.expectEqual(NewSession.tmuxName(for: "/home/dev/.hidden", taken: []), "hidden")
+            t.expectEqual(NewSession.tmuxName(for: "/", taken: []), "claude")
+            t.expectEqual(NewSession.tmuxName(for: "/x/" + String(repeating: "a", count: 90), taken: []).count, 40)
+        },
+
+        TestCase("A word for a remote shell is single-quoted, a quote inside it closed and reopened") { t in
+            t.expectEqual(NewSession.shellQuoted("/home/dev/web"), "'/home/dev/web'")
+            t.expectEqual(NewSession.shellQuoted("/home/dev/it's here"), #"'/home/dev/it'\''s here'"#)
+        },
+
+        TestCase("On another machine a session is born in tmux, in its folder, and keeps a shell when Claude ends") { t in
+            let script = NewSession.remoteCommand(folder: "/home/dev/my web", name: "my-web", launch: "0123456789abcdef")
+            t.expect(script.contains("tmux new-session -d -s \"$n\" -c '/home/dev/my web' "), script)
+            t.expect(script.contains("n='my-web'; i=2; while tmux has-session -t \"=$n\""), "a name already there is never joined")
+            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude; exec "$SHELL" -l'"#)),
+                     "the person's shell, interactive so its startup files find claude, then stays: \(script)")
+            t.expect(script.contains("test -d '/home/dev/my web' ||"), "a folder that is not there is said, not replaced by home")
+            t.expect(script.hasPrefix("export PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\"\n"), "Homebrew's tmux found")
+            t.expect(script.hasSuffix("exec tmux attach-session -t \"=$n:\""), script)
+        },
+
+        TestCase("A reattach finds the session it started by its tag, and never starts a second one") { t in
+            let script = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef")
+            let lines = script.split(separator: "\n").map(String.init)
+            t.expect(lines.contains("l=0123456789abcdef"), script)
+            let look = lines.firstIndex { $0.contains("#{@lampboard} #{session_name}") } ?? -1
+            let create = lines.firstIndex { $0.contains("tmux new-session") } ?? -1
+            t.expect(look >= 0 && look < create, "the tag is looked for before anything is created")
+            t.expect(lines.contains("if [ -z \"$n\" ]; then"), "and only a missing one creates")
+            t.expect(lines.contains("  tmux set-option -t \"=$n:\" @lampboard \"$l\""), "the new session carries the tag")
+        },
+
+        TestCase("What goes over ssh runs under sh, whatever shell the person has there") { t in
+            let target = LiveTarget.starting(host: "box", folder: "/home/dev/it's", name: "its", launch: "0123456789abcdef")!
+            let command = LiveLaunch.command(for: target, claude: "/x/claude", environment: LiveLaunchSuite.base, home: "/home/dev")
+            let last = command?.arguments.last ?? ""
+            t.expect(last.hasPrefix("sh -c '"), last)
+            t.expectEqual(Array(command?.arguments.suffix(3).prefix(2) ?? []), ["--", "box"])
+            t.expect(target.command.hasPrefix("ssh -t box 'sh -c '"), target.command)
+        },
+
+        TestCase("Only a usable start: an absolute folder, a host that is not an option, a tag of hex") { t in
+            t.expectNil(LiveTarget.starting(host: "box", folder: "relative/path", name: "x"), "an absolute folder only")
+            t.expectNil(LiveTarget.starting(host: "-oProxyCommand=x", folder: "/x", name: "x"))
+            t.expectNil(LiveTarget.starting(host: "box", folder: "/x", name: "x", launch: "$(reboot)0123456789"))
+            t.expect(NewSession.isLaunchTag(NewSession.newLaunchTag()), "a fresh tag is one")
+            t.expect(NewSession.newLaunchTag() != NewSession.newLaunchTag(), "and fresh")
         },
     ])
 }

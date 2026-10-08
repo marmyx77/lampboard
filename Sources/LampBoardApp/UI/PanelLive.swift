@@ -10,16 +10,27 @@ extension PanelController {
         switch target {
         case .job: liveRefused("LampBoard could not open this session: Claude Code was not found on this Mac.")
         case .tmux(nil, _, _): liveRefused("LampBoard could not open this session: tmux was not found on this Mac.")
-        case .tmux: liveRefused("LampBoard could not open this session: that machine's name is not one ssh can be given.")
+        case .tmux, .newTmux: liveRefused("LampBoard could not open this session: that machine's name is not one ssh can be given.")
         }
     }
 
-    /// «New conversation in LampBoard»: a background session in the row's
-    /// folder, opened as soon as Claude Code says its id.
+    /// «New conversation in LampBoard»: in the row's folder, a background
+    /// session on this Mac, or a tmux session on the row's machine (D133).
     func startHere(_ row: ColumnRow) {
-        guard !row.workspace.isRemote else { return }
-        live?.start(directory: row.workspace.path, name: row.alias ?? row.workspace.name) { [weak self] message in
-            self?.liveRefused(message)
+        startSession(host: row.workspace.host, folder: row.workspace.path, name: row.alias ?? row.workspace.name)
+    }
+
+    /// Starts a session and opens it: what «New session…» and a row both do.
+    func startSession(host: String?, folder: String, name: String?) {
+        guard let host else {
+            live?.start(directory: folder, name: name) { [weak self] message in self?.liveRefused(message) }
+            return
+        }
+        // Free names are the other machine's to pick: it knows all of its own.
+        let tmuxName = NewSession.tmuxName(for: "/" + (name ?? (folder as NSString).lastPathComponent), taken: [])
+        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName), live?.open(target) == true else {
+            liveRefused("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")
+            return
         }
     }
 

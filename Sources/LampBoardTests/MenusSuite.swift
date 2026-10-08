@@ -38,10 +38,11 @@ enum MenusSuite {
 
     static let suite = TestSuite("Menus", [
 
-        TestCase("The panel's ⋯: eight entries, Settings with ⌘, before the way out") { t in
+        TestCase("The panel's ⋯: nine entries, New session with ⌘N, Settings with ⌘, before the way out") { t in
             let entries = Menus.panel(quiet, time: { _ in "14:30" })
+            t.expect(entries.contains { if case .item(.newSession, _, _, _, "n") = $0 { return true }; return false }, "⌘N")
             t.expectEqual(titles(entries), [
-                "Open the conversations…", "What the lights mean…", "What LampBoard can do…", "Show only what's waiting",
+                "Open the conversations…", "New session…", "What the lights mean…", "What LampBoard can do…", "Show only what's waiting",
                 "Mute alerts for an hour", "I'm away", "Settings…", "Quit LampBoard",
             ])
             t.expect(entries.contains { if case .item(.settings, _, _, _, ",") = $0 { return true }; return false },
@@ -91,7 +92,7 @@ enum MenusSuite {
             t.expect(!titles.contains("New conversation here"), "no local editor for it")
             let more = Self.titles(submenu("More", in: Menus.row(row(remote: true, repository: nil, newConversation: false))))
             t.expect(!more.contains("Show in Finder"), "the folder is on that machine")
-            t.expect(!more.contains("New conversation in LampBoard"), "a live session starts on this Mac only")
+            t.expect(more.contains("New conversation in LampBoard"), "on another machine it starts inside tmux there (D133)")
         },
 
         TestCase("Don't blink only where something blinks; Mark as unread only on a row at rest") { t in

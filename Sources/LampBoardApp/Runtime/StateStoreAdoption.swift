@@ -251,4 +251,13 @@ extension StateStore {
     func remoteTmuxPlace(sessionId: String, host: String) -> TmuxPlace? {
         remoteSessions[host]?.first { $0.sessionId == sessionId }?.tmux
     }
+
+    /// A session LampBoard started in tmux, once its machine's probe has found
+    /// it by its tag: from then on a window's header names it like its row.
+    func placed(_ target: LiveTarget) -> LiveTarget {
+        guard case .newTmux(let host, _, _, let launch) = target,
+              let found = remoteSessions[host]?.first(where: { $0.tmux?.launch == launch }), let place = found.tmux
+        else { return target }
+        return .tmux(host: host, place: place, sessionId: found.sessionId)
+    }
 }

@@ -219,6 +219,9 @@ public struct LiveHeading: Equatable, Sendable {
             held = state.sessions.values.filter { $0.backgroundJob?.id == job }.max { $0.updatedAt < $1.updatedAt }
         case .tmux(_, _, let sessionId):
             held = state.sessions[sessionId]
+        case .newTmux(let host, let folder, let name, _):
+            // Not placed yet: any other session of that folder would be the wrong one.
+            return LiveHeading(title: name, detail: "\((folder as NSString).lastPathComponent) on \(host) · starting", status: nil)
         }
         guard let session = held else {
             return LiveHeading(title: target.key, detail: target.command, status: nil)

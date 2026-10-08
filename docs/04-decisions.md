@@ -5098,3 +5098,77 @@ never attaches to `awevents`.
 **Not yet.** zellij sessions, a background session on another machine
 (`ssh -t <host> claude attach <id>`), and tmux servers on sockets other than the
 default.
+
+## D133 · A new session from LampBoard
+
+**Decided.** **New session…** in the panel's ⋯ (⌘N) opens a small window with three
+fields: where (this Mac, or any machine under Settings › Other Macs), a folder,
+and a name. The folders offered are the ones that machine's sessions worked in,
+the most recent first, and any absolute path can be typed; on this Mac **Choose…**
+opens a folder picker. Start opens the session in the live view.
+- **On this Mac** it is `claude --bg` in that folder, as New conversation in
+  LampBoard already did (D130).
+- **On another machine** it is a tmux session there. `ssh -t <host>` runs a
+  short script under `sh`, so that a login shell of fish or csh reads it too. The
+  script checks the folder, then runs `tmux new-session` there with the person's
+  own shell, interactive so that its startup files put `claude` on PATH. Claude
+  Code runs in that shell, and the shell stays when it ends. The session outlives
+  the window and the ssh. The person's own terminal can attach to it, and Remote
+  Control reaches it when that machine has it on. At the probe's next pass its row
+  appears, placed in that pane, and Open here attaches to it (D132).
+
+**New conversation in LampBoard**, a row's More ▸, is now offered on the rows of
+other machines too, and does the same in the row's folder.
+
+**Why tmux over there, and not a background session.** Opening a background
+session of another machine would need `ssh -t <host> claude attach <id>`, its
+supervisor and its id, and is not built yet. tmux needs nothing on that machine
+but tmux and Claude Code. The session it gives is one any terminal can reach, so
+it is not tied to LampBoard.
+
+**Names.** A tmux name is made from the folder's: letters, digits, dashes and
+underscores, at most forty, the only names D132 offers back as a target. The
+names LampBoard has seen are avoided, and the remote command picks the first free
+one itself (`web`, `web-2`, `web-3`), because LampBoard has not seen every tmux
+session of that machine. Everything that crosses ssh is in single quotes, and the
+folder may hold spaces or a quote. Homebrew's folders are added to PATH, as for
+the attach.
+
+**The tag.** Each session LampBoard starts gets a tmux option there,
+`@lampboard`, set to a random tag. Both the probe and this Mac read it back with
+the pane. The script looks for that tag before it creates anything, so a
+reattach after a dropped ssh returns to the session it started instead of
+starting a second one. A window is keyed by the tag, so the row's Open here
+brings forward the window that started the session, whatever name or window
+numbers it got over there (`base-index 1` included).
+
+**Measured.** Over ssh from the always-on Linux box to itself, with Claude Code
+replaced by a shell that prints where it is:
+- The script created a tmux session in a folder whose name has a space and a
+  quote, and the session started in that folder.
+- The interactive shell found `claude` in `~/.local/bin`.
+- Run again with the same tag, it attached to the same session without making
+  a second one.
+- With a folder that does not exist, it said so and stopped.
+
+**What a review changed.** It found two high issues, five medium and four low.
+- **High: reattach.** Reattach re-ran the creating command and started a second
+  session; it is fixed by the tag.
+- **High: shells.** The script assumed a POSIX login shell; it now runs under
+  `sh`.
+- **Medium:**
+  - a login shell does not read `.zshrc` or `.bashrc`, where many people put
+    `claude` on PATH;
+  - a window's key could name another session;
+  - tmux before 3.0 takes one command string;
+  - a missing folder silently became the home folder;
+  - a local folder that does not exist could be started.
+- **Low:**
+  - a typed name was overwritten while editing the folder;
+  - the window recomputed its folders on every keystroke and lost what was typed
+    when asked again;
+  - its header could show another session of the same folder while the new one
+    was starting.
+
+All of these are fixed. The tag test and the reattach test each fail when the
+tag lookup is removed from the code.

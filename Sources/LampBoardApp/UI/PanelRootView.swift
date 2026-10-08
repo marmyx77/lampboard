@@ -42,6 +42,8 @@ struct PanelActions {
     var dismissAwayNote: () -> Void = {}
     /// Opens or closes the «Resting» line at the foot of the column (U2).
     var toggleResting: () -> Void = {}
+    /// «New session…» (D133).
+    var newSession: () -> Void = {}
 }
 
 /// The menu's checkmarks, gathered together so twelve of them don't travel separately.
@@ -407,6 +409,7 @@ struct PanelRootView: View {
     private func perform(_ command: MenuCommand) {
         switch command {
         case .openConversations: actions.openExtended()
+        case .newSession: actions.newSession()
         case .legend: actions.openLegend()
         case .capabilities: CapabilitiesWindowController.shared.show()
         case .onlyWaiting: actions.toggleOnlyWaiting()

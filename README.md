@@ -918,9 +918,14 @@ its own colours inside.
   session open in an editor or a plain terminal has a writer already: a second one
   would fork its conversation without a word (measured). Its click still goes where
   it lives.
-- **New conversation in LampBoard** (a row's More ▸) starts `claude --bg` in the
-  row's folder and opens it as soon as Claude Code says its id. A folder Claude
-  Code was never told to trust is refused, with what to do.
+- **New session…** (the panel's ⋯, ⌘N) asks where, which folder and what name,
+  then opens it here. On this Mac it starts `claude --bg`, opened as soon as
+  Claude Code says its id; a folder Claude Code was never told to trust is
+  refused, with what to do. On another machine it starts Claude Code inside a new
+  tmux session there, which outlives the window
+  ([D133](docs/04-decisions.md#d133--a-new-session-from-lampboard)).
+- **New conversation in LampBoard** (a row's More ▸) does the same in the row's
+  folder, on the row's machine.
 - **Open here when LampBoard can**, in Settings, makes the live view what a click
   on such a row does.
 
@@ -1728,7 +1733,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1259 domain tests, instantaneous
+swift run LampBoardTests              # 1267 domain tests, instantaneous
 swift run LampBoardE2E                # 165 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

@@ -57,6 +57,10 @@ final class PanelController {
 
     /// The live view's windows (D130), owned by the app: they open headless too.
     var live: LiveWindowController?
+    /// «New session…» (D133).
+    lazy var newSession = NewSessionWindowController(store: store, preferences: preferences) { [weak self] host, folder, name in
+        self?.startSession(host: host, folder: folder, name: name)
+    }
     /// What the live view could open for a session (D132), set by the app.
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
 

@@ -11,12 +11,17 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
     public let session: String
     public let window: Int
     public let pane: Int
+    /// The tag LampBoard gave a tmux session it started (D133), so that a
+    /// reattach finds it again and its row opens the same window.
+    public let launch: String?
 
-    public init?(session: String, window: Int, pane: Int) {
+    public init?(session: String, window: Int, pane: Int, launch: String? = nil) {
         guard BackgroundJobParser.isSafe(id: session), window >= 0, pane >= 0 else { return nil }
         self.session = session
         self.window = window
         self.pane = pane
+        let launch = launch?.nilIfEmpty
+        self.launch = launch.flatMap { NewSession.isLaunchTag($0) ? $0 : nil }
     }
 
     /// tmux's exact-name target: `=awevents:1.0`. The `=` stops `awe` from
@@ -36,16 +41,18 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
     }
 
     /// The format string for `tmux list-panes -a -F`, the same the remote probe
-    /// asks for: the pane's shell, and where the pane is.
-    public static let paneFormat = "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}"
+    /// asks for: the pane's shell, where the pane is, and LampBoard's tag.
+    public static let paneFormat = "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{@lampboard}"
 
     /// Each pane's shell pid and its place; a line tmux could not take back is skipped.
     public static func panes(_ output: String) -> [Int32: TmuxPlace] {
         var places: [Int32: TmuxPlace] = [:]
         for line in output.split(separator: "\n") {
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 4, let pid = Int32(fields[0]), let window = Int(fields[2]), let pane = Int(fields[3]),
-                  let place = TmuxPlace(session: fields[1], window: window, pane: pane) else { continue }
+            guard fields.count == 4 || fields.count == 5, let pid = Int32(fields[0]), let window = Int(fields[2]),
+                  let pane = Int(fields[3]),
+                  let place = TmuxPlace(session: fields[1], window: window, pane: pane,
+                                        launch: fields.count == 5 ? fields[4] : nil) else { continue }
             places[pid] = place
         }
         return places
@@ -68,6 +75,18 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
     case job(String)
     /// `host` is `nil` for tmux on this Mac.
     case tmux(host: String?, place: TmuxPlace, sessionId: String)
+    /// A new session being started inside tmux on another machine (D133),
+    /// tagged `launch` there.
+    case newTmux(host: String, folder: String, name: String, launch: String)
+
+    /// A new session in `folder` on `host`, under a name tmux can take; `nil` for
+    /// a folder that is not absolute or a host ssh could read as an option.
+    public static func starting(host: String, folder: String, name: String,
+                                launch: String = NewSession.newLaunchTag()) -> LiveTarget? {
+        guard folder.hasPrefix("/"), RemoteHostList.isUsable(host), !host.hasPrefix("-"),
+              TmuxPlace(session: name, window: 0, pane: 0) != nil, NewSession.isLaunchTag(launch) else { return nil }
+        return .newTmux(host: host, folder: folder, name: name, launch: launch)
+    }
 
     /// The window's key, and what the ledger and `GET /live` call it.
     public var key: String {
@@ -75,7 +94,12 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .job(let id): return id
         // `tmux:` cannot begin a job's id, and an empty host is this Mac: no
         // machine can be named so as to collide with it.
-        case .tmux(let host, let place, _): return "tmux:\(host ?? ""):\(place.session):\(place.window).\(place.pane)"
+        // A session LampBoard started is known by its tag, whatever name and
+        // window numbers it got over there.
+        case .tmux(let host, let place, _):
+            if let launch = place.launch { return "tmux:\(host ?? ""):launch:\(launch)" }
+            return "tmux:\(host ?? ""):\(place.session):\(place.window).\(place.pane)"
+        case .newTmux(let host, _, _, let launch): return "tmux:\(host):launch:\(launch)"
         }
     }
 
@@ -85,6 +109,8 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .job(let id): return "claude attach \(id)"
         case .tmux(let host?, let place, _): return "ssh -t \(host) \"tmux attach -t \(place.quotedTarget)\""
         case .tmux(nil, let place, _): return "tmux attach -t \(place.quotedTarget)"
+        case .newTmux(let host, let folder, let name, let launch):
+            return "ssh -t \(host) \(NewSession.shellQuoted(NewSession.posix(NewSession.remoteCommand(folder: folder, name: name, launch: launch))))"
         }
     }
 
@@ -139,11 +165,18 @@ extension LiveLaunch {
             guard let tmux else { return nil }
             return LiveCommand(executable: tmux, arguments: ["attach-session", "-t", place.target], directory: nil,
                                environment: environment(base: base, home: home))
+        case .newTmux(let host, let folder, let name, let launch):
+            guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
+            let script = NewSession.remoteCommand(folder: folder, name: name, launch: launch)
+            return LiveCommand(executable: "/usr/bin/ssh",
+                               arguments: SSHHardening.options + ["-t", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=10",
+                                                                  "--", host, NewSession.posix(script)],
+                               directory: nil, environment: environment(base: base, home: home))
         case .tmux(let host?, let place, _):
             guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
             return LiveCommand(executable: "/usr/bin/ssh",
                                arguments: SSHHardening.options + ["-t", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=10",
-                                                                  "--", host, remoteAttach(place)],
+                                                                  "--", host, NewSession.posix(remoteAttach(place))],
                                directory: nil, environment: environment(base: base, home: home))
         }
     }

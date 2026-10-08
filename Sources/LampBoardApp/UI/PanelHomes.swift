@@ -350,7 +350,8 @@ extension PanelController {
                 self.rebuildContent()
                 self.resizeToFit(self.store.state)
             },
-            toggleResting: { [weak self] in self?.toggleResting() }
+            toggleResting: { [weak self] in self?.toggleResting() },
+            newSession: { [weak self] in self?.newSession.show() }
         )
     }
 }

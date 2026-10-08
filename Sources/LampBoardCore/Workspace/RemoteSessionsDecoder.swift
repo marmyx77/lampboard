@@ -129,7 +129,7 @@ public enum RemoteSessionsDecoder {
         guard let object = value as? [String: Any], let session = object["session"] as? String,
               let window = (object["window"] as? NSNumber)?.intValue, let pane = (object["pane"] as? NSNumber)?.intValue
         else { return nil }
-        return TmuxPlace(session: session, window: window, pane: pane)
+        return TmuxPlace(session: session, window: window, pane: pane, launch: object["launch"] as? String)
     }
 
     private static func string(_ record: [String: Any], _ key: String) -> String? {

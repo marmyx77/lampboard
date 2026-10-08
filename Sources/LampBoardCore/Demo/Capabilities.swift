@@ -64,6 +64,8 @@ public enum Capabilities {
             item("Hand over", "Pass what one session knows to another.", tryIt: .bar("/handoff @")),
             item("Live view", "A background or tmux session in a LampBoard window, its real interface. Closing it leaves it running.",
                  setting: .liveOpensBackground, place: "The row's menu › Open here"),
+            item("New session", "Starts Claude Code in a folder, on this Mac or on another machine in tmux, and opens it here.",
+                 place: "The panel's ⋯ › New session…"),
         ]),
         Group(title: "Step away", items: [
             item("I'm away", "Nothing interrupts; back, one line says what the rows no longer show.", setting: .away),

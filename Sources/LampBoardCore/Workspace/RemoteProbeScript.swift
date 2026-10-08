@@ -61,12 +61,13 @@ public enum RemoteProbeScript {
         tmux = shutil.which("tmux") or next((p for p in ("/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux")
                                              if os.access(p, os.X_OK)), None)
         listing = subprocess.run(
-            [tmux, "list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}"],
+            [tmux, "list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{@lampboard}"],
             capture_output=True, text=True, timeout=3).stdout if tmux else ""
         for line in listing.splitlines():
             fields = line.split("\t")
-            if len(fields) == 4 and fields[0].isdigit():
-                panes[int(fields[0])] = {"session": fields[1], "window": int(fields[2]), "pane": int(fields[3])}
+            if len(fields) in (4, 5) and fields[0].isdigit():
+                panes[int(fields[0])] = {"session": fields[1], "window": int(fields[2]), "pane": int(fields[3]),
+                                         "launch": fields[4] if len(fields) == 5 else ""}
     except Exception:
         panes = {}
 

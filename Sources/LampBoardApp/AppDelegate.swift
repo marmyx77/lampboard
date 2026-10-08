@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The live view's windows (D130): here and not in the panel, because the
     /// end-to-end suite runs headless and still opens them.
     private lazy var live = LiveWindowController(preferences: preferences) { [store] target in
-        LiveHeading.of(target, in: store.state)
+        LiveHeading.of(store.placed(target), in: store.state)
     }
     /// Where this Mac's sessions sit in tmux, for Open here (D132).
     private let localTmux = LocalTmuxPlaces()
