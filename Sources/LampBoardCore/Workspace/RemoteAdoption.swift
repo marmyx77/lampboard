@@ -19,7 +19,7 @@ public enum RemoteAdoption {
         return live.filter { session in
             session.host != nil
                 && session.deservesTrafficLight
-                && session.context != nil
+                && session.hasTranscript
                 && TmuxPlace.isPlaceable(entrypoint: session.entrypoint, isBackground: session.isBackground)
         }
     }

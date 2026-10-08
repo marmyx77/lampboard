@@ -48,6 +48,10 @@ public struct LiveSession: Sendable, Equatable {
     /// is the only thing that can read it, and this is where what it read
     /// arrives.
     public let context: ContextReading?
+    /// Another machine's session whose transcript there holds anything at all
+    /// (D137): what makes it a conversation, whether or not a context can be
+    /// read from its tail. A session just resumed has a tail of system records.
+    public let hasTranscript: Bool
 
     /// For a background session, the Agent View's id for it: the folder under
     /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
@@ -61,7 +65,7 @@ public struct LiveSession: Sendable, Equatable {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId, tmux: tmux
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript
         )
     }
 
@@ -77,8 +81,10 @@ public struct LiveSession: Sendable, Equatable {
         procStart: String? = nil,
         context: ContextReading? = nil,
         jobId: String? = nil,
-        tmux: TmuxPlace? = nil
+        tmux: TmuxPlace? = nil,
+        hasTranscript: Bool = false
     ) {
+        self.hasTranscript = hasTranscript
         self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context

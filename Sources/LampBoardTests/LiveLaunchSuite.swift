@@ -577,7 +577,7 @@ enum RemoteAdoptionSuite {
                      talked: Bool = true) -> LiveSession {
         LiveSession(pid: 12, sessionId: id, cwd: "/home/dev/web", entrypoint: entrypoint, name: "web", kind: kind,
                     modifiedAt: t0, host: host, context: talked ? reading : nil,
-                    tmux: TmuxPlace(session: "web", window: 0, pane: 0))
+                    tmux: TmuxPlace(session: "web", window: 0, pane: 0), hasTranscript: talked)
     }
 
     static let suite = TestSuite("Sessions resting on other machines", [
@@ -593,6 +593,18 @@ enum RemoteAdoptionSuite {
                 live("silent", talked: false), live("here", host: nil), live("headless", kind: "print"),
             ], showsTerminalSessions: true)
             t.expectEqual(none.map(\.sessionId), [])
+        },
+
+        TestCase("A session just resumed is one too, though no context can be read from its tail") { t in
+            // Found the evening 1.3.1 shipped: the always-on box rebooted and resumed
+            // its sessions, whose transcripts then ended in system records only.
+            let json = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","entrypoint":"cli","kind":"interactive","activityEpoch":1,"contextTail":"{\"type\": \"system\", \"timestamp\": \"2026-10-08T17:16:13.001Z\"}"}]}"#
+            let session = try? RemoteSessionsDecoder.report(from: Data(json.utf8), host: "box", at: t0).sessions.first
+            t.expectNil(session?.context, "nothing to read a context from")
+            t.expectEqual(session?.hasTranscript, true, "but a transcript all the same")
+            t.expectEqual(RemoteAdoption.adoptable(session.map { [$0] } ?? [], showsTerminalSessions: true).count, 1)
+            let none = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","entrypoint":"cli","activityEpoch":1,"contextTail":""}]}"#
+            t.expectEqual(try? RemoteSessionsDecoder.report(from: Data(none.utf8), host: "box", at: t0).sessions.first?.hasTranscript, false)
         },
 
         TestCase("Nothing while terminal sessions are not shown") { t in

@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,049 lines · 180 files  pure logic, zero AppKit
+  LampBoardCore/  23,056 lines · 180 files  pure logic, zero AppKit
   LampBoardApp/    27,816 lines · 152 files   shell: AppKit, network, windows
-  LampBoardTests/  17,803 lines · 122 files   1286 cases, instantaneous
+  LampBoardTests/  17,815 lines · 122 files   1287 cases, instantaneous
   LampBoardE2E/    4,970 lines · 21 files   167 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -2063,7 +2063,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1286 cases
+## `LampBoardTests/` — 1287 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

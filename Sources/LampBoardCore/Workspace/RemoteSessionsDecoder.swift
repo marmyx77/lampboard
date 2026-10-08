@@ -119,7 +119,8 @@ public enum RemoteSessionsDecoder {
             modifiedAt: Date(timeIntervalSince1970: epoch),
             host: host,
             context: context,
-            tmux: tmux(record["tmux"])
+            tmux: tmux(record["tmux"]),
+            hasTranscript: !((record["contextTail"] as? String) ?? "").isEmpty
         )
     }
 

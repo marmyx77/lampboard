@@ -5381,7 +5381,7 @@ so it could not reach them.
 **Which.** The same as for this Mac:
 - a terminal's session (entrypoint `cli`, or none), not one in the background;
 - with a conversation in it, so not a helper process such as claude-mem's
-  observer;
+  observer: its transcript there holds anything at all;
 - only while Settings shows sessions started in a terminal.
 
 An editor's session on another machine still arrives through its own hooks and
@@ -5403,6 +5403,15 @@ Settings.
 were one of four: `/sessions` listed only the session at work. The domain suite
 holds the rule. Its cases fail when the conversation check, or the service-process
 check, is removed.
+
+**What 1.3.3 changed.** In 1.3.1 "a conversation" was read as "a context can be
+read from its transcript's tail". The same evening the Linux box rebooted and
+resumed its sessions. Their transcripts then ended in the system records of the
+resume, with no reply in the tail the probe sends, so no context could be read.
+Five of seven sessions were again missing; only one that had worked since then
+showed. The probe now says whether the transcript holds anything, and that is the
+rule, as it is for this Mac's sessions. The case for a resumed session fails with
+the old rule.
 
 ## D138 · Keys and a way back to the live window
 
