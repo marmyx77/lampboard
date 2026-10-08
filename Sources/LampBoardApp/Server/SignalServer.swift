@@ -77,6 +77,9 @@ final class SignalServer {
     private let onModHold: (Data, String?, String?, String) -> String
     /// The live view's windows, as JSON (D130).
     private let onLive: () -> Data
+    /// Whether a session is drawn with Claude Code's look (D134); `nil` when
+    /// the app could not say in time.
+    private let onModLook: (String?) -> Bool?
     private let token: String?
     private let checkKey: String?
 
@@ -110,7 +113,8 @@ final class SignalServer {
         onModGovernor: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
         onModRadar: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
         onModHold: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
-        onLive: @escaping () -> Data = { Data("{\"views\":[]}".utf8) }
+        onLive: @escaping () -> Data = { Data("{\"views\":[]}".utf8) },
+        onModLook: @escaping (String?) -> Bool? = { _ in false }
     ) {
         self.port = port
         self.token = token
@@ -140,6 +144,7 @@ final class SignalServer {
         self.onModRadar = onModRadar
         self.onModHold = onModHold
         self.onLive = onLive
+        self.onModLook = onModLook
     }
 
     // MARK: - Lifecycle
@@ -238,6 +243,17 @@ final class SignalServer {
 
         case AppConfig.livePath:
             return handleLive(request)
+
+        case AppConfig.modLookPath:
+            // Behind the token: which sessions are open here is the person's.
+            guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+            guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token)
+            else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+            // A busy app says so rather than "off": the helper keeps what it had.
+            guard let on = onModLook(request.header("X-LampBoard-Session"))
+            else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: ModLook.answer(on: on), contentType: "application/json")
 
         case AppConfig.nextPath:
             return handleNext(request)

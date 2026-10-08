@@ -543,6 +543,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onLive: { [weak self] in
                 Self.onMain(timeout: 2) { self?.live.report(includingText: AppConfig.isUsingHomeOverride) }
                     ?? Data("{\"views\":[]}".utf8)
+            },
+            onModLook: { [weak self] session in
+                Self.onMain(timeout: 1) {
+                    guard let self else { return false }
+                    let reach = ModLook.Reach.named(self.preferences.liveLook)
+                    let open = reach == .live ? self.sessionsInLiveView() : []
+                    return ModLook.isOn(session: session, reach: reach, inLiveView: open)
+                }
             }
         )
 
@@ -577,6 +585,19 @@ extension AppDelegate {
                                        asks: permissions.pending, now: Date())
         let away = asking.flatMap { store.state.sessions[$0]?.workspace.isRemote } ?? false
         return Band.json(Band.items(cards: cards, excluding: asking, lines: !away))
+    }
+
+    /// The sessions open in a live window: what Claude Code's look covers by
+    /// default (D134).
+    @MainActor
+    private func sessionsInLiveView() -> Set<String> {
+        Set(live.openTargets.compactMap { target -> String? in
+            switch store.placed(target) {
+            case .job(let job): return store.state.sessions.values.first { $0.backgroundJob?.id == job }?.id
+            case .tmux(_, _, let sessionId): return sessionId
+            case .newTmux: return nil
+            }
+        })
     }
 
     /// Runs `body` on the main actor and returns its result, giving up after

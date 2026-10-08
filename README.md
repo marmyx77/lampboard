@@ -996,6 +996,19 @@ asked, refreshes every three seconds while open and asks nothing once closed; it
 needs Claude Code's full-screen layout, which a background session's attach and
 the live view always use ([D131](docs/04-decisions.md#d131--every-lamp-beside-the-conversation)).
 
+**Claude Code's look.** In the live view the helper (1.15.0) draws the
+conversation the way Claude Code's VS Code panel does:
+- your prompts in rounded boxes;
+- one line per tool call, with its file or command and a dot for how it went;
+- edits as framed diffs;
+- todo lists as checklists;
+- the model and how full the context is under the prompt.
+
+The permission dialog and the prompt box stay Claude Code's own.
+Settings › Clicks & keys › *Claude Code's look* turns it on in LampBoard's
+windows (the default), in every terminal, or off
+([D134](docs/04-decisions.md#d134--claude-codes-look)).
+
 **Permissions from the panel**, off until you switch on *Answer permission prompts
 and questions* in Settings › Acting from the panel. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
 put to the panel first: it opens under the session's own row with **Allow** and
@@ -1733,7 +1746,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1267 domain tests, instantaneous
+swift run LampBoardTests              # 1270 domain tests, instantaneous
 swift run LampBoardE2E                # 165 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

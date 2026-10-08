@@ -1,14 +1,14 @@
 # Code map
 
-~72,200 lines of Swift across five targets. For each file: what it contains, why
+~72,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  22,225 lines · 175 files  pure logic, zero AppKit
-  LampBoardApp/    27,064 lines · 150 files   shell: AppKit, network, windows
-  LampBoardTests/  17,583 lines · 122 files   1267 cases, instantaneous
-  LampBoardE2E/    4,914 lines · 21 files   165 cases, the real binary
+  LampBoardCore/  22,829 lines · 177 files  pure logic, zero AppKit
+  LampBoardApp/    27,122 lines · 150 files   shell: AppKit, network, windows
+  LampBoardTests/  17,614 lines · 122 files   1270 cases, instantaneous
+  LampBoardE2E/    4,925 lines · 21 files   165 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -27,7 +27,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 647
+### `AppConfig.swift` · 649
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -50,7 +50,7 @@ and Quit. The App only draws what it is given (`MenuEntriesView`).
 > **Adding an entry here** is adding it to a menu a test counts: the ⋯ had grown to
 > twenty-five entries one reasonable addition at a time.
 
-### `SettingsCatalog.swift` · 153
+### `SettingsCatalog.swift` · 154
 Every setting, its section, its group, its one name and the line saying what it
 does: nine sections, from Panel to About & help, the two that act on the sessions
 or leave the Mac marked. The Settings window draws from it, and a menu that offers
@@ -946,8 +946,15 @@ replace it.
 `mod/hooks/lamps.js`, compiled in beside the rest (D131), in a file of its own so
 that `ModFiles.swift` stays under the length the project allows.
 
+### `ModFilesLook.swift`
+`mod/hooks/look.js`, compiled in like the lamps (D134).
+
+### `ModLook.swift`
+Where Claude Code's look is on (D134): off, in the sessions open in a live
+window, or everywhere, and the one answer `GET /mod/look` gives the helper.
+
 ### `ModFiles.swift`
-The mod's five files, compiled in (D66): the app installs what it reads, word for
+The mod's six files, compiled in (D66): the app installs what it reads, word for
 word, with no network. `ModFilesSuite` holds them to the bytes of `mod/` and
 `.claude-plugin/` in the repository, the one domain suite that reads a file.
 
@@ -1621,7 +1628,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 643
+### `main.swift` · `AppDelegate.swift` · 664
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1741,7 +1748,7 @@ The frame: the theme's backdrop, a header with the session's lamp, name and stat
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 285
+### `LiveWindowController.swift` · 288
 One window per background session, never two: two attaches of different sizes
 garble each other. Opens, starts (`claude --bg` off the main thread, then the
 attach), reattaches in the same window, closes (which detaches), and answers
@@ -1780,7 +1787,7 @@ raises the limit of open files, which a few terminals reach.
 | `CodexProbe.swift` | 27 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 640 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 648 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
 | `PermissionDesk.swift` | 226 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
@@ -1842,7 +1849,7 @@ raises the limit of open files, which a few terminals reach.
 
 ## `Server/`
 
-### `SignalServer.swift` · 734
+### `SignalServer.swift` · 750
 Seventeen routes, behind `LoopbackGuard`; `/handoff` takes a handoff a session wrote with the mod's `/handoff`, behind the token and proven with the permission key (D91); `/question` takes a session's question proven like an ask (D86); `/mod/band` and `/mod/band/open`, behind the token, are what a session's band shows and the digit that opens one of its items in the panel (D84); `/watch` is the one besides `/signal` that makes a row, and it requires the token. `/check` (an ask from the mod, proven with an HMAC made with the permission key `~/.lampboard/check-key`, which travels nowhere, held until the panel answers or 55 seconds pass and answered signed; `GET` lists what waits, behind the token) and `/check/answer` decide what a session may run, and both require it too (D80); `GET /check` and `/check/answer` exist only on a fake home, for the tests: in a real install the panel answers in-process. A **concurrent** queue: with a serial one, a `/next` waiting on the
 main queue would also block reading the hooks' signals.
 
@@ -2009,7 +2016,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `WelcomeWindow.swift` | 212 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
 | `CapabilitiesWindow.swift` | 134 | «What LampBoard can do» (D127): the six groups, a badge for what needs the helper, *Try* doing the gesture in the real panel — the bar opened with its first characters typed, the samples, the legend — and *Turn on…* opening the switch in Settings, installing the helper first when it is the helper's |
 | `PanelTips.swift` | 70 | the tip at the top of the panel (D127): asked when the state changes and every half minute, never in the demo, only while the panel is on screen and the bar not being typed in; gone by itself when its thing is over; two lines and *Got it*, one line with a bulb in the narrow panel; remeasured, never rebuilt; shown tips kept by name with when |
-| `SettingsPanes.swift` | 311 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
+| `SettingsPanes.swift` | 321 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 126 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 68 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
 | `SettingsWindowController.swift` | 124 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
@@ -2031,7 +2038,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1267 cases
+## `LampBoardTests/` — 1270 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2202,6 +2209,24 @@ repository could point the mod at a port of its choosing:
 no conversation but for a proven side question, no file of the project, no command. When the panel is not there,
 or answers anything, it does nothing and says nothing. `claude plugin validate
 --strict` lists exactly that, and is what the panel will show (5.10).
+
+### `mod/hooks/look.js`
+Claude Code's look (D134). It is drawn only where the panel answers `GET /mod/look`
+with on for the session, and only on the terminal surface. Every hook has a
+component matcher, because the engine takes one unmatched hook per event:
+- `UserMessage`: a framed prompt.
+- `ToolGroup`: unfolded into one row per call.
+- `ToolUse`: the call's row, or a checklist for the task tools.
+- `ToolResult`: a framed diff, or one dim line.
+- `Spinner`: one word for what the turn is doing.
+- `TurnDuration`: how long the turn took.
+- `PromptHint`: the model and how full the context is.
+
+It finds the panel with its own copy of the lookup, for the same reason `lamps.js` has one.
+
+> **Touching here** draws over Claude Code's own rows: a hook that throws or
+> returns a tree the engine refuses blanks that row. `Scripts/check-mod.sh` runs
+> `claude plugin validate`, but only a session shows what a row looks like.
 
 ### `mod/hooks/lamps.js`
 The pane of `/lamps` (D131): every session of `GET /sessions`, the ones that want

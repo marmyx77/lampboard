@@ -1,7 +1,7 @@
 {
   "name": "lampboard",
-  "version": "1.14.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, shows every lamp beside the conversation with /lamps, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
+  "version": "1.15.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, shows every lamp beside the conversation with /lamps, draws the conversation like Claude Code's VS Code panel where LampBoard says so, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"

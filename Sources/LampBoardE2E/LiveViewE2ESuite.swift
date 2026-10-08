@@ -165,6 +165,15 @@ enum LiveViewE2ESuite {
                 t.expect(shown, "the pane's session opened with tmux attach: \(views(app)) · \(file(app, "tmux-calls.txt"))")
                 t.expect(file(app, "tmux-calls.txt").contains("list-panes -a -F"), "the panes were asked for")
                 t.expect(views(app).contains { ($0["text"] as? String ?? "").contains("TMUX=none") }, "attached, not nested")
+
+                // Claude Code's look (D134): on, by default, for the session open
+                // here and for no other; and only to whoever holds the token.
+                let look = { (session: String, token: String??) in
+                    app.raw(method: "GET", path: AppConfig.modLookPath, token: token, headers: ["X-LampBoard-Session": session])
+                }
+                t.expectEqual(look(sessionId, nil).body, #"{"v":1,"on":true}"#, "the session in the window")
+                t.expectEqual(look("e2e7d0aa-0000-4000-8000-000000000bad", nil).body, #"{"v":1,"on":false}"#, "another session")
+                t.expectEqual(look(sessionId, .some("0000")).status, 401, "a wrong token")
             },
 
             TestCase("what a crash left attached is ended by the next launch, and only that") { t in

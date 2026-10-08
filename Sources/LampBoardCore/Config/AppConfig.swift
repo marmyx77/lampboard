@@ -89,6 +89,8 @@ public enum AppConfig {
     public static let modRadarPath = "/mod/radar"
     /// Away, a risky command is held (A2): asked and answered like the radar.
     public static let modHoldPath = "/mod/hold"
+    /// Whether the helper draws a session with Claude Code's look (D134).
+    public static let modLookPath = "/mod/look"
 
     /// How many slots a key can address.
     ///

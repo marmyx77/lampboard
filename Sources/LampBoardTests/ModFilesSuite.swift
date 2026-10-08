@@ -169,3 +169,33 @@ enum ModFilesSuite {
         },
     ])
 }
+
+/// Claude Code's look (D134): where the helper draws like the VS Code panel.
+enum ModLookSuite {
+    static let open = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
+    static let other = "9c0ffee0-67ab-4d4c-9396-77adaed0f851"
+
+    static let suite = TestSuite("Claude Code's look", [
+
+        TestCase("By default only in LampBoard's windows; everywhere or nowhere when asked") { t in
+            t.expectEqual(ModLook.Reach.named(nil), .live)
+            t.expectEqual(ModLook.Reach.named("nonsense"), .live)
+            t.expect(ModLook.isOn(session: open, reach: .live, inLiveView: [open]), "open here")
+            t.expect(!ModLook.isOn(session: other, reach: .live, inLiveView: [open]), "a session in a terminal of its own")
+            t.expect(ModLook.isOn(session: other, reach: .everywhere, inLiveView: []), "everywhere")
+            t.expect(!ModLook.isOn(session: open, reach: .off, inLiveView: [open]), "off")
+        },
+
+        TestCase("A session id the helper could not have sent is never on") { t in
+            t.expect(!ModLook.isOn(session: nil, reach: .everywhere, inLiveView: []), "no id")
+            t.expect(!ModLook.isOn(session: "x;y", reach: .everywhere, inLiveView: ["x;y"]), "not an id")
+        },
+
+        TestCase("The answer is the one shape the helper reads") { t in
+            t.expectEqual(ModLook.answer(on: true), #"{"v":1,"on":true}"#)
+            t.expectEqual(ModLook.answer(on: false), #"{"v":1,"on":false}"#)
+            t.expect(ModFiles.look.contains("read.v === 1 && read.on === true"), "the helper reads exactly that")
+            t.expect(ModFiles.register.contains("try { registerLook(on) } catch (_) {}"), "and registers the look on its own")
+        },
+    ])
+}

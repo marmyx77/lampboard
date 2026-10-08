@@ -65,6 +65,7 @@
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
 
 import { endLamps, registerLamps } from './lamps.js'
+import { endLook, registerLook } from './look.js'
 
 const VERSION = 1
 
@@ -713,6 +714,7 @@ export function register(on) {
     const ending = bands.get(e.sessionId)
     if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
     endLamps(e.sessionId)
+    endLook(e.sessionId)
     boards.delete(e.sessionId)
     governed.delete(e.sessionId)
     await post($, 'end', { session: e.sessionId, reason: e.reason })
@@ -721,4 +723,6 @@ export function register(on) {
 
   // Last, and on its own: a Claude Code without panes must not lose the rest.
   try { registerLamps(on) } catch (_) {}
+  // The look (D134), off unless LampBoard says on for the session.
+  try { registerLook(on) } catch (_) {}
 }

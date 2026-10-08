@@ -195,7 +195,8 @@ final class AppUnderTest {
         method: String,
         path: String,
         token overrideToken: String?? = nil,
-        body: String? = nil
+        body: String? = nil,
+        headers: [String: String] = [:]
     ) -> (status: Int, body: String) {
         var request = URLRequest(url: url(path))
         request.httpMethod = method
@@ -204,6 +205,7 @@ final class AppUnderTest {
         let chosen = overrideToken ?? token
         if let chosen { request.setValue(chosen, forHTTPHeaderField: AccessToken.headerName) }
         if let body { request.httpBody = Data(body.utf8) }
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         let result = perform(request)
         return (result.status, String(data: result.body, encoding: .utf8) ?? "")
     }

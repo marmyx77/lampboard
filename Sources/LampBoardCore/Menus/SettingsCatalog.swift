@@ -14,7 +14,7 @@ public enum SettingsCatalog {
         case width, onlyWaiting, terminalSessions, hiddenProjects
         case launchAtLogin
         case accessibility, sessionTab, barShortcut
-        case liveOpensBackground, liveTheme, liveFontSize
+        case liveOpensBackground, liveTheme, liveFontSize, liveLook
         case notifications, notifyFinished, speak
         case mute, away, silenced
         case presence
@@ -83,6 +83,7 @@ public enum SettingsCatalog {
                 i(.liveOpensBackground, "Open here when LampBoard can", "A click on a session in the background, or in tmux on this Mac or another, opens it in a LampBoard window instead of jumping. Sessions in an editor still jump. Closing the window leaves the session running."),
                 i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside."),
                 i(.liveFontSize, "Text size", "The size of the session's text, in every live window at once."),
+                i(.liveLook, "Claude Code's look", "The conversation drawn like Claude Code's VS Code panel: framed prompts, one line per tool, framed diffs, checklists. By the helper, in LampBoard's windows, in every terminal, or nowhere."),
             ]),
         ]),
         Section(title: "Alerts", warns: false, groups: [

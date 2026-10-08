@@ -60,6 +60,7 @@ struct Preferences {
         static let liveTheme = "live.theme"
         static let liveFontSize = "live.fontSize"
         static let liveOpensBackground = "live.opensBackground"
+        static let liveLook = "live.look"
     }
 
     private let defaults: UserDefaults
@@ -351,6 +352,13 @@ struct Preferences {
     var liveOpensBackground: Bool {
         get { defaults.bool(forKey: Key.liveOpensBackground) }
         nonmutating set { defaults.set(newValue, forKey: Key.liveOpensBackground) }
+    }
+
+    /// Where the helper draws with Claude Code's look (D134): a
+    /// `ModLook.Reach`, in LampBoard's windows unless changed.
+    var liveLook: String {
+        get { ModLook.Reach.named(defaults.string(forKey: Key.liveLook)).rawValue }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveLook) }
     }
 
     var notifyFinished: Bool {

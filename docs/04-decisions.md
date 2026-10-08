@@ -5172,3 +5172,62 @@ replaced by a shell that prints where it is:
 
 All of these are fixed. The tag test and the reattach test each fail when the
 tag lookup is removed from the code.
+
+## D134 · Claude Code's look
+
+**Decided.** The helper (1.15.0) can draw a conversation the way Claude Code's
+VS Code panel does. It changes these parts:
+- The person's prompts sit in rounded boxes.
+- Each tool call is one row: a status dot, the tool in bold, its file or command,
+  and `+a −r` for an edit. Its result is one dim line under it.
+- An edit's result is a diff in a rounded frame.
+- A todo or task list is a checklist.
+- The spinner says in one word what the turn is doing.
+- The hint under the prompt ends with the model and how full the context is.
+
+Everything else is Claude Code's own drawing. That includes the permission
+dialog, thinking, the header, and the prompt box, which no render hook reaches.
+
+**Where.** Settings › Clicks & keys › **Claude Code's look** has three choices:
+- **In LampBoard's windows**, the default: only the sessions open in the live
+  view.
+- **Everywhere**: every session the helper runs in.
+- **Off.**
+
+Before it draws, the helper asks the panel `GET /mod/look` with the panel's token
+and its session's id. It draws only on `{"v":1,"on":true}`, keeps the answer five
+seconds, and redraws when the answer changes. No panel, a late answer, any other
+answer, or a surface other than the terminal leaves Claude Code's drawing
+untouched. VS Code's own panel and the phone draw no mod at all.
+
+**Why the live view by default.** A window of LampBoard's is one the person did
+not choose a terminal's look for. A session someone keeps in a terminal of their
+own keeps that terminal's look unless they ask. The helper's other parts never
+depend on it: the look is registered last and on its own, as `/lamps` is.
+
+**Measured.** The look was drawn in a real session, Claude Code full screen as an
+attach is, on and off, at 170 columns and at 72 (the frames fit, the hint ends in
+`…`). Switched on mid-session, it redrew the transcript already on screen within
+five seconds. `/lamps` and the band kept working. Over 1,474 renders, the slowest
+render hook took 286 ms, with no refused tree in Claude Code's debug log.
+`claude plugin validate` passes.
+
+**What a review changed.** It found no high issues, three medium and four low,
+all fixed:
+- **Medium: the first answer.** Rows drawn while the first answer was on its way
+  stayed in Claude Code's drawing. Every row now waits for that answer, which is
+  bounded, and the first "on" redraws.
+- **Medium: errors.** No hook guarded its own drawing. Every one now gives the
+  row back to Claude Code if anything in it throws.
+- **Medium: a busy panel.** A panel too busy to answer within a second said
+  "off", and the look flickered. It now answers 503, and the helper keeps its
+  last answer for up to three asks.
+- **Low.** A diff's `\ No newline` line was counted on both sides of a hunk, and
+  four more invisible characters are taken out of what is drawn.
+
+**Not yet.**
+- A prompt typed through `claude attach` may carry an origin the look does not
+  box; that is not verified.
+- On the main screen, rows already in the terminal's scrollback keep the drawing
+  they had when the answer changes.
+- Bash output is not shown while the command runs; it appears when the call ends.

@@ -99,6 +99,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - What other parts of the app ask
 
+    /// What the open windows show, attached right now.
+    var openTargets: [LiveTarget] { lives.values.filter { !$0.ended }.map(\.target) }
+
     /// Text as a paste into `job`'s session, without Enter (`@path`, a quote).
     @discardableResult
     func paste(_ text: String, into job: String) -> Bool {

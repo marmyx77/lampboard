@@ -129,6 +129,16 @@ struct ClicksPane: View {
                     }
                     .fixedSize()
                 }
+                SettingRow(id: .liveLook) {
+                    Picker("", selection: Binding(get: { preferences.liveLook }, set: { value in
+                        // The helper asks again within five seconds and redraws.
+                        preferences.liveLook = value
+                        model.refresh()
+                    })) {
+                        ForEach(ModLook.Reach.allCases, id: \.self) { Text($0.label).tag($0.rawValue) }
+                    }
+                    .labelsHidden().fixedSize()
+                }
             }
         }
     }
