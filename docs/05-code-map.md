@@ -1,11 +1,11 @@
 # Code map
 
-~71,000 lines of Swift across five targets. For each file: what it contains, why
+~71,200 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  21,668 lines · 172 files  pure logic, zero AppKit
+  LampBoardCore/  21,867 lines · 173 files  pure logic, zero AppKit
   LampBoardApp/    26,759 lines · 148 files   shell: AppKit, network, windows
   LampBoardTests/  17,370 lines · 122 files   1247 cases, instantaneous
   LampBoardE2E/    4,872 lines · 21 files   164 cases, the real binary
@@ -942,8 +942,12 @@ replace it.
 > one side only is a figure that silently stops arriving. A new version number is
 > refused by an older panel, on purpose.
 
+### `ModFilesLamps.swift`
+`mod/hooks/lamps.js`, compiled in beside the rest (D131), in a file of its own so
+that `ModFiles.swift` stays under the length the project allows.
+
 ### `ModFiles.swift`
-The mod's four files, compiled in (D66): the app installs what it reads, word for
+The mod's five files, compiled in (D66): the app installs what it reads, word for
 word, with no network. `ModFilesSuite` holds them to the bytes of `mod/` and
 `.claude-plugin/` in the repository, the one domain suite that reads a file.
 
@@ -2171,6 +2175,14 @@ repository could point the mod at a port of its choosing:
 no conversation but for a proven side question, no file of the project, no command. When the panel is not there,
 or answers anything, it does nothing and says nothing. `claude plugin validate
 --strict` lists exactly that, and is what the panel will show (5.10).
+
+### `mod/hooks/lamps.js`
+The pane of `/lamps` (D131): every session of `GET /sessions`, the ones that want
+something first, a button each that posts `/mod/band/open` as the band's digits do.
+Opened only by the command; its clock stops when the pane closes. It finds the
+panel on its own, a copy of `register.js`'s lookup, because Claude Code's check
+follows `$` into no function imported from another file; `/lamps` itself is
+registered in `register.js`'s `session.start`, the one an engine takes.
 
 > **Touching here** changes the wire format `ModReport.swift` reads: version 1 on
 > both sides, or the panel refuses it. Anything added to what the mod reads or

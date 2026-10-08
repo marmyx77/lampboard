@@ -64,6 +64,8 @@
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
 
+import { endLamps, registerLamps } from './lamps.js'
+
 const VERSION = 1
 
 // A permission decides what a session may run, so the panel that answers one
@@ -513,14 +515,20 @@ export function register(on) {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
     try { boards.delete(await $.session.id()) } catch (_) {}
+    // One registration each, each on its own: a name another plugin already
+    // holds is refused (claude-mem has a `handoff` skill), and in one `try`
+    // that refusal took every command after it away (measured, 8 October 2026).
+    // Immediate: a question about the other sessions does not depend on this
+    // one's turn, and is most useful while that turn is still running.
     try {
-      // Immediate: a question about the other sessions does not depend on this
-      // one's turn, and is most useful while that turn is still running.
       await $.command.register({ name: 'lampmaster', description: 'Ask LampMaster what your other sessions know', argumentHint: '<question>', immediate: true })
+    } catch (_) {}
+    try {
       await $.command.register({ name: 'handoff', description: 'Write a handoff for another session; it waits in its LampBoard composer', argumentHint: '<session>', immediate: true })
-    } catch (_) {
-      // An older Claude Code without commands: the MCP tools still answer.
-    }
+    } catch (_) {}
+    try {
+      await $.command.register({ name: 'lamps', description: 'Every LampBoard lamp, beside this conversation', immediate: true })
+    } catch (_) {}
     await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($), features: ['ask'] })
     // A band only where a person reads it, and one clock per session.
     const session = await $.session.id()
@@ -704,9 +712,13 @@ export function register(on) {
     const result = await next(e)
     const ending = bands.get(e.sessionId)
     if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
+    endLamps(e.sessionId)
     boards.delete(e.sessionId)
     governed.delete(e.sessionId)
     await post($, 'end', { session: e.sessionId, reason: e.reason })
     return result
   })
+
+  // Last, and on its own: a Claude Code without panes must not lose the rest.
+  try { registerLamps(on) } catch (_) {}
 }

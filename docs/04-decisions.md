@@ -4981,3 +4981,53 @@ its answer inside the Night frame. Taking that picture taught one thing: drawn
 into the window's bitmap in one pass, the terminal's text came out missing while
 its cell backgrounds stayed. The snapshot now draws the frame and the terminal
 separately and composes them.
+
+## D131 · Every lamp beside the conversation
+
+**Decided.** The helper (1.14.0) adds `/lamps`: a pane beside the conversation
+with every session the panel shows, the ones that want something first, each in
+the panel's colour and the 1.1 glossary's word for its state. A digit or a click
+on a session brings it forward, through the same `/mod/band/open` the band's
+digits use. The pane is opened only by the command, never by itself: one that
+opens unasked takes the width of somebody's work. It asks the panel's
+`GET /sessions` every three seconds while open, and nothing once it is closed.
+
+**Why a pane, and why now.** The band (D84) says what waits elsewhere in one line;
+it cannot say what the other sessions are doing. Inside the live view (D130) the
+pane makes the whole board visible without leaving the session, and outside it,
+in any terminal where Claude Code runs full-screen, it does the same. Mods draw a
+pane only in that layout, which a background session's attach always uses.
+
+**What was learned writing it.** Claude Code's check of a mod follows `$` only into
+functions declared in the same file: a module that hands `$` to an imported
+function, or registers a second `session.start` without a matcher, is refused
+whole. So `lamps.js` finds the panel with its own copy of `register.js`'s lookup
+(HOME only, the token, the port, `/health` answering as LampBoard), and `/lamps`
+is registered in `register.js`'s one `session.start`. `claude plugin validate`
+names both refusals in a sentence, which is how they were found.
+
+**A defect it found.** The helper registered its commands in one `try`. On a
+machine with claude-mem, whose `handoff` skill holds that name, the helper's
+`/handoff` was refused, and every command after it went with it, `/lamps`
+included, while `/lampmaster` before it survived. Each command is now registered
+on its own. Measured on the always-on Linux box, where claude-mem is installed.
+
+**What a review changed.** The first version kept one state and one clock for
+every session of the hooks worker, started its clock before the pane was open
+and waited on the panel without a limit. Now each session has its own pane state,
+ended with the session; the clock starts only once the pane is open, a refresh
+never overlaps another, and no call to the panel waits more than two seconds.
+Rows the panel no longer confirms are cleared, so a closed panel says so instead of
+leaving buttons that do nothing. What a session calls itself is cleaned of control,
+bidi and invisible characters before it reaches the terminal, and a session id
+must look like one. The pane is registered last and on its own, so a Claude Code
+without panes keeps the rest of the helper.
+
+**Measured.** In a session against a fake panel of five invented sessions, `/lamps`
+drew them in order (needs you, stopped, done, working, resting) with their digits,
+and a digit posted `/mod/band/open` for that session. With the fake panel stopped,
+the pane said within one refresh that LampBoard was closed; started again, it
+filled itself. The 1.14.0 helper
+passes `claude plugin validate`, which the gate runs (`Scripts/check-mod.sh`). The app carries the new file compiled in
+(`ModFilesLamps.swift`), and `ModFilesSuite` holds it to the bytes of
+`mod/hooks/lamps.js`.

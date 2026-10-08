@@ -11,7 +11,7 @@ public enum ModFiles {
 
     /// Bumped with any change to the files: the panel refreshes an installed
     /// mod whose version differs.
-    public static let version = "1.13.0"
+    public static let version = "1.14.0"
 
     /// Path inside the marketplace folder → content, each ending in a newline
     /// as the files in the repository do.
@@ -21,6 +21,7 @@ public enum ModFiles {
             ("mod/.claude-plugin/plugin.json", plugin),
             ("mod/hooks/hooks.json", hooks),
             ("mod/hooks/register.js", register),
+            ("mod/hooks/lamps.js", lamps),
         ].map { ($0.0, $0.1 + "\n") }
     }
 
@@ -44,8 +45,8 @@ public enum ModFiles {
     public static let plugin = #"""
 {
   "name": "lampboard",
-  "version": "1.13.0",
-  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
+  "version": "1.14.0",
+  "description": "LampBoard's companion: tells the LampBoard panel on this Mac each session's context, cost and rate limits, asks LampMaster with /lampmaster, writes a handoff for another session with /handoff, shows every lamp beside the conversation with /lamps, answers the panel's side questions without a turn, hands each session the decisions pinned for its repository, and runs a session on the model the panel lowered it to until the window resets. Talks only to 127.0.0.1.",
   "author": { "name": "LampBoard" },
   "homepage": "https://github.com/marmyx77/lampboard",
   "license": "MIT"
@@ -122,6 +123,8 @@ public enum ModFiles {
 //
 // The colours of a row still come from LampBoard's hooks (decision D65); this
 // adds only figures. Wire format: version 1 of LampBoardCore/Mod/ModReport.swift.
+
+import { endLamps, registerLamps } from './lamps.js'
 
 const VERSION = 1
 
@@ -572,14 +575,20 @@ export function register(on) {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
     try { boards.delete(await $.session.id()) } catch (_) {}
+    // One registration each, each on its own: a name another plugin already
+    // holds is refused (claude-mem has a `handoff` skill), and in one `try`
+    // that refusal took every command after it away (measured, 8 October 2026).
+    // Immediate: a question about the other sessions does not depend on this
+    // one's turn, and is most useful while that turn is still running.
     try {
-      // Immediate: a question about the other sessions does not depend on this
-      // one's turn, and is most useful while that turn is still running.
       await $.command.register({ name: 'lampmaster', description: 'Ask LampMaster what your other sessions know', argumentHint: '<question>', immediate: true })
+    } catch (_) {}
+    try {
       await $.command.register({ name: 'handoff', description: 'Write a handoff for another session; it waits in its LampBoard composer', argumentHint: '<session>', immediate: true })
-    } catch (_) {
-      // An older Claude Code without commands: the MCP tools still answer.
-    }
+    } catch (_) {}
+    try {
+      await $.command.register({ name: 'lamps', description: 'Every LampBoard lamp, beside this conversation', immediate: true })
+    } catch (_) {}
     await post($, 'start', { surface: e.surface, interactive: e.isInteractive, model: await model($), features: ['ask'] })
     // A band only where a person reads it, and one clock per session.
     const session = await $.session.id()
@@ -763,11 +772,15 @@ export function register(on) {
     const result = await next(e)
     const ending = bands.get(e.sessionId)
     if (ending) { clearInterval(ending.clock); bands.delete(e.sessionId) }
+    endLamps(e.sessionId)
     boards.delete(e.sessionId)
     governed.delete(e.sessionId)
     await post($, 'end', { session: e.sessionId, reason: e.reason })
     return result
   })
+
+  // Last, and on its own: a Claude Code without panes must not lose the rest.
+  try { registerLamps(on) } catch (_) {}
 }
 """#
 }

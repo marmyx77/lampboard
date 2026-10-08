@@ -978,6 +978,14 @@ line. In the terminal and the Claude app (one chat at a time there); not in VS C
 where mods draw nothing. Settings › Claude Code & Codex turns it off
 ([D84](docs/04-decisions.md)).
 
+**Every lamp beside the conversation.** `/lamps` (helper 1.14.0) opens a pane next
+to the conversation with every session the panel shows, the ones that want
+something first, each in its colour and its state's word. A digit, or a click,
+brings that session forward as a click on its lamp would. It opens only when
+asked, refreshes every three seconds while open and asks nothing once closed; it
+needs Claude Code's full-screen layout, which a background session's attach and
+the live view always use ([D131](docs/04-decisions.md#d131--every-lamp-beside-the-conversation)).
+
 **Permissions from the panel**, off until you switch on *Answer permission prompts
 and questions* in Settings › Acting from the panel. Then a call Claude Code would put to its "Do you want to proceed?" dialog is
 put to the panel first: it opens under the session's own row with **Allow** and
