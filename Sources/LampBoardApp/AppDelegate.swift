@@ -73,8 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LiveProcesses.raiseFileLimit()
         LiveProcesses.endLeftovers()
 
-        // Accessory: no Dock icon, no menu bar.
+        // Accessory: no Dock icon, no menu bar — but a main menu all the same,
+        // or ⌘C and ⌘V reach nobody (D138). A live window brings the Dock icon.
         NSApp.setActivationPolicy(.accessory)
+        AppMenu.install()
 
         // The token is settled once, here, and both of the next two lines are
         // handed the same value. The repair ran before the server once, each
@@ -125,6 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                CommandLine.arguments.indices.contains(paste + 1) {
                 let text = CommandLine.arguments[paste + 1]
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.live.pasteWhenReady(text, into: job) }
+            }
+            // `--live-key-paste <text>`: the same text, put on the pasteboard and
+            // pasted with ⌘V through the menu, as a person would (D138).
+            if AppConfig.isUsingHomeOverride, let paste = CommandLine.arguments.firstIndex(of: "--live-key-paste"),
+               CommandLine.arguments.indices.contains(paste + 1) {
+                let text = CommandLine.arguments[paste + 1]
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.live.pressPaste(text, into: job) }
             }
         }
         if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-snapshot"),
@@ -395,6 +404,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Answering it is the one door that needs no lamp, no pointer aimed at
     /// twenty-two points of menu bar, and nothing learned in advance.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // The Dock icon of a live window brings the live windows back (D138).
+        if live.bringAllForward() { return false }
         panelController?.summon()
         return true
     }

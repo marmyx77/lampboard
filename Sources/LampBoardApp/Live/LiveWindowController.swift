@@ -73,6 +73,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         }
         surface.apply(theme: theme, fontSize: preferences.liveFontSize)
         lives[job] = live
+        updateDockPresence()
         start(live, command)
         bringToFront(window)
         window.makeFirstResponder(surface.view)
@@ -188,6 +189,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     func report(includingText: Bool) -> Data {
         let views = lives.values.sorted { $0.job < $1.job }.map { live -> [String: Any] in
             var view: [String: Any] = ["job": live.job, "pid": Int(live.surface.pid),
+                                       "dock": NSApp.activationPolicy() == .regular, "keys": AppMenu.keys, "keyRouted": keyRouted,
                                        "running": live.surface.isRunning && !live.ended, "title": live.window.title]
             if includingText {
                 view["text"] = live.surface.screenText(lines: 40)
@@ -342,6 +344,53 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// A live window is somewhere to come back to (D138): while one is open,
+    /// LampBoard has a Dock icon, a place in ⌘Tab and a Window menu listing
+    /// them; with the last one closed it is a menu-bar app again.
+    private func updateDockPresence() {
+        let policy: NSApplication.ActivationPolicy = lives.isEmpty ? .accessory : .regular
+        guard NSApp.activationPolicy() != policy else { return }
+        NSApp.setActivationPolicy(policy)
+        if policy == .regular { NSApp.activate(ignoringOtherApps: true) }
+    }
+
+    /// ⌘V pressed in `job`'s window, as a keyboard would, with `text` on the
+    /// pasteboard: the way the end-to-end suite proves that the keys reach the
+    /// terminal through the menu (D138). On a Mac whose screen is locked no
+    /// window is key, and the menu's action has nowhere to go by itself; it is
+    /// then handed to the terminal, which is where a key window would send it.
+    func pressPaste(_ text: String, into job: String, giveUp: Date = Date().addingTimeInterval(10)) {
+        guard let live = lives[job], !live.ended else { return }
+        guard live.surface.acceptsPaste || Date() >= giveUp else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in self?.pressPaste(text, into: job, giveUp: giveUp) }
+            return
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        bringToFront(live.window)
+        live.window.makeFirstResponder(live.surface.view)
+        guard let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
+                                           windowNumber: live.window.windowNumber, context: nil, characters: "v",
+                                           charactersIgnoringModifiers: "v", isARepeat: false, keyCode: 9) else { return }
+        keyRouted = NSApp.mainMenu?.performKeyEquivalent(with: event) == true
+        if !live.window.isKeyWindow, keyRouted,
+           let item = NSApp.mainMenu?.items.flatMap({ $0.submenu?.items ?? [] }).first(where: { $0.keyEquivalent == "v" }),
+           let action = item.action {
+            NSApp.sendAction(action, to: live.surface.view, from: item)
+        }
+    }
+
+    /// Whether the last ⌘V pressed found its menu item.
+    private var keyRouted = false
+
+    /// Every live window forward, the Dock icon's click; `false` with none open.
+    func bringAllForward() -> Bool {
+        guard !lives.isEmpty else { return false }
+        NSApp.activate(ignoringOtherApps: true)
+        for live in lives.values { live.window.makeKeyAndOrderFront(nil) }
+        return true
+    }
+
     /// The headers follow their rows: the lamp changes colour with the session.
     private func startClock() {
         guard clock == nil else { return }
@@ -367,5 +416,6 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         LiveProcesses.forget(pid: live.surface.pid)
         lives[live.job] = nil
         if lives.isEmpty { clock?.invalidate(); clock = nil }
+        updateDockPresence()
     }
 }

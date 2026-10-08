@@ -912,6 +912,9 @@ its own colours inside.
 
 - **Closing the window detaches.** The session goes on under Claude Code's own
   supervisor, its lamp keeps working, and opening it again picks it up where it is.
+- **A Dock icon while it is open.** With a live window open LampBoard is in the
+  Dock and in ⌘Tab, with a Window menu listing the windows, and ⌘C, ⌘V and ⌘A work
+  as anywhere else ([D138](docs/04-decisions.md#d138--keys-and-a-way-back-to-the-live-window)).
   Quitting LampBoard detaches every window the same way.
 - **One window per session.** Two attaches of different sizes draw over each
   other, so a second Open here brings the first window forward.
@@ -1760,7 +1763,7 @@ Sources/
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
 swift run LampBoardTests              # 1286 domain tests, instantaneous
-swift run LampBoardE2E                # 166 end-to-end tests, ~1 minute
+swift run LampBoardE2E                # 167 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold

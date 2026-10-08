@@ -1,14 +1,14 @@
 # Code map
 
-~73,900 lines of Swift across five targets. For each file: what it contains, why
+~74,000 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  23,049 lines · 180 files  pure logic, zero AppKit
-  LampBoardApp/    27,696 lines · 151 files   shell: AppKit, network, windows
+  LampBoardApp/    27,816 lines · 152 files   shell: AppKit, network, windows
   LampBoardTests/  17,803 lines · 122 files   1286 cases, instantaneous
-  LampBoardE2E/    4,953 lines · 21 files   166 cases, the real binary
+  LampBoardE2E/    4,970 lines · 21 files   167 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1647,7 +1647,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 671
+### `main.swift` · `AppDelegate.swift` · 682
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1767,7 +1767,7 @@ The frame: the theme's backdrop, a header with the session's lamp, name and stat
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 371
+### `LiveWindowController.swift` · 421
 One window per background session, never two: two attaches of different sizes
 garble each other. Opens, starts (`claude --bg` off the main thread, then the
 attach), reattaches in the same window, closes (which detaches), and answers
@@ -2028,6 +2028,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `FloatingPanel.swift` | 125 | non-activating `NSPanel`; makes itself key before a click, drops the second click of a double-click; adopts one of the two homes |
 | `PanelHomes.swift` | 357 | the two homes and the lamp that stands for the panel up there, the rescue when the menu bar had no room for it, the lamp's menu built from `Menus.lamp` (D125), and the list of every switch the panel offers, which the menus and Settings call |
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
+| `AppMenu.swift` | 59 | the main menu (D138): Edit and Window, so ⌘C, ⌘V and ⌘A reach the window with the keys; hidden while an accessory, the menu bar while a live window gives LampBoard a Dock icon; no ⌘Q |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
 | `ChatWindowController.swift` | 123 | owns the one extended window; opened on request |
 | `ChatShell.swift` | 230 | every conversation, the selection, and what each costs |
@@ -2177,7 +2178,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 166 cases
+## `LampBoardE2E/` — 167 cases
 
 | Suite | Covers |
 |---|---|

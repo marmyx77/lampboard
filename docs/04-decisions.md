@@ -5403,3 +5403,32 @@ Settings.
 were one of four: `/sessions` listed only the session at work. The domain suite
 holds the rule. Its cases fail when the conversation check, or the service-process
 check, is removed.
+
+## D138 · Keys and a way back to the live window
+
+**Decided.** LampBoard has a main menu: LampBoard (Hide, Quit by click), Edit
+(Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize, Close, Bring All
+to Front, and the open windows). While a live window is open, LampBoard has a Dock
+icon and a place in ⌘Tab, and the menu shows as the menu bar. Clicking the Dock
+icon brings every live window forward. With the last live window closed, it is a
+menu-bar app again.
+
+**Why.** Reported by the first person to use 1.3 with their hands. Copy and
+paste did not work in the live view. A window left behind another app could not
+be brought back except by choosing Open here again. Both had one cause: an
+accessory app with no main menu.
+- **The keys.** AppKit sends ⌘C and ⌘V to the main menu, whose items send
+  `copy:` and `paste:` to whatever has the keys. With no menu, they reached
+  nobody. The same was true of every text field in LampBoard's other windows.
+- **The way back.** With no Dock icon, ⌘Tab and the Dock had nothing to offer.
+
+**No ⌘Q.** A ⌘Q meant for another app, pressed while LampBoard has the keys,
+must not quit the panel that holds the lamps. Quit stays in the panel's ⋯ and
+in the menu, by click.
+
+**Measured.** The end-to-end suite presses ⌘V in a live window, with a known text
+on the pasteboard. The menu took the key. The text reached the session as a
+bracketed paste. While the window was open LampBoard had its Dock icon, and the
+menu held ⌘C, ⌘V, ⌘A and ⌘W and no ⌘Q. On the test Mac the screen is locked and
+no window can be key, so the menu's action was handed to the terminal, where a
+key window sends it. With the menu not installed, the case fails.

@@ -142,6 +142,23 @@ enum LiveViewE2ESuite {
                 t.expect(typed().hasSuffix("033[201~"), "and nothing after them, no Enter: \(typed())")
             },
 
+            TestCase("⌘V pastes into the session, and the window gives LampBoard a Dock icon while it is open (D138)") { t in
+                let app = app(binaryURL: binaryURL, port: port, ["--live", job, "--live-key-paste", "pasted-by-keys"])
+                defer { endAttaches(app); app.stop() }
+                do { try app.start() } catch { t.fail("did not start: \(error)"); return }
+                let typed = { file(app, "typed.txt").filter { !$0.isWhitespace } }
+                // Until the closing mark: the bytes arrive one at a time.
+                let arrived = app.waitUntil(timeout: 15) { typed().contains("pasted-by-keys033[201~") }
+                t.expect(arrived, "⌘V reached the terminal through the menu: \(typed())")
+                t.expect(typed().contains("033[200~pasted-by-keys033[201~"), "as a bracketed paste: \(typed())")
+                let view = views(app).first ?? [:]
+                t.expectEqual(view["keyRouted"] as? Bool, true, "⌘V found the menu's Paste")
+                t.expectEqual(view["dock"] as? Bool, true, "a Dock icon to come back to")
+                let keys = view["keys"] as? [String] ?? []
+                t.expect(["c", "v", "a", "w"].allSatisfy(keys.contains), "copy, paste, select all, close: \(keys)")
+                t.expect(!keys.contains("q"), "no ⌘Q that quits the lamps by mistake")
+            },
+
             TestCase("an id that is not a job's opens nothing and runs nothing") { t in
                 let app = app(binaryURL: binaryURL, port: port, ["--live", "bad;id"])
                 defer { endAttaches(app); app.stop() }
