@@ -4826,3 +4826,58 @@ proposed, applied to the interface and the README.
 - **LampMaster keeps its name**, with «the reviewer» beside it where it is
   introduced: its star's tooltip, Settings and the catalogue.
 
+
+## D129 · A terminal of our own, vendored
+
+**Decided.** The live view of 1.2 (D130) puts a session's real Claude Code
+interface inside LampBoard, and that needs a terminal emulator. It is
+**SwiftTerm 1.20.0**, MIT, copied into `Vendor/SwiftTerm` and built as a target
+of this package. It is the first code in the repository that was not written for
+it, and the README, `NOTICE` and the code map now say so.
+
+**Why a real terminal rather than a chat of our own.** Measured on the always-on
+Linux box, 8 October 2026, with throwaway sessions:
+- `claude attach <id>` gives the whole interface of a background session (dialogs,
+  slash commands, plan mode, mods), and only through a terminal: it draws a
+  full-screen interface, it does not stream text.
+- Background sessions refuse a second writer by themselves: a headless
+  `--resume` is refused, and a plain `claude --resume` turns into an `attach`.
+  The same headless resume of a session open in tmux was accepted silently and
+  forked its conversation in two.
+- A chat rebuilt from `stream-json` loses dialogs and commands, and cannot reach
+  a session that is already running. The chat of 1.0 felt incomplete for exactly
+  that reason: it reads the transcript and waits for the turn to end.
+
+**Why SwiftTerm.** It is the one mature terminal view written in Swift, for the
+Mac and the iPhone alike, and already used under Claude Code by other apps. It
+speaks what Claude Code's interface uses: truecolor, mouse reporting, bracketed
+paste, synchronized output, the kitty keyboard protocol, OSC 8 links.
+- **libghostty** is faster, but its embedding API says in its own header that it
+  is internal and not for other programs, it builds with Zig, and the Swift wrapper
+  most apps use has a documented three-thread deadlock.
+- **xterm.js in a web view** brings a second runtime, and it has open bugs in the
+  kitty keyboard protocol and in synchronized output, which Claude Code relies on
+  for every frame.
+- **Writing one** is 36,000 lines of somebody else's careful work, redone.
+
+**Why vendored rather than fetched.** The build stays offline and identical on
+every Mac. Upstream's manifest compiles a Metal shader that the test Mac's Xcode
+cannot build. The Core Text renderer, SwiftTerm's default, is what the live view
+uses, so the shader is left out instead. And what ships is what a reviewer reads.
+`VENDORED.md` records the upstream commit, the folders left out (the iOS views,
+the documentation, the shader) and every local patch. Each patch is marked
+`Vendored patch <n>` in the source. There is one: a debug helper that wrote into
+upstream's author's home folder now writes to the temporary directory, because
+the gate refuses real home directories in any tracked file. That gate read the
+vendored sources and found it before anything was committed.
+
+**Warnings.** Our targets still build with every warning as an error under
+`Scripts/test.sh` and CI. The flag moved from the command line
+(`-Xswiftc -warnings-as-errors`, which reaches every target) into the manifest,
+for our five targets alone, switched on by `LAMPBOARD_STRICT=1`. SwiftTerm builds
+with its warnings suppressed: they are upstream's, and the first gate run turned
+two of them into errors.
+
+**What the gates learned.** The map of the code covers `Vendor/`: every folder
+there must have a row, and `bite.sh` renames that row to prove the check sees it.
+The figures of the code map still count `Sources/` alone.

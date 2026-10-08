@@ -21,8 +21,10 @@ PORT="${LAMPBOARD_TEST_PORT:-9899}"
 
 # Warnings as errors, the same way CI does it: a warning that only appears on a
 # build machine is a warning that gets discovered by whoever is trying to ship.
+# The manifest applies it to our own targets alone (D129): a command-line
+# `-Xswiftc -warnings-as-errors` would reach the vendored SwiftTerm as well.
 echo "▸ Building…"
-swift build -Xswiftc -warnings-as-errors
+LAMPBOARD_STRICT=1 swift build
 
 echo
 echo "▸ Domain tests"

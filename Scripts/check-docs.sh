@@ -734,6 +734,15 @@ for name in sorted(os.listdir("Scripts")):
     if f"Scripts/{name}" not in mapped:
         missing.append(f"Scripts/{name} is not in the map's script table")
 
+# Vendored code ships too (D129): every folder under Vendor/ has its row, which
+# says what it is and points at the VENDORED.md that records where it came from.
+if os.path.isdir("Vendor"):
+    for name in sorted(os.listdir("Vendor")):
+        if os.path.isdir(os.path.join("Vendor", name)):
+            examined += 1
+            if f"Vendor/{name}" not in mapped:
+                missing.append(f"Vendor/{name} is vendored and not on the map")
+
 # A collapse means the walk broke, not that the repository emptied.
 if examined < 80:
     print(f"    only {examined} files examined — this check went blind", file=sys.stderr)

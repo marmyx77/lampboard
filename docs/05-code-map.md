@@ -14,6 +14,10 @@ Sources/
 
 No file exceeds 792 lines. The limit the project sets itself is 800.
 
+One more target was not written here: `Vendor/SwiftTerm`, about 36,000 lines, the
+terminal emulator behind the live view. It is described at the end, under
+[Vendored code](#vendored-code), and none of the figures above count it.
+
 ---
 
 # LampBoardCore
@@ -2115,6 +2119,12 @@ or answers anything, it does nothing and says nothing. `claude plugin validate
 
 ---
 
+# Vendored code
+
+| Folder | What it is |
+|---|---|
+| `Vendor/SwiftTerm` | SwiftTerm 1.20.0 (MIT), the terminal emulator behind the live view (D129). Copied without its iOS views, its documentation and its Metal shader; `VENDORED.md` records the upstream commit, what was left out and every local patch, each marked `Vendored patch <n>` in the source. **Touching it** means a change nobody upstream will review: write it down there, or it is lost at the next update |
+
 # Scripts
 
 | File | What |
@@ -2133,5 +2143,5 @@ or answers anything, it does nothing and says nothing. `claude plugin validate
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits twenty-eight violations and demands twenty-eight catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits twenty-nine violations and demands twenty-nine catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

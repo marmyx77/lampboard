@@ -46,7 +46,9 @@ jobs:
       # the code is somebody else's problem. The twenty-eight this project once
       # carried were four real defects, repeated seven times.
       - name: Build, with warnings treated as errors
-        run: swift build -Xswiftc -warnings-as-errors
+        # LAMPBOARD_STRICT: the manifest makes warnings errors in our own
+        # targets alone, never in the vendored SwiftTerm (D129).
+        run: LAMPBOARD_STRICT=1 swift build
 
       # Before the suites: the assertions themselves. Neutralising one guard
       # clause in the assertion library made 497 tests report success while

@@ -1752,9 +1752,12 @@ It covers the software and this documentation. It grants no rights in the
 project's name or its icon: a fork is free and welcome, and should carry a name
 of its own.
 
-There are **no third-party dependencies**. Every line under `Sources/` was
-written for this project, the test framework included, so there is nothing else
-to audit and no other licence to reconcile.
+There is **one third-party package**: [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)
+(MIT), the terminal emulator behind the live view. It is vendored in
+`Vendor/SwiftTerm` rather than fetched, with its licence beside it and
+`VENDORED.md` recording the release, what was left out and every local change
+(D129). Every line under `Sources/` was written for this project, the test
+framework included.
 
 [NOTICE](NOTICE) carries one more statement, and it belongs at the end of a
 document like this rather than in the middle of it: lampboard is an

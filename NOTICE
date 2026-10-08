@@ -26,6 +26,10 @@ is free, welcome, and should carry a name of its own.
 
 THIRD-PARTY CODE
 
-There is none. The package has no external dependencies: every line in
-Sources/ was written for this project, the test framework included. Nothing
-here needs an audit beyond this file.
+One package: SwiftTerm, the terminal emulator behind the live view.
+Copyright (c) 2019-2026 Miguel de Icaza and contributors, MIT licensed. It is
+vendored in Vendor/SwiftTerm, with its licence unmodified beside it and
+VENDORED.md recording the release, what was left out and every local patch.
+
+Everything else, every line in Sources/ and the test framework included, was
+written for this project.

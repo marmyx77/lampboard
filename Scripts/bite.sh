@@ -407,6 +407,13 @@ s = open(p).read().replace("`Scripts/measure-compaction.py`", "`Scripts/measure-
 open(p, "w").write(s)
 PY
 
+protect docs/05-code-map.md
+attack "vendored code the map stopped mentioning" "is vendored and not on the map" <<'PY'
+p = "docs/05-code-map.md"
+s = open(p).read().replace("Vendor/SwiftTerm", "Vendor/SomeTerminal")
+open(p, "w").write(s)
+PY
+
 gate "The mutation count in the documents is the one bite.sh runs"
 
 protect docs/08-gates.md
