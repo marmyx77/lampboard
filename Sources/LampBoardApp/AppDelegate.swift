@@ -23,6 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var server: SignalServer?
     private var panelController: PanelController?
+    /// The live view's windows (D130): here and not in the panel, because the
+    /// end-to-end suite runs headless and still opens them.
+    private lazy var live = LiveWindowController(preferences: preferences) { [store] job in
+        LiveHeading.of(job: job, in: store.state)
+    }
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
@@ -61,6 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Diagnostics.startSession()
+        // The live view's terminals hold ptys; and what a crash left attached
+        // ends here, before any window opens (D130).
+        LiveProcesses.raiseFileLimit()
+        LiveProcesses.endLeftovers()
 
         // Accessory: no Dock icon, no menu bar.
         NSApp.setActivationPolicy(.accessory)
@@ -100,6 +109,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if !headless {
             startInterface()
+        }
+
+        // `--live <job>` opens a background session in the live view (D130): for
+        // the pictures, and for the end-to-end suite, which cannot click. Against
+        // a fake home, `--live-paste <text>` then pastes into it as a citation
+        // would, and `--live-start <folder>` starts one there first.
+        if let index = CommandLine.arguments.firstIndex(of: "--live"), CommandLine.arguments.indices.contains(index + 1) {
+            let job = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.live.open(job: job) }
+            if AppConfig.isUsingHomeOverride, let paste = CommandLine.arguments.firstIndex(of: "--live-paste"),
+               CommandLine.arguments.indices.contains(paste + 1) {
+                let text = CommandLine.arguments[paste + 1]
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.live.pasteWhenReady(text, into: job) }
+            }
+        }
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-snapshot"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let path = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.live.snapshot(to: path) }
+        }
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-start"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let folder = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.live.start(directory: folder, name: nil) { Diagnostics.log("live: start refused: \($0)") }
+            }
+        }
+        NotificationCenter.default.addObserver(forName: .liveAppearanceChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.live.applyAppearance() }
         }
 
         store.startPolling()
@@ -224,6 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let text = CommandLine.arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.typeIntoBar(text) }
         }
+        controller.live = live
         panelController = controller
 
         startNotifier(for: controller)
@@ -349,6 +388,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // forever, and the phone push notifications would never arrive again.
         presence?.stop()
         presence?.remove()
+        // Every attach ends; every background session goes on (D130).
+        live.endAll()
         panelController?.close()
         if TrialStage.mode != nil { TrialStage.tearDown() }
     }
@@ -475,6 +516,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let reason = HoldExchange.reason(command: request.command, cut: request.cut,
                                                  away: awayFlag.isAway && Preferences().safetyCatch)
                 return HoldExchange.answer(reason: reason, nonce: nonce, key: key)
+            },
+            onLive: { [weak self] in
+                Self.onMain(timeout: 2) { self?.live.report(includingText: AppConfig.isUsingHomeOverride) }
+                    ?? Data("{\"views\":[]}".utf8)
             }
         )
 

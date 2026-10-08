@@ -7,6 +7,8 @@ extension Notification.Name {
     static let menuBarCounterChanged = Notification.Name("com.lampboard.menuBarCounterChanged")
     /// The bar's shortcut from anywhere was chosen: it is registered again (D77).
     static let barShortcutChanged = Notification.Name("com.lampboard.barShortcutChanged")
+    /// The live view's look changed: every open live window takes it (D130).
+    static let liveAppearanceChanged = Notification.Name("com.lampboard.liveAppearanceChanged")
 }
 
 // The sections of the Settings window (U3). Each one draws the settings
@@ -100,6 +102,32 @@ struct ClicksPane: View {
                         ForEach(BarShortcut.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .labelsHidden().fixedSize()
+                }
+            }
+            SettingsGroupBox(title: groupTitle(.liveOpensBackground)) {
+                SettingToggle(id: .liveOpensBackground, isOn: preferences.liveOpensBackground) { value in
+                    preferences.liveOpensBackground = value
+                    model.refresh()
+                }
+                SettingRow(id: .liveTheme) {
+                    Picker("", selection: Binding(get: { preferences.liveTheme }, set: { value in
+                        preferences.liveTheme = value
+                        NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                        model.refresh()
+                    })) {
+                        ForEach(LiveTheme.presets, id: \.id) { Text($0.name).tag($0.id) }
+                    }
+                    .labelsHidden().fixedSize()
+                }
+                SettingRow(id: .liveFontSize) {
+                    Stepper(value: Binding(get: { preferences.liveFontSize }, set: { value in
+                        preferences.liveFontSize = value
+                        NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                        model.refresh()
+                    }), in: LiveTheme.fontSizes, step: 1) {
+                        Text("\(Int(preferences.liveFontSize)) pt").monospacedDigit()
+                    }
+                    .fixedSize()
                 }
             }
         }

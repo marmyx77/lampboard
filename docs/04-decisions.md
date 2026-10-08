@@ -3756,6 +3756,9 @@ failure still says why it failed. A working row still names its tool, unless the
 says the session is blocked. The summary can lag the latest answer by a moment, and
 that trade is accepted: the answer is a click away, in the Plancia.
 
+*Superseded in part by D130 (1.2): the row now also opens the session in
+LampBoard's own live view. The copy stays, for a terminal of one's own.*
+
 The row's menu copies `claude attach <id>`, which reopens the session in a terminal.
 It copies and does not run, the way a closed conversation's `claude --resume` is
 copied from the bar, because the panel opens no terminal of its own. The id goes
@@ -4881,3 +4884,100 @@ two of them into errors.
 **What the gates learned.** The map of the code covers `Vendor/`: every folder
 there must have a row, and `bite.sh` renames that row to prove the check sees it.
 The figures of the code map still count `Sources/` alone.
+
+## D130 · The live view
+
+**Decided.** A background session opens in a window of LampBoard's own: its real
+Claude Code interface, run as `claude attach <id>` in the vendored terminal
+(D129), inside a frame that does not look like a terminal. It is the first step of
+1.2, and it changes D104's rule that the panel opens no terminal: the row still
+copies the command, and now also opens it.
+
+- **Open here**, in a background session's row, opens it; a second Open here
+  brings the window forward instead of attaching twice. **New conversation in
+  LampBoard**, under More ▸, starts `claude --bg` in the row's folder and opens it
+  once Claude Code prints its id. **Open background sessions here**, in Settings ›
+  Clicks & keys, makes the live view what a click on such a row does. It is off by
+  default: the jump stays what a click does.
+- **Closing detaches.** The session goes on under Claude Code's supervisor, and
+  quitting LampBoard detaches every window, waiting until each attach is gone,
+  since a timer set at quit never fires. The attach ends with SIGHUP to its
+  process group, then SIGTERM and SIGKILL, because SwiftTerm's own `terminate()`
+  closes the pty and can leave the child running. Every signal is preceded by
+  the same question: is this pid still the process started at that time? An
+  attach that had already ended was reaped, and its pid may be a stranger's.
+- **A ledger per LampBoard.** Each instance keeps the pid and start time of its
+  attaches in a file named after itself (`live/live-<pid>-<start>.json`). The
+  launch after a crash ends what a LampBoard that is gone left running, and
+  leaves alone the ledger of one that still runs: a relaunch during an update,
+  or a build beside the installed app, does not hang up the other's windows.
+- **The frame takes the theme, the terminal keeps its colours.** Four presets
+  (Night, Lagoon, Ember, Paper) colour the backdrop, the card and the default text,
+  and the card is the terminal's background so the bands Claude Code paints for
+  itself sit on the colour they were chosen against. The sixteen ANSI colours stay
+  the terminal's: Claude Code draws its syntax and diffs with them.
+- **What reaches the session is a list.** `TERM=xterm-256color`,
+  `COLORTERM=truecolor`, the person's language, a `PATH` that starts with the
+  folder `claude` is in (a `claude` that is a script finds its `node`), and what a
+  session needs to reach Anthropic from where the person is: `CLAUDE_CONFIG_DIR`,
+  proxies, a company's certificates, a cloud provider. Not an API key: one in
+  LampBoard's environment was put there for something else. LampBoard's `TMUX`,
+  `TERM_PROGRAM` and `CLAUDECODE` would make Claude Code believe it runs inside
+  tmux or an editor.
+- **A citation is a paste.** Text sent into a session goes in bracketed-paste
+  marks once the program has asked for them, so `@path` never arrives as an
+  Enter. The marks themselves and every control character but a tab or a line
+  break are taken out of the text first, so nothing inside can end the paste
+  early; without the marks, a line break becomes a space.
+- **Only on this Mac.** A background session on another machine is not offered
+  here: an attach reaches this Mac's supervisor only.
+  Option types characters, as it does everywhere on a Mac: on an Italian keyboard
+  @ and # are Option keys.
+
+**Why only background sessions.** Measured on the always-on Linux box, 8 October
+2026: a background session refuses a second writer by itself, and a plain
+`claude --resume` of one turns into an attach. A session open in an editor or a
+terminal has no such guard: a headless resume of it was accepted silently and
+forked its conversation in two, the copy in tmux never learning what the other
+had said. Two attaches of the same background session share one screen, and
+garble it when their sizes differ, hence one window per session.
+
+**How it is checked.** The end-to-end suite opens a session against a fake
+`claude` that prints the terminal it finds itself in and records every byte it is
+sent, in raw mode:
+- the command is `attach <id>`, `TERM` and `COLORTERM` are set, and LampBoard's own
+  `TMUX` and `TERM_PROGRAM` do not get through;
+- a citation arrives inside bracketed-paste marks, with no Enter;
+- an id that is not a job's runs nothing;
+- a start runs `--bg` in the row's folder and then attaches to the printed id;
+- an attach left by a crash, which ignores SIGHUP, is ended by the next launch.
+
+The crash case also plants the ledger of a LampBoard that is gone, naming the pid
+of a live stranger with another start time, and the stranger survives. Each case
+was shown to bite: with the ledger's reaping, the bracketed paste, and both
+start-time checks taken out, their cases turned red. `GET /live`, behind the
+token, says which windows are open; against a fake home it also gives what they
+show, because the suite cannot look at a screen, and nowhere else, because the
+token is also held by other machines' hooks;
+`--live <id>` opens one at launch, and against a fake home `--live-paste`,
+`--live-start` and `--live-snapshot` drive it.
+
+**What the review changed.** It found one high and eight medium issues, all
+fixed here:
+- the stale pid was signalled after an ended attach;
+- the ledger was shared between instances;
+- quit forgot attaches before they were gone;
+- the reattach lost the terminal's margins;
+- remote rows offered Open here;
+- `/live` gave the screen's text in every build;
+- the environment was too narrow for a proxy or another config folder;
+- the fake `claude` of the suite outlived its terminal.
+
+That last one had left ten orphan loops on the test Mac, killed before the next run.
+
+**Measured on the test Mac.** A real Claude Code session, recorded on the Linux box
+and replayed into the live view, drew its prompts, a worktree, a coloured diff and
+its answer inside the Night frame. Taking that picture taught one thing: drawn
+into the window's bitmap in one pass, the terminal's text came out missing while
+its cell backgrounds stayed. The snapshot now draws the frame and the terminal
+separately and composes them.

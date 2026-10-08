@@ -22,6 +22,10 @@ public enum AppConfig {
     /// HTTP path returning the column state as JSON. Requires the token.
     public static let sessionsPath = "/sessions"
 
+    /// The live view's open windows and what they show (D130), behind the token:
+    /// what the end-to-end suite reads, since it cannot look at a screen.
+    public static let livePath = "/live"
+
     /// HTTP path that raises the window of the next awaiting session.
     /// Requires the token: it raises windows, it doesn't just color dots.
     public static let nextPath = "/next"

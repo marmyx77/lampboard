@@ -14,6 +14,7 @@ public enum SettingsCatalog {
         case width, onlyWaiting, terminalSessions, hiddenProjects
         case launchAtLogin
         case accessibility, sessionTab, barShortcut
+        case liveOpensBackground, liveTheme, liveFontSize
         case notifications, notifyFinished, speak
         case mute, away, silenced
         case presence
@@ -77,6 +78,11 @@ public enum SettingsCatalog {
                 i(.accessibility, "Accessibility", "Lets a click bring the right editor window forward, not just the app."),
                 i(.sessionTab, "Also open the conversation's tab in VS Code", "VS Code asks you to confirm every time."),
                 i(.barShortcut, "Search bar from any app", "Inside the panel ⌘K always works. Off by default: ⌘K alone would take shortcuts VS Code begins with."),
+            ]),
+            Group(title: "The live view", items: [
+                i(.liveOpensBackground, "Open background sessions here", "A click on a background session opens it in a LampBoard window instead of jumping. Closing the window leaves the session running."),
+                i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside."),
+                i(.liveFontSize, "Text size", "The size of the session's text, in every live window at once."),
             ]),
         ]),
         Section(title: "Alerts", warns: false, groups: [

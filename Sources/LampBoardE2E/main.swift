@@ -90,6 +90,7 @@ let suites: [TestSuite] = [
     TrialE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 3),
     PermissionE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 6),
     SearchE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 7),
+    LiveViewE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 8),
     NodeTranscriptE2ESuite.suite(),
     // Deliberately last: it starts other instances against the same home and
     // changes their token, so everything before it must already be finished.

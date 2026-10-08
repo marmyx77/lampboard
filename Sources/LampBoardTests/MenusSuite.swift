@@ -60,7 +60,7 @@ enum MenusSuite {
         },
 
         TestCase("A row's menu: eight entries, Quiet and More holding the rest") { t in
-            let entries = Menus.row(row(status: .awaiting, pinned: ["UTC everywhere"], attach: "claude attach 4b1",
+            let entries = Menus.row(row(status: .awaiting, pinned: ["UTC everywhere"],
                                         offer: "Use Sonnet until the window resets"))
             t.expectEqual(titles(entries), [
                 "Open", "Read the conversation", "Open in Session view", "New conversation here",
@@ -69,10 +69,19 @@ enum MenusSuite {
             t.expectEqual(titles(submenu("Quiet", in: entries)), ["Don't alert me", "Don't blink", "Focus on this session"])
             let more = titles(submenu("More", in: entries))
             t.expectEqual(more, [
-                "Open without marking as read", "Move up", "Move down", "Show in Finder",
-                "Add a project rule for “web”…", "Project rules (1) ▸", "Copy “claude attach 4b1”",
-                "Use Sonnet until the window resets",
+                "New conversation in LampBoard", "Open without marking as read", "Move up", "Move down", "Show in Finder",
+                "Add a project rule for “web”…", "Project rules (1) ▸", "Use Sonnet until the window resets",
             ])
+        },
+
+        TestCase("A background session opens here, in the live view, beside its terminal command (D130)") { t in
+            let entries = Menus.row(row(attach: "claude attach 4b1"))
+            t.expectEqual(Array(titles(entries).prefix(2)), ["Open", "Open here"])
+            t.expect(entries.contains { if case .item(.openHere, _, _, _, _) = $0 { return true }; return false }, "its command")
+            t.expect(titles(submenu("More", in: entries)).contains("Copy “claude attach 4b1”"), "the command is still copied")
+            t.expect(!titles(Menus.row(row())).contains("Open here"), "an interactive session never opens here: two writers")
+            t.expect(!titles(Menus.row(row(remote: true, attach: "claude attach 4b1"))).contains("Open here"),
+                     "a background session on another machine is not attached to from this one")
         },
 
         TestCase("A row on another machine offers nothing that would need this Mac's files or editor") { t in
@@ -82,6 +91,7 @@ enum MenusSuite {
             t.expect(!titles.contains("New conversation here"), "no local editor for it")
             let more = Self.titles(submenu("More", in: Menus.row(row(remote: true, repository: nil, newConversation: false))))
             t.expect(!more.contains("Show in Finder"), "the folder is on that machine")
+            t.expect(!more.contains("New conversation in LampBoard"), "a live session starts on this Mac only")
         },
 
         TestCase("Don't blink only where something blinks; Mark as unread only on a row at rest") { t in

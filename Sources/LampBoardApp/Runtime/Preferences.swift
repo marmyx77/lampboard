@@ -57,6 +57,9 @@ struct Preferences {
         static let lampMasterAutoMuted = "lampmaster.autoMuted"
         static let lampMasterAskedBack = "lampmaster.askedBack"
         static let lampMasterTimeout = "lampmaster.timeoutSeconds"
+        static let liveTheme = "live.theme"
+        static let liveFontSize = "live.fontSize"
+        static let liveOpensBackground = "live.opensBackground"
     }
 
     private let defaults: UserDefaults
@@ -328,6 +331,28 @@ struct Preferences {
     /// Also a notification when a turn finishes with an answer, carrying its
     /// first line (5.6). Off by default: with two dozen sessions it is a stream,
     /// and the panel's green already says it for those who glance.
+    /// The live view's theme (D130): an id of `LiveTheme.presets`.
+    var liveTheme: String {
+        get { LiveTheme.named(defaults.string(forKey: Key.liveTheme)).id }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveTheme) }
+    }
+
+    /// The live view's text size, in points, within `LiveTheme.fontSizes`.
+    var liveFontSize: Double {
+        get {
+            let stored = defaults.double(forKey: Key.liveFontSize)
+            return stored == 0 ? LiveTheme.defaultFontSize : LiveTheme.clampedFontSize(stored)
+        }
+        nonmutating set { defaults.set(LiveTheme.clampedFontSize(newValue), forKey: Key.liveFontSize) }
+    }
+
+    /// A click on a background session's row opens it in the live view rather
+    /// than jumping elsewhere (D130). Off by default: the jump is what 1.1 did.
+    var liveOpensBackground: Bool {
+        get { defaults.bool(forKey: Key.liveOpensBackground) }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveOpensBackground) }
+    }
+
     var notifyFinished: Bool {
         get { defaults.bool(forKey: Key.notifyFinished) }
         nonmutating set { defaults.set(newValue, forKey: Key.notifyFinished) }

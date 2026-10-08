@@ -33,6 +33,19 @@ final class AppUnderTest {
     let port: UInt16
     /// Added to the launch, for the cases that start the app in another mode.
     var extraArguments: [String] = []
+    /// Variables set over the test run's own, for the cases that check what does
+    /// not get through (the live view's `TMUX`, D130).
+    var extraEnvironment: [String: String] = [:]
+    /// Run once the fake home exists and before the process starts: a fake tool
+    /// that the app looks for in its first second has to be there already.
+    var beforeLaunch: ((URL) -> Void)?
+
+    /// The app ends the way a crash ends it: no `applicationWillTerminate`.
+    func crash() {
+        guard process.isRunning else { return }
+        kill(process.processIdentifier, SIGKILL)
+        process.waitUntilExit()
+    }
 
     private let process = Process()
     private let binaryURL: URL
@@ -67,10 +80,12 @@ final class AppUnderTest {
             )
         }
 
+        beforeLaunch?(home)
         process.executableURL = binaryURL
         process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"] + extraArguments
 
         var environment = ProcessInfo.processInfo.environment
+        for (key, value) in extraEnvironment { environment[key] = value }
         environment[AppConfig.homeOverrideVariable] = home.path
         process.environment = environment
 

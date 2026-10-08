@@ -34,6 +34,14 @@ extension PanelController {
         // to the project's first real session rather than nowhere.
         guard let session = row.sessions.first(where: { $0.harness != .command }) else { return }
 
+        // A background session has no window of its own. With the live view
+        // chosen for them, a click opens it in one of LampBoard's (D130).
+        if preferences.liveOpensBackground, !row.workspace.isRemote, session.origin == .background,
+           let job = session.backgroundJob {
+            openHere(job)
+            return
+        }
+
         // A Claude Desktop session lives in Claude Desktop, whatever folder it is
         // working on. Without this it went to the folder's VS Code window, which
         // is the convincing wrong answer: the folder really is open there, and

@@ -25,6 +25,8 @@ public enum MenuCommand: Equatable, Sendable {
     case open, read, sessionView, newConversation, rename, hide
     case dontAlert, dontBlink, focus
     case peek, markUnread, moveUp, moveDown, revealInFinder, pinDecision, unpinDecision(Int), copyAttach, toggleModel
+    // The live view (D130)
+    case openHere, startHere
 }
 
 /// What the panel's ⋯ needs to know.
@@ -143,11 +145,15 @@ public enum Menus {
         ]
     }
 
-    /// A row's menu: eight entries; the ways of keeping it quiet under Quiet, the
-    /// rarer things under More.
+    /// A row's menu: eight entries, nine for a background session (Open here);
+    /// the ways of keeping it quiet under Quiet, the rarer things under More.
     public static func row(_ state: RowMenuState) -> [MenuEntry] {
         let local = !state.isRemote
         var entries: [MenuEntry] = [.item(.open, "Open")]
+        // A background session, and only one: the supervisor keeps it single-writer.
+        // An interactive one opened here would be a second writer (D130).
+        // On this Mac only: an attach reaches this Mac's supervisor.
+        if state.attachCommand != nil, local { entries.append(.item(.openHere, "Open here")) }
         // The transcript and a new conversation are on this Mac: a row that lives
         // elsewhere is not offered either.
         if local { entries.append(.item(.read, "Read the conversation")) }
@@ -184,7 +190,9 @@ public enum Menus {
     }
 
     private static func moreEntries(_ state: RowMenuState) -> [MenuEntry] {
-        var entries: [MenuEntry] = [.item(.peek, "Open without marking as read")]
+        var entries: [MenuEntry] = []
+        if !state.isRemote { entries.append(.item(.startHere, "New conversation in LampBoard")) }
+        entries.append(.item(.peek, "Open without marking as read"))
         if state.status == .idle { entries.append(.item(.markUnread, "Mark as unread")) }
         entries += [.item(.moveUp, "Move up"), .item(.moveDown, "Move down")]
         if !state.isRemote { entries.append(.item(.revealInFinder, "Show in Finder")) }

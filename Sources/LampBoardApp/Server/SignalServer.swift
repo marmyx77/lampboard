@@ -75,6 +75,8 @@ final class SignalServer {
     private let onModRadar: (Data, String?, String?, String) -> String
     /// The mod's question before a command, while away → the signed answer (A2).
     private let onModHold: (Data, String?, String?, String) -> String
+    /// The live view's windows, as JSON (D130).
+    private let onLive: () -> Data
     private let token: String?
     private let checkKey: String?
 
@@ -107,7 +109,8 @@ final class SignalServer {
         onModDecisions: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
         onModGovernor: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
         onModRadar: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
-        onModHold: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" }
+        onModHold: @escaping (Data, String?, String?, String) -> String = { _, _, _, _ in "" },
+        onLive: @escaping () -> Data = { Data("{\"views\":[]}".utf8) }
     ) {
         self.port = port
         self.token = token
@@ -136,6 +139,7 @@ final class SignalServer {
         self.onModGovernor = onModGovernor
         self.onModRadar = onModRadar
         self.onModHold = onModHold
+        self.onLive = onLive
     }
 
     // MARK: - Lifecycle
@@ -231,6 +235,9 @@ final class SignalServer {
 
         case AppConfig.sessionsPath:
             return handleSessions(request)
+
+        case AppConfig.livePath:
+            return handleLive(request)
 
         case AppConfig.nextPath:
             return handleNext(request)
@@ -379,6 +386,18 @@ final class SignalServer {
             onError("Serializing the sessions failed: \(error.localizedDescription)")
             return HTTPRequestParser.response(status: 500, reason: "Internal Server Error")
         }
+    }
+
+    /// `GET /live` — the live view's windows (D130), behind the token: what each
+    /// shows is a person's conversation.
+    private func handleLive(_ request: HTTPRequest) -> Data {
+        guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+        guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName),
+                                  expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        return HTTPRequestParser.response(status: 200, reason: "OK", body: onLive(), contentType: "application/json")
     }
 
     /// `GET /lampmaster` — LampMaster's state; `POST` asks for a round now.

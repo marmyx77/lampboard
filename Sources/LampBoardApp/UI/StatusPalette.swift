@@ -43,6 +43,9 @@ enum StatusPalette {
     /// the Mac like every other window a person has open.
     static let appearance = NSAppearance(named: .darkAqua)
 
+    /// The same colour for AppKit: the live view's header lamp (D130).
+    static func nsColor(for status: SessionStatus) -> NSColor { NSColor(color(for: status)) }
+
     static func color(for status: SessionStatus) -> Color {
         switch status {
         // Red is a turn that failed, and nothing else. A session at rest was the

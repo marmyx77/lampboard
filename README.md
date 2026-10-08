@@ -486,13 +486,14 @@ Right-click **on a row**: eight entries, the ways of keeping it quiet under
 | Entry | What it does |
 |---|---|
 | Open | same as the click |
+| Open here | a background session only: its real interface in a LampBoard window (the live view, below) |
 | Read the conversation | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
 | Open in Session view | the session close up, beside the list |
 | New conversation here | opens a new Claude tab in the project |
 | Rename… | the name you want to read; the session, its window and its folder keep theirs — leave it empty to go back |
 | Hide | the row is collected into the summary |
 | Quiet ▸ | *Don't alert me* silences the notifications, *Don't blink* the movement — **not** the colour —, *Focus on this session* puts it in front |
-| More ▸ | open without marking as read (alt+click), mark as unread, move up or down (the drag, in words), show in Finder, pin a decision, copy the attach command of a background session, a lighter model until the window resets |
+| More ▸ | a new conversation in the live view, open without marking as read (alt+click), mark as unread, move up or down (the drag, in words), show in Finder, pin a decision, copy the attach command of a background session, a lighter model until the window resets |
 
 One click is enough, even when you are working in another window: the panel
 makes itself key before the click is dispatched, so the first click is delivered
@@ -892,8 +893,34 @@ the session needs when it is blocked. The row reads both
 ([D104](docs/04-decisions.md#d104--a-background-row-reads-its-job)). When the
 session is blocked, the row shows what it needs. When the session is resting, the
 row shows the summary instead of the first line of its last answer. The row's menu
-copies `claude attach <id>`, which reopens the session in a terminal. LampBoard
-copies the command and never opens a terminal itself.
+still copies `claude attach <id>`, for a terminal of your own.
+
+### The live view
+
+**Open here** opens a background session in a window of LampBoard's: its real
+Claude Code interface, every dialog, slash command and mod included, drawn by a
+terminal that does not look like one
+([D130](docs/04-decisions.md#d130--the-live-view)). A header carries the session's
+lamp, name and state; the window around the card takes a theme (Night, Lagoon,
+Ember, Paper) and a text size from Settings › Clicks & keys, and Claude Code keeps
+its own colours inside.
+
+- **Closing the window detaches.** The session goes on under Claude Code's own
+  supervisor, its lamp keeps working, and opening it again picks it up where it is.
+  Quitting LampBoard detaches every window the same way.
+- **One window per session.** Two attaches of different sizes draw over each
+  other, so a second Open here brings the first window forward.
+- **Only background sessions.** A session open in an editor or a terminal has a
+  writer already: a second one would fork its conversation without a word (measured).
+  Its click still goes where it lives.
+- **New conversation in LampBoard** (a row's More ▸) starts `claude --bg` in the
+  row's folder and opens it as soon as Claude Code says its id. A folder Claude
+  Code was never told to trust is refused, with what to do.
+- **Open background sessions here** in Settings makes the live view what a click
+  on such a row does.
+
+The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), vendored
+([D129](docs/04-decisions.md#d129--a-terminal-of-our-own-vendored)).
 
 ## Any long job as a row
 
@@ -1688,8 +1715,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1227 domain tests, instantaneous
-swift run LampBoardE2E                # 159 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1247 domain tests, instantaneous
+swift run LampBoardE2E                # 164 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
