@@ -34,6 +34,51 @@ extension PanelController {
         }
     }
 
+    /// «Move to LampBoard…» (D135): every check first, then the editor's
+    /// process is asked to end and the conversation goes on in the background.
+    func moveHere(_ row: ColumnRow) {
+        let session = row.primary
+        guard MoveHere.isMovable(session), let process = movable(session.id) else { return }
+        let name = row.alias ?? session.title?.nilIfEmpty ?? row.workspace.name
+        guard Alerts.confirm(
+            title: "Move \u{201C}\(name)\u{201D} to LampBoard?",
+            message: "Its VS Code tab stops, and the conversation goes on in a LampBoard window with everything it "
+                + "remembers, as a background session: it keeps running when the window is closed.\n\n"
+                + "Close its tab in VS Code afterwards: a message typed there would be refused.",
+            confirmTitle: "Move"
+        ) else { return }
+        // The dialog may have stayed open for minutes: everything again, now.
+        guard let again = movable(session.id), again == process else { return }
+        live?.move(process, name: name) { [weak self] message in self?.liveRefused(message) }
+    }
+
+    /// The process of a conversation that may move now, every check passed;
+    /// `nil`, having said why, otherwise.
+    private func movable(_ sessionId: String) -> SessionProcess? {
+        guard let session = store.state.sessions[sessionId], MoveHere.isBetweenTurns(session.status) else {
+            Alerts.tell(title: "Not in the middle of a turn",
+                        message: "This conversation is working, or waiting for an answer. Move it when it has finished.")
+            return nil
+        }
+        guard let process = SessionTerminator.process(of: sessionId) else {
+            Alerts.tell(title: "Nothing to move",
+                        message: "LampBoard cannot find the process of this conversation on this Mac, or cannot be sure it is the same one.")
+            return nil
+        }
+        var isFolder: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: process.cwd, isDirectory: &isFolder), isFolder.boolValue else {
+            Alerts.tell(title: "Nothing to move", message: "The folder this conversation started in is no longer there.")
+            return nil
+        }
+        let config = try? Data(contentsOf: URL(fileURLWithPath: MoveHere.configPath(
+            environment: ProcessInfo.processInfo.environment, home: AppConfig.homeDirectory.path)))
+        guard MoveHere.isTrusted(folder: process.cwd, config: config) else {
+            liveRefused(LiveLaunch.StartFailure.untrusted.message)
+            return nil
+        }
+        return process
+    }
+
     private func liveRefused(_ message: String) {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()

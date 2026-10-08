@@ -487,6 +487,7 @@ Right-click **on a row**: eight entries, the ways of keeping it quiet under
 |---|---|
 | Open | same as the click |
 | Open here | a background session, or one in tmux here or on another machine: its real interface in a LampBoard window (the live view, below) |
+| Move to LampBoard… | a conversation in VS Code goes on in a LampBoard window, with its memory, so VS Code can stay closed ([D135](docs/04-decisions.md#d135--move-to-lampboard)) |
 | Read the conversation | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
 | Open in Session view | the session close up, beside the list |
 | New conversation here | opens a new Claude tab in the project |
@@ -926,6 +927,11 @@ its own colours inside.
   ([D133](docs/04-decisions.md#d133--a-new-session-from-lampboard)).
 - **New conversation in LampBoard** (a row's More ▸) does the same in the row's
   folder, on the row's machine.
+- **Move to LampBoard…**, on a row whose conversation is open in VS Code (or
+  Cursor, or Windsurf), ends that editor's process and takes the conversation up
+  here as a background session, with its memory. It is offered only between
+  turns, and only for a folder Claude Code trusts, so nothing is left without a
+  process. Close the tab in VS Code afterwards.
 - **Open here when LampBoard can**, in Settings, makes the live view what a click
   on such a row does.
 
@@ -1746,7 +1752,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1270 domain tests, instantaneous
+swift run LampBoardTests              # 1277 domain tests, instantaneous
 swift run LampBoardE2E                # 165 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

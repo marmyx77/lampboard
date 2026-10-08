@@ -29,11 +29,11 @@ enum MenusSuite {
 
     private static func row(remote: Bool = false, status: SessionStatus = .ready, repository: String? = "web",
                             pinned: [String] = [], attach: String? = nil, offer: String? = nil,
-                            newConversation: Bool = true) -> RowMenuState {
+                            newConversation: Bool = true, move: Bool = false) -> RowMenuState {
         RowMenuState(isRemote: remote, compact: false, alias: nil, folder: "web", status: status,
                      isHidden: false, isCalm: false, isMuted: false, isFocused: false, notificationsEnabled: true,
                      hostsNewConversation: newConversation, repository: repository, pinned: pinned,
-                     attachCommand: attach, modelOffer: offer)
+                     attachCommand: attach, modelOffer: offer, canMoveHere: move)
     }
 
     static let suite = TestSuite("Menus", [
@@ -83,6 +83,14 @@ enum MenusSuite {
             t.expect(!titles(Menus.row(row())).contains("Open here"), "an interactive session never opens here: two writers")
             t.expect(titles(Menus.row(row(remote: true, attach: "ssh -t box tmux attach -t =web:0.0"))).contains("Open here"),
                      "a session in tmux on another machine opens here too: tmux keeps one writer")
+        },
+
+        TestCase("A conversation in VS Code offers to move to LampBoard, right under Open (D135)") { t in
+            let entries = Menus.row(row(move: true))
+            t.expect(entries.contains { if case .item(.moveHere, "Move to LampBoard…", _, _, _) = $0 { return true }; return false },
+                     "offered")
+            t.expect(!Menus.row(row()).contains { if case .item(.moveHere, _, _, _, _) = $0 { return true }; return false },
+                     "and only then")
         },
 
         TestCase("A row on another machine offers nothing that would need this Mac's files or editor") { t in

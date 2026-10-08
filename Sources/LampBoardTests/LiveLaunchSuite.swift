@@ -423,3 +423,79 @@ enum NewSessionSuite {
         },
     ])
 }
+
+/// «Move to LampBoard» (D135): a conversation in VS Code goes on as a
+/// background session here; everything that can fail is checked first.
+enum MoveHereSuite {
+
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    static let id = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
+
+    static func session(entrypoint: String?, origin: SessionOrigin = .editor, host: String? = nil) -> SessionState {
+        SessionState(id: id, status: .ready, workspace: Workspace(path: "/Users/dev/web", host: host),
+                     updatedAt: t0, statusSince: t0, entrypoint: entrypoint, origin: origin)
+    }
+
+    static func config(_ projects: [String: Bool]) -> Data {
+        let object = ["projects": projects.mapValues { ["hasTrustDialogAccepted": $0] }]
+        return (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+    }
+
+    static let suite = TestSuite("Move to LampBoard", [
+
+        TestCase("Offered for this Mac's conversations in VS Code, and no other") { t in
+            t.expect(MoveHere.isMovable(session(entrypoint: "claude-vscode")), "VS Code, Cursor, Windsurf")
+            t.expect(!MoveHere.isMovable(session(entrypoint: "cli", origin: .terminal)), "a terminal keeps its own")
+            t.expect(!MoveHere.isMovable(session(entrypoint: "claude-vscode", host: "box")), "another machine's")
+            t.expect(!MoveHere.isMovable(session(entrypoint: "claude-vscode", origin: .background)), "already in the background")
+            t.expect(!MoveHere.isMovable(session(entrypoint: nil)), "an editor that does not say which")
+        },
+
+        TestCase("Only between turns: a turn or a question would be cut where it stands") { t in
+            for status in [SessionStatus.idle, .ready, .waiting, .failed] { t.expect(MoveHere.isBetweenTurns(status), "\(status)") }
+            t.expect(!MoveHere.isBetweenTurns(.working), "working")
+            t.expect(!MoveHere.isBetweenTurns(.awaiting), "waiting for an answer")
+        },
+
+        TestCase("Trust is checked before anything ends: the folder, or a folder above it") { t in
+            t.expect(MoveHere.isTrusted(folder: "/Users/dev/web", config: config(["/Users/dev/web": true])), "itself")
+            t.expect(MoveHere.isTrusted(folder: "/Users/dev/web/app", config: config(["/Users/dev": true, "/Users/dev/web": false])),
+                     "a trusted parent covers a child marked false (measured)")
+            t.expect(!MoveHere.isTrusted(folder: "/Users/dev/web", config: config(["/Users/dev/webby": true])), "not a sibling")
+            t.expect(!MoveHere.isTrusted(folder: "/Users/dev/web", config: config([:])), "nothing trusted")
+            t.expect(!MoveHere.isTrusted(folder: "/Users/dev/web", config: nil), "no settings file")
+            t.expect(!MoveHere.isTrusted(folder: "relative", config: config(["/": true])), "a relative folder")
+        },
+
+        TestCase("Claude Code's settings file: its config folder when set, the home's otherwise") { t in
+            t.expectEqual(MoveHere.configPath(environment: [:], home: "/Users/dev"), "/Users/dev/.claude.json")
+            t.expectEqual(MoveHere.configPath(environment: ["CLAUDE_CONFIG_DIR": "/Users/dev/.cc"], home: "/Users/dev"),
+                          "/Users/dev/.cc/.claude.json")
+            t.expectEqual(MoveHere.configPath(environment: ["CLAUDE_CONFIG_DIR": "rel"], home: "/Users/dev"), "/Users/dev/.claude.json")
+        },
+
+        TestCase("The new process resumes the same conversation, under its name, in the background") { t in
+            let command = LiveLaunch.start(directory: "/Users/dev/web", name: "web", resume: id, claude: "/x/claude",
+                                           environment: LiveLaunchSuite.base, home: "/Users/dev")
+            t.expectEqual(command?.arguments, ["--bg", "--resume", id, "--name", "web"])
+            t.expectNil(LiveLaunch.start(directory: "/Users/dev/web", name: nil, resume: "--help", claude: "/x/claude",
+                                         environment: [:], home: "/Users/dev"), "an id that is an option")
+            t.expectEqual(MoveHere.fallback(sessionId: id, folder: "/Users/dev/it's"),
+                          #"cd '/Users/dev/it'\''s' && claude --resume "# + id, "what to type if the start fails")
+        },
+    ])
+}
+
+extension MoveHereSuite {
+    static let outcomes = TestSuite("Move to LampBoard: what is said after", [
+        TestCase("Nobody is told to resume a conversation that may already have a process") { t in
+            let unknown = MoveHere.message(.unknown, sessionId: id, folder: "/Users/dev/web")
+            t.expect(!unknown.contains("claude --resume"), "no answer: look first, resume nothing")
+            t.expect(unknown.contains("claude agents"), unknown)
+            let refused = MoveHere.message(.refused("Not signed in."), sessionId: id, folder: "/Users/dev/web")
+            t.expect(refused.contains("cd '/Users/dev/web' && claude --resume \(id)"), "a refusal: nothing runs, the line is given")
+            let started = MoveHere.message(.started(job: "80129edd"), sessionId: id, folder: "/Users/dev/web")
+            t.expect(started.contains("claude attach 80129edd") && !started.contains("--resume"), started)
+        },
+    ])
+}

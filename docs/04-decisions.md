@@ -5231,3 +5231,76 @@ all fixed:
 - On the main screen, rows already in the terminal's scrollback keep the drawing
   they had when the answer changes.
 - Bash output is not shown while the command runs; it appears when the call ends.
+
+## D135 · Move to LampBoard
+
+**Decided.** The menu of a row whose conversation is open in VS Code (or Cursor,
+or Windsurf, which run the same extension) offers **Move to LampBoard…**. After a
+confirmation, the conversation goes on in a LampBoard window as a background
+session of this Mac, with everything it remembers. It keeps running when the
+window is closed, so VS Code can stay shut. Until someone asks for the move, the
+row's click still jumps to the editor, as before: nothing changes for anyone who
+does not ask.
+
+**How.**
+1. The editor's process is asked to end. This is the `SIGTERM` of End session,
+   with the same check that the pid is still the process the session file names.
+2. LampBoard waits up to ten seconds for the process to be gone.
+3. LampBoard runs `claude --bg --resume <id> --name <the row's name>` in the
+   folder of that process.
+4. The window opens as soon as Claude Code gives the job's id.
+
+The same session id goes on. On the always-on Linux box a word told to an
+interactive session before the move was remembered after it.
+
+**What is checked before anything ends.** A failed check leaves the conversation
+where it is.
+- **This Mac's session, in the editor extension, not in the background.**
+- **Between turns.** A turn under way, or a question waiting for an answer, would
+  be cut where it stands; the move says to come back when it has finished.
+- **The process is found and is the same one.**
+- **The folder is trusted.** `--bg` does not ask, and refuses a folder Claude
+  Code was never told to trust. LampBoard reads Claude Code's settings file
+  (`$CLAUDE_CONFIG_DIR/.claude.json`, or `~/.claude.json`) for the folder or a
+  folder above it. Measured: a trusted parent covers a child marked untrusted.
+
+**When the start fails after the end.** What is said depends on what Claude Code
+answered, so nobody is told to resume a conversation that may already have a
+process:
+- **A refusal.** Nothing runs. The line that takes the conversation up in a
+  terminal is given and copied: `cd <folder> && claude --resume <id>`.
+- **No answer in time, or no job named.** Look for it in the panel or with
+  `claude agents` first.
+- **A job that started but whose window did not open.** Its `claude attach`
+  line is given.
+
+**The tab left in VS Code.** Read from the extension: an ended process is shown
+as an error, and nothing restarts it. A message typed there afterwards starts a
+headless `--resume` of a session that is now in the background. The supervisor
+refuses that second writer (D130), so it cannot fork the conversation. The
+confirmation says to close the tab.
+
+**What a review changed.** It found two high issues, four medium and two low:
+- **High: a second move.** A second Move of the same conversation, while the
+  first was waiting for its process to end, would have started a second
+  background session. A conversation being moved is now refused, and its menu
+  entry is gone until the move ends.
+- **High: the failure advice.** A failure after the end advised resuming by hand
+  even when the start had only timed out. It now says one of the three things
+  above.
+- **Medium: checks after the dialog.** The confirmation can stay open for
+  minutes, so every check is made again after it: status, process, folder,
+  trust.
+- **Medium: a reused pid.** The wait reads a reused pid as the process gone,
+  instead of waiting it out.
+- **Medium: the folder.** A folder that no longer exists is refused before
+  anything ends.
+- **Low: trust and links.** The trust check also reads the folder through its
+  links: `/tmp` is `/private/tmp` on a Mac.
+
+The extension starting a new process for its tab was not measured with VS Code
+itself. What makes it safe was measured: a headless resume of a background
+session is refused (D130).
+
+**Not yet.** A conversation in VS Code on another machine, through Remote-SSH,
+would need a background session there and `ssh -t <host> claude attach`.

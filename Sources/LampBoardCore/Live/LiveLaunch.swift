@@ -29,13 +29,18 @@ public enum LiveLaunch {
                            environment: environment(base: base, home: home, claude: claude))
     }
 
-    /// `claude --bg [--name <name>]` in `directory`, which must be absolute. A
-    /// name that begins with a dash is left out rather than passed: a row's
-    /// name comes from a folder or a title, and either could be `--something`.
-    public static func start(directory: String, name: String?, claude: String,
+    /// `claude --bg [--resume <session>] [--name <name>]` in `directory`, which
+    /// must be absolute. A name that begins with a dash is left out rather than
+    /// passed: a row's name comes from a folder or a title, and either could be
+    /// `--something`. A session to resume must look like one (D135).
+    public static func start(directory: String, name: String?, resume: String? = nil, claude: String,
                              environment base: [String: String], home: String) -> LiveCommand? {
         guard directory.hasPrefix("/") else { return nil }
         var arguments = ["--bg"]
+        if let resume {
+            guard ModReport.isSessionId(resume), !resume.hasPrefix("-") else { return nil }
+            arguments += ["--resume", resume]
+        }
         if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, !name.hasPrefix("-") {
             arguments += ["--name", String(name.prefix(80))]
         }

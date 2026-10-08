@@ -1,13 +1,13 @@
 # Code map
 
-~72,900 lines of Swift across five targets. For each file: what it contains, why
+~73,200 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  22,829 lines · 177 files  pure logic, zero AppKit
-  LampBoardApp/    27,122 lines · 150 files   shell: AppKit, network, windows
-  LampBoardTests/  17,614 lines · 122 files   1270 cases, instantaneous
+  LampBoardCore/  22,931 lines · 178 files  pure logic, zero AppKit
+  LampBoardApp/    27,238 lines · 150 files   shell: AppKit, network, windows
+  LampBoardTests/  17,700 lines · 122 files   1277 cases, instantaneous
   LampBoardE2E/    4,925 lines · 21 files   165 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -40,7 +40,7 @@ is what makes the e2e tests possible without touching the real `~/.claude`.
 
 ## `Menus/`
 
-### `Menus.swift` · 212
+### `Menus.swift` · 218
 The three menus as data (U3, D125): the panel's ⋯ with seven entries (an eighth
 while projects are hidden), a row's with eight and two submenus — *Quiet* for the
 ways of keeping it quiet, *More* for the rarer things —, and the lamp's, with what
@@ -1516,7 +1516,7 @@ caller the process id, so an app quitting mid-run can stop what it started.
 
 ## `Live/`
 
-### `LiveLaunch.swift` · 236
+### `LiveLaunch.swift` · 241
 What the live view runs (D130), decided where a test reads it. `LiveLaunch`
 builds the two commands it ever runs, `claude attach <id>` and `claude --bg
 [--name]`, refusing an id that is not a job's and a name that would read as an
@@ -1541,6 +1541,15 @@ held to names tmux reads back as one, with the pane listing it is read from;
 
 > **Touching here** decides what may be attached to. An editor's session is never
 > a target: it would be a second writer.
+
+### `MoveHere.swift` · 91
+«Move to LampBoard» (D135): which sessions may move (this Mac's, in the editor
+extension), when (between turns), whether `--bg` will start in their folder (a
+trusted folder or parent in Claude Code's settings file), and the line to type
+when it did not.
+
+> **Touching here** decides when a person's editor process is ended: every check
+> must hold before it is.
 
 ### `NewSession.swift` · 86
 Starting a session from LampBoard (D133): the folders a machine's sessions worked
@@ -1748,7 +1757,7 @@ The frame: the theme's backdrop, a header with the session's lamp, name and stat
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 288
+### `LiveWindowController.swift` · 343
 One window per background session, never two: two attaches of different sizes
 garble each other. Opens, starts (`claude --bg` off the main thread, then the
 attach), reattaches in the same window, closes (which detaches), and answers
@@ -1782,7 +1791,7 @@ raises the limit of open files, which a few terminals reach.
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
-| `SessionTerminator.swift` | 90 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
+| `SessionTerminator.swift` | 97 | finds the process behind a row and ends it when asked. Only where the session names its process, only if that process is alive and started when the record says — checked again after the confirmation, because a pid can be reused in those seconds — and `SIGTERM`, never `SIGKILL`. `ps` is asked with `TZ=UTC`: the file records the start in UTC and `ps` answers local, so comparing the two strings never matched and the menu entry would have been invisible for ever |
 | `CodexApprovalReader.swift` | 91 | reads the rollout an event names, to learn who will answer its permission request. The tail first, then the whole file when the tail does not say: measured on an audit of a whole codebase, rollouts of 1.8 MB and 3.5 MB whose only `turn_context` sat outside any tail, and reading only the tail put them straight back to blinking amber. In the shell because it touches a file: the reducer receives the answer, never the path. The tail and not the file, so the cost does not grow with the length of a conversation |
 | `CodexProbe.swift` | 27 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
@@ -1969,7 +1978,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 | File | Lines | What |
 |---|---|---|
-| `PanelController.swift` | 761 | holds everything together; row and panel actions |
+| `PanelController.swift` | 766 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 165 | the switches that reach outside the panel — presence, terminal sessions, launch at login, sending messages with its dialog and the delivery hook it registers (D81) — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 101 | what waits, wired in (D74, D124): its cards from the store and the asks the panel holds — LampMaster's suggestions stay out, they are its star in the bar —, Allow, Deny and a question's choice handed to the permission desk, `O` raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when an ask under a row comes or goes and every thirty seconds for rows that fold by time; the line said on return put away at the panel's first gesture; the «Resting» line opened or folded |
 | `CommandBarView.swift` | 209 | the bar at the top of the wide panel (D77): at rest a button saying `Search`, then the count of what waits (a click shows only those rows), LampMaster's star — dim, or lit with its number, a click opening its view (D124) — and `⌘K`; opened, a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc`; the week as six tiles above its projects (D109) |
@@ -1981,11 +1990,11 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `WaitingCardView.swift` | 153 | one waiting card, drawn at the top of a session's Plancia: a card dimmed until it is armed and outlined while selected with the keyboard; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip; VoiceOver reads the kind, the project and the ask |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 187 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103), or to the live view when Settings says so (D130) |
-| `PanelLive.swift` | 45 | «Open here» and «New conversation in LampBoard» from a row, and what the live view says when it cannot open (D130) |
+| `PanelLive.swift` | 90 | «Open here» and «New conversation in LampBoard» from a row, and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 178 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; the time the window runs out in place of the reset, in orange, when that is first (D111) |
-| `TrafficLightRow.swift` | 581 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row` — eight entries, *Quiet* and *More* (D125), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
+| `TrafficLightRow.swift` | 585 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row` — eight entries, *Quiet* and *More* (D125), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 655 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 201 | one conversation inside an opened block, and the grip that names its agent |
@@ -2038,7 +2047,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1270 cases
+## `LampBoardTests/` — 1277 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

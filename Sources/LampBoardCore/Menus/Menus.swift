@@ -26,7 +26,7 @@ public enum MenuCommand: Equatable, Sendable {
     case dontAlert, dontBlink, focus
     case peek, markUnread, moveUp, moveDown, revealInFinder, pinDecision, unpinDecision(Int), copyAttach, toggleModel
     // The live view (D130)
-    case openHere, startHere
+    case openHere, startHere, moveHere
 }
 
 /// What the panel's ⋯ needs to know.
@@ -81,11 +81,13 @@ public struct RowMenuState: Equatable, Sendable {
     public let attachCommand: String?
     /// The governor's offer for the row (G3), in its own words.
     public let modelOffer: String?
+    /// A conversation open in VS Code that can go on in LampBoard (D135).
+    public let canMoveHere: Bool
 
     public init(isRemote: Bool, compact: Bool, alias: String?, folder: String, status: SessionStatus,
                 isHidden: Bool, isCalm: Bool, isMuted: Bool, isFocused: Bool, notificationsEnabled: Bool,
                 hostsNewConversation: Bool, repository: String?, pinned: [String], attachCommand: String?,
-                modelOffer: String?) {
+                modelOffer: String?, canMoveHere: Bool = false) {
         self.isRemote = isRemote
         self.compact = compact
         self.alias = alias
@@ -101,6 +103,7 @@ public struct RowMenuState: Equatable, Sendable {
         self.pinned = pinned
         self.attachCommand = attachCommand
         self.modelOffer = modelOffer
+        self.canMoveHere = canMoveHere
     }
 }
 
@@ -155,6 +158,9 @@ public enum Menus {
         // one, or one in tmux (D130, D132); `LiveTarget` decides, and the row says
         // so by having a command. An editor's session would be a second writer.
         if state.attachCommand != nil { entries.append(.item(.openHere, "Open here")) }
+        // A conversation in VS Code goes on in LampBoard instead (D135): its
+        // Open still jumps to the editor until then.
+        if state.canMoveHere { entries.append(.item(.moveHere, "Move to LampBoard…")) }
         // The transcript and a new conversation are on this Mac: a row that lives
         // elsewhere is not offered either.
         if local { entries.append(.item(.read, "Read the conversation")) }

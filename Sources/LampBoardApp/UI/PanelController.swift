@@ -521,6 +521,11 @@ final class PanelController {
             liveTarget: { [weak self] session in self?.liveTarget(session) },
             openHere: { [weak self] target in self?.openHere(target) },
             startHere: { [weak self] row in self?.startHere(row) },
+            canMoveHere: { [weak self] session in
+                guard let live = self?.live else { return false }
+                return MoveHere.isMovable(session) && !live.isMoving(session.id)
+            },
+            moveHere: { [weak self] row in self?.moveHere(row) },
             copyCommand: { command in
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(command, forType: .string)

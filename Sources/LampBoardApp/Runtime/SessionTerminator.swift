@@ -55,6 +55,13 @@ enum SessionTerminator {
         return kill(process.pid, SIGTERM) == 0
     }
 
+    /// Whether the process is still the one the session file named: alive,
+    /// and started when it says. A pid reused since is not it.
+    static func isStillRunning(_ process: SessionProcess) -> Bool {
+        guard isAlive(process.pid), let started = startTime(of: process.pid) else { return false }
+        return process.isStill(startedAt: started)
+    }
+
     private static func isAlive(_ pid: Int32) -> Bool {
         kill(pid, 0) == 0 || errno == EPERM
     }

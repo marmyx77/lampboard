@@ -58,6 +58,8 @@ let suites: [TestSuite] = [
     LiveThemeSuite.suite,
     LiveTargetSuite.suite,
     NewSessionSuite.suite,
+    MoveHereSuite.suite,
+    MoveHereSuite.outcomes,
     UnreadAnswersSuite.suite,
     FocusSuite.suite,
     AllowanceForecastSuite.suite,

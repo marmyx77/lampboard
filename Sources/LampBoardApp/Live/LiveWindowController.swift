@@ -24,6 +24,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     }
 
     private var lives: [String: Live] = [:]
+    /// The conversations being moved here (D135).
+    private var moving: Set<String> = []
     private var clock: Timer?
     private let preferences: Preferences
     /// The header of a window: its row's name, folder and state.
@@ -96,6 +98,59 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             }
         }
     }
+
+    /// Ends the editor's process of a conversation and takes it up as a
+    /// background session here (D135). Off the main thread: the process gets
+    /// ten seconds to save what it holds before the new one starts.
+    func move(_ process: SessionProcess, name: String, failed: @escaping (String) -> Void) {
+        // One move per conversation at a time: a second would start a second writer.
+        guard !moving.contains(process.sessionId) else { return }
+        guard let claude = LampMasterRunner.executable(),
+              let command = LiveLaunch.start(directory: process.cwd, name: name, resume: process.sessionId, claude: claude,
+                                             environment: ProcessInfo.processInfo.environment,
+                                             home: AppConfig.homeDirectory.path)
+        else { failed(LiveLaunch.StartFailure.other("Claude Code was not found on this Mac.").message); return }
+        var environment: [String: String?] = [:]
+        for key in ProcessInfo.processInfo.environment.keys where command.environment[key] == nil { environment[key] = .some(nil) }
+        for (key, value) in command.environment { environment[key] = value }
+        moving.insert(process.sessionId)
+        let finish: @MainActor (String?) -> Void = { [weak self] message in
+            self?.moving.remove(process.sessionId)
+            if let message { failed(message) }
+        }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard SessionTerminator.terminate(process) else {
+                DispatchQueue.main.async { finish("The VS Code process would not end, or had already gone. Nothing was moved.") }
+                return
+            }
+            // Gone, or a pid now reused by another process: either way not it.
+            let deadline = Date().addingTimeInterval(10)
+            while SessionTerminator.isStillRunning(process), Date() < deadline { Thread.sleep(forTimeInterval: 0.2) }
+            guard !SessionTerminator.isStillRunning(process) else {
+                DispatchQueue.main.async { finish("The VS Code process is still running after ten seconds. Nothing was started, so the conversation has one writer.") }
+                return
+            }
+            let result = try? Command.run(command.executable, command.arguments, deadline: 60,
+                                          directory: URL(fileURLWithPath: process.cwd), environment: environment)
+            let output = result?.output ?? ""
+            let job = result?.succeeded == true ? LiveLaunch.jobId(fromBackgroundOutput: output) : nil
+            let outcome: MoveHere.Outcome
+            if let job { outcome = .started(job: job) }
+            else if let result, !result.succeeded, !output.isEmpty { outcome = .refused(LiveLaunch.startFailure(fromOutput: output).message) }
+            else { outcome = .unknown }
+            DispatchQueue.main.async {
+                if case .started(let job) = outcome, self?.open(job: job) == true { finish(nil); return }
+                if case .refused = outcome {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(MoveHere.fallback(sessionId: process.sessionId, folder: process.cwd), forType: .string)
+                }
+                finish(MoveHere.message(outcome, sessionId: process.sessionId, folder: process.cwd))
+            }
+        }
+    }
+
+    /// Whether a conversation is being moved right now.
+    func isMoving(_ sessionId: String) -> Bool { moving.contains(sessionId) }
 
     // MARK: - What other parts of the app ask
 

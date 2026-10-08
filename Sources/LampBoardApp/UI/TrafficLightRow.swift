@@ -54,6 +54,9 @@ struct RowActions {
     /// Opens it in the live view, and starts a new session there (D130).
     var openHere: (LiveTarget) -> Void = { _ in }
     var startHere: (ColumnRow) -> Void = { _ in }
+    /// A conversation in VS Code, moved to the live view (D135).
+    var canMoveHere: (SessionState) -> Bool = { _ in false }
+    var moveHere: (ColumnRow) -> Void = { _ in }
     /// Copies the command that opens it in a terminal of one's own (AV2).
     var copyCommand: (String) -> Void = { _ in }
     /// Takes the sample rows away (U4).
@@ -457,7 +460,7 @@ struct TrafficLightRow: View {
             isFocused: flags.isFocused, notificationsEnabled: flags.notificationsEnabled,
             hostsNewConversation: row.hostsNewConversation, repository: repository,
             pinned: repository.map(actions.decisions) ?? [], attachCommand: target?.command,
-            modelOffer: actions.governorOffer(row)?.title
+            modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary)
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
             switch command {
@@ -480,6 +483,7 @@ struct TrafficLightRow: View {
             case .copyAttach: if let target { actions.copyCommand(target.command) }
             case .openHere: if let target { actions.openHere(target) }
             case .startHere: actions.startHere(row)
+            case .moveHere: actions.moveHere(row)
             case .toggleModel: actions.toggleModel(row)
             default: break
             }
