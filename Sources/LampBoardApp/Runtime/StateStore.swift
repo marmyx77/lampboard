@@ -102,7 +102,7 @@ final class StateStore: ObservableObject {
     /// The editor windows open on each host, as its last probe reported them.
     /// A remote row's folder is resolved against these, the way a local row's is
     /// resolved against this Mac's lock files (D51).
-    private var remoteWindows: [String: [IDEWindow]] = [:]
+    private(set) var remoteWindows: [String: [IDEWindow]] = [:]
 
     /// Which sessions have ever held a conversation. See `ConversationIndex` for
     /// why a live process is not enough to earn a row.
@@ -120,7 +120,7 @@ final class StateStore: ObservableObject {
     private var isProbing = false
 
     /// The hosts to ask, as configured in the settings.
-    private var remoteHosts: [String] { preferences.remoteHosts }
+    var remoteHosts: [String] { preferences.remoteHosts }
 
     /// Whether folders no editor claims get rows (D25), as configured.
     var showsTerminalSessions: Bool { preferences.showsTerminalSessions }
@@ -327,6 +327,7 @@ final class StateStore: ObservableObject {
             }
             remoteSessions[host] = sessions
             remoteAnsweredAt[host] = askedAt
+            adoptRemoteSessions(sessions, host: host, at: askedAt)
 
             // What the probe read of each session's context, on the machine
             // where its transcript actually is. `.observed` attaches it to a row

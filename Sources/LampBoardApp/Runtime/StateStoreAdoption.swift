@@ -247,6 +247,30 @@ extension StateStore {
 }
 
 extension StateStore {
+    /// The sessions resting on `host`, found rather than announced (D137): a
+    /// row each, idle until its first hook says otherwise, named as Claude Code
+    /// names it there. A row that already exists is left alone.
+    ///
+    /// Called with each fresh answer, never from the five-second pass: between
+    /// answers the list is up to twenty seconds old, and a session that has
+    /// just ended would come back from it as a ghost.
+    func adoptRemoteSessions(_ live: [LiveSession], host: String, at now: Date) {
+        guard remoteHosts.contains(host) else { return }
+        for session in RemoteAdoption.adoptable(live, showsTerminalSessions: showsTerminalSessions)
+        where state.sessions[session.sessionId] == nil {
+            let workspace = RemoteWorkspaceResolver.resolve(
+                cwd: session.cwd, sessionId: session.sessionId, host: host,
+                windows: remoteWindows[host] ?? [], sessions: live, at: now
+            )
+            apply(.adopt(SessionState(
+                id: session.sessionId, status: .idle, workspace: workspace,
+                updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
+                entrypoint: session.entrypoint, origin: .terminal, title: session.name
+            )), now: now)
+            Diagnostics.log("remote \(host): adopted \(session.sessionId.prefix(8)) in \(session.cwd)")
+        }
+    }
+
     /// Where a remote session sits in tmux, as its own machine's probe last said (D132).
     func remoteTmuxPlace(sessionId: String, host: String) -> TmuxPlace? {
         remoteSessions[host]?.first { $0.sessionId == sessionId }?.tmux

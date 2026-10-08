@@ -565,3 +565,38 @@ enum ProjectFilesSuite {
         },
     ])
 }
+
+/// The sessions resting on other machines get their rows back after a restart
+/// (D137), by the rule this Mac's own sessions follow.
+enum RemoteAdoptionSuite {
+
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    static let reading = ContextReading(tokens: 1, model: "m", window: nil, confidence: .exact, at: t0, cacheLifetime: 3_600)
+
+    static func live(_ id: String, entrypoint: String? = "cli", kind: String? = "interactive", host: String? = "box",
+                     talked: Bool = true) -> LiveSession {
+        LiveSession(pid: 12, sessionId: id, cwd: "/home/dev/web", entrypoint: entrypoint, name: "web", kind: kind,
+                    modifiedAt: t0, host: host, context: talked ? reading : nil,
+                    tmux: TmuxPlace(session: "web", window: 0, pane: 0))
+    }
+
+    static let suite = TestSuite("Sessions resting on other machines", [
+
+        TestCase("A terminal's session with a conversation is a row before it speaks") { t in
+            let found = RemoteAdoption.adoptable([live("a")], showsTerminalSessions: true)
+            t.expectEqual(found.map(\.sessionId), ["a"])
+        },
+
+        TestCase("Not one in the background, an editor's, the SDK's, a headless one, one with no conversation, nor this Mac's") { t in
+            let none = RemoteAdoption.adoptable([
+                live("bg", kind: "bg"), live("editor", entrypoint: "claude-vscode"), live("sdk", entrypoint: "sdk-cli"),
+                live("silent", talked: false), live("here", host: nil), live("headless", kind: "print"),
+            ], showsTerminalSessions: true)
+            t.expectEqual(none.map(\.sessionId), [])
+        },
+
+        TestCase("Nothing while terminal sessions are not shown") { t in
+            t.expectEqual(RemoteAdoption.adoptable([live("a")], showsTerminalSessions: false).count, 0)
+        },
+    ])
+}

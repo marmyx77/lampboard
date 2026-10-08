@@ -1,18 +1,18 @@
 # Code map
 
-~73,800 lines of Swift across five targets. For each file: what it contains, why
+~73,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,023 lines · 179 files  pure logic, zero AppKit
-  LampBoardApp/    27,671 lines · 151 files   shell: AppKit, network, windows
-  LampBoardTests/  17,767 lines · 122 files   1283 cases, instantaneous
+  LampBoardCore/  23,049 lines · 180 files  pure logic, zero AppKit
+  LampBoardApp/    27,696 lines · 151 files   shell: AppKit, network, windows
+  LampBoardTests/  17,803 lines · 122 files   1286 cases, instantaneous
   LampBoardE2E/    4,953 lines · 21 files   166 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
-No file exceeds 792 lines. The limit the project sets itself is 800.
+No file exceeds 793 lines. The limit the project sets itself is 800.
 
 One more target was not written here: `Vendor/SwiftTerm`, about 36,000 lines, the
 terminal emulator behind the live view. It is described at the end, under
@@ -1607,6 +1607,10 @@ contains the hook's `cwd`, resolved by the same function as a local row; failing
 that the session file's folder, written once; failing that the `cwd` itself. Born
 from a row called "experiment" whose window was called `simlab` (D51).
 
+### `RemoteAdoption.swift` · 26
+Which sessions another machine's probe reports become rows before they speak
+(D137): a terminal's, with a conversation, while terminal sessions are shown.
+
 ### `RemoteSessionsDecoder.swift` · 138
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
@@ -1797,8 +1801,8 @@ raises the limit of open files, which a few terminals reach.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 792 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 263 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStore.swift` | 793 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStoreAdoption.swift` | 287 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -2058,7 +2062,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1283 cases
+## `LampBoardTests/` — 1286 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

@@ -5362,3 +5362,44 @@ happens only when someone opens the panel.
 - Line numbers beside the preview.
 - A file name with `#` is cited as it is; whether Claude Code's prompt reads it
   whole is not measured.
+
+## D137 · The sessions resting on other machines
+
+**Decided.** A session on another machine becomes a row as soon as that
+machine's probe reports it, not only when it first speaks through the tunnel.
+This Mac's sessions have always been found from their files; the other
+machines' now follow the same rule, from what their probe sends. The row starts
+idle, named as Claude Code names the session there, and the first hook replaces
+what it says.
+
+**Why.** Found on 1.3.0, the day it shipped, by its first user. The update
+restarted LampBoard, and the three sessions resting in tmux on the always-on
+Linux box were missing from the column until each did something. Only the one
+at work showed. Open here, the point of 1.3 for those sessions, needs the row,
+so it could not reach them.
+
+**Which.** The same as for this Mac:
+- a terminal's session (entrypoint `cli`, or none), not one in the background;
+- with a conversation in it, so not a helper process such as claude-mem's
+  observer;
+- only while Settings shows sessions started in a terminal.
+
+An editor's session on another machine still arrives through its own hooks and
+windows. A row that already exists is left as it is. One the probe no longer
+reports is removed by the rule that already removed them.
+
+**When.** With each fresh answer from that machine, never in the five-second
+pass. Between answers the list is up to twenty seconds old, and a session that
+has just ended would come back from it as a ghost. Only for a machine still in
+Settings.
+
+**What a review changed.** It found one defect and one gap, both fixed:
+- **A ghost row.** A session that had just ended came back from the cached
+  list for up to twenty seconds; now the adoption runs only on a fresh answer.
+- **A missing filter.** The rule that keeps service processes out of the column
+  locally (`deservesTrafficLight`) is now applied here too.
+
+**Measured.** On the Mac, after the restart, the panel's rows from the Linux box
+were one of four: `/sessions` listed only the session at work. The domain suite
+holds the rule. Its cases fail when the conversation check, or the service-process
+check, is removed.
