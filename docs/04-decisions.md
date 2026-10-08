@@ -5304,3 +5304,61 @@ session is refused (D130).
 
 **Not yet.** A conversation in VS Code on another machine, through Remote-SSH,
 would need a background session there and `ssh -t <host> claude attach`.
+
+## D136 · The files beside the session
+
+**Decided.** A live window of a session on this Mac has a **Files** button. It
+opens the session's folder beside the terminal, on a card of its own:
+- **A tree.** Folders first, in Finder's order, read when opened. The folders
+  nobody reads and that slow a tree down are left out: `.git`, `node_modules`,
+  `.build`, `DerivedData` and the like. Dotfiles stay, because `.github` and
+  `.claude` are read and cited.
+- **The file the agent is on.** A line at the top names the file a Read, Edit or
+  Write is working on, from what the helper already reports. A click opens the
+  tree down to it and shows it.
+- **A preview.** Text up to a megabyte, read-only: the session is the one that
+  edits. When the file changes on disk, the preview reads it again and keeps its
+  place, so what it shows is what the agent just wrote.
+- **⌘L, or Cite.** The file, or the lines selected in the preview, reaches the
+  session's prompt as `@path#La-b`. The path is relative to the session's folder,
+  with a space escaped by a backslash: measured, quotes do not work, `\ ` does.
+  It arrives as a paste, never with an Enter, so nothing is sent until the person
+  sends it.
+
+**Why read-only.** An editor beside an agent that edits the same file is two
+writers of one file. The preview shows the agent's work and lets it be pointed
+at; changing it is asked of the session.
+
+**Measured.** The end-to-end suite opens a session's window with a `README.md`
+in its folder, opens the files with that file in the preview, and reads both
+the folder and the file back from `GET /live`. In the window's picture, the tree,
+the preview and Cite ⌘L sit on their card beside the terminal.
+
+**What a review changed.** It found five high issues and four medium ones, all
+fixed:
+- **Reading on the main thread.** A file that is not text, or is over a
+  megabyte, was read again every second. A large one was read whole before the
+  limit applied. Now only a regular file is opened, at most a megabyte plus a
+  byte is read, and a file that changes nothing is not read again.
+- **Listing while closed.** The panel listed the folder even while closed.
+  Nothing is listed, read or checked until it opens. A folder shows its first
+  two thousand entries.
+- **A brief gap in the row.** The session's row being read again for a moment
+  took the tree away. The window now keeps the folder it had: a window's
+  session does not change folders.
+- **The selection after a re-read.** The selection was kept by its offsets
+  after a re-read, so ⌘L could cite lines nobody chose. A re-read now clears it.
+- **Medium.** A folder closed is read again when it opens, with the outline told
+  so. The lines of a selection are counted in one pass with no copy. A citation
+  escapes only what was measured, the space.
+
+Opening the files of a session working in the home folder lists the home
+folder, and macOS may ask LampBoard for access to Documents or Desktop; it
+happens only when someone opens the panel.
+
+**Not yet.**
+- The files of a session on another machine.
+- Editing in the preview.
+- Line numbers beside the preview.
+- A file name with `#` is cited as it is; whether Claude Code's prompt reads it
+  whole is not measured.

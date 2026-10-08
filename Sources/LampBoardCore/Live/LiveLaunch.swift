@@ -213,6 +213,10 @@ public struct LiveHeading: Equatable, Sendable {
     public let title: String
     public let detail: String
     public let status: SessionStatus?
+    /// The session's folder on this Mac, for its files (D136); `nil` elsewhere.
+    public var folder: String? = nil
+    /// The file its agent is on, inside that folder.
+    public var following: String? = nil
 
     /// The session behind `target`: its title or its folder, the folder (and
     /// the machine) and the state in the glossary's words. A session no row
@@ -233,7 +237,9 @@ public struct LiveHeading: Equatable, Sendable {
         }
         let title = session.title?.nilIfEmpty ?? session.workspace.name
         let place = session.workspace.host.map { "\(session.workspace.name) on \($0)" } ?? session.workspace.name
-        return LiveHeading(title: title, detail: "\(place) · \(session.status.label)", status: session.status)
+        let folder = session.workspace.isRemote ? nil : session.workspace.path
+        return LiveHeading(title: title, detail: "\(place) · \(session.status.label)", status: session.status, folder: folder,
+                           following: folder.flatMap { ProjectFiles.followed(session.runningTool, root: $0) })
     }
 
     /// The same, for a background job of this Mac.

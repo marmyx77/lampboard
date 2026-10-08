@@ -132,6 +132,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let path = CommandLine.arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.live.snapshot(to: path) }
         }
+        // `--live-files <path>`, against a fake home: the files beside every window,
+        // that file in the preview (D136).
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-files"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let relative = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.live.showFiles(opening: relative) }
+        }
         // `--live-session <id>`, against a fake home: a session of this Mac's tmux,
         // opened as soon as its pane is known (the end-to-end suite's way in).
         if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-session"),

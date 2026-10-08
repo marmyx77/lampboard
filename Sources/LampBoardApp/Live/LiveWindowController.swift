@@ -65,6 +65,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         frame.reattach.target = self
         frame.reattach.action = #selector(reattachPressed(_:))
         frame.reattach.identifier = NSUserInterfaceItemIdentifier(job)
+        // A citation goes to the session's prompt, and the keys back to it.
+        frame.files.cite = { [weak self] text in
+            guard let live = self?.lives[job], !live.ended else { NSSound.beep(); return }
+            live.surface.paste(text)
+            live.window.makeFirstResponder(live.surface.view)
+        }
         surface.apply(theme: theme, fontSize: preferences.liveFontSize)
         lives[job] = live
         start(live, command)
@@ -183,7 +189,11 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let views = lives.values.sorted { $0.job < $1.job }.map { live -> [String: Any] in
             var view: [String: Any] = ["job": live.job, "pid": Int(live.surface.pid),
                                        "running": live.surface.isRunning && !live.ended, "title": live.window.title]
-            if includingText { view["text"] = live.surface.screenText(lines: 40) }
+            if includingText {
+                view["text"] = live.surface.screenText(lines: 40)
+                if let folder = describe(live.target).folder { view["folder"] = folder }
+                if !live.frame.files.isHidden, let showing = live.frame.files.showingPath { view["showing"] = showing }
+            }
             return view
         }
         return (try? JSONSerialization.data(withJSONObject: ["views": views], options: [.sortedKeys])) ?? Data("{}".utf8)
@@ -216,7 +226,25 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             if let image = alone.cgImage {
                 context.draw(image, in: terminal.convert(terminal.bounds, to: view))
             }
+            // The files' text is clipped from a layer render as the terminal's was.
+            let files = live.frame.files
+            if !files.isHidden, let side = files.bitmapImageRepForCachingDisplay(in: files.bounds) {
+                files.cacheDisplay(in: files.bounds, to: side)
+                if let image = side.cgImage { context.draw(image, in: files.convert(files.bounds, to: view)) }
+            }
             try? bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(path)-\(live.job).png"))
+        }
+    }
+
+    /// Every window with its files open, and `relative` in their preview: for
+    /// the pictures and the end-to-end suite (D136).
+    func showFiles(opening relative: String?) {
+        refreshHeaders()
+        for live in lives.values {
+            live.frame.openFiles()
+            if let relative, let folder = describe(live.target).folder {
+                live.frame.files.open((folder as NSString).appendingPathComponent(relative))
+            }
         }
     }
 

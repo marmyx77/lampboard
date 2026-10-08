@@ -1,14 +1,14 @@
 # Code map
 
-~73,200 lines of Swift across five targets. For each file: what it contains, why
+~73,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  22,931 lines · 178 files  pure logic, zero AppKit
-  LampBoardApp/    27,238 lines · 150 files   shell: AppKit, network, windows
-  LampBoardTests/  17,700 lines · 122 files   1277 cases, instantaneous
-  LampBoardE2E/    4,925 lines · 21 files   165 cases, the real binary
+  LampBoardCore/  23,023 lines · 179 files  pure logic, zero AppKit
+  LampBoardApp/    27,671 lines · 151 files   shell: AppKit, network, windows
+  LampBoardTests/  17,767 lines · 122 files   1283 cases, instantaneous
+  LampBoardE2E/    4,953 lines · 21 files   166 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1516,7 +1516,7 @@ caller the process id, so an app quitting mid-run can stop what it started.
 
 ## `Live/`
 
-### `LiveLaunch.swift` · 241
+### `LiveLaunch.swift` · 247
 What the live view runs (D130), decided where a test reads it. `LiveLaunch`
 builds the two commands it ever runs, `claude attach <id>` and `claude --bg
 [--name]`, refusing an id that is not a job's and a name that would read as an
@@ -1550,6 +1550,12 @@ when it did not.
 
 > **Touching here** decides when a person's editor process is ended: every check
 > must hold before it is.
+
+### `ProjectFiles.swift` · 86
+The live view's files (D136): which entries a tree shows and in what order, the
+citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
+on (a file tool's whole path inside the folder), the lines a selection covers,
+and what the preview shows of a file.
 
 ### `NewSession.swift` · 86
 Starting a session from LampBoard (D133): the folders a machine's sessions worked
@@ -1637,7 +1643,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 664
+### `main.swift` · `AppDelegate.swift` · 671
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1752,12 +1758,12 @@ wrapped in bracketed-paste marks when the program asked for them, so `@path`
 never arrives as an Enter. Ending sends SIGHUP to the process group, then SIGTERM
 and SIGKILL: SwiftTerm's own `terminate()` closes the pty and can leave the child.
 
-### `LiveFrameView.swift` · 142
+### `LiveFrameView.swift` · 191
 The frame: the theme's backdrop, a header with the session's lamp, name and state,
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 343
+### `LiveWindowController.swift` · 371
 One window per background session, never two: two attaches of different sizes
 garble each other. Opens, starts (`claude --bg` off the main thread, then the
 attach), reattaches in the same window, closes (which detaches), and answers
@@ -1766,6 +1772,11 @@ drawn together, the terminal's text was clipped away.
 
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
+
+### `LiveFilesView.swift` · 349
+The files beside a live session (D136): the tree, read as folders open; the line
+naming the file the agent is on; a read-only preview that reads its file again
+when it changes on disk; ⌘L and Cite, which paste the citation into the session.
 
 ### `NewSessionWindow.swift` · 165
 The **New session…** window: where, which folder (the recent ones, a typed path,
@@ -2047,7 +2058,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1277 cases
+## `LampBoardTests/` — 1283 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2162,7 +2173,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 165 cases
+## `LampBoardE2E/` — 166 cases
 
 | Suite | Covers |
 |---|---|

@@ -499,3 +499,69 @@ extension MoveHereSuite {
         },
     ])
 }
+
+/// The live view's files (D136): the tree, the file the agent is on, and a
+/// citation the session reads as an attachment.
+enum ProjectFilesSuite {
+
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+    static let suite = TestSuite("Live view: files and citations", [
+
+        TestCase("A citation is the path from the session's folder, a space escaped, the lines after #L") { t in
+            t.expectEqual(ProjectFiles.citation(path: "/Users/dev/web/src/app.ts", root: "/Users/dev/web"), "@src/app.ts ")
+            t.expectEqual(ProjectFiles.citation(path: "/Users/dev/web/my notes.md", root: "/Users/dev/web", lines: 2...2),
+                          #"@my\ notes.md#L2-2 "#, "measured: quotes do not work, a backslash does")
+            t.expectEqual(ProjectFiles.citation(path: "/Users/dev/web/a.swift", root: "/Users/dev/web/", lines: 3...7), "@a.swift#L3-7 ")
+            t.expectEqual(ProjectFiles.citation(path: "/etc/hosts", root: "/Users/dev/web"), "@/etc/hosts ", "outside the folder, whole")
+            t.expectEqual(ProjectFiles.citation(path: "/Users/dev/webby/x", root: "/Users/dev/web"), "@/Users/dev/webby/x ", "a sibling is outside")
+        },
+
+        TestCase("The lines a selection covers, one ending at a line's start not taking that line") { t in
+            let text = "one\ntwo\nthree\nfour"
+            t.expectEqual(ProjectFiles.lines(in: text, selection: 0..<3), 1...1)
+            t.expectEqual(ProjectFiles.lines(in: text, selection: 4..<13), 2...3)
+            t.expectEqual(ProjectFiles.lines(in: text, selection: 4..<8), 2...2, "the newline after two is still line 2")
+            t.expectEqual(ProjectFiles.lines(in: "é\nb", selection: 2..<3), 2...2, "counted in UTF-16, as a text view does")
+            t.expectNil(ProjectFiles.lines(in: text, selection: 0..<99))
+        },
+
+        TestCase("The tree: folders first, Finder's order, the heavy folders left out") { t in
+            let sorted = ProjectFiles.sorted([("file10", false), ("node_modules", true), ("src", true), ("file2", false),
+                                              (".git", true), (".github", true), ("README.md", false)])
+            t.expectEqual(sorted.map(\.name), [".github", "src", "file2", "file10", "README.md"])
+        },
+
+        TestCase("The file the agent is on: a file tool's whole path, inside the folder") { t in
+            let edit = RunningTool(tool: "Edit", detail: "/Users/dev/web/src/app.ts", since: t0)
+            t.expectEqual(ProjectFiles.followed(edit, root: "/Users/dev/web"), "/Users/dev/web/src/app.ts")
+            t.expectNil(ProjectFiles.followed(RunningTool(tool: "Bash", detail: "/Users/dev/web/x", since: t0), root: "/Users/dev/web"))
+            t.expectNil(ProjectFiles.followed(RunningTool(tool: "Read", detail: "/etc/hosts", since: t0), root: "/Users/dev/web"))
+            let long = "/Users/dev/web/" + String(repeating: "a", count: 110)
+            t.expectNil(ProjectFiles.followed(RunningTool(tool: "Read", detail: long, since: t0), root: "/Users/dev/web"),
+                        "a detail the helper may have cut")
+            t.expectNil(ProjectFiles.followed(nil, root: "/Users/dev/web"))
+        },
+
+        TestCase("The preview: text up to a megabyte, nothing else") { t in
+            t.expectEqual(ProjectFiles.previewText(Data("let x = 1\n".utf8)), "let x = 1\n")
+            t.expectNil(ProjectFiles.previewText(Data([0x89, 0x50, 0x4E, 0x47, 0x00])), "binary")
+            t.expectNil(ProjectFiles.previewText(Data(repeating: 0x61, count: ProjectFiles.previewLimit + 1)), "too large")
+        },
+
+        TestCase("A window's header carries the folder and the file only for a session of this Mac") { t in
+            let here = SessionState(id: "4b138f7d-67ab-4d4c-9396-77adaed0f851", status: .working, workspace: Workspace(path: "/Users/dev/web"),
+                                    updatedAt: t0, statusSince: t0, origin: .background,
+                                    runningTool: RunningTool(tool: "Read", detail: "/Users/dev/web/a.swift", since: t0),
+                                    backgroundJob: BackgroundJob(id: "80129edd", sessionId: "4b138f7d-67ab-4d4c-9396-77adaed0f851", summary: nil, needs: nil))
+            let heading = LiveHeading.of(.job("80129edd"), in: TrafficLightState(sessions: [here.id: here]))
+            t.expectEqual(heading.folder, "/Users/dev/web")
+            t.expectEqual(heading.following, "/Users/dev/web/a.swift")
+            let place = TmuxPlace(session: "web", window: 0, pane: 0)!
+            let away = SessionState(id: "s2", status: .working, workspace: Workspace(path: "/home/dev/web", host: "box"),
+                                    updatedAt: t0, statusSince: t0)
+            t.expectNil(LiveHeading.of(.tmux(host: "box", place: place, sessionId: "s2"), in: TrafficLightState(sessions: ["s2": away])).folder,
+                        "another machine's files are not read from here")
+        },
+    ])
+}

@@ -73,6 +73,44 @@ enum LiveViewE2ESuite {
         (try? String(contentsOf: app.home.appendingPathComponent(".local/bin/\(name)"), encoding: .utf8)) ?? ""
     }
 
+    /// An app whose fake home holds a session in a fake tmux pane: the
+    /// session's own process (a `sleep`) stands for the pane's shell.
+    static func tmuxApp(binaryURL: URL, port: UInt16, sessionId: String, shell: Process, _ arguments: [String]) -> AppUnderTest {
+        let app = app(binaryURL: binaryURL, port: port, ["--live-session", sessionId] + arguments)
+        let prepare = app.beforeLaunch
+        app.beforeLaunch = { home in
+            prepare?(home)
+            let bin = home.appendingPathComponent(".local/bin")
+            let tmux = """
+            #!/bin/sh
+            here="$(dirname "$0")"
+            printf '%s\\n' "$*" >> "$here/tmux-calls.txt"
+            case "$1" in
+              list-panes) cat "$here/panes.txt" ;;
+              attach-session) printf 'TMUX ATTACHED %s TMUX=%s\\r\\n' "$3" "${TMUX:-none}"; exec /bin/sleep 30 ;;
+            esac
+            """
+            try? tmux.write(to: bin.appendingPathComponent("tmux"), atomically: true, encoding: .utf8)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bin.appendingPathComponent("tmux").path)
+            try? "\(shell.processIdentifier)\twork\t0\t0\n".write(to: bin.appendingPathComponent("panes.txt"), atomically: true, encoding: .utf8)
+            let record: [String: Any] = ["pid": shell.processIdentifier, "sessionId": sessionId, "cwd": home.appendingPathComponent("web").path,
+                                         "entrypoint": "cli", "kind": "interactive"]
+            try? FileManager.default.createDirectory(at: home.appendingPathComponent(".claude/sessions"), withIntermediateDirectories: true)
+            try? JSONSerialization.data(withJSONObject: record)
+                .write(to: home.appendingPathComponent(".claude/sessions/\(shell.processIdentifier).json"))
+            try? "# Web\nline two\n".write(to: home.appendingPathComponent("web/README.md"), atomically: true, encoding: .utf8)
+        }
+        return app
+    }
+
+    static func sleeper() -> Process {
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        shell.arguments = ["60"]
+        try? shell.run()
+        return shell
+    }
+
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
         TestSuite("E2E · live view", [
 
@@ -127,36 +165,9 @@ enum LiveViewE2ESuite {
 
             TestCase("a session in this Mac's tmux is found under its pane and opened with tmux attach (D132)") { t in
                 let sessionId = "e2e7d0aa-0000-4000-8000-0000000074a1"
-                // The session's own process stands for the pane's shell: the
-                // ancestry search starts with the process itself.
-                let shell = Process()
-                shell.executableURL = URL(fileURLWithPath: "/bin/sleep")
-                shell.arguments = ["60"]
-                try? shell.run()
+                let shell = sleeper()
                 defer { shell.terminate() }
-                let app = app(binaryURL: binaryURL, port: port, ["--live-session", sessionId])
-                let prepare = app.beforeLaunch
-                app.beforeLaunch = { home in
-                    prepare?(home)
-                    let bin = home.appendingPathComponent(".local/bin")
-                    let tmux = """
-                    #!/bin/sh
-                    here="$(dirname "$0")"
-                    printf '%s\\n' "$*" >> "$here/tmux-calls.txt"
-                    case "$1" in
-                      list-panes) cat "$here/panes.txt" ;;
-                      attach-session) printf 'TMUX ATTACHED %s TMUX=%s\\r\\n' "$3" "${TMUX:-none}"; exec /bin/sleep 30 ;;
-                    esac
-                    """
-                    try? tmux.write(to: bin.appendingPathComponent("tmux"), atomically: true, encoding: .utf8)
-                    try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bin.appendingPathComponent("tmux").path)
-                    try? "\(shell.processIdentifier)\twork\t0\t0\n".write(to: bin.appendingPathComponent("panes.txt"), atomically: true, encoding: .utf8)
-                    let record: [String: Any] = ["pid": shell.processIdentifier, "sessionId": sessionId, "cwd": home.appendingPathComponent("web").path,
-                                                 "entrypoint": "cli", "kind": "interactive"]
-                    try? FileManager.default.createDirectory(at: home.appendingPathComponent(".claude/sessions"), withIntermediateDirectories: true)
-                    try? JSONSerialization.data(withJSONObject: record)
-                        .write(to: home.appendingPathComponent(".claude/sessions/\(shell.processIdentifier).json"))
-                }
+                let app = tmuxApp(binaryURL: binaryURL, port: port, sessionId: sessionId, shell: shell, [])
                 defer { endAttaches(app); app.stop() }
                 do { try app.start() } catch { t.fail("did not start: \(error)"); return }
                 let shown = app.waitUntil(timeout: 20) {
@@ -174,6 +185,23 @@ enum LiveViewE2ESuite {
                 t.expectEqual(look(sessionId, nil).body, #"{"v":1,"on":true}"#, "the session in the window")
                 t.expectEqual(look("e2e7d0aa-0000-4000-8000-000000000bad", nil).body, #"{"v":1,"on":false}"#, "another session")
                 t.expectEqual(look(sessionId, .some("0000")).status, 401, "a wrong token")
+            },
+
+            TestCase("the files sit beside the session: its folder, and a file in the preview (D136)") { t in
+                let sessionId = "e2e7d0aa-0000-4000-8000-0000000074a2"
+                let shell = sleeper()
+                defer { shell.terminate() }
+                let app = tmuxApp(binaryURL: binaryURL, port: port, sessionId: sessionId, shell: shell, ["--live-files", "README.md"])
+                defer { endAttaches(app); app.stop() }
+                do { try app.start() } catch { t.fail("did not start: \(error)"); return }
+                // Its row, before the files open five seconds in: a window shows a
+                // known session's folder, and a folder is known from a window on it.
+                let web = app.home.appendingPathComponent("web").path
+                app.writeIDELock(port: 47_211, folders: [web])
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: web))
+                let shown = app.waitUntil(timeout: 25) { views(app).contains { ($0["showing"] as? String)?.hasSuffix("/web/README.md") == true } }
+                t.expect(shown, "README.md in the preview: \(views(app)) · rows \(app.sessions()?.sessions.map(\.id) ?? [])")
+                t.expect(views(app).contains { ($0["folder"] as? String)?.hasSuffix("/web") == true }, "the session's folder")
             },
 
             TestCase("what a crash left attached is ended by the next launch, and only that") { t in

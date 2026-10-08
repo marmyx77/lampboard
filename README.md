@@ -935,6 +935,13 @@ its own colours inside.
 - **Open here when LampBoard can**, in Settings, makes the live view what a click
   on such a row does.
 
+**Files**, in the header of a session of this Mac, opens its folder beside the
+terminal. The tree follows the agent: a line at the top names the file it is
+reading or editing, and a click shows it. The preview reads a file again when
+the agent changes it. **⌘L** cites the file, or the lines you selected, in the
+session's prompt as `@path#L3-7`, ready to send and not sent
+([D136](docs/04-decisions.md#d136--the-files-beside-the-session)).
+
 The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), vendored
 ([D129](docs/04-decisions.md#d129--a-terminal-of-our-own-vendored)).
 
@@ -1752,8 +1759,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1277 domain tests, instantaneous
-swift run LampBoardE2E                # 165 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1283 domain tests, instantaneous
+swift run LampBoardE2E                # 166 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
