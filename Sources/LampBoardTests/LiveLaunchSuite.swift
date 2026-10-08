@@ -213,3 +213,117 @@ enum LiveThemeSuite {
         },
     ])
 }
+
+/// What can be opened in the live view, and how (D132): a background session of
+/// this Mac by attaching to it, a session in tmux on another machine by attaching
+/// to its tmux session over ssh. tmux keeps one process however many clients
+/// look at it, so neither is a second writer; an editor's session is neither.
+enum LiveTargetSuite {
+
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+
+    static func session(origin: SessionOrigin = .editor, host: String? = nil, job: String? = nil) -> SessionState {
+        SessionState(id: "4b138f7d-67ab-4d4c-9396-77adaed0f851", status: .ready,
+                     workspace: Workspace(path: "/home/dev/web", host: host), updatedAt: t0, statusSince: t0, origin: origin,
+                     backgroundJob: job.map { BackgroundJob(id: $0, sessionId: "4b138f7d-67ab-4d4c-9396-77adaed0f851", summary: nil, needs: nil) })
+    }
+
+    static let place = TmuxPlace(session: "awevents", window: 1, pane: 0)!
+
+    static let suite = TestSuite("Live view: what can be opened", [
+
+        TestCase("A background session of this Mac opens by attaching to its job") { t in
+            let target = LiveTarget.of(session(origin: .background, job: "80129edd"), place: nil)
+            t.expectEqual(target, .job("80129edd"))
+            t.expectEqual(target?.command, "claude attach 80129edd")
+        },
+
+        TestCase("A session in tmux on another machine opens by attaching to its tmux session over ssh") { t in
+            let target = LiveTarget.of(session(host: "bestia"), place: place)
+            t.expectEqual(target, .tmux(host: "bestia", place: place, sessionId: "4b138f7d-67ab-4d4c-9396-77adaed0f851"))
+            t.expectEqual(target?.command, "ssh -t bestia \"tmux attach -t '=awevents:1.0'\"")
+        },
+
+        TestCase("An editor's session, or a remote one outside tmux, is not opened here: the jump stays") { t in
+            t.expectNil(LiveTarget.of(session(), place: nil), "VS Code on this Mac")
+            t.expectNil(LiveTarget.of(session(host: "bestia"), place: nil), "remote, not in tmux")
+            t.expectNil(LiveTarget.of(session(origin: .background, host: "bestia", job: "80129edd"), place: nil),
+                        "a background job over there: its supervisor is not this Mac's")
+            t.expectNil(LiveTarget.of(session(origin: .background, job: nil), place: nil), "no job read yet")
+        },
+
+        TestCase("The ssh that attaches: hardened, a terminal asked for, tmux's exact-name target") { t in
+            let command = LiveLaunch.command(for: .tmux(host: "bestia", place: place, sessionId: "s"), claude: "/x/claude",
+                                             environment: LiveLaunchSuite.base, home: "/home/dev")
+            t.expectEqual(command?.executable, "/usr/bin/ssh")
+            let arguments = command?.arguments ?? []
+            t.expect(arguments.contains("-t"), "a terminal over there")
+            t.expect(arguments.contains("ForwardAgent=no") && arguments.contains("BatchMode=yes"), "the same hardening as every ssh")
+            t.expect(arguments.contains("ConnectTimeout=10"), "a dead machine says so instead of freezing the window")
+            t.expectEqual(Array(arguments.suffix(3)), ["--", "bestia",
+                          "PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\" tmux attach-session -t '=awevents:1.0'"])
+        },
+
+        TestCase("What crosses a shell carries the target quoted: zsh expands a word that begins with =") { t in
+            t.expectEqual(place.quotedTarget, "'=awevents:1.0'")
+            t.expect(LiveLaunch.remoteAttach(place).hasSuffix("-t '=awevents:1.0'"), "remote")
+            t.expectEqual(LiveTarget.tmux(host: nil, place: place, sessionId: "s").command, "tmux attach -t '=awevents:1.0'")
+        },
+
+        TestCase("Only a terminal's session is placed in a pane: an editor started from tmux keeps its jump") { t in
+            t.expect(TmuxPlace.isPlaceable(entrypoint: "cli", isBackground: false), "a terminal")
+            t.expect(TmuxPlace.isPlaceable(entrypoint: nil, isBackground: false), "an older file without one")
+            t.expect(!TmuxPlace.isPlaceable(entrypoint: "claude-vscode", isBackground: false), "VS Code")
+            t.expect(!TmuxPlace.isPlaceable(entrypoint: "sdk-cli", isBackground: false), "the SDK")
+            t.expect(!TmuxPlace.isPlaceable(entrypoint: "cli", isBackground: true), "a background job attaches as one")
+        },
+
+        TestCase("Two panes of one tmux session, or two machines with one name, are two windows") { t in
+            let a = LiveTarget.tmux(host: "bestia", place: place, sessionId: "s1")
+            let b = LiveTarget.tmux(host: "bestia", place: TmuxPlace(session: "awevents", window: 2, pane: 0)!, sessionId: "s2")
+            let c = LiveTarget.tmux(host: "other", place: place, sessionId: "s3")
+            let here = LiveTarget.tmux(host: nil, place: place, sessionId: "s4")
+            let local = LiveTarget.tmux(host: "local", place: place, sessionId: "s5")
+            t.expectEqual(Set([a.key, b.key, c.key, here.key, local.key]).count, 5)
+        },
+
+        TestCase("This Mac's panes are read from tmux, and a session is placed by its ancestry") { t in
+            let panes = TmuxPlace.panes("411\tawevents\t1\t0\n512\tbad name\t0\t0\nnot a line\n613\tdocs\t0\t2\n")
+            t.expectEqual(panes.count, 2, "the line with a space in the name is skipped")
+            t.expectEqual(TmuxPlace.place(ofAncestry: [900, 850, 613, 1], in: panes), TmuxPlace(session: "docs", window: 0, pane: 2))
+            t.expectNil(TmuxPlace.place(ofAncestry: [900, 850, 1], in: panes), "not under any pane")
+        },
+
+        TestCase("A tmux place is only what tmux would read as one name") { t in
+            t.expectNotNil(TmuxPlace(session: "ai-act-lab", window: 0, pane: 2))
+            for bad in ["", "a b", "x;rm", "a:b", "a.b", "-n", String(repeating: "a", count: 65)] {
+                t.expectNil(TmuxPlace(session: bad, window: 0, pane: 0), "refused: \(bad)")
+            }
+            t.expectNil(TmuxPlace(session: "ok", window: -1, pane: 0))
+        },
+
+        TestCase("A host that would read as an option is no target") { t in
+            t.expectNil(LiveTarget.of(session(host: "-oProxyCommand=x"), place: place))
+        },
+
+        TestCase("A session in tmux on this Mac opens with this Mac's tmux, for anyone who keeps Claude there") { t in
+            let target = LiveTarget.of(session(origin: .terminal), place: place)
+            t.expectEqual(target, .tmux(host: nil, place: place, sessionId: "4b138f7d-67ab-4d4c-9396-77adaed0f851"))
+            t.expectEqual(target?.command, "tmux attach -t '=awevents:1.0'")
+            let command = LiveLaunch.command(for: target!, claude: "/x/claude", environment: LiveLaunchSuite.base,
+                                             home: "/home/dev", tmux: "/opt/homebrew/bin/tmux")
+            t.expectEqual(command?.executable, "/opt/homebrew/bin/tmux")
+            t.expectEqual(command?.arguments, ["attach-session", "-t", "=awevents:1.0"])
+            t.expectNil(command?.environment["TMUX"], "attached, not nested")
+            t.expectNil(LiveLaunch.command(for: target!, claude: "/x/claude", environment: [:], home: "/home/dev", tmux: nil),
+                        "no tmux found here, nothing offered")
+        },
+
+        TestCase("The remote probe's tmux field is read; a damaged one is none") { t in
+            let json = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","kind":"interactive","activityEpoch":1,"tmux":{"session":"awevents","window":1,"pane":0}},{"pid":13,"sessionId":"s2","cwd":"/home/dev/api","tmux":{"session":"a b","window":0,"pane":0}}]}"#
+            let report = try? RemoteSessionsDecoder.report(from: Data(json.utf8), host: "bestia", at: t0)
+            t.expectEqual(report?.sessions.first?.tmux, place)
+            t.expectNil(report?.sessions.last?.tmux, "a name tmux could not take back")
+        },
+    ])
+}

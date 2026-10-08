@@ -98,7 +98,7 @@ final class StateStore: ObservableObject {
     ///
     /// A host that fails to answer keeps its previous entry. Silence is not death
     /// — the same rule that stopped this app pruning live local sessions.
-    private var remoteSessions: [String: [LiveSession]] = [:]
+    private(set) var remoteSessions: [String: [LiveSession]] = [:]
     /// The editor windows open on each host, as its last probe reported them.
     /// A remote row's folder is resolved against these, the way a local row's is
     /// resolved against this Mac's lock files (D51).

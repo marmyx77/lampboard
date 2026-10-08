@@ -62,8 +62,8 @@ public enum Capabilities {
             item("Project rules", "One decision, and every session in the repository keeps to it.", helper: true,
                  place: "A row's menu › More › Add a project rule"),
             item("Hand over", "Pass what one session knows to another.", tryIt: .bar("/handoff @")),
-            item("Live view", "A background session in a LampBoard window, its real interface. Closing it leaves the session running.",
-                 setting: .liveOpensBackground, place: "A background session's row › Open here"),
+            item("Live view", "A background or tmux session in a LampBoard window, its real interface. Closing it leaves it running.",
+                 setting: .liveOpensBackground, place: "The row's menu › Open here"),
         ]),
         Group(title: "Step away", items: [
             item("I'm away", "Nothing interrupts; back, one line says what the rows no longer show.", setting: .away),

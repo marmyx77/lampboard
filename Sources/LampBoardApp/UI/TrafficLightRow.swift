@@ -49,11 +49,13 @@ struct RowActions {
     var toggleModel: (ColumnRow) -> Void = { _ in }
     /// Puts the row's session in the foreground, or takes it out (G1).
     var toggleFocus: (ColumnRow) -> Void = { _ in }
-    /// Opens a background session in the live view, and starts a new one there (D130).
-    var openHere: (BackgroundJob) -> Void = { _ in }
+    /// What the live view could open for a session, if anything (D130, D132).
+    var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
+    /// Opens it in the live view, and starts a new session there (D130).
+    var openHere: (LiveTarget) -> Void = { _ in }
     var startHere: (ColumnRow) -> Void = { _ in }
-    /// Copies what reopens a background session in a terminal (AV2).
-    var copyAttach: (BackgroundJob) -> Void = { _ in }
+    /// Copies the command that opens it in a terminal of one's own (AV2).
+    var copyCommand: (String) -> Void = { _ in }
     /// Takes the sample rows away (U4).
     var removeSamples: () -> Void = {}
 }
@@ -448,13 +450,13 @@ struct TrafficLightRow: View {
 
     private var realMenu: some View {
         let repository = row.workspace.isRemote ? nil : row.primary.git?.repo
-        let job = row.primary.origin == .background ? row.primary.backgroundJob : nil
+        let target = actions.liveTarget(row.primary)
         let state = RowMenuState(
             isRemote: row.workspace.isRemote, compact: compact, alias: row.alias, folder: row.workspace.name,
             status: row.status, isHidden: flags.isHidden, isCalm: flags.isCalm, isMuted: flags.isMuted,
             isFocused: flags.isFocused, notificationsEnabled: flags.notificationsEnabled,
             hostsNewConversation: row.hostsNewConversation, repository: repository,
-            pinned: repository.map(actions.decisions) ?? [], attachCommand: job?.attachCommand,
+            pinned: repository.map(actions.decisions) ?? [], attachCommand: target?.command,
             modelOffer: actions.governorOffer(row)?.title
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
@@ -475,8 +477,8 @@ struct TrafficLightRow: View {
             case .revealInFinder: actions.revealInFinder(row)
             case .pinDecision: if let repository { actions.pinDecision(repository) }
             case .unpinDecision(let number): if let repository { actions.unpinDecision(repository, number) }
-            case .copyAttach: if let job { actions.copyAttach(job) }
-            case .openHere: if let job { actions.openHere(job) }
+            case .copyAttach: if let target { actions.copyCommand(target.command) }
+            case .openHere: if let target { actions.openHere(target) }
             case .startHere: actions.startHere(row)
             case .toggleModel: actions.toggleModel(row)
             default: break

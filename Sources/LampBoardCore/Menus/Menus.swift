@@ -150,10 +150,10 @@ public enum Menus {
     public static func row(_ state: RowMenuState) -> [MenuEntry] {
         let local = !state.isRemote
         var entries: [MenuEntry] = [.item(.open, "Open")]
-        // A background session, and only one: the supervisor keeps it single-writer.
-        // An interactive one opened here would be a second writer (D130).
-        // On this Mac only: an attach reaches this Mac's supervisor.
-        if state.attachCommand != nil, local { entries.append(.item(.openHere, "Open here")) }
+        // Only a session the live view can open with one writer: a background
+        // one, or one in tmux (D130, D132); `LiveTarget` decides, and the row says
+        // so by having a command. An editor's session would be a second writer.
+        if state.attachCommand != nil { entries.append(.item(.openHere, "Open here")) }
         // The transcript and a new conversation are on this Mac: a row that lives
         // elsewhere is not offered either.
         if local { entries.append(.item(.read, "Read the conversation")) }

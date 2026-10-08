@@ -118,8 +118,18 @@ public enum RemoteSessionsDecoder {
             kind: string(record, "kind"),
             modifiedAt: Date(timeIntervalSince1970: epoch),
             host: host,
-            context: context
+            context: context,
+            tmux: tmux(record["tmux"])
         )
+    }
+
+    /// Where the probe found the session in tmux (D132): a name tmux could read
+    /// back as one, and two numbers; anything else is no place.
+    private static func tmux(_ value: Any?) -> TmuxPlace? {
+        guard let object = value as? [String: Any], let session = object["session"] as? String,
+              let window = (object["window"] as? NSNumber)?.intValue, let pane = (object["pane"] as? NSNumber)?.intValue
+        else { return nil }
+        return TmuxPlace(session: session, window: window, pane: pane)
     }
 
     private static func string(_ record: [String: Any], _ key: String) -> String? {

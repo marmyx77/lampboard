@@ -12,25 +12,26 @@ import LampBoardCore
 final class LiveWindowController: NSObject, NSWindowDelegate {
 
     private final class Live {
-        let job: String
+        let target: LiveTarget
+        var job: String { target.key }
         let window: NSWindow
         let surface: LiveSurface
         let frame: LiveFrameView
         var ended = false
-        init(job: String, window: NSWindow, surface: LiveSurface, frame: LiveFrameView) {
-            self.job = job; self.window = window; self.surface = surface; self.frame = frame
+        init(target: LiveTarget, window: NSWindow, surface: LiveSurface, frame: LiveFrameView) {
+            self.target = target; self.window = window; self.surface = surface; self.frame = frame
         }
     }
 
     private var lives: [String: Live] = [:]
     private var clock: Timer?
     private let preferences: Preferences
-    /// The header of a job's window: its row's name, folder and state.
-    private let describe: (String) -> LiveHeading
+    /// The header of a window: its row's name, folder and state.
+    private let describe: (LiveTarget) -> LiveHeading
     /// A surface for each window. A test could hand in another.
     private let makeSurface: @MainActor () -> LiveSurface
 
-    init(preferences: Preferences, describe: @escaping (String) -> LiveHeading,
+    init(preferences: Preferences, describe: @escaping (LiveTarget) -> LiveHeading,
          makeSurface: (@MainActor () -> LiveSurface)? = nil) {
         self.preferences = preferences
         self.describe = describe
@@ -39,21 +40,26 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Opening
 
-    /// Opens `job`'s window, or brings it forward. `false` when the id is not a
-    /// job's or `claude` cannot be found, which the caller says.
+    /// Opens a background job of this Mac (`--live`, a start).
     @discardableResult
-    func open(job: String) -> Bool {
+    func open(job: String) -> Bool { open(.job(job)) }
+
+    /// Opens `target`'s window, or brings it forward. `false` when no command
+    /// can open it (`claude` not found, an id or a host refused).
+    @discardableResult
+    func open(_ target: LiveTarget) -> Bool {
+        let job = target.key
         if let live = lives[job] {
             if live.ended { attach(live) }
             bringToFront(live.window)
             return true
         }
-        guard let command = attachCommand(job) else { return false }
+        guard let command = command(for: target) else { return false }
         let theme = LiveTheme.named(preferences.liveTheme)
         let surface = makeSurface()
         let frame = LiveFrameView(theme: theme, terminal: surface.view)
-        let window = makeWindow(content: frame, job: job)
-        let live = Live(job: job, window: window, surface: surface, frame: frame)
+        let window = makeWindow(content: frame, target: target)
+        let live = Live(target: target, window: window, surface: surface, frame: frame)
         frame.reattach.target = self
         frame.reattach.action = #selector(reattachPressed(_:))
         frame.reattach.identifier = NSUserInterfaceItemIdentifier(job)
@@ -180,10 +186,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Inside
 
-    private func attachCommand(_ job: String) -> LiveCommand? {
-        guard let claude = LampMasterRunner.executable() else { return nil }
-        return LiveLaunch.attach(job: job, claude: claude, environment: ProcessInfo.processInfo.environment,
-                                 home: AppConfig.homeDirectory.path)
+    private func command(for target: LiveTarget) -> LiveCommand? {
+        // An ssh needs no `claude` here; an attach does.
+        let claude = LampMasterRunner.executable()
+        if case .job = target, claude == nil { return nil }
+        return LiveLaunch.command(for: target, claude: claude ?? "", environment: ProcessInfo.processInfo.environment,
+                                  home: AppConfig.homeDirectory.path, tmux: LocalTmuxPlaces.executable())
     }
 
     private func start(_ live: Live, _ command: LiveCommand) {
@@ -202,8 +210,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// The attach ended (the session stopped, or `/exit`): the same window,
     /// a new surface on the same session.
     private func attach(_ live: Live) {
-        guard live.ended, let command = attachCommand(live.job) else { return }
-        let replacement = Live(job: live.job, window: live.window, surface: makeSurface(), frame: live.frame)
+        guard live.ended, let command = command(for: live.target) else { return }
+        let replacement = Live(target: live.target, window: live.window, surface: makeSurface(), frame: live.frame)
         // The old one has exited: ending it closes its pty and signals nothing.
         live.surface.onExit = nil
         live.surface.end(waiting: false)
@@ -220,13 +228,14 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         attach(live)
     }
 
-    private func makeWindow(content: NSView, job: String) -> NSWindow {
+    private func makeWindow(content: NSView, target: LiveTarget) -> NSWindow {
+        let job = target.key
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.title = describe(job).title
+        window.title = describe(target).title
         window.isReleasedWhenClosed = false
         window.contentView = content
         window.minSize = NSSize(width: 560, height: 360)
@@ -257,7 +266,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     private func refreshHeaders() {
         for live in lives.values {
-            let header = describe(live.job)
+            let header = describe(live.target)
             live.frame.show(header, ended: live.ended)
             if live.window.title != header.title { live.window.title = header.title }
         }

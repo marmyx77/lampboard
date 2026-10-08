@@ -50,6 +50,58 @@ public enum RemoteProbeScript {
                 pass
         return True
 
+    # Where each session sits in tmux, if it does (D132): the panes of the
+    # default server, and each session's ancestors up to a pane's shell. Asked
+    # once per probe; a machine without tmux, or with no server, has no places.
+    panes = {}
+    try:
+        import subprocess, shutil
+        # A non-interactive ssh keeps PATH short: Homebrew's tmux on a Mac is
+        # looked for where it lives.
+        tmux = shutil.which("tmux") or next((p for p in ("/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux")
+                                             if os.access(p, os.X_OK)), None)
+        listing = subprocess.run(
+            [tmux, "list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}"],
+            capture_output=True, text=True, timeout=3).stdout if tmux else ""
+        for line in listing.splitlines():
+            fields = line.split("\t")
+            if len(fields) == 4 and fields[0].isdigit():
+                panes[int(fields[0])] = {"session": fields[1], "window": int(fields[2]), "pane": int(fields[3])}
+    except Exception:
+        panes = {}
+
+    # Without /proc (a Mac), one snapshot of the whole table rather than a ps
+    # per step of every walk.
+    parents = {}
+    if panes and not os.path.isdir("/proc/self"):
+        try:
+            import subprocess
+            for line in subprocess.run(["ps", "-A", "-o", "pid=,ppid="], capture_output=True, text=True,
+                                       timeout=3).stdout.splitlines():
+                fields = line.split()
+                if len(fields) == 2 and fields[0].isdigit() and fields[1].isdigit():
+                    parents[int(fields[0])] = int(fields[1])
+        except Exception:
+            parents = {}
+
+    def parent(pid):
+        if pid in parents:
+            return parents[pid]
+        try:
+            with open("/proc/%d/stat" % pid) as stat:
+                return int(stat.read().rsplit(")", 1)[1].split()[1])
+        except Exception:
+            return 0
+
+    def tmux_place(pid):
+        seen = 0
+        while pid > 1 and seen < 16:
+            if pid in panes:
+                return panes[pid]
+            pid = parent(pid)
+            seen += 1
+        return None
+
     out = []
     for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
         try:
@@ -124,6 +176,10 @@ public enum RemoteProbeScript {
             "kind": record.get("kind"),
             "activityEpoch": int(activity),
             "contextTail": tail,
+            # Only a terminal's session: an editor started from a pane hosts
+            # its sessions under that pane too, and keeps its jump (D132).
+            "tmux": tmux_place(pid) if panes and record.get("entrypoint") in (None, "cli")
+                    and record.get("kind") != "bg" else None,
         })
 
     # The editor windows open on this machine, from the same lock files the Mac

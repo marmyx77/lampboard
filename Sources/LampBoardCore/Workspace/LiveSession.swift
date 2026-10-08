@@ -53,13 +53,15 @@ public struct LiveSession: Sendable, Equatable {
     /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
     /// is fit for a shell — see `BackgroundJobParser.isSafe`.
     public let jobId: String?
+    /// Where it runs in tmux, on a machine whose probe could say (D132).
+    public let tmux: TmuxPlace?
 
     /// Copy with a different activity timestamp.
     public func with(modifiedAt newValue: Date) -> LiveSession {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId
+            context: context, jobId: jobId, tmux: tmux
         )
     }
 
@@ -74,8 +76,10 @@ public struct LiveSession: Sendable, Equatable {
         host: String? = nil,
         procStart: String? = nil,
         context: ContextReading? = nil,
-        jobId: String? = nil
+        jobId: String? = nil,
+        tmux: TmuxPlace? = nil
     ) {
+        self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
         self.host = host?.trimmed.nilIfEmpty

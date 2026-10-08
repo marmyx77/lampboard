@@ -66,13 +66,7 @@ enum RemoteCommand {
     /// agent, X11, or a `LocalCommand` run here: `-a -x` and the two options say so
     /// explicitly. `ClearAllForwardings` is **not** used — it would also clear the
     /// `-R` the tunnel is made of.
-    static let hardening: [String] = [
-        "-a", "-x",
-        "-o", "ForwardAgent=no",
-        "-o", "PermitLocalCommand=no",
-        "-o", "BatchMode=yes",
-        "-o", "StrictHostKeyChecking=accept-new",
-    ]
+    static let hardening: [String] = SSHHardening.options
 
     /// - Parameter maxOutput: past this many bytes the far side is answering more
     ///   than it was asked, and ssh is stopped: another machine's answer is not

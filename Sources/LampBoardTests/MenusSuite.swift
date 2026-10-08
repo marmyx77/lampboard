@@ -74,14 +74,14 @@ enum MenusSuite {
             ])
         },
 
-        TestCase("A background session opens here, in the live view, beside its terminal command (D130)") { t in
+        TestCase("A session the live view can open says Open here, beside its terminal command (D130, D132)") { t in
             let entries = Menus.row(row(attach: "claude attach 4b1"))
             t.expectEqual(Array(titles(entries).prefix(2)), ["Open", "Open here"])
             t.expect(entries.contains { if case .item(.openHere, _, _, _, _) = $0 { return true }; return false }, "its command")
             t.expect(titles(submenu("More", in: entries)).contains("Copy “claude attach 4b1”"), "the command is still copied")
             t.expect(!titles(Menus.row(row())).contains("Open here"), "an interactive session never opens here: two writers")
-            t.expect(!titles(Menus.row(row(remote: true, attach: "claude attach 4b1"))).contains("Open here"),
-                     "a background session on another machine is not attached to from this one")
+            t.expect(titles(Menus.row(row(remote: true, attach: "ssh -t box tmux attach -t =web:0.0"))).contains("Open here"),
+                     "a session in tmux on another machine opens here too: tmux keeps one writer")
         },
 
         TestCase("A row on another machine offers nothing that would need this Mac's files or editor") { t in

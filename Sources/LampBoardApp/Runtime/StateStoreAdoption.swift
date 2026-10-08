@@ -245,3 +245,10 @@ extension StateStore {
     }
 
 }
+
+extension StateStore {
+    /// Where a remote session sits in tmux, as its own machine's probe last said (D132).
+    func remoteTmuxPlace(sessionId: String, host: String) -> TmuxPlace? {
+        remoteSessions[host]?.first { $0.sessionId == sessionId }?.tmux
+    }
+}

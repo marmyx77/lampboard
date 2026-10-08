@@ -34,11 +34,11 @@ extension PanelController {
         // to the project's first real session rather than nowhere.
         guard let session = row.sessions.first(where: { $0.harness != .command }) else { return }
 
-        // A background session has no window of its own. With the live view
-        // chosen for them, a click opens it in one of LampBoard's (D130).
-        if preferences.liveOpensBackground, !row.workspace.isRemote, session.origin == .background,
-           let job = session.backgroundJob {
-            openHere(job)
+        // A session the live view can open (in the background, or in tmux here
+        // or on another machine): with the live view chosen, a click opens it in
+        // one of LampBoard's windows (D130, D132). An editor's session still jumps.
+        if preferences.liveOpensBackground, let target = liveTarget(session) {
+            openHere(target)
             return
         }
 

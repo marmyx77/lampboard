@@ -4,10 +4,13 @@ import LampBoardCore
 /// The panel's side of the live view (D130): what a row asks of it.
 extension PanelController {
 
-    /// «Open here» on a background session's row.
-    func openHere(_ job: BackgroundJob) {
-        if live?.open(job: job.id) != true {
-            liveRefused("LampBoard could not open this session: Claude Code was not found on this Mac.")
+    /// «Open here» on a row the live view can open.
+    func openHere(_ target: LiveTarget) {
+        guard live?.open(target) != true else { return }
+        switch target {
+        case .job: liveRefused("LampBoard could not open this session: Claude Code was not found on this Mac.")
+        case .tmux(nil, _, _): liveRefused("LampBoard could not open this session: tmux was not found on this Mac.")
+        case .tmux: liveRefused("LampBoard could not open this session: that machine's name is not one ssh can be given.")
         }
     }
 

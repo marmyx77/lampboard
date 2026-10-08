@@ -5031,3 +5031,70 @@ filled itself. The 1.14.0 helper
 passes `claude plugin validate`, which the gate runs (`Scripts/check-mod.sh`). The app carries the new file compiled in
 (`ModFilesLamps.swift`), and `ModFilesSuite` holds it to the bytes of
 `mod/hooks/lamps.js`.
+
+## D132 · Sessions in tmux, here and on other machines
+
+**Decided.** The live view also opens a session that runs inside tmux, on this
+Mac or on any machine added under Settings › Other Macs. Its row offers **Open
+here**, and the window runs `tmux attach-session -t =<session>:<window>.<pane>`:
+with this Mac's own tmux, or over ssh for another machine
+(`ssh -t <host> tmux attach-session …`, with the same hardening every ssh of
+LampBoard carries, now in `SSHHardening`). Nothing names a machine: a host is
+whatever the person added, and a tmux session is found wherever Claude runs in one.
+
+**Why it is safe.** tmux keeps one process however many clients attach, so the
+live view is one more screen on the same session, never a second writer. The
+person's own terminal, an iPhone through Remote Control and the live view can all
+look at it at once. A session in an editor still has no such guard and still
+jumps.
+
+**How a session is placed.** On another machine the probe that already reads its
+sessions also asks `tmux list-panes -a` once and walks each session's process up
+its parents to a pane's shell, through `/proc` on Linux or `ps` on a Mac. On this
+Mac a small service does the same every ten seconds (`LocalTmuxPlaces`), so that a
+row's menu never runs a command while it is drawn. Both read tmux's default
+server, and both answer nothing when tmux is missing or not running. A tmux
+session name is offered only when tmux can take it back as one name (letters,
+digits, dashes, underscores); the target is tmux's exact-name form, so `awe`
+never attaches to `awevents`.
+
+**What changed around it.**
+- The setting is now **Open here when LampBoard can**: a click on any session the
+  live view can open, in the background or in tmux, opens it there.
+- The row's More ▸ copies whichever command opens it in a terminal of one's own:
+  `claude attach <id>`, `tmux attach -t …` or `ssh -t … tmux attach -t …`.
+- A window's header names the machine when the session is on another one.
+
+**Measured.**
+- On the always-on Linux box the probe placed every session that runs in tmux in
+  its own tmux session, and placed nothing for a helper process outside tmux.
+- The end-to-end suite puts a fake `tmux` in the fake home, with one pane whose
+  shell is a session's own process. The session was placed and opened with
+  `tmux attach-session -t =work:0.0`, with `TMUX` absent from its environment.
+- The first run of that case failed: the window controller never handed the path
+  of `tmux` to the launch, so a placed session opened nothing. That was caught by
+  the case.
+
+**What a review changed.** It found two high issues and seven medium ones, all fixed:
+- **zsh.** zsh, a Mac's default shell, expands a word that begins with `=` into a
+  command's path, so `=work:0.0` never reached tmux on another Mac, and the copied
+  command failed when pasted. The target now crosses every shell in single quotes,
+  as one remote command string. Over ssh from the Linux box to itself, that string
+  attached to a throwaway tmux session.
+- **An editor started from a pane.** Such an editor hosts its sessions under that
+  pane, and they were being placed in it, losing their jump. Only a terminal's
+  session is placed now: entrypoint `cli`, or none.
+- **Keys and lookups.** A window is keyed by session, window and pane, so two panes
+  of one tmux session are two windows. A machine named `local` cannot collide with
+  this Mac. A remote place is looked up on its own machine only.
+- **The probe on a Mac.** Where there is no `/proc`, the probe takes one snapshot of
+  the process table instead of running `ps` for every step of every walk. It finds
+  Homebrew's tmux, which a non-interactive ssh does not have on its PATH, and the
+  attach adds Homebrew's folders to PATH for the same reason.
+- **Time and noise.** The attach gives up connecting after ten seconds. When tmux
+  does not answer, this Mac keeps the places it had, so Open here does not blink
+  out of a menu.
+
+**Not yet.** zellij sessions, a background session on another machine
+(`ssh -t <host> claude attach <id>`), and tmux servers on sockets other than the
+default.

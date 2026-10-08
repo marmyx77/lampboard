@@ -25,9 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: PanelController?
     /// The live view's windows (D130): here and not in the panel, because the
     /// end-to-end suite runs headless and still opens them.
-    private lazy var live = LiveWindowController(preferences: preferences) { [store] job in
-        LiveHeading.of(job: job, in: store.state)
+    private lazy var live = LiveWindowController(preferences: preferences) { [store] target in
+        LiveHeading.of(target, in: store.state)
     }
+    /// Where this Mac's sessions sit in tmux, for Open here (D132).
+    private let localTmux = LocalTmuxPlaces()
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
@@ -110,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !headless {
             startInterface()
         }
+        localTmux.start()
 
         // `--live <job>` opens a background session in the live view (D130): for
         // the pictures, and for the end-to-end suite, which cannot click. Against
@@ -128,6 +131,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            CommandLine.arguments.indices.contains(index + 1) {
             let path = CommandLine.arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.live.snapshot(to: path) }
+        }
+        // `--live-session <id>`, against a fake home: a session of this Mac's tmux,
+        // opened as soon as its pane is known (the end-to-end suite's way in).
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-session"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            openWhenPlaced(CommandLine.arguments[index + 1], tries: 40)
         }
         if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-start"),
            CommandLine.arguments.indices.contains(index + 1) {
@@ -263,6 +272,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.typeIntoBar(text) }
         }
         controller.live = live
+        controller.liveTarget = { [store, localTmux] session in
+            LiveTarget.of(session, place: session.workspace.host.map { store.remoteTmuxPlace(sessionId: session.id, host: $0) }
+                          ?? localTmux.places[session.id])
+        }
         panelController = controller
 
         startNotifier(for: controller)
@@ -390,8 +403,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         presence?.remove()
         // Every attach ends; every background session goes on (D130).
         live.endAll()
+        localTmux.stop()
         panelController?.close()
         if TrialStage.mode != nil { TrialStage.tearDown() }
+    }
+
+    private func openWhenPlaced(_ sessionId: String, tries: Int) {
+        if let place = localTmux.places[sessionId] {
+            live.open(.tmux(host: nil, place: place, sessionId: sessionId))
+            return
+        }
+        guard tries > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.openWhenPlaced(sessionId, tries: tries - 1) }
     }
 
     // MARK: - Server

@@ -57,6 +57,8 @@ final class PanelController {
 
     /// The live view's windows (D130), owned by the app: they open headless too.
     var live: LiveWindowController?
+    /// What the live view could open for a session (D132), set by the app.
+    var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
 
     /// Called from outside to turn notifications on or off.
     /// Opens the Settings window; set by whoever owns it.
@@ -512,11 +514,12 @@ final class PanelController {
                 let held = row.sessions.first { $0.id == self.preferences.focusedSession }
                 self.toggleFocus(sessionId: held?.id ?? row.primary.id)
             },
-            openHere: { [weak self] job in self?.openHere(job) },
+            liveTarget: { [weak self] session in self?.liveTarget(session) },
+            openHere: { [weak self] target in self?.openHere(target) },
             startHere: { [weak self] row in self?.startHere(row) },
-            copyAttach: { job in
+            copyCommand: { command in
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(job.attachCommand, forType: .string)
+                NSPasteboard.general.setString(command, forType: .string)
             },
             removeSamples: { [weak self] in self?.samples.stop() }
         )

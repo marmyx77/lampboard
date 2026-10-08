@@ -209,13 +209,25 @@ public struct LiveHeading: Equatable, Sendable {
     public let detail: String
     public let status: SessionStatus?
 
-    /// The session whose background job is `job`: its title or its folder, the
-    /// folder and the state in the glossary's words. A job no row knows yet
-    /// (just started, or its first signal still on the way) is named by its id.
-    public static func of(job: String, in state: TrafficLightState) -> LiveHeading {
-        let held = state.sessions.values.filter { $0.backgroundJob?.id == job }.max { $0.updatedAt < $1.updatedAt }
-        guard let session = held else { return LiveHeading(title: job, detail: "background session", status: nil) }
+    /// The session behind `target`: its title or its folder, the folder (and
+    /// the machine) and the state in the glossary's words. A session no row
+    /// knows yet is named by the target.
+    public static func of(_ target: LiveTarget, in state: TrafficLightState) -> LiveHeading {
+        let held: SessionState?
+        switch target {
+        case .job(let job):
+            held = state.sessions.values.filter { $0.backgroundJob?.id == job }.max { $0.updatedAt < $1.updatedAt }
+        case .tmux(_, _, let sessionId):
+            held = state.sessions[sessionId]
+        }
+        guard let session = held else {
+            return LiveHeading(title: target.key, detail: target.command, status: nil)
+        }
         let title = session.title?.nilIfEmpty ?? session.workspace.name
-        return LiveHeading(title: title, detail: "\(session.workspace.name) · \(session.status.label)", status: session.status)
+        let place = session.workspace.host.map { "\(session.workspace.name) on \($0)" } ?? session.workspace.name
+        return LiveHeading(title: title, detail: "\(place) · \(session.status.label)", status: session.status)
     }
+
+    /// The same, for a background job of this Mac.
+    public static func of(job: String, in state: TrafficLightState) -> LiveHeading { of(.job(job), in: state) }
 }

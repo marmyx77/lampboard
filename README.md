@@ -486,7 +486,7 @@ Right-click **on a row**: eight entries, the ways of keeping it quiet under
 | Entry | What it does |
 |---|---|
 | Open | same as the click |
-| Open here | a background session only: its real interface in a LampBoard window (the live view, below) |
+| Open here | a background session, or one in tmux here or on another machine: its real interface in a LampBoard window (the live view, below) |
 | Read the conversation | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
 | Open in Session view | the session close up, beside the list |
 | New conversation here | opens a new Claude tab in the project |
@@ -897,7 +897,11 @@ still copies `claude attach <id>`, for a terminal of your own.
 
 ### The live view
 
-**Open here** opens a background session in a window of LampBoard's: its real
+**Open here** opens a session in a window of LampBoard's: a background session of
+this Mac, or a session that runs in tmux, on this Mac or on any machine under
+Settings › Other Macs ([D132](docs/04-decisions.md#d132--sessions-in-tmux-here-and-on-other-machines)).
+tmux keeps one process however many screens look at it, so your own terminal,
+your phone and the live view can watch the same session at once. Its real
 Claude Code interface, every dialog, slash command and mod included, drawn by a
 terminal that does not look like one
 ([D130](docs/04-decisions.md#d130--the-live-view)). A header carries the session's
@@ -910,13 +914,14 @@ its own colours inside.
   Quitting LampBoard detaches every window the same way.
 - **One window per session.** Two attaches of different sizes draw over each
   other, so a second Open here brings the first window forward.
-- **Only background sessions.** A session open in an editor or a terminal has a
-  writer already: a second one would fork its conversation without a word (measured).
-  Its click still goes where it lives.
+- **Only sessions with one writer.** A background session, or one in tmux. A
+  session open in an editor or a plain terminal has a writer already: a second one
+  would fork its conversation without a word (measured). Its click still goes where
+  it lives.
 - **New conversation in LampBoard** (a row's More ▸) starts `claude --bg` in the
   row's folder and opens it as soon as Claude Code says its id. A folder Claude
   Code was never told to trust is refused, with what to do.
-- **Open background sessions here** in Settings makes the live view what a click
+- **Open here when LampBoard can**, in Settings, makes the live view what a click
   on such a row does.
 
 The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), vendored
@@ -1723,8 +1728,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1247 domain tests, instantaneous
-swift run LampBoardE2E                # 164 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1259 domain tests, instantaneous
+swift run LampBoardE2E                # 165 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
