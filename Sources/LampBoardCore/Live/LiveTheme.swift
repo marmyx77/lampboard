@@ -32,6 +32,9 @@ public struct LiveTheme: Equatable, Sendable {
     public var ansi: [String]? = nil
 
     public static let defaultId = "night"
+    /// «Like my VS Code» (D144): a theme read from VS Code at the moment it is
+    /// used, not one of the presets.
+    public static let fromVSCodeId = "vscode-mine"
 
     public static let presets: [LiveTheme] = [
         LiveTheme(id: "night", name: "Night", backdropTop: "#141a2e", backdropBottom: "#2a1a3a",

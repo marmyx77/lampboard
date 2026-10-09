@@ -81,7 +81,7 @@ public enum SettingsCatalog {
             ]),
             Group(title: "The live view", items: [
                 i(.liveOpensBackground, "Open here when LampBoard can", "A click on a session in the background, or in tmux on this Mac or another, opens it in a LampBoard window instead of jumping. Sessions in an editor still jump. Closing the window leaves the session running."),
-                i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside."),
+                i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside, except with the VS Code themes; Like my VS Code reads the colours of the VS Code on this Mac."),
                 i(.liveFontSize, "Text size", "The size of the session's text, in every live window at once."),
                 i(.liveFontFamily, "Font", "Any fixed-width font on this Mac: Claude Code draws on a grid, which a proportional font would break."),
                 i(.liveLineSpacing, "Line spacing", "A little air between lines reads like a chat; too much splits Claude Code's boxes."),

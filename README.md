@@ -912,7 +912,10 @@ Ember, Paper) and a text size from Settings › Clicks & keys, and Claude Code k
 its own colours inside. **VS Code Light** and **VS Code Dark** bring VS Code's own
 terminal colours too, so the window reads like the editor's chat; any fixed-width
 font and a little line spacing can be chosen beside them
-([D142](docs/04-decisions.md#d142--vs-codes-colours-in-the-live-view)).
+([D142](docs/04-decisions.md#d142--vs-codes-colours-in-the-live-view)). **Like my
+VS Code** reads the colours of the VS Code on this Mac instead, its profile and
+theme, and the fixed-width sibling of its chat font when there is one
+([D144](docs/04-decisions.md#d144--like-my-vs-code)).
 
 - **Closing the window detaches.** The session goes on under Claude Code's own
   supervisor, its lamp keeps working, and opening it again picks it up where it is.
@@ -1766,7 +1769,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1297 domain tests, instantaneous
+swift run LampBoardTests              # 1302 domain tests, instantaneous
 swift run LampBoardE2E                # 168 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

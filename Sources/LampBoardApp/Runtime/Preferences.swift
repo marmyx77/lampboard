@@ -336,7 +336,10 @@ struct Preferences {
     /// and the panel's green already says it for those who glance.
     /// The live view's theme (D130): an id of `LiveTheme.presets`.
     var liveTheme: String {
-        get { LiveTheme.named(defaults.string(forKey: Key.liveTheme)).id }
+        get {
+            let stored = defaults.string(forKey: Key.liveTheme)
+            return stored == LiveTheme.fromVSCodeId ? LiveTheme.fromVSCodeId : LiveTheme.named(stored).id
+        }
         nonmutating set { defaults.set(newValue, forKey: Key.liveTheme) }
     }
 
@@ -365,9 +368,17 @@ struct Preferences {
     }
 
     /// All of it, as a live window's terminal takes it.
+    /// «Like my VS Code» reads VS Code each time it is applied; without a VS
+    /// Code to read, its light theme stands in (D144).
     var liveAppearance: LiveAppearance {
-        LiveAppearance(theme: LiveTheme.named(liveTheme), fontSize: liveFontSize,
-                       fontFamily: liveFontFamily, lineSpacing: liveLineSpacing)
+        guard liveTheme == LiveTheme.fromVSCodeId else {
+            return LiveAppearance(theme: LiveTheme.named(liveTheme), fontSize: liveFontSize,
+                                  fontFamily: liveFontFamily, lineSpacing: liveLineSpacing)
+        }
+        let mine = VSCodeReader.read()
+        return LiveAppearance(theme: mine?.theme ?? LiveTheme.named("vscode-light"), fontSize: liveFontSize,
+                              fontFamily: liveFontFamily.isEmpty ? mine?.fontFamily : liveFontFamily,
+                              lineSpacing: liveLineSpacing)
     }
 
     /// A click on a background session's row opens it in the live view rather

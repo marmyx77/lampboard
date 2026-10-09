@@ -5538,3 +5538,35 @@ hooks). Nothing would ever have brought it.
 
 **Measured.** The domain suite holds the rule. Its case for a machine without
 the hooks fails when the rule installs there.
+
+## D144 · Like my VS Code
+
+**Decided.** A third VS Code look, **Like my VS Code**, reads the colours of the
+VS Code on this Mac each time a live window is drawn. It reads:
+- the profile in use: the one whose editor background is the one VS Code last
+  drew, from `themeBackground` in its own storage;
+- the profile's colour customisations, the ones scoped to the theme in use over
+  the general ones;
+- the colour theme's own file, from VS Code's bundled extensions or the
+  installed ones, following its `include` chain.
+
+What it takes from them:
+- **The card:** the chat's background, the side bar's, falling back to the
+  editor's.
+- **The text:** the side bar's foreground.
+- **The terminal:** the sixteen terminal colours when all are said.
+- **The font:** the fixed-width sibling of the chat's font when this Mac has one
+  (`Atkinson Hyperlegible` → `Atkinson Hyperlegible Mono`), unless Font is set.
+
+Without a VS Code to read, VS Code Light stands in.
+
+**Why.** VS Code Light copies VS Code's default Light+ colours, whose background
+is white. Its user's VS Code is customised: the chat sits on `#D6CDB8`, and next
+to it the live window was nearly white. A preset cannot match every person's
+editor; reading it can.
+
+**Measured.** The domain suite parses settings with comments, trailing commas and
+a URL in a string. It holds the order: the profile over the theme, a theme-scoped
+customisation over a general one. Its case fails when the theme is read before
+the profile. On its user's Mac, the same steps written in Python found the right
+profile, `#D6CDB8` and `#22201C`, and all sixteen terminal colours.

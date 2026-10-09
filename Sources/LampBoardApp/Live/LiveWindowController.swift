@@ -57,7 +57,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             return true
         }
         guard let command = command(for: target) else { return false }
-        let theme = LiveTheme.named(preferences.liveTheme)
+        let theme = preferences.liveAppearance.theme
         let surface = makeSurface()
         let frame = LiveFrameView(theme: theme, terminal: surface.view)
         let window = makeWindow(content: frame, target: target)
@@ -255,7 +255,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     /// A theme or a size changed in Settings: every open window takes it.
     func applyAppearance() {
-        let theme = LiveTheme.named(preferences.liveTheme)
+        let theme = preferences.liveAppearance.theme
         for live in lives.values {
             live.frame.apply(theme: theme)
             live.surface.apply(preferences.liveAppearance)

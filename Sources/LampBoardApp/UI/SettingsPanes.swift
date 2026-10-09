@@ -116,6 +116,7 @@ struct ClicksPane: View {
                         model.refresh()
                     })) {
                         ForEach(LiveTheme.presets, id: \.id) { Text($0.name).tag($0.id) }
+                        Text("Like my VS Code").tag(LiveTheme.fromVSCodeId)
                     }
                     .labelsHidden().fixedSize()
                 }

@@ -721,3 +721,65 @@ enum LookOfVSCodeSuite {
         },
     ])
 }
+
+/// «Like my VS Code» (D144): the colours read from VS Code's own files.
+enum VSCodeThemeSuite {
+    static let settings = #"""
+    {
+      // the person's profile
+      "workbench.colorTheme": "Light Modern",
+      "chat.fontFamily": "Atkinson Hyperlegible",
+      "remote.url": "https://example.com/a", /* a URL keeps its slashes */
+      "workbench.colorCustomizations": {
+        "editor.background": "#D2C8B1",
+        "sideBar.background": "#D6CDB8",
+        "sideBar.foreground": "#22201C",
+        "[Light Modern]": { "sideBar.foreground": "#111111" },
+      },
+    }
+    """#
+
+    static let suite = TestSuite("Like my VS Code", [
+
+        TestCase("VS Code's settings read, comments and trailing commas and all") { t in
+            let parsed = VSCodeTheme.parse(settings)
+            t.expectEqual(parsed?["workbench.colorTheme"] as? String, "Light Modern")
+            t.expectEqual(parsed?["remote.url"] as? String, "https://example.com/a", "a // inside a string is not a comment")
+        },
+
+        TestCase("The chat's background and text: the profile first, the theme's scoped colours over its general ones") { t in
+            let parsed = VSCodeTheme.parse(settings) ?? [:]
+            let colors = VSCodeTheme.colors(settings: parsed, themeName: "Light Modern",
+                                            themeColors: ["sideBar.background": "#FFFFFF", "terminal.ansiRed": "#cd3131"])
+            t.expectEqual(colors?.background, "#d6cdb8", "the profile's, over the theme's white")
+            t.expectEqual(colors?.text, "#111111", "scoped to the theme in use")
+            t.expectEqual(colors?.isDark, false)
+            t.expectNil(colors?.ansi, "a palette only when all sixteen are said")
+        },
+
+        TestCase("The sixteen terminal colours when they are all there; the theme's own when not customised") { t in
+            var theme: [String: String] = [:]
+            for (i, key) in VSCodeTheme.ansiKeys.enumerated() { theme[key] = String(format: "#%02x0000", i * 10) }
+            let colors = VSCodeTheme.colors(settings: [:], themeName: nil, themeColors: theme.merging(["editor.background": "#1e1e1eff"]) { a, _ in a })
+            t.expectEqual(colors?.ansi?.count, 16)
+            t.expectEqual(colors?.background, "#1e1e1e", "alpha dropped, editor as the last resort")
+            t.expectEqual(colors?.isDark, true)
+            t.expectNil(VSCodeTheme.colors(settings: [:], themeName: nil, themeColors: [:]), "nothing to read")
+        },
+
+        TestCase("The chat font's fixed-width sibling, when this Mac has one") { t in
+            t.expectEqual(VSCodeTheme.monoSibling(of: "Atkinson Hyperlegible", among: ["Menlo", "Atkinson Hyperlegible Mono"]),
+                          "Atkinson Hyperlegible Mono")
+            t.expectEqual(VSCodeTheme.monoSibling(of: "'JetBrains Mono', monospace", among: ["JetBrains Mono"]), "JetBrains Mono")
+            t.expectNil(VSCodeTheme.monoSibling(of: "Atkinson Hyperlegible", among: ["Menlo"]))
+            t.expectNil(VSCodeTheme.monoSibling(of: nil, among: ["Menlo"]))
+        },
+
+        TestCase("A live theme from the colours: the chat's background on the card, a shade darker behind") { t in
+            let theme = VSCodeTheme.liveTheme(VSCodeTheme.Colors(background: "#d6cdb8", text: "#22201c", ansi: nil, isDark: false))
+            t.expectEqual(theme.id, LiveTheme.fromVSCodeId)
+            t.expectEqual(theme.card, "#d6cdb8")
+            t.expect(VSCodeTheme.luminance(theme.backdropBottom) < VSCodeTheme.luminance(theme.card), "darker behind")
+        },
+    ])
+}

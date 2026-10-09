@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,166 lines · 182 files  pure logic, zero AppKit
-  LampBoardApp/    27,927 lines · 153 files   shell: AppKit, network, windows
-  LampBoardTests/  17,928 lines · 122 files   1297 cases, instantaneous
+  LampBoardCore/  23,315 lines · 183 files  pure logic, zero AppKit
+  LampBoardApp/    28,036 lines · 154 files   shell: AppKit, network, windows
+  LampBoardTests/  17,991 lines · 122 files   1302 cases, instantaneous
   LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1559,6 +1559,12 @@ when it did not.
 > **Touching here** decides when a person's editor process is ended: every check
 > must hold before it is.
 
+### `VSCodeTheme.swift` · 146
+«Like my VS Code» (D144): VS Code's settings read (comments and trailing commas
+allowed), the chat's background and text and the sixteen terminal colours from
+the profile over the theme, the chat font's fixed-width sibling, and the live
+theme made of them.
+
 ### `ProjectFiles.swift` · 86
 The live view's files (D136): which entries a tree shows and in what order, the
 citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
@@ -1797,6 +1803,11 @@ or the folder picker on this Mac) and what name, then Start.
 ### `LiveFonts.swift` · 14
 The fixed-pitch font families on this Mac, the only ones a live window may use
 (D142): Claude Code draws on a grid a proportional font would pull apart.
+
+### `VSCodeReader.swift` · 97
+Where «Like my VS Code» reads from: the profile in use (by the editor background
+VS Code last drew), the colour theme's file in the bundled or installed
+extensions, and the fonts on this Mac.
 
 ### `LocalTmuxPlaces.swift` · 71
 Where this Mac's sessions sit in tmux, asked every ten seconds off the main
@@ -2075,7 +2086,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1297 cases
+## `LampBoardTests/` — 1302 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
