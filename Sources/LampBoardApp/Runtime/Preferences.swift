@@ -59,6 +59,8 @@ struct Preferences {
         static let lampMasterTimeout = "lampmaster.timeoutSeconds"
         static let liveTheme = "live.theme"
         static let liveFontSize = "live.fontSize"
+        static let liveFontFamily = "live.fontFamily"
+        static let liveLineSpacing = "live.lineSpacing"
         static let liveOpensBackground = "live.opensBackground"
         static let liveLook = "live.look"
     }
@@ -345,6 +347,27 @@ struct Preferences {
             return stored == 0 ? LiveTheme.defaultFontSize : LiveTheme.clampedFontSize(stored)
         }
         nonmutating set { defaults.set(LiveTheme.clampedFontSize(newValue), forKey: Key.liveFontSize) }
+    }
+
+    /// The live view's font family (D142): `""` is the system's fixed-pitch font.
+    var liveFontFamily: String {
+        get { defaults.string(forKey: Key.liveFontFamily) ?? "" }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveFontFamily) }
+    }
+
+    /// The space between the live view's lines, within `LiveTheme.lineSpacings`.
+    var liveLineSpacing: Double {
+        get {
+            let stored = defaults.double(forKey: Key.liveLineSpacing)
+            return stored == 0 ? 1 : LiveTheme.clampedLineSpacing(stored)
+        }
+        nonmutating set { defaults.set(LiveTheme.clampedLineSpacing(newValue), forKey: Key.liveLineSpacing) }
+    }
+
+    /// All of it, as a live window's terminal takes it.
+    var liveAppearance: LiveAppearance {
+        LiveAppearance(theme: LiveTheme.named(liveTheme), fontSize: liveFontSize,
+                       fontFamily: liveFontFamily, lineSpacing: liveLineSpacing)
     }
 
     /// A click on a background session's row opens it in the live view rather

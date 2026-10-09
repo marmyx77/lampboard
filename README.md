@@ -831,7 +831,8 @@ and `@name ?question` reach a node's sessions too, over ssh into their own messa
 box; the bar says where the message went, and a quick question's answer comes back
 through the tunnel. A machine that runs a
 LampBoard panel of its own is left alone. The launch brings a node's helper up to this
-app's version; `remote uninstall` takes the helper out with the hooks. The tunnel keeps
+app's version, and puts it beside the hooks of a machine connected before it could go
+there ([D143](docs/04-decisions.md#d143--the-helper-beside-the-hooks)); `remote uninstall` takes the helper out with the hooks. The tunnel keeps
 an ssh connection of its own, whatever your `ControlMaster` settings say, so a host
 reached only through a master you authenticated by hand needs key login straight
 through.
@@ -908,7 +909,10 @@ terminal that does not look like one
 ([D130](docs/04-decisions.md#d130--the-live-view)). A header carries the session's
 lamp, name and state; the window around the card takes a theme (Night, Lagoon,
 Ember, Paper) and a text size from Settings › Clicks & keys, and Claude Code keeps
-its own colours inside.
+its own colours inside. **VS Code Light** and **VS Code Dark** bring VS Code's own
+terminal colours too, so the window reads like the editor's chat; any fixed-width
+font and a little line spacing can be chosen beside them
+([D142](docs/04-decisions.md#d142--vs-codes-colours-in-the-live-view)).
 
 - **Closing the window detaches.** The session goes on under Claude Code's own
   supervisor, its lamp keeps working, and opening it again picks it up where it is.
@@ -1762,7 +1766,7 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1294 domain tests, instantaneous
+swift run LampBoardTests              # 1297 domain tests, instantaneous
 swift run LampBoardE2E                # 168 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true

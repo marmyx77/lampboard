@@ -25,12 +25,19 @@ enum RemoteModInstaller {
     }
 
     /// At launch, like the hooks' token: a node whose mod is older than this
-    /// app's gets this one; a newer one, put there by a newer panel, stays. A node without it is left alone — the
-    /// mod goes there when asked, with `remote install`.
+    /// app's gets this one; a newer one, put there by a newer panel, stays.
+    ///
+    /// A node with the hooks and no mod gets it too, when the mod is on here
+    /// (D143): the person chose both halves, and the hooks of a node connected
+    /// before the mod existed would otherwise never be joined by it. Its
+    /// sessions then have the band, `/lamps` and Claude Code's look.
     static func refresh(on host: String, inspection: RemoteInspection) -> Result<String, RemoteCommandError>? {
-        guard ModSetup.isInstalled, let there = inspection.modVersion,
-              let theirs = ReleaseVersion(there), let ours = ReleaseVersion(ModFiles.version), theirs < ours else { return nil }
-        return install(on: host, inspection: inspection).map { _ in "helper there brought from \(there) to \(ModFiles.version)" }
+        guard ModSetup.isInstalled, RemoteModPolicy.shouldInstall(
+            hooksThere: inspection.hooksInstalled, modThere: inspection.modVersion, ours: ModFiles.version) else { return nil }
+        let was = inspection.modVersion
+        return install(on: host, inspection: inspection).map { _ in
+            was.map { "helper there brought from \($0) to \(ModFiles.version)" } ?? "helper \(ModFiles.version) installed there beside the hooks"
+        }
     }
 
     private static func run(on host: String, _ payload: [String: Any]) -> Result<Void, RemoteCommandError> {

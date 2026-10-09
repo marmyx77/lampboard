@@ -1,13 +1,13 @@
 # Code map
 
-~74,000 lines of Swift across five targets. For each file: what it contains, why
+~74,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,110 lines · 181 files  pure logic, zero AppKit
-  LampBoardApp/    27,848 lines · 152 files   shell: AppKit, network, windows
-  LampBoardTests/  17,893 lines · 122 files   1294 cases, instantaneous
+  LampBoardCore/  23,166 lines · 182 files  pure logic, zero AppKit
+  LampBoardApp/    27,927 lines · 153 files   shell: AppKit, network, windows
+  LampBoardTests/  17,928 lines · 122 files   1297 cases, instantaneous
   LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -949,6 +949,10 @@ that `ModFiles.swift` stays under the length the project allows.
 ### `ModFilesLook.swift`
 `mod/hooks/look.js`, compiled in like the lamps (D134).
 
+### `RemoteModPolicy.swift` · 14
+When the helper goes to another machine at launch (D143): beside hooks with no
+helper, or over an older one; never where nobody connected.
+
 ### `ModLook.swift`
 Where Claude Code's look is on (D134): off, in the sessions open in a live
 window, or everywhere, and the one answer `GET /mod/look` gives the helper.
@@ -1569,7 +1573,7 @@ a new tmux session on another machine, picking a free name there.
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
 
-### `LiveTheme.swift` · 70
+### `LiveTheme.swift` · 110
 The live view's looks: four presets of backdrop, card and text, a font size kept
 between 10 and 24 points, and the contrast every preset is held to. The frame
 takes the theme; the sixteen ANSI colours stay the terminal's, because Claude Code
@@ -1789,6 +1793,10 @@ when it changes on disk; ⌘L and Cite, which paste the citation into the sessio
 ### `NewSessionWindow.swift` · 165
 The **New session…** window: where, which folder (the recent ones, a typed path,
 or the folder picker on this Mac) and what name, then Start.
+
+### `LiveFonts.swift` · 14
+The fixed-pitch font families on this Mac, the only ones a live window may use
+(D142): Claude Code draws on a grid a proportional font would pull apart.
 
 ### `LocalTmuxPlaces.swift` · 71
 Where this Mac's sessions sit in tmux, asked every ten seconds off the main
@@ -2067,7 +2075,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1294 cases
+## `LampBoardTests/` — 1297 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

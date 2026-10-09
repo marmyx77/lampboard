@@ -687,3 +687,37 @@ enum EngineBusySuite {
         },
     ])
 }
+
+/// The look of 1.4 (D142, D143): VS Code's colours in the live view, and the
+/// helper beside the hooks on other machines.
+enum LookOfVSCodeSuite {
+    static let suite = TestSuite("VS Code's colours, and the helper everywhere", [
+
+        TestCase("The VS Code themes bring VS Code's sixteen terminal colours; the others keep the terminal's") { t in
+            for id in ["vscode-light", "vscode-dark"] {
+                let theme = LiveTheme.named(id)
+                t.expectEqual(theme.id, id)
+                t.expectEqual(theme.ansi?.count, 16, id)
+                t.expect(theme.ansi?.allSatisfy { LiveTheme.rgb($0) != nil } == true, "\(id): every colour reads")
+            }
+            t.expectNil(LiveTheme.named("night").ansi)
+            t.expect(!LiveTheme.named("vscode-light").isDark && LiveTheme.named("vscode-dark").isDark, "light and dark")
+        },
+
+        TestCase("An appearance holds its numbers to the ranges, and an empty family is the system's") { t in
+            let a = LiveAppearance(theme: LiveTheme.named(nil), fontSize: 99, fontFamily: "  ", lineSpacing: 3)
+            t.expectEqual(a.fontSize, LiveTheme.fontSizes.upperBound)
+            t.expectNil(a.fontFamily)
+            t.expectEqual(a.lineSpacing, LiveTheme.lineSpacings.upperBound)
+            t.expectEqual(LiveAppearance(theme: LiveTheme.named(nil), fontSize: 13, fontFamily: "Menlo").fontFamily, "Menlo")
+        },
+
+        TestCase("The helper goes beside the hooks, and up to this version; never where nobody connected") { t in
+            t.expect(RemoteModPolicy.shouldInstall(hooksThere: true, modThere: nil, ours: "1.15.0"), "hooks, no helper")
+            t.expect(!RemoteModPolicy.shouldInstall(hooksThere: false, modThere: nil, ours: "1.15.0"), "nothing there")
+            t.expect(RemoteModPolicy.shouldInstall(hooksThere: true, modThere: "1.14.0", ours: "1.15.0"), "older")
+            t.expect(!RemoteModPolicy.shouldInstall(hooksThere: true, modThere: "1.15.0", ours: "1.15.0"), "same")
+            t.expect(!RemoteModPolicy.shouldInstall(hooksThere: true, modThere: "1.16.0", ours: "1.15.0"), "newer stays")
+        },
+    ])
+}

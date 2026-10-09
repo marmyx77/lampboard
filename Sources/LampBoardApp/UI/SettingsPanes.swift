@@ -129,6 +129,27 @@ struct ClicksPane: View {
                     }
                     .fixedSize()
                 }
+                SettingRow(id: .liveFontFamily) {
+                    Picker("", selection: Binding(get: { preferences.liveFontFamily }, set: { value in
+                        preferences.liveFontFamily = value
+                        NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                        model.refresh()
+                    })) {
+                        Text("System").tag("")
+                        ForEach(LiveFonts.families(), id: \.self) { Text($0).tag($0) }
+                    }
+                    .labelsHidden().fixedSize()
+                }
+                SettingRow(id: .liveLineSpacing) {
+                    Stepper(value: Binding(get: { preferences.liveLineSpacing }, set: { value in
+                        preferences.liveLineSpacing = value
+                        NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                        model.refresh()
+                    }), in: LiveTheme.lineSpacings, step: 0.1) {
+                        Text(String(format: "%.1f×", preferences.liveLineSpacing)).monospacedDigit()
+                    }
+                    .fixedSize()
+                }
                 SettingRow(id: .liveLook) {
                     Picker("", selection: Binding(get: { preferences.liveLook }, set: { value in
                         // The helper asks again within five seconds and redraws.

@@ -19,7 +19,7 @@ protocol LiveSurface: AnyObject {
     /// Text as a paste: wrapped in bracketed-paste marks when the program asked
     /// for them, so Claude Code takes `@path` as typed text and never as Enter.
     func paste(_ text: String)
-    func apply(theme: LiveTheme, fontSize: Double)
+    func apply(_ appearance: LiveAppearance)
     /// What the screen shows now, as plain text: the last `lines` of it.
     func screenText(lines: Int) -> String
     /// Whether the program asked for bracketed paste: until it has, a paste
@@ -82,11 +82,25 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
         }
     }
 
-    func apply(theme: LiveTheme, fontSize: Double) {
-        terminal.font = NSFont.monospacedSystemFont(ofSize: LiveTheme.clampedFontSize(fontSize), weight: .regular)
+    func apply(_ appearance: LiveAppearance) {
+        let theme = appearance.theme
+        let size = appearance.fontSize
+        // A family that is not here any more falls back to the system's own.
+        terminal.font = appearance.fontFamily.flatMap {
+            NSFontManager.shared.font(withFamily: $0, traits: [], weight: 5, size: size)
+        } ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        terminal.lineSpacing = appearance.lineSpacing
         terminal.nativeBackgroundColor = NSColor(liveHex: theme.card)
         terminal.nativeForegroundColor = NSColor(liveHex: theme.text)
         terminal.caretColor = NSColor(liveHex: theme.text)
+        // The theme's own sixteen, or the terminal's back (D142).
+        let palette = theme.ansi?.compactMap(Self.color) ?? []
+        terminal.installColors(palette.count == 16 ? palette : Color.defaultInstalledColors)
+    }
+
+    private static func color(_ hex: String) -> Color? {
+        guard let (r, g, b) = LiveTheme.rgb(hex) else { return nil }
+        return Color(red: UInt16(r * 65535), green: UInt16(g * 65535), blue: UInt16(b * 65535))
     }
 
     func screenText(lines: Int) -> String {

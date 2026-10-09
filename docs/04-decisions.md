@@ -5500,3 +5500,41 @@ file said busy all along.
 while its transcript stopped at 07:52 and a subagent's transcript moved by the
 minute. The domain suite holds the reading of the field and the rule. Its case
 fails when the rule lights no idle row.
+
+## D142 · VS Code's colours in the live view
+
+**Decided.** Two more themes for the live view, **VS Code Light** and **VS Code
+Dark**. Each has a frame like the editor's chat around the session and VS Code's
+own sixteen terminal colours, Light+ and Dark+. Beside them in Settings ›
+Clicks & keys › The live view:
+- **Font**: any fixed-width family on this Mac, or the system's.
+- **Line spacing**: from 1.0 to 1.5 times the font's.
+
+**The exception to D130.** The other themes leave the sixteen ANSI colours to
+the terminal, because a palette chosen for a frame can make Claude Code's own
+colours unreadable. These two bring a whole palette instead: the one Claude Code
+already looks right on in VS Code's terminal. Choosing another theme puts the
+terminal's palette back.
+
+**What cannot be done.** The editor's chat sets its text in a proportional font
+and lays it out as a page. Claude Code in a terminal draws on a grid of cells
+(boxes, columns, a spinner), and a proportional font would pull it apart. So
+the window can take the chat's colours, any fixed-width font and some air
+between lines, but not its typography. A chat view of its own, reading the
+conversation and writing to the session, is a larger project, left for later.
+
+## D143 · The helper beside the hooks
+
+**Decided.** At launch, with the helper on here, a machine under Settings ›
+Other Macs that has LampBoard's hooks and no helper gets the helper, as one with
+an older helper already did (B1). Its sessions then have the band, `/lamps` and
+Claude Code's look, reaching this panel through the tunnel the hooks already
+use. A machine without the hooks is left alone, as is a newer helper.
+
+**Why.** Its user saw none of 1.3's look in a live window of a session on the
+always-on Linux box. The helper runs where the session runs, and that machine
+had been connected before the helper could go there (B1 installs it with the
+hooks). Nothing would ever have brought it.
+
+**Measured.** The domain suite holds the rule. Its case for a machine without
+the hooks fails when the rule installs there.

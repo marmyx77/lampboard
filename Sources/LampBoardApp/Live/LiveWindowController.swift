@@ -71,7 +71,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             live.surface.paste(text)
             live.window.makeFirstResponder(live.surface.view)
         }
-        surface.apply(theme: theme, fontSize: preferences.liveFontSize)
+        surface.apply(preferences.liveAppearance)
         lives[job] = live
         updateDockPresence()
         start(live, command)
@@ -258,7 +258,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let theme = LiveTheme.named(preferences.liveTheme)
         for live in lives.values {
             live.frame.apply(theme: theme)
-            live.surface.apply(theme: theme, fontSize: preferences.liveFontSize)
+            live.surface.apply(preferences.liveAppearance)
         }
     }
 
@@ -308,7 +308,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         live.surface.end(waiting: false)
         // The frame keeps its place; only the terminal inside the card changes.
         live.frame.replaceTerminal(live.surface.view, with: replacement.surface.view)
-        replacement.surface.apply(theme: LiveTheme.named(preferences.liveTheme), fontSize: preferences.liveFontSize)
+        replacement.surface.apply(preferences.liveAppearance)
         lives[live.job] = replacement
         start(replacement, command)
         live.window.makeFirstResponder(replacement.surface.view)
