@@ -62,6 +62,7 @@ let suites: [TestSuite] = [
     MoveHereSuite.outcomes,
     ProjectFilesSuite.suite,
     RemoteAdoptionSuite.suite,
+    PermissionModeSuite.suite,
     UnreadAnswersSuite.suite,
     FocusSuite.suite,
     AllowanceForecastSuite.suite,

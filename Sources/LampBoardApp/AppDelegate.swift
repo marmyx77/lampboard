@@ -574,6 +574,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         do {
             try server.start()
+            // A session in Auto has its asks decided without a person (D139).
+            permissions.modeOf = { [store] id in store.permissionModes[id] }
             permissions.start()
             self.server = server
             ModReceiver.publishPort(port)

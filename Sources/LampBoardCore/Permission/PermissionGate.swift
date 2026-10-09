@@ -19,6 +19,18 @@ public enum PermissionGate {
     /// which is where it would have gone without the panel.
     public static let pendingMax = 8
 
+    /// Whether an ask is the person's at all (D139). Claude Code's `ask` means
+    /// "put it to the mode's decider": the dialog in `default`, `acceptEdits`
+    /// and `plan`, but the classifier in `auto`, and nobody in `dontAsk` or
+    /// `bypassPermissions`. Those asks are answered at once with `ask`: held by
+    /// the panel, a session in Auto waited up to 55 seconds for a card about a
+    /// call that was never going to reach a person. A mode not yet heard is the
+    /// person's, as before.
+    public static func isPersons(mode: String?) -> Bool {
+        guard let mode else { return true }
+        return !["auto", "dontAsk", "bypassPermissions"].contains(mode)
+    }
+
     public enum Verdict: String, Sendable, Equatable {
         case allow, deny, ask
     }

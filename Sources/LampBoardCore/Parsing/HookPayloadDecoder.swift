@@ -119,7 +119,8 @@ public enum HookPayloadDecoder {
                     toolName: optionalString(object, key: "tool_name"),
                     toolInput: object["tool_input"]
                 )
-                : nil
+                : nil,
+            permissionMode: optionalString(object, key: "permission_mode")
         )
     }
 

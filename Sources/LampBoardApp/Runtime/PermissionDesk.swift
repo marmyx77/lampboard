@@ -16,6 +16,8 @@ final class PermissionDesk: ObservableObject {
     private(set) var returned: Set<String> = []
 
     private let preferences: Preferences
+    /// The permission mode a session last reported through its hooks (D139).
+    var modeOf: (String) -> String? = { _ in nil }
     private var book = PermissionGate.Book() { didSet { box.publish(book.pending) } }
     private let box = Listing()
     private var replies: [String: Reply] = [:]
@@ -185,7 +187,8 @@ final class PermissionDesk: ObservableObject {
     }
 
     private func admit(_ request: PermissionGate.Request) -> Reply? {
-        guard preferences.permissionsFromPanel, book.add(request) else { return nil }
+        guard preferences.permissionsFromPanel, PermissionGate.isPersons(mode: modeOf(request.sessionId)),
+              book.add(request) else { return nil }
         let reply = Reply()
         replies[Self.key(request.sessionId, request.callId)] = reply
         pending = book.pending

@@ -5441,3 +5441,23 @@ bracketed paste. While the window was open LampBoard had its Dock icon, and the
 menu held ⌘C, ⌘V, ⌘A and ⌘W and no ⌘Q. On the test Mac the screen is locked and
 no window can be key, so the menu's action was handed to the terminal, where a
 key window sends it. With the menu not installed, the case fails.
+
+## D139 · No card for an ask the mode decides
+
+**Decided.** The panel shows Allow and Deny only for an ask a person would have
+been asked. Claude Code's `ask` means "put it to the mode's decider": the dialog
+in `default`, `acceptEdits` and `plan`, but the classifier in `auto`, and nobody
+in `dontAsk` or `bypassPermissions`. A session's hooks report its mode
+(`permission_mode`), and the panel keeps the last one each session reported. An
+ask from a session in one of the last three modes is answered `ask` at once, so
+its own decider decides, and no card appears. A session whose mode has not been
+heard yet is treated as before.
+
+**Why.** Reported by its user the morning after 1.3: a session in Auto showed a
+card with Deny and Allow for a Bash call, though the session itself asked
+nothing. Worse than the false card, the call waited for the panel up to its 55
+seconds before the classifier was even consulted.
+
+**Measured.** The end-to-end suite has a session report `auto` through a hook,
+then asks: the answer is `ask`, signed, within three seconds, and nothing is
+listed. The domain case for the rule fails when the mode is ignored.

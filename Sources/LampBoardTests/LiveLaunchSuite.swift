@@ -612,3 +612,25 @@ enum RemoteAdoptionSuite {
         },
     ])
 }
+
+
+/// Whose ask it is (D139): Claude Code's `ask` goes to the mode's decider.
+enum PermissionModeSuite {
+    static let suite = TestSuite("Permission asks and the session's mode", [
+
+        TestCase("The person's in the modes that show a dialog, and while no mode was heard") { t in
+            for mode in [nil, "default", "acceptEdits", "plan"] { t.expect(PermissionGate.isPersons(mode: mode), "\(mode ?? "none")") }
+        },
+
+        TestCase("Nobody's to ask in Auto, dontAsk or bypassPermissions") { t in
+            for mode in ["auto", "dontAsk", "bypassPermissions"] { t.expect(!PermissionGate.isPersons(mode: mode), mode) }
+        },
+
+        TestCase("The hook's permission_mode is read, and kept by a copy of the signal") { t in
+            let json = #"{"session_id":"s1","cwd":"/tmp/x","hook_event_name":"PreToolUse","permission_mode":"auto","tool_name":"Bash"}"#
+            let signal = try? HookPayloadDecoder.decode(Data(json.utf8))
+            t.expectEqual(signal?.permissionMode, "auto")
+            t.expectEqual(signal?.withApprovalReviewer(nil).permissionMode, "auto")
+        },
+    ])
+}

@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,056 lines · 180 files  pure logic, zero AppKit
-  LampBoardApp/    27,816 lines · 152 files   shell: AppKit, network, windows
-  LampBoardTests/  17,815 lines · 122 files   1287 cases, instantaneous
-  LampBoardE2E/    4,970 lines · 21 files   167 cases, the real binary
+  LampBoardCore/  23,076 lines · 180 files  pure logic, zero AppKit
+  LampBoardApp/    27,826 lines · 152 files   shell: AppKit, network, windows
+  LampBoardTests/  17,838 lines · 122 files   1290 cases, instantaneous
+  LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
-No file exceeds 793 lines. The limit the project sets itself is 800.
+No file exceeds 798 lines. The limit the project sets itself is 800.
 
 One more target was not written here: `Vendor/SwiftTerm`, about 36,000 lines, the
 terminal emulator behind the live view. It is described at the end, under
@@ -2063,7 +2063,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1287 cases
+## `LampBoardTests/` — 1290 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2178,7 +2178,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 167 cases
+## `LampBoardE2E/` — 168 cases
 
 | Suite | Covers |
 |---|---|

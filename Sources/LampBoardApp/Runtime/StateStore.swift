@@ -99,6 +99,8 @@ final class StateStore: ObservableObject {
     /// A host that fails to answer keeps its previous entry. Silence is not death
     /// — the same rule that stopped this app pruning live local sessions.
     private(set) var remoteSessions: [String: [LiveSession]] = [:]
+    /// Each session's permission mode, as its hooks last said (D139).
+    private(set) var permissionModes: [String: String] = [:]
     /// The editor windows open on each host, as its last probe reported them.
     /// A remote row's folder is resolved against these, the way a local row's is
     /// resolved against this Mac's lock files (D51).
@@ -378,6 +380,9 @@ final class StateStore: ObservableObject {
     /// Applies a hook signal, first resolving the workspace hosting it.
     func handle(_ signal: HookSignal) {
         let now = clock()
+        // Before anything that may drop the signal: the mode is the session's
+        // whether or not the signal makes a row (D139).
+        if let mode = signal.permissionMode, !signal.isFromSubagent { permissionModes[signal.sessionId] = mode }
 
         // A process announcing itself is not a conversation, and only a
         // conversation earns a row. `ConversationIndex` carries the reasoning and

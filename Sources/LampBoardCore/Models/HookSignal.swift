@@ -143,6 +143,11 @@ public struct HookSignal: Sendable, Equatable {
     /// a request worth showing.
     public let approvalReviewer: ApprovalReviewer?
 
+    /// The session's permission mode as the hook reports it (`default`,
+    /// `acceptEdits`, `plan`, `auto`, `dontAsk`, `bypassPermissions`), on the
+    /// events that carry it (D139).
+    public let permissionMode: String?
+
     public init(
         sessionId: String,
         event: HookEventKind,
@@ -159,8 +164,10 @@ public struct HookSignal: Sendable, Equatable {
         harness: Harness = .claudeCode,
         git: GitIdentity? = nil,
         pendingAsk: PendingAsk? = nil,
-        approvalReviewer: ApprovalReviewer? = nil
+        approvalReviewer: ApprovalReviewer? = nil,
+        permissionMode: String? = nil
     ) {
+        self.permissionMode = permissionMode
         self.sessionId = sessionId
         self.event = event
         self.cwd = cwd
@@ -206,7 +213,7 @@ public struct HookSignal: Sendable, Equatable {
             failureReason: failureReason,
             inFlightBackgroundTaskTypes: inFlightBackgroundTaskTypes,
             transcriptPath: transcriptPath, host: host, harness: harness, git: git,
-            pendingAsk: pendingAsk, approvalReviewer: reviewer
+            pendingAsk: pendingAsk, approvalReviewer: reviewer, permissionMode: permissionMode
         )
     }
 

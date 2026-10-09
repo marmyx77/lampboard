@@ -106,6 +106,20 @@ enum PermissionE2ESuite {
                 }
             },
 
+            TestCase("a session in Auto is not asked about: its classifier decides, at once (D139)") { t in
+                instance(on: true, t) { app in
+                    var payload = HookPayloads.userPromptSubmit(sessionId: session, cwd: "/tmp/lampboard-e2e/project-alpha")
+                    payload["permission_mode"] = "auto"
+                    app.sendHook(payload, entrypoint: "cli")
+                    let started = Date()
+                    t.expectEqual(check(app, call: "toolu_auto", nonce: nonce),
+                                  PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce),
+                                  "ask: the mode's own decider")
+                    t.expect(Date().timeIntervalSince(started) < 3, "not held for a person who is not asked")
+                    t.expectEqual(app.raw(method: "GET", path: AppConfig.checkPath).body, "[]", "no card in the panel")
+                }
+            },
+
             TestCase("a new installation does not answer permissions until switched on (D73)") { t in
                 instance(on: nil, t) { app in
                     let started = Date()
