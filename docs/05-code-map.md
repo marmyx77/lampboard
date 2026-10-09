@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,076 lines · 180 files  pure logic, zero AppKit
-  LampBoardApp/    27,826 lines · 152 files   shell: AppKit, network, windows
-  LampBoardTests/  17,838 lines · 122 files   1290 cases, instantaneous
+  LampBoardCore/  23,110 lines · 181 files  pure logic, zero AppKit
+  LampBoardApp/    27,848 lines · 152 files   shell: AppKit, network, windows
+  LampBoardTests/  17,893 lines · 122 files   1294 cases, instantaneous
   LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1542,6 +1542,10 @@ held to names tmux reads back as one, with the pane listing it is read from;
 > **Touching here** decides what may be attached to. An editor's session is never
 > a target: it would be a second writer.
 
+### `LiveClick.swift` · 17
+A click on a row whose session is open in a live window brings that window
+forward (D140): the most urgent member with one.
+
 ### `MoveHere.swift` · 91
 «Move to LampBoard» (D135): which sessions may move (this Mac's, in the editor
 extension), when (between turns), whether `--bg` will start in their folder (a
@@ -2063,7 +2067,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1290 cases
+## `LampBoardTests/` — 1294 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

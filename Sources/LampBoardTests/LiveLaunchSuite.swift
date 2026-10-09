@@ -634,3 +634,56 @@ enum PermissionModeSuite {
         },
     ])
 }
+
+/// A click on a row whose session has a live window raises the window (D140).
+enum LiveClickSuite {
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    static func session(_ id: String) -> SessionState {
+        SessionState(id: id, status: .idle, workspace: Workspace(path: "/home/dev/\(id)", host: "box"), updatedAt: t0, statusSince: t0)
+    }
+    static func target(_ s: SessionState) -> LiveTarget? {
+        TmuxPlace(session: s.id, window: 0, pane: 0).map { .tmux(host: "box", place: $0, sessionId: s.id) }
+    }
+
+    static let suite = TestSuite("Live view: a click finds its window", [
+
+        TestCase("The member with a window open is the one raised, the most urgent first") { t in
+            let rows = [session("a"), session("b"), session("c")]
+            let open: Set<String> = [target(rows[1])!.key, target(rows[2])!.key]
+            t.expectEqual(LiveClick.openWindow(for: rows, target: target, isOpen: { open.contains($0.key) })?.key, target(rows[1])!.key)
+        },
+
+        TestCase("No window open: the click does what it did") { t in
+            t.expectNil(LiveClick.openWindow(for: [session("a")], target: target, isOpen: { _ in false }))
+            t.expectNil(LiveClick.openWindow(for: [session("a")], target: { _ in nil }, isOpen: { _ in true }), "nothing the live view opens")
+        },
+    ])
+}
+
+/// Claude Code's own "busy" lights a row the panel only knew as idle (D141).
+enum EngineBusySuite {
+    static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    static func state(_ status: SessionStatus) -> TrafficLightState {
+        TrafficLightState(sessions: ["s": SessionState(id: "s", status: status, workspace: Workspace(path: "/Users/dev/web"),
+                                                         updatedAt: t0, statusSince: t0)])
+    }
+
+    static let suite = TestSuite("A session Claude Code says is busy", [
+
+        TestCase("The session file's status is read") { t in
+            let busy = try? LiveSessionParser.parse(data: Data(#"{"sessionId":"s","cwd":"/x","status":"busy"}"#.utf8), modifiedAt: t0)
+            let idle = try? LiveSessionParser.parse(data: Data(#"{"sessionId":"s","cwd":"/x","status":"idle"}"#.utf8), modifiedAt: t0)
+            t.expectEqual(busy?.isBusy, true)
+            t.expectEqual(idle?.isBusy, false)
+        },
+
+        TestCase("An idle row turns working; a row that knows better is left alone") { t in
+            let now = t0.addingTimeInterval(60)
+            t.expectEqual(StateReducer.reduce(state(.idle), action: .busy(sessionId: "s"), now: now).sessions["s"]?.status, .working)
+            for status in [SessionStatus.awaiting, .ready, .failed, .waiting] {
+                t.expectEqual(StateReducer.reduce(state(status), action: .busy(sessionId: "s"), now: now).sessions["s"]?.status, status, "\(status)")
+            }
+            t.expect(StateReducer.reduce(state(.idle), action: .busy(sessionId: "nobody"), now: now).sessions["nobody"] == nil, "no row made")
+        },
+    ])
+}

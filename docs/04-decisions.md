@@ -5451,7 +5451,10 @@ in `dontAsk` or `bypassPermissions`. A session's hooks report its mode
 (`permission_mode`), and the panel keeps the last one each session reported. An
 ask from a session in one of the last three modes is answered `ask` at once, so
 its own decider decides, and no card appears. A session whose mode has not been
-heard yet is treated as before.
+heard yet is treated as before. A subagent's signals count too: a subagent runs
+in its session's mode unless its definition says otherwise, and in 1.3.4 a
+session whose turn waited on a subagent sent the panel no signal of its own
+after a restart, so its mode was never heard (fixed in 1.3.5).
 
 **Why.** Reported by its user the morning after 1.3: a session in Auto showed a
 card with Deny and Allow for a Bash call, though the session itself asked
@@ -5461,3 +5464,39 @@ seconds before the classifier was even consulted.
 **Measured.** The end-to-end suite has a session report `auto` through a hook,
 then asks: the answer is `ask`, signed, within three seconds, and nothing is
 listed. The domain case for the rule fails when the mode is ignored.
+
+## D140 · A click finds the live window
+
+**Decided.** A click on a row whose session is open in a live window brings that
+window forward, before anything else a click does. In a project row the most
+urgent member with a window is the one raised. With no window open, the click
+does what it did.
+
+**Why.** Reported by its user the morning after 1.3: a session of another
+machine opened with Open here and left behind another app could be found again
+only by choosing Open here once more. The Dock icon of D138 was there, but a
+click on the session's own row is where anyone looks first.
+
+**Measured.** The end-to-end suite runs without the panel, so the rule is a
+function of its own (`LiveClick`), held by the domain suite. Its case fails when
+the rule finds no window.
+
+## D141 · A session Claude Code says is busy
+
+**Decided.** Claude Code writes in each session's own file whether it is `busy`
+or `idle`. A row the panel knows only as idle turns working when that file says
+busy: on this Mac from the file, and on another machine from the probe, which now
+sends the field. Nothing else changes: a row that waits for a person, has an
+answer, failed or is paused keeps what it says, and no row is made from it.
+
+**Why.** Reported by its user the morning after 1.3, on a session in VS Code
+"working intensely" while its lamp was off. Its turn had started a subagent and
+was waiting on it. The subagent's signals are not the turn's, and the update to
+1.3.4 had restarted LampBoard, which adopted the session from its file as idle,
+since nothing told it otherwise. From then on, nothing did. Claude Code's own
+file said busy all along.
+
+**Measured.** On the Mac, the session's file said `"status":"busy"` from 07:48
+while its transcript stopped at 07:52 and a subagent's transcript moved by the
+minute. The domain suite holds the reading of the field and the rule. Its case
+fails when the rule lights no idle row.

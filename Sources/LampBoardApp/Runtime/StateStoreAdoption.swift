@@ -112,7 +112,8 @@ extension StateStore {
                 .adopt(
                     SessionState(
                         id: session.sessionId,
-                        status: .idle,
+                        // Claude Code's own word when it gives one (D141).
+                        status: session.isBusy ? .working : .idle,
                         workspace: workspace,
                         updatedAt: session.modifiedAt,
                         statusSince: session.modifiedAt,
@@ -247,6 +248,18 @@ extension StateStore {
 }
 
 extension StateStore {
+    /// A session's permission mode, kept before anything may drop its signal
+    /// (D139). A subagent's signal carries the mode it runs in, inherited from
+    /// its session unless its definition says otherwise.
+    func hearMode(_ signal: HookSignal) {
+        if let mode = signal.permissionMode { permissionModes[signal.sessionId] = mode }
+    }
+
+    /// Claude Code's own `busy` lights a row known only as idle (D141).
+    func lightBusy(_ sessions: [LiveSession], at now: Date) {
+        for session in sessions where session.isBusy { apply(.busy(sessionId: session.sessionId), now: now) }
+    }
+
     /// The sessions resting on `host`, found rather than announced (D137): a
     /// row each, idle until its first hook says otherwise, named as Claude Code
     /// names it there. A row that already exists is left alone.
@@ -263,7 +276,7 @@ extension StateStore {
                 windows: remoteWindows[host] ?? [], sessions: live, at: now
             )
             apply(.adopt(SessionState(
-                id: session.sessionId, status: .idle, workspace: workspace,
+                id: session.sessionId, status: session.isBusy ? .working : .idle, workspace: workspace,
                 updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
                 entrypoint: session.entrypoint, origin: .terminal, title: session.name
             )), now: now)

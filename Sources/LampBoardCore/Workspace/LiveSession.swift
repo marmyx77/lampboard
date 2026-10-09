@@ -52,6 +52,9 @@ public struct LiveSession: Sendable, Equatable {
     /// (D137): what makes it a conversation, whether or not a context can be
     /// read from its tail. A session just resumed has a tail of system records.
     public let hasTranscript: Bool
+    /// What Claude Code itself says of the session in its file: `busy` while a
+    /// turn is in progress, a subagent's included (D141).
+    public let isBusy: Bool
 
     /// For a background session, the Agent View's id for it: the folder under
     /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
@@ -65,7 +68,7 @@ public struct LiveSession: Sendable, Equatable {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy
         )
     }
 
@@ -82,9 +85,11 @@ public struct LiveSession: Sendable, Equatable {
         context: ContextReading? = nil,
         jobId: String? = nil,
         tmux: TmuxPlace? = nil,
-        hasTranscript: Bool = false
+        hasTranscript: Bool = false,
+        isBusy: Bool = false
     ) {
         self.hasTranscript = hasTranscript
+        self.isBusy = isBusy
         self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
@@ -169,7 +174,8 @@ public enum LiveSessionParser {
             kind: (object["kind"] as? String)?.trimmed.nilIfEmpty,
             modifiedAt: modifiedAt,
             procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init),
-            jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty
+            jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty,
+            isBusy: (object["status"] as? String) == "busy"
         )
     }
 }

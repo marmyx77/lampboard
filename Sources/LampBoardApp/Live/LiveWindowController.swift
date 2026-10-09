@@ -156,6 +156,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Whether `target` has a live window, attached or ended.
+    func isOpen(_ target: LiveTarget) -> Bool { lives[target.key] != nil }
+
     /// Whether a conversation is being moved right now.
     func isMoving(_ sessionId: String) -> Bool { moving.contains(sessionId) }
 

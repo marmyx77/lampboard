@@ -70,6 +70,10 @@ public enum ReducerAction: Sendable, Equatable {
     case jobRead(sessionId: String, job: BackgroundJob?)
     /// The tool a session has been running longest, or none (5.7).
     case tooling(sessionId: String, tool: RunningTool?)
+    /// Claude Code's own session file says the session is busy (D141). Lights a
+    /// row that only knew it as idle — adopted after a restart, its turn waiting
+    /// on a subagent whose signals are not the turn's — and touches no other state.
+    case busy(sessionId: String)
     /// A command under `lampboard watch` started or ended (D70). The one action
     /// besides a hook that may create a row: it comes through the token.
     case watched(WatchReport)
@@ -132,6 +136,7 @@ extension ReducerAction {
         case .costed: return "costed"
         case .jobRead: return "jobRead"
         case .tooling: return "tooling"
+        case .busy: return "busy"
         case .watched: return "watched"
         case .rehome: return "rehome"
         case .adopt: return "adopt"
@@ -204,6 +209,10 @@ public enum StateReducer {
                 return state.upserting(session.with(context: current.withCache(of: context)))
             }
             return state.upserting(session.with(context: context))
+
+        case .busy(let sessionId):
+            guard let session = state.sessions[sessionId], session.baseStatus == .idle else { return state }
+            return state.upserting(session.with(status: .working, at: now))
 
         case .jobRead(let sessionId, let job):
             guard let session = state.sessions[sessionId], session.origin == .background else { return state }

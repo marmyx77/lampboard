@@ -175,6 +175,7 @@ public enum RemoteProbeScript {
             "entrypoint": record.get("entrypoint"),
             "name": record.get("name"),
             "kind": record.get("kind"),
+            "status": record.get("status"),
             "activityEpoch": int(activity),
             "contextTail": tail,
             # Only a terminal's session: an editor started from a pane hosts

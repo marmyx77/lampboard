@@ -29,6 +29,12 @@ extension PanelController {
         // somebody dismissed it (measured on the test Mac).
         if TrialStage.mode != nil { return }
 
+        // Open in a live window already: that window is where it is (D140).
+        if let live, let target = LiveClick.openWindow(for: row.sessions, target: liveTarget, isOpen: live.isOpen) {
+            openHere(target)
+            return
+        }
+
         // A watched command has no window: seeing its result is the gesture. In a
         // project row it may be the most urgent member, and the click then goes
         // to the project's first real session rather than nowhere.

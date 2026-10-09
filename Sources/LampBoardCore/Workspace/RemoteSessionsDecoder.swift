@@ -120,7 +120,8 @@ public enum RemoteSessionsDecoder {
             host: host,
             context: context,
             tmux: tmux(record["tmux"]),
-            hasTranscript: !((record["contextTail"] as? String) ?? "").isEmpty
+            hasTranscript: !((record["contextTail"] as? String) ?? "").isEmpty,
+            isBusy: string(record, "status") == "busy"
         )
     }
 
