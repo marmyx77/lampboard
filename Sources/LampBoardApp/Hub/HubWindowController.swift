@@ -204,6 +204,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let folder = wish["expand"] as? String { model.files.toggle(folder) }
         if let path = wish["open"] as? String { model.files.openFile(path) }
         if let query = wish["query"] as? String { model.files.query = query }
+        if wish["stop"] as? Bool == true { model.stop() }
         if let preview = wish["preview"] as? Bool, let active = model.files.active {
             if preview { model.files.previews.insert(active) } else { model.files.previews.remove(active) }
         }

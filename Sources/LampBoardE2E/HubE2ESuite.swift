@@ -112,8 +112,12 @@ enum HubE2ESuite {
                 a.expect(wait(4) { report()["route"] as? String == HubWrite.Route.mod.rawValue }, "the route is the mod: \(report())")
                 a.expectEqual(compose("Run the integration tests."), 204)
                 let queued = inbox(working)
-                guard queued.count == 1, let key = publicKey() else { return a.fail("one command waits: \(queued.count)") }
-                switch CommandEnvelope.open(queued[0], publicKey: key, session: working) {
+                guard let key = publicKey() else { return a.fail("no key") }
+                let ops = queued.compactMap { try? CommandEnvelope.open($0, publicKey: key, session: working).get() }
+                a.expect(ops.contains { $0.op == "stream" && $0.args["on"] == "true" }, "opening it follows its reply: \(ops.map(\.op))")
+                guard let submit = queued.first(where: { (try? CommandEnvelope.open($0, publicKey: key, session: working).get().op) == "submit" })
+                else { return a.fail("one message waits: \(ops.map(\.op))") }
+                switch CommandEnvelope.open(submit, publicKey: key, session: working) {
                 case .success(let payload):
                     a.expectEqual(payload.op, "submit")
                     a.expectEqual(payload.args["text"], "Run the integration tests.")
@@ -131,10 +135,44 @@ enum HubE2ESuite {
                 a.expectEqual(report()["mode"] as? String, "interrupt")
                 a.expectEqual(compose("Stop and look at this."), 204)
                 let queued = inbox(working)
-                guard let first = queued.first, let key = publicKey(),
-                      case .success(let payload) = CommandEnvelope.open(first, publicKey: key, session: working)
-                else { return a.fail("no command opened: \(queued.count)") }
+                guard let key = publicKey(),
+                      let payload = queued.compactMap({ try? CommandEnvelope.open($0, publicKey: key, session: working).get() })
+                          .first(where: { $0.op == "submit" })
+                else { return a.fail("no message opened: \(queued.count)") }
                 a.expectEqual(payload.args["mode"], "interrupt")
+            },
+
+            TestCase("the open session's reply arrives as it is written; another session's is dropped") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(open(working), 204)
+                a.expectEqual(report()["followed"] as? String, working, "the open session is followed")
+                func stream(_ id: String, _ turn: String, _ text: String) -> Int {
+                    app.raw(method: "POST", path: AppConfig.modStreamPath,
+                            body: #"{"v":1,"session":"\#(id)","turnId":"\#(turn)","text":"\#(text)"}"#).status
+                }
+                a.expectEqual(stream(working, "turn-1", "Running the"), 204)
+                a.expectEqual(stream(working, "turn-1", " tests"), 204)
+                a.expectEqual(stream(resting, "turn-9", "not this one"), 204)
+                a.expect(wait(2) { report()["liveText"] as? String == "Running the tests" }, "\(report()["liveText"] ?? "none")")
+                a.expectEqual(stream(working, "turn-2", "A new turn"), 204)
+                a.expect(wait(2) { report()["liveText"] as? String == "A new turn" }, "a new turn starts afresh")
+            },
+
+            TestCase("Stop goes to the mod as an abort, and the Hub says what keeps running") { a in
+                guard ready() else { return a.fail("no instance") }
+                _ = inbox(working)
+                a.expectEqual(files(#"{"stop":true}"#), 204)
+                guard let key = publicKey() else { return a.fail("no key") }
+                let ops = inbox(working).compactMap { try? CommandEnvelope.open($0, publicKey: key, session: working).get().op }
+                a.expectEqual(ops, ["abort"])
+                a.expect((report()["notice"] as? String)?.contains("background") == true, "\(report()["notice"] ?? "none")")
+            },
+
+            TestCase("once the turn has ended the transcript has the reply, and the provisional text goes") { a in
+                guard ready() else { return a.fail("no instance") }
+                app.sendHook(HookPayloads.stop(sessionId: working, cwd: project)
+                    .merging(["transcript_path": transcript(working).path]) { _, new in new }, entrypoint: "cli")
+                a.expect(wait(4) { report()["liveText"] is NSNull }, "\(report()["liveText"] ?? "none")")
             },
 
             TestCase("the project's tree and what git says of each file are beside the conversation") { a in
