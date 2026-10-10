@@ -174,15 +174,40 @@ final class HubModel: ObservableObject {
     }
 }
 
-/// What the live bubble draws: the end of the reply being written, never more
-/// than a bubble shows. The whole reply comes with the transcript.
+/// What the live bubble draws: the last lines of the reply being written,
+/// at most five times a second. The whole reply comes with the transcript; a
+/// bubble that grew and scrolled with every piece cost the panel ten points of
+/// CPU (P1, measured 10 October 2026).
 @MainActor
 final class HubLiveTail: ObservableObject {
-    static let most = 2_000
+    static let lines = 8
+    static let every: TimeInterval = 0.2
     @Published private(set) var text = ""
+    private var latest = ""
+    private var shownAt = Date.distantPast
+    private var waiting = false
 
     func show(_ full: String?) {
-        let tail = String((full ?? "").suffix(Self.most))
-        if tail != text { text = tail }
+        latest = Self.tail(of: full ?? "")
+        guard !waiting else { return }
+        let wait = Self.every - Date().timeIntervalSince(shownAt)
+        guard wait > 0, !latest.isEmpty else { return publish() }
+        waiting = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
+            self?.waiting = false
+            self?.publish()
+        }
+    }
+
+    private func publish() {
+        shownAt = Date()
+        if latest != text { text = latest }
+    }
+
+    /// The last lines, each cut to a width a bubble shows.
+    static func tail(of full: String) -> String {
+        full.suffix(4_000).split(separator: "\n", omittingEmptySubsequences: false)
+            .suffix(lines).map { $0.count > 200 ? "…" + $0.suffix(199) : String($0) }
+            .joined(separator: "\n")
     }
 }

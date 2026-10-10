@@ -180,25 +180,22 @@ struct HubConversationView: View {
 }
 
 /// The reply as it is written, apart from the conversation so that a piece
-/// redraws this and nothing else.
+/// redraws this and nothing else: a fixed height, the last lines at the bottom,
+/// so nothing around it moves.
 struct HubLiveBubble: View {
     @ObservedObject var tail: HubLiveTail
 
     var body: some View {
         if !tail.text.isEmpty {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
-                        Text(tail.text).font(.system(size: 13)).foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Color.clear.frame(height: 1).id("live-end")
-                    }
-                    .padding(.horizontal, 18).padding(.vertical, 8)
-                }
-                .frame(maxHeight: 180)
-                .onChange(of: tail.text) { _, _ in proxy.scrollTo("live-end", anchor: .bottom) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                Text(tail.text).font(.system(size: 13)).foregroundStyle(.secondary)
+                    .lineLimit(HubLiveTail.lines)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
+            .padding(.horizontal, 18).padding(.vertical, 8)
+            .frame(height: 170)
+            .clipped()
             .accessibilityIdentifier("hub.live")
         }
     }
