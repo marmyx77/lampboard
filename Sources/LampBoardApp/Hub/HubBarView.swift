@@ -187,7 +187,9 @@ struct HubBarView: View {
 
     private var modelTitle: String {
         let name = bar.model.flatMap { id in HubBar.models.first { $0.id == id }?.title }
-            ?? session.context.map { HubBar.models.first(where: { item in $0.model.hasPrefix(item.id) })?.title ?? $0.model } ?? "Model"
+            ?? session.context.map { reading in
+                HubBar.models.first(where: { reading.model.hasPrefix($0.id) })?.title ?? reading.model
+            } ?? "Model"
         return "\(name) · \(bar.effort ?? "default")"
     }
 
