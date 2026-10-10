@@ -33,8 +33,6 @@ public enum ModReport: Equatable, Sendable {
     case presence(session: String, draft: Bool)
     /// The followed session's commands, for the bar's `/` (D157).
     case commands(session: String, list: [Command])
-    /// The followed session's footer mode label (`plan mode on`, or empty).
-    case mode(session: String, label: String)
     /// Where the followed session draws: Remote Control adds `mobile`.
     case surfaces(session: String, list: [String])
 
@@ -42,7 +40,7 @@ public enum ModReport: Equatable, Sendable {
         switch self {
         case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
              .answer(let session, _), .done(let session, _), .stopped(let session, _),
-             .presence(let session, _), .commands(let session, _), .mode(let session, _),
+             .presence(let session, _), .commands(let session, _),
              .surfaces(let session, _): return session
         }
     }
@@ -279,9 +277,6 @@ public enum ModReport: Equatable, Sendable {
                 return Command(name: name, description: oneLine(item.description ?? "", 120))
             }
             return .commands(session: session, list: Array(list))
-        case "mode":
-            guard let label = wire.label else { throw Failure.unreadable }
-            return .mode(session: session, label: oneLine(label, 80))
         case "surfaces":
             let list = (wire.list ?? []).prefix(8).compactMap { $0.word.flatMap(word) }
             return .surfaces(session: session, list: Array(list))
@@ -427,7 +422,6 @@ public enum ModReport: Equatable, Sendable {
         let turnId: String?
         let at: Double?
         let draft: Bool?
-        let label: String?
         let list: [ListItem]?
 
         /// A command (`{name, description}`) or a plain word (a surface).

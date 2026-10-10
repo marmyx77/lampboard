@@ -28,6 +28,8 @@ struct HubDependencies {
     /// Whether Shift+Tab can be pressed in the session's terminal (a live window).
     let canShiftTab: (String) -> Bool
     let shiftTab: (String) -> Bool
+    /// The session's mode: its live window's footer, else the hooks' word.
+    let mode: (String) -> HubBar.Mode?
 }
 
 /// The Hub's state: which conversation is open, which sessions take signed
@@ -59,6 +61,9 @@ final class HubModel: ObservableObject {
     let bar = HubBarState()
     /// A model chosen once over a warm cache, waiting for the second choice.
     var pendingModel: String??
+    /// The mode word the hooks still gave when `/plan` took (the mod said so):
+    /// Plan holds until they say anything else.
+    var staleMode: HubBar.Mode??
     /// Where each session's mod draws (`terminal`, `vscode`, …), from its start.
     private(set) var surfaces: [String: String] = [:]
     /// Whether the followed session's own box holds a draft, as its mod said.
@@ -101,10 +106,13 @@ final class HubModel: ObservableObject {
         case .done(let session, let done):
             // A message the mod could not put in: back in the box.
             if done.op == "submit", !done.ok { composer.failed(session: session) }
+            // `/plan` took: no hook says so until the next prompt (D157).
+            if done.op == "command", done.ok, session == followed, bar.reaching == .plan {
+                staleMode = .some(deps.mode(session))
+                bar.heard(mode: .plan)
+            }
         case .commands(let session, let list):
             if session == followed { bar.heard(commands: list) }
-        case .mode(let session, let label):
-            if session == followed { bar.heard(mode: label) }
         case .surfaces(let session, let list):
             if session == followed { bar.heard(surfaces: list) }
         case .measure, .tool, .answer, .stopped:
@@ -191,6 +199,7 @@ final class HubModel: ObservableObject {
         composer.show(session: id)
         bar.show(session: id)
         pendingModel = nil
+        staleMode = nil
         let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
         files.show(session: id, root: project?.root, host: project?.host)
         guard id != chatFor else { return }
@@ -211,6 +220,11 @@ final class HubModel: ObservableObject {
         let verdict = verdict
         chat.update(asking: session.status == .awaiting, sendable: verdict.route != .none)
         composer.show(band: verdict.band)
+        let seen = deps.mode(session.id)
+        if staleMode.map({ seen != $0 }) ?? true {
+            staleMode = nil
+            bar.heard(mode: seen)
+        }
         composer.check(userTexts: HubComposer.userTexts(chat.messages), session: session.id)
     }
 

@@ -57,7 +57,6 @@ function panel(on, inbox: unknown[]) {
     { name: 'plan', description: 'Enable plan mode', source: 'builtin' },
     { name: 'deploy', description: 'x'.repeat(500), source: 'project' },
   ] }))
-  on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e); return Text({ children: ['mode'] }) })
   on('session.surfaces', () => ({ value: ['terminal', 'mobile'] }))
   on('prompt.read', () => ({ value: { text: calls.box, cursor: calls.box.length } }))
   on('prompt.edit', ($, e) => ({ text: e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end), cursor: e.start + e.inputText.length }))
@@ -205,18 +204,3 @@ test('the open session sends its commands and its surfaces once, short', async (
   expect(calls.done.find((d) => d.kind === 'surfaces')).toMatchObject({ list: ['terminal', 'mobile'] })
 })
 
-test("the footer's mode is told when it changes, for the open session only", async ($, on) => {
-  const calls = panel(on, [STREAM_ON])
-  const draw = (modes) => $.ui.render({ component: 'SessionMode', surface: 'terminal', props: { modes } })
-  await draw(['auto mode on'])
-  await new Promise((r) => setTimeout(r, 30))
-  expect(calls.done.filter((d) => d.kind === 'mode').length).toBe(0)
-  await $.session.receive({ origin: { kind: 'peer-send-message' }, text: WAKE })
-  await settle(calls, () => calls.done.some((d) => d.kind === 'done'))
-  await draw(['plan mode on'])
-  await draw(['plan mode on'])
-  await draw([])
-  await settle(calls, () => calls.done.filter((d) => d.kind === 'mode').length >= 3)
-  await new Promise((r) => setTimeout(r, 30))
-  expect(calls.done.filter((d) => d.kind === 'mode').map((d) => d.label)).toEqual(['auto mode on', 'plan mode on', ''])
-})

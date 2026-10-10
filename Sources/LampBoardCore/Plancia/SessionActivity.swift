@@ -56,7 +56,7 @@ public struct SessionActivity: Sendable, Equatable {
             if run.finished { toolEnded(id: run.id, at: date) } else { toolStarted(id: run.id, tool: run.tool, detail: run.detail, at: date) }
         case .measure(_, let measure):
             if let usd = measure.costUSD { costReported(usd, at: date) }
-        case .start, .end, .answer, .done, .stopped, .presence, .commands, .mode, .surfaces:
+        case .start, .end, .answer, .done, .stopped, .presence, .commands, .surfaces:
             break
         }
     }

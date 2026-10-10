@@ -52,7 +52,10 @@ enum ComposerE2ESuite {
             guard open() == 204 else { return false }
             let commands = #"{"v":1,"kind":"commands","session":"\#(session)","list":[{"name":"compact","description":"Keep a summary"},{"name":"plan","description":"Enable plan mode"},{"name":"remote-control","description":"Continue on the phone"}]}"#
             _ = mod(commands)
-            _ = mod(#"{"v":1,"kind":"mode","session":"\#(session)","label":"auto mode on"}"#)
+            app.sendHook(HookPayloads.userPromptSubmit(sessionId: session, cwd: project)
+                .merging(["transcript_path": transcript.path, "permission_mode": "auto"]) { _, new in new }, entrypoint: "cli")
+            app.sendHook(HookPayloads.stop(sessionId: session, cwd: project)
+                .merging(["transcript_path": transcript.path]) { _, new in new }, entrypoint: "cli")
             return wait(5) { (report()["commands"] as? [String])?.count == 3 && report()["sessionMode"] as? String == "auto" }
         }
 
@@ -123,7 +126,7 @@ enum ComposerE2ESuite {
                 a.expectEqual(report()["chosenEffort"] as? String, "low")
             },
 
-            TestCase("Plan is reached by its command and confirmed by the footer; nothing is pressed while the session asks (E26)") { a in
+            TestCase("Plan is reached by its command, held until the hooks say otherwise; nothing is pressed while the session asks (E26)") { a in
                 guard ready() else { return a.fail("no instance") }
                 _ = queued()
                 a.expectEqual(wish(#"{"mode":"plan"}"#), 204)
@@ -131,13 +134,17 @@ enum ComposerE2ESuite {
                 let ops = queued()
                 a.expectEqual(ops.first?.op, "command")
                 a.expectEqual(ops.first?.args["name"], "plan")
-                a.expectEqual(mod(#"{"v":1,"kind":"mode","session":"\#(session)","label":"plan mode on"}"#), 204)
+                a.expect(report()["sessionMode"] as? String == "auto", "the hooks still say auto")
+                a.expectEqual(mod(#"{"v":1,"kind":"done","session":"\#(session)","nonce":"cd34","op":"command","ok":true}"#), 204)
                 a.expect(wait(3) { report()["sessionMode"] as? String == "plan" && report()["reaching"] is NSNull }, "\(report())")
+                Thread.sleep(forTimeInterval: 1.5)
+                a.expectEqual(report()["sessionMode"] as? String, "plan", "held while the hooks still give the old word")
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: session, cwd: project)
+                    .merging(["transcript_path": transcript.path, "permission_mode": "auto"]) { _, new in new }, entrypoint: "cli")
+                a.expect(wait(3) { report()["sessionMode"] as? String == "auto" }, "a newer word wins: \(report()["sessionMode"] ?? "none")")
                 app.sendHook(HookPayloads.notification(sessionId: session, cwd: project, kind: "permission_prompt")
                     .merging(["message": "Claude needs your permission to use Bash"]) { _, new in new }, entrypoint: "cli")
-                a.expect(wait(3) { report()["status"] as? String == SessionStatus.awaiting.rawValue }, "asking")
-                a.expectEqual(mod(#"{"v":1,"kind":"mode","session":"\#(session)","label":"auto mode on"}"#), 204)
-                a.expect(wait(3) { report()["sessionMode"] as? String == "auto" }, "back to auto")
+                a.expect(wait(3) { report()["status"] as? String == SessionStatus.awaiting.rawValue }, "asking again")
                 a.expectEqual(wish(#"{"mode":"plan"}"#), 204)
                 a.expect(report()["reaching"] is NSNull, "never over a dialog")
                 a.expect(queued().isEmpty, "nothing sent")

@@ -40,14 +40,31 @@ public enum HubBar {
     /// The order Shift+Tab goes round (measured with 2.1.296, P12).
     public static let cycle: [Mode] = [.plan, .auto, .manual, .acceptEdits]
 
-    /// The mode the footer's label shows; none shown is the manual one.
-    public static func mode(footer label: String) -> Mode {
-        let text = label.lowercased()
-        if text.contains("plan") { return .plan }
-        if text.contains("auto") { return .auto }
-        if text.contains("accept") { return .acceptEdits }
-        if text.contains("bypass") { return .bypass }
-        return .manual
+    /// The mode a hook reports (`permission_mode`, D139); `nil` for a word
+    /// this panel does not know.
+    public static func mode(permission: String) -> Mode? {
+        switch permission {
+        case "plan": return .plan
+        case "auto": return .auto
+        case "default": return .manual
+        case "acceptEdits": return .acceptEdits
+        case "bypassPermissions": return .bypass
+        default: return nil
+        }
+    }
+
+    /// The mode Claude Code's footer shows on a terminal's last lines
+    /// (`⏸ plan mode on (shift+tab to cycle)`); the manual one shows no label
+    /// beside a prompt. `nil` when no prompt is in sight: not known.
+    public static func mode(screen: String) -> Mode? {
+        let lines = screen.split(separator: "\n").suffix(8).map { $0.lowercased() }
+        for line in lines.reversed() {
+            if line.contains("plan mode on") { return .plan }
+            if line.contains("auto mode on") { return .auto }
+            if line.contains("accept edits on") { return .acceptEdits }
+            if line.contains("bypass permissions on") { return .bypass }
+        }
+        return lines.contains { $0.contains("❯") } ? .manual : nil
     }
 
     /// How many Shift+Tab take `from` to `to`; `nil` when either is out of the

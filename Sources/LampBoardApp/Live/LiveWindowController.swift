@@ -439,6 +439,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         return live.surface.shiftTab()
     }
 
+    /// The mode the footer of the window showing `sessionId` shows, if any.
+    func screenMode(session sessionId: String) -> HubBar.Mode? {
+        guard let live = live(showing: sessionId), live.surface.isRunning else { return nil }
+        return HubBar.mode(screen: live.surface.screenText(lines: 12))
+    }
+
     private func live(showing sessionId: String) -> Live? {
         lives.values.first { live in
             if case .tmux(_, _, let id) = live.target { return id == sessionId }

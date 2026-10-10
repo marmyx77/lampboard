@@ -63,7 +63,8 @@ enum HubSetup {
                 }
             },
             canShiftTab: { id in live.canPaste(into: id) },
-            shiftTab: { id in live.shiftTab(session: id) }
+            shiftTab: { id in live.shiftTab(session: id) },
+            mode: { id in live.screenMode(session: id) ?? store.permissionModes[id].flatMap(HubBar.mode(permission:)) }
         )
         let model = HubModel(deps: deps)
         weakModel = model

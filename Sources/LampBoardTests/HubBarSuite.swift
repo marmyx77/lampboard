@@ -20,12 +20,17 @@ enum HubBarSuite {
             t.expectNil(HubBar.slash("/compact\nand then this", known: known), "one line only")
         },
 
-        TestCase("The footer's label says the mode; nothing shown is the manual one") { t in
-            t.expectEqual(HubBar.mode(footer: "plan mode on"), .plan)
-            t.expectEqual(HubBar.mode(footer: "auto mode on"), .auto)
-            t.expectEqual(HubBar.mode(footer: "accept edits on"), .acceptEdits)
-            t.expectEqual(HubBar.mode(footer: ""), .manual)
-            t.expectEqual(HubBar.mode(footer: "bypass permissions on"), .bypass)
+        TestCase("The mode is the hooks' word, or what the terminal's footer shows") { t in
+            t.expectEqual(HubBar.mode(permission: "plan"), .plan)
+            t.expectEqual(HubBar.mode(permission: "default"), .manual)
+            t.expectEqual(HubBar.mode(permission: "acceptEdits"), .acceptEdits)
+            t.expectNil(HubBar.mode(permission: "dontAsk"), "a word not known is not guessed")
+            let screen = "⏺ FALCON\n────\n❯ \n────\n  ⏸ plan mode on (shift+tab to cycle) · ← for agents"
+            t.expectEqual(HubBar.mode(screen: screen), .plan)
+            t.expectEqual(HubBar.mode(screen: "❯ \n  ⏵⏵ auto mode on (shift+tab to cycle)"), .auto)
+            t.expectEqual(HubBar.mode(screen: "❯ \n  ⏵⏵ accept edits on (shift+tab to cycle)"), .acceptEdits)
+            t.expectEqual(HubBar.mode(screen: "────\n❯ \n────\n  ? for shortcuts"), .manual)
+            t.expectNil(HubBar.mode(screen: "$ ls\nREADME.md"), "no prompt: not known")
         },
 
         TestCase("Shift+Tab goes round Plan, Auto, Manual, Accept edits") { t in

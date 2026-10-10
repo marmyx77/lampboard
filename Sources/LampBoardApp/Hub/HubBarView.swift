@@ -35,9 +35,9 @@ final class HubBarState: ObservableObject {
     }
 
     func heard(commands list: [ModReport.Command]) { commands = list }
-    func heard(mode label: String) {
-        mode = HubBar.mode(footer: label)
-        if reaching == mode { reaching = nil }
+    func heard(mode value: HubBar.Mode?) {
+        if mode != value { mode = value }
+        if reaching != nil, reaching == value { reaching = nil }
     }
     func heard(surfaces list: [String]) { remote = list.contains("mobile") }
 

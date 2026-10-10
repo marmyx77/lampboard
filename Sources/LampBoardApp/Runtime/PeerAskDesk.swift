@@ -26,7 +26,7 @@ final class PeerAskDesk: ObservableObject {
             askable.remove(session)
         case .answer(_, let answer):
             waiting.removeValue(forKey: answer.id)?.resume(returning: Reply(text: Self.said(answer), answered: answer.text?.trimmed.isEmpty == false))
-        case .measure, .tool, .done, .stopped, .presence, .commands, .mode, .surfaces:
+        case .measure, .tool, .done, .stopped, .presence, .commands, .surfaces:
             break
         }
     }
