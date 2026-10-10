@@ -1,18 +1,18 @@
 # Code map
 
-~75,500 lines of Swift across five targets. For each file: what it contains, why
+~81,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,408 lines · 185 files  pure logic, zero AppKit
-  LampBoardApp/    28,591 lines · 156 files   shell: AppKit, network, windows
-  LampBoardTests/  18,080 lines · 123 files   1309 cases, instantaneous
-  LampBoardE2E/    5,064 lines · 21 files   170 cases, the real binary
+  LampBoardCore/  25,095 lines · 194 files  pure logic, zero AppKit
+  LampBoardApp/    31,984 lines · 175 files   shell: AppKit, network, windows
+  LampBoardTests/  18,720 lines · 129 files   1359 cases, instantaneous
+  LampBoardE2E/    5,734 lines · 24 files   200 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
-No file exceeds 798 lines. The limit the project sets itself is 800.
+No file exceeds 800 lines. The limit the project sets itself is 800.
 
 Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
 the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
@@ -755,6 +755,15 @@ first — and the busiest day, the most recent between equals. Eight projects an
 titles each at most, the rest counted; folders and titles flattened and clipped, since
 another session chose them; dates in English whatever the Mac's language.
 
+### `RemoteTranscripts.swift` · 70
+The conversations of another machine for ⌘K (M7), read through the panel's own
+ssh: one `sh -c` script lists the transcripts under `~/.claude/projects` changed
+in the last days — size, time, path, a bounded number —, another reads a
+transcript's bytes from where the last pass stopped, never through a link. Every
+value quoted, on the machine's own `find`, `stat`, `tail` and `head`, GNU or BSD.
+A remote transcript's key in the index is `ssh://host/path`, never a path on this
+Mac.
+
 ## `LampMaster/`
 
 LampMaster, the director: once an hour it reads every session and suggests at
@@ -944,12 +953,31 @@ replace it.
 > one side only is a figure that silently stops arriving. A new version number is
 > refused by an older panel, on purpose.
 
+### `CommandEnvelope.swift` · 147
+A command the panel sends to one session's mod (D152): a message to submit, a
+turn to stop, a slash command to run, a model or an effort for that session alone,
+a stream to follow. Signed with the panel's Ed25519 key, whose private half stays
+in the Keychain: the permission key of D80 is a file any process of the user's can
+read, and a session with an injected prompt could have used it to type into every
+other. The payload is canonical JSON travelling as a string, the signature over its
+exact bytes; inside it, the one session it is for, a nonce used once and the moment
+it was made. Also the wake line the panel leaves in a session's message box, which
+the mod consumes before the session reads it, and then collects.
+
+> **Touching here** changes what `mod/hooks/inbox.js` checks before it reads a
+> field: a command the two sides spell differently is a command refused.
+
 ### `ModFilesLamps.swift`
 `mod/hooks/lamps.js`, compiled in beside the rest (D131), in a file of its own so
 that `ModFiles.swift` stays under the length the project allows.
 
 ### `ModFilesLook.swift`
 `mod/hooks/look.js`, compiled in like the lamps (D134).
+
+### `ModFilesRegister.swift` · `ModFilesInbox.swift` · `ModFilesEd25519.swift`
+`mod/hooks/register.js`, `inbox.js` and `ed25519.js`, compiled in like the lamps,
+one file each (D152 for the last two). None is edited by hand:
+`Scripts/embed-mod.py` writes them from the repository's copies.
 
 ### `RemoteModPolicy.swift` · 14
 When the helper goes to another machine at launch (D143): beside hooks with no
@@ -960,8 +988,10 @@ Where Claude Code's look is on (D134): off, in the sessions open in a live
 window, or everywhere, and the one answer `GET /mod/look` gives the helper.
 
 ### `ModFiles.swift`
-The mod's six files, compiled in (D66): the app installs what it reads, word for
-word, with no network. `ModFilesSuite` holds them to the bytes of `mod/` and
+The mod's eight files, compiled in (D66): the app installs what it reads, word for
+word, with no network. The manifest, the hooks file, the version and the list live
+here; the scripts each have a `ModFiles*.swift` of their own, and
+`Scripts/embed-mod.py` rewrites all of them from `mod/`. `ModFilesSuite` holds them to the bytes of `mod/` and
 `.claude-plugin/` in the repository, the one domain suite that reads a file.
 
 > **Touching here** without bumping `version` leaves installed copies as they were:
@@ -1664,6 +1694,50 @@ The extension's URI, the policy that sends it only to sessions the extension
 hosts (`DeepLinkPolicy`: entrypoint `claude-vscode`, or unknown), and the
 escaping of titles inside a script.
 
+## `Hub/`
+
+The rules of the Hub (D149), the window of columns that took the Plancia's place:
+what it may write into a session, what it may read of a project, what a quote
+carries, what its command bar means. The App's `Hub/` draws them.
+
+### `HubWrite.swift` · 158
+How the Hub writes to a session (D154): one verdict that every control that sends
+asks, so none decides on its own. The way in — the mod's signed `$.prompt.submit`
+(D152), which waits for a running turn and a dialog and leaves a draft in the box
+alone; Claude Code's message box (D81), taken into a running turn; a paste into
+the session's tmux pane behind D147's gate; or none, read only —, what Send does
+(Interrupt, Queue, Message now), and whether it asks first: over the person's own
+draft in the session's box, or with quotes into a session that acts without asking.
+A box LampBoard cannot see, VS Code's or the app's, only queues.
+
+> **Touching here** is changing who writes into a conversation: a control that
+> chose its own way in would be a second writer (D147).
+
+### `ProjectAccess.swift` · 215
+The Hub's look into a session's project (D156): a tree, a file, what git says, a
+search, a shell — on this Mac from the disk, on another machine through the
+panel's own ssh, never through the session's mod. Every path is held inside the
+project's folder: relative, no `..`, no leading dash that would read as an option,
+no control character; a file that resolves outside it through a link is refused
+where it is read, here by the app and there by the script. Also how a file is
+shown: code with its highlighter's language, Markdown as Code or Preview, an image
+or an archive not as text.
+
+### `Citation.swift` · 93
+A passage of one session quoted into another (D155, amending D62): only by the
+person's click, only as the panel read it from the transcript, and only inside a
+fixed frame that says it is data, not an instruction. The text loses its control
+and format characters, which can hide words or move a terminal's cursor, is cut to
+a bound, and cannot close the frame early. The frame is the whole defence the
+other session gets: it acts with the person's tools.
+
+### `HubBar.swift` · 129
+The command bar's rules apart from its controls (D157): a slash line is a command
+only when the session lists that name — a path starts with a slash too —; Claude
+Code's permission modes as its footer names them, and how many Shift+Tab reach one
+from another (measured with 2.1.296); when a model change needs its warning over a
+warm cache; an attachment's name.
+
 ---
 
 # LampBoardApp
@@ -1672,7 +1746,7 @@ It does I/O and draws. **It does not decide.**
 
 ## Entry point
 
-### `main.swift` · `AppDelegate.swift` · 682
+### `main.swift` · `AppDelegate.swift` · 745
 `MainActor.assumeIsolated` in `main.swift` is needed because top-level code isn't
 isolated to the main actor, but that is where we are by definition.
 
@@ -1687,6 +1761,14 @@ through that branch. `--plancia` opens the Plancia on the most urgent session si
 seconds in, for a picture taken on a Mac nobody is clicking.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
+
+### `AppDelegateHub.swift` · 75
+The Hub's wiring apart from the delegate's start: its test routes on the server —
+what it shows, opening it, Send typed as the person would, the files column, a
+reply as it arrives, the remote index probe — and the other machines'
+conversations for ⌘K (M7): every two minutes, each machine's transcripts listed
+through the panel's ssh and only their new bytes read, a budget a pass, the newest
+first.
 
 ### `CodexProcessScanner.swift`
 Finds the Codex sessions running here without being told. Codex inside the
@@ -1802,7 +1884,7 @@ drawn together, the terminal's text was clipped away.
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
 
-### `LiveChat.swift` · 262
+### `LiveChat.swift` · 298
 The live view's chat (D147): `LiveChatModel` follows a session's transcript, a
 file here read where it was left, or `tail -F` over ssh on another machine, and
 turns its lines into Clarc's messages; `LiveChatView` draws them with Clarc's
@@ -1845,11 +1927,108 @@ it, so the next launch ends what a LampBoard that is gone left running and never
 touches one that still runs; the start time comes from `sysctl`, in process. Also
 raises the limit of open files, which a few terminals reach.
 
+## `Hub/`
+
+The Hub (D149): one dark window in four columns — the sessions, which are the
+panel's own rows (D150); the open conversation and its composer; the project's
+files; an open file or the project's shell (D156) — at the deepest step of ⌘⇧L,
+where the Plancia was. Every rule it follows is in Core's `Hub/`; this reads,
+draws and sends.
+
+### `HubWindowController.swift` · 321
+The window: columns in an `NSSplitView`, shown and hidden from the toolbar's
+icons, their widths and what is shown kept by macOS between launches. Opens on a
+named session, redraws the sidebar when the panel changes — an order, a name, a
+mute —, and on a fake home says what it shows, for the tests.
+
+### `HubSetup.swift` · 95
+Builds the Hub and wires it to the panel, the mod's reports and the Dock.
+
+### `HubModel.swift` · 316
+What the Hub needs from the rest of the app, handed in once (`HubDependencies`):
+the panel's view, where a transcript is read, the session's project and machine,
+what is known of a session when Send is pressed, a signed command (D152), the send
+through the route `HubWrite` chose. Then its state: the open conversation, which
+sessions take signed commands, what Send does, LampMaster's row (D151). The reply
+arriving for the open session (D153) lives in `HubLiveTail`, apart: published with
+the rest, a piece every 150 ms redrew the whole conversation (P1).
+
+### `HubModelBar.swift` · 124
+The command bar's actions (D157): a slash line the session knows run as its
+command, the model or the effort for this session alone — asked twice over a warm
+cache, which another model reads again at full price —, Plan by its command and
+any other mode by Shift+Tab where LampBoard shows the session's terminal. Each
+goes through the session's mod or that terminal; none writes Claude Code's
+settings, which would change every session (measured, M0).
+
+### `HubViews.swift` · 358
+The first two columns: LampMaster's row (D151) — its lamp working while a round
+runs and green while cards wait, its count, the time of its last round — above the
+panel's own rows (D150); the open conversation with its waiting card, the line
+saying what the session's own box holds, the reply as it is written in a bubble of
+fixed height so nothing around it moves (D153), «Cite in…» choosing where a quote
+goes (D155), and the four lines shown the first time the Hub opens.
+
+### `HubAskCard.swift` · 81
+What the open session asks, in its thread: a permission the panel holds with Allow,
+Deny and the time it has left, a question with its options, or, when the panel
+holds nothing, a line saying it asks in its own window. One card, the first that
+waits for that session.
+
+### `HubComposer.swift` · 301
+The Hub's message box (D154): one draft per session; a question before sending
+over the person's own draft in the session's box; a sent message kept in sight
+until the transcript has it, and back in the box with its quotes if it did not go;
+the quotes waiting for the next message (D155). An AppKit text view, so a file
+dropped from the tree lands as `@path` where it falls (D157). Apart from
+`HubModel`, so typing redraws the box and nothing else.
+
+### `HubBarView.swift` · 209
+The bar under the box (D157): attach and the session's commands, the context and
+the time, Remote Control, the agents, the model and the mode, each a list that
+opens in place. `HubBarState` holds what the bar knows of the open session — its
+commands, its mode, the model and effort chosen for it, a model change waiting for
+its second click — apart from `HubModel`, so the bar redraws alone.
+
+### `HubFilesModel.swift` · 130
+The open session's project as the Hub shows it (D156): its tree, what git and the
+session's recent tools say of each file, a search, the files open in tabs, and
+whether the last column shows a file or the shell. A session of the same folder
+keeps what is open.
+
+### `HubFilesViews.swift` · 228
+The third column, the tree with its search and its marks, where a click opens a
+file in the last column and a drag carries `@path` to the composer; and the last
+column's viewer, code highlighted and Markdown in Code or Preview.
+
+### `HubShell.swift` · 96
+The project's shell in the last column (D156): the person's own shell in the
+project's folder, or `ssh -t` into it on another machine. One per project, kept
+while the Hub is open, so moving between sessions loses none. A shell and not the
+session: nothing typed here reaches the conversation.
+
+### `ProjectSource.swift` · 156
+Where the Hub reads a project (D156): the disk here, or the panel's own ssh there,
+one shared connection per machine. Every call runs off the main actor, through
+`ProjectAccess`'s rules, and answers nothing rather than something outside the
+folder.
+
+### `HubStyle.swift` · 222
+The Hub's colours and controls as the LampBoard 2 proposal draws them: one dark
+window whatever the Mac is set to, like the panel whose rows it shows (D150); its
+buttons, pills, lamps, pop-up lists and the flow layout the bar wraps in.
+
+### `HubChatTheme.swift` · 31
+The conversation in the Hub's colours: the person's messages in a soft blue bubble
+on the right, the replies as plain text, tools in thin outlined lines. Clarc's
+palette is one for the whole app, so the Hub sets it when its window comes forward
+and a live window sets its own (`LiveChatTheme`).
+
 ## `Runtime/`
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 798 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStore.swift` | 800 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
 | `StateStoreAdoption.swift` | 300 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
@@ -1863,6 +2042,8 @@ raises the limit of open files, which a few terminals reach.
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
 | `PermissionDesk.swift` | 229 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
+| `PanelKey.swift` | 87 | the panel's Ed25519 key (D152), which signs the Hub's commands and the panel's hello: the private half in the Keychain, where a session's Bash cannot read it without a dialog, the public half rewritten to `~/.lampboard/panel-key.pub` at every launch; under a fake home both halves are files, so a locked keychain never stops a suite; no key, and the Hub sends nothing rather than unsigned |
+| `HubCommandDesk.swift` | 74 | where the Hub's commands wait (D152): each signed, queued for its session, and the session woken through its message box so the mod collects at once from `GET /mod/inbox` — the wake carries nothing but its line, since a box is readable by the user's other processes; `GET /mod/hello` answered with the public key and its signature of the mod's nonce, so a reply's text goes only to the panel that holds the key (D153) |
 | `PlanciaModel.swift` | 65 | the Plancia's state: the open session, or LampMaster's own Plancia and the sheet it opens on (D97), its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
 | `CommandBarModel.swift` | 258 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
@@ -1889,7 +2070,7 @@ raises the limit of open files, which a few terminals reach.
 | `PeerSender.swift` | 130 | the panel's end of Claude Code's message box (D81): the session's file and key under `~/.claude/sessions/`, read again for every message, used only when the process is running, this user's and the one the file was written for, the files regular, this user's and not links, the key private, the socket this user's; the two lines written down the socket, our half closed, and the box's end of file taken as the receipt; no SIGPIPE; a content of the panel's own, for a side question |
 | `PeerAskDesk.swift` | 94 | side questions (D82): which sessions can be asked, from their mods' `start` and `end`; a question through the box — over ssh for a session on a node — with the permission key's proof, and the answer report it waits for — registered before it is sent — a minute at most, put in words when there is no text; whether what came back is the session's answer or what went wrong, so a handoff proposes only an answer |
 | `RemotePeerSender.swift` | 22 | into the box of a session on another machine, over ssh, with `RemotePeerScripts` (B3) |
-| `SearchIndex.swift` | 388 | every conversation of this Mac, searchable (D88): SQLite FTS5 in `~/.lampboard/index.sqlite`, owner-only, the file itself never a link; each transcript read on from its last offset to its last complete line, 8 MB at most a pass, a shrunk one read again, a budgeted pass newest first within ninety days, only regular files in real project folders; a chunk kept whole or not at all, its offset read under the write lock, two writers waiting for each other; conversations whose transcript is gone pruned; excluded from backups, removable (`--reset`); the hits grouped after `bm25()`; the serial queue taken per file; the prompts since a date, only of conversations active since, for the week's summary (D90); the answers' times of the week, never their words, for the waiting (D109) |
+| `SearchIndex.swift` | 438 | every conversation of this Mac, searchable (D88): SQLite FTS5 in `~/.lampboard/index.sqlite`, owner-only, the file itself never a link; each transcript read on from its last offset to its last complete line, 8 MB at most a pass, a shrunk one read again, a budgeted pass newest first within ninety days, only regular files in real project folders; a chunk kept whole or not at all, its offset read under the write lock, two writers waiting for each other; conversations whose transcript is gone pruned; excluded from backups, removable (`--reset`); the hits grouped after `bm25()`; the serial queue taken per file; the prompts since a date, only of conversations active since, for the week's summary (D90); the answers' times of the week, never their words, for the waiting (D109) |
 | `MailboxWriter.swift` | 206 | the panel's end of the mailbox; carries out the reaper's verdict; counts the views holding a session's marker, so the chat window and the Plancia do not take it from each other |
 | `RemoteSessionReader.swift` | 113 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 162 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix; an answer longer than asked for stops ssh |
@@ -1948,6 +2129,15 @@ the threads the hooks post on.
 
 `requiredLocalEndpoint` is the line that binds the socket to loopback.
 `acceptLocalOnly` does **not** do that.
+
+### `SignalServerHub.swift` · 153
+The Hub's command channel (D152), behind the token: `GET /mod/hello` proves the
+panel's key to a mod, `GET /mod/inbox` hands a session the signed commands waiting
+for it, taken out of the queue, and `POST /mod/stream` takes a piece of the open
+session's reply, sent only after the hello (D153). The token proves nothing about a
+command — every hook carries it —; it only keeps a web page or a stranger from
+draining a queue. `POST /hub/send` queues a command as the Hub would, on a fake
+home only.
 
 ## `Focus/`
 
@@ -2048,6 +2238,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelDecisions.swift` | 49 | the decision board from a row's menu (D105): pin a line for the row's repository, the ones already pinned shown in the question; one taken off from *Pinned decisions*, confirmed first; the same service the command line reaches, an error said in the panel |
 | `PanelGovernor.swift` | 59 | the governor from a row's menu (D112): *Use Sonnet until the window resets (13:10)* for a local Claude Code session with a known model, never the one in focus; chosen again, its own model back |
 | `PanelPlancia.swift` | 197 | the Plancia wired in (D79): a session opened beside the list from the row's menu or `⌘⇧L`, LampMaster's from its row, asking for a round if the last is stale (D97), the header's buttons wired to the row's own actions (D98), on the side toward the middle of the screen; `⌘⇧L` through the depths, `Esc` closing it and nothing else; closed by itself after four seconds with the pointer away, nothing waiting and no pin; at least 520 points tall, room for a conversation; its side chosen once at opening; closed when its session ends; no single key taken from a text view that has the keyboard; opened from a session's band, the panel brought up with it (D84); `--plancia-send`, on a fake home only, sends through its composer once a row is there, pinned for the picture |
+| `PanelHub.swift` | 42 | the Hub's sidebar is the panel itself (D150): the same `PanelRootView` from the same store, preferences and actions, wide whatever the panel is, so the rows, their order, the R, the ring and every badge are the panel's by construction; only a click differs, opening the conversation beside the rows |
 | `PlanciaView.swift` | 270 | LampMaster's Plancia under its own name and star (D97), or a session's under its header — lamp, name, the line of facts, *Go*, *Hand over*, *Mute* (D98), its waiting card pinned under it (D101) — drawn in three tabs: **Thread**, the chat window's own `ChatView`, so the reader and the composer are the same ones (D15); **Activity**, each tool and how long it ran and each turn and what it cost, newest first; **Cost**, the context, the session's total as the mod reported it, the recent turns; a pin and a close button |
 | `PanelBar.swift` | 207 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingCardView.swift` | 153 | one waiting card, drawn at the top of a session's Plancia: a card dimmed until it is armed and outlined while selected with the keyboard; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip; VoiceOver reads the kind, the project and the ask |
@@ -2111,7 +2302,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1309 cases
+## `LampBoardTests/` — 1359 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2226,7 +2417,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 170 cases
+## `LampBoardE2E/` — 200 cases
 
 | Suite | Covers |
 |---|---|
@@ -2333,6 +2524,7 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/make-cask.sh` | renders the Homebrew cask from a **published** release, taking the checksum from the asset GitHub serves rather than from `dist/` |
 | `Scripts/release.sh` | disk image into `dist/`, twice — under the version and under the version-free name the `latest` address serves; signs, notarizes and staples when the keychain allows it, and says which of the three outcomes it reached |
 | `Scripts/release-remote.sh` | the release cut on the Mac that signs, from any machine that reaches it (D106): the tag to the mirror, `release.sh` run over ssh with that account's own keychain, the four files brought back into `dist/` |
+| `Scripts/embed-mod.py` | writes the files under `mod/` into the `ModFiles*.swift` sources the app installs the mod from (D66), and the version and the list in `ModFiles.swift`; run after editing the mod, or `ModFilesSuite` fails |
 | `Scripts/check-mod.sh` | the companion mod as Claude Code reads it, through `claude plugin validate`: a module that breaks one rule is dropped whole and silently from every session (D112); part of `test.sh`, attacked by `bite.sh` |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
 | `Scripts/test.sh` | both suites, then the documentation check |
