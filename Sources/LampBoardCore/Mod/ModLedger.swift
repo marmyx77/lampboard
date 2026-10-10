@@ -63,6 +63,7 @@ public struct ModLedger: Equatable, Sendable {
     public func applying(_ report: ModReport, now: Date) -> ModLedger {
         // An answer is a reply to the panel's question, not a fact about the session.
         if case .answer = report { return self }
+        if case .done = report { return self }
         let old = sessions[report.session]
         var facts: Facts
         switch report {
@@ -93,7 +94,7 @@ public struct ModLedger: Equatable, Sendable {
                 next.running[run.id] = RunningTool(tool: run.tool, detail: run.detail, since: now)
             }
             facts = next.heard(at: now)
-        case .answer:
+        case .answer, .done:
             return self
         case .end(_, let reason):
             facts = Facts(

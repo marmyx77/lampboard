@@ -1,3 +1,10 @@
+import Foundation
+
+extension ModFiles {
+
+    /// `mod/hooks/register.js`, the hooks module: reports, permissions, the band, the governor.
+    /// Written by `Scripts/embed-mod.py` from the repository's copy: edit that one.
+    public static let register = #"""
 // LampBoard's companion mod: tells the LampBoard panel on this Mac what only
 // the session knows — its context as Claude Code counts it, what it has cost,
 // the account's rate-limit windows, where it draws and why it ended.
@@ -729,4 +736,6 @@ export function register(on) {
   try { registerLamps(on) } catch (_) {}
   // The look (D134), off unless LampBoard says on for the session.
   try { registerLook(on) } catch (_) {}
+}
+"""#
 }

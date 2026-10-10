@@ -60,6 +60,7 @@ final class ModReceiver {
         case .end(_, let reason): return "end (\(reason.rawValue))"
         case .tool(_, let run): return "tool \(run.finished ? "end" : "start") (\(run.tool))"
         case .answer(_, let answer): return "answer (\(answer.text == nil ? answer.reason ?? "none" : "text"))"
+        case .done(_, let done): return "done (\(done.op) \(done.ok ? "ok" : done.error ?? "failed"))"
         }
     }
 

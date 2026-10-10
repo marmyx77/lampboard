@@ -80,8 +80,10 @@ final class SignalServer {
     /// Whether a session is drawn with Claude Code's look (D134); `nil` when
     /// the app could not say in time.
     private let onModLook: (String?) -> Bool?
-    private let token: String?
+    let token: String?
     private let checkKey: String?
+    /// The Hub's signed commands (D152); `nil` until the panel has its key.
+    var hubDesk: HubCommandDesk?
 
     private var listener: NWListener?
 
@@ -360,6 +362,12 @@ final class SignalServer {
                 request.body, request.header("X-LampBoard-Nonce"), request.header("X-LampBoard-Proof"), checkKey))
 
         // Courtesy endpoint: lets you check that the app is alive.
+        case AppConfig.modHelloPath:
+            return handleModHello(request)
+
+        case AppConfig.modInboxPath:
+            return handleModInbox(request)
+
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")
 

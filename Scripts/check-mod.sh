@@ -28,3 +28,14 @@ if [ "$status" -ne 0 ] || ! grep -q "Validation passed" <<<"$out"; then
     exit 1
 fi
 printf '  \033[32m✓\033[0m the mod loads as Claude Code reads it\n'
+
+# The mod's own tests (`mod/tests`): the Hub's signed commands are run only
+# when the panel's key signed them for this session, now, once (D152).
+out="$(cd mod && perl -e 'alarm 120; exec @ARGV' "$CLAUDE" plugin test 2>&1)"
+status=$?
+if [ "$status" -ne 0 ] || ! grep -q " 0 fail" <<<"$out"; then
+    grep -E "\(fail\)|Error" <<<"$out" | head -10 | sed 's/^/  /'
+    printf "  \033[31m✗\033[0m the mod's tests fail\n"
+    exit 1
+fi
+printf "  \033[32m✓\033[0m the mod's tests pass (%s)\n" "$(grep -oE '[0-9]+ pass' <<<"$out" | head -1)"

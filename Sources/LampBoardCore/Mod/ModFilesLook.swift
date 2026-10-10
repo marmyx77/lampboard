@@ -2,8 +2,8 @@ import Foundation
 
 extension ModFiles {
 
-    /// `mod/hooks/look.js`, Claude Code's look (D134): the transcript drawn like
-    /// the VS Code panel, where LampBoard says so.
+    /// `mod/hooks/look.js`, Claude Code's look (D134).
+    /// Written by `Scripts/embed-mod.py` from the repository's copy: edit that one.
     public static let look = #"""
 // The look (D134): inside LampBoard's live view, the transcript drawn as
 // close to Claude Code's VS Code panel as a terminal allows. The person's

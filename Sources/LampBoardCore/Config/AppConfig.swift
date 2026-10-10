@@ -91,6 +91,10 @@ public enum AppConfig {
     public static let modHoldPath = "/mod/hold"
     /// Whether the helper draws a session with Claude Code's look (D134).
     public static let modLookPath = "/mod/look"
+    /// The panel proves it is the panel (D152): it signs the mod's nonce with its key.
+    public static let modHelloPath = "/mod/hello"
+    /// The commands waiting for a session's mod, signed by the panel (D152).
+    public static let modInboxPath = "/mod/inbox"
 
     /// How many slots a key can address.
     ///
@@ -349,6 +353,18 @@ public enum AppConfig {
     /// away learns it, and must not learn with it the power to say allow.
     public static var checkKeyURL: URL {
         supportDirectory.appendingPathComponent("check-key")
+    }
+
+    /// The panel's public key (D152), hex, mode `0644`: what the mod checks a
+    /// command and the panel's hello with. The private half is in the Keychain.
+    public static var panelKeyPublicURL: URL {
+        supportDirectory.appendingPathComponent("panel-key.pub")
+    }
+
+    /// The private key **under a fake home only** (tests, the test Mac's probes),
+    /// where a locked login keychain must not stop the suite. Mode `0600`.
+    public static var panelKeyTestURL: URL {
+        supportDirectory.appendingPathComponent("panel-key")
     }
 
     /// The port the server listens on, for the companion mod: the hooks carry

@@ -23,11 +23,28 @@ public enum ModReport: Equatable, Sendable {
     case tool(session: String, run: ToolRun)
     /// The reply to a question asked without disturbing (D82).
     case answer(session: String, answer: Answer)
+    /// What became of a command the Hub signed (D152).
+    case done(session: String, done: Done)
 
     public var session: String {
         switch self {
         case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
-             .answer(let session, _): return session
+             .answer(let session, _), .done(let session, _): return session
+        }
+    }
+
+    /// A command the mod ran, by its nonce: whether it went through, and why not.
+    public struct Done: Equatable, Sendable {
+        public let nonce: String
+        public let op: String
+        public let ok: Bool
+        public let error: String?
+
+        public init(nonce: String, op: String, ok: Bool, error: String?) {
+            self.nonce = nonce
+            self.op = op
+            self.ok = ok
+            self.error = error
         }
     }
 
@@ -202,6 +219,13 @@ public enum ModReport: Equatable, Sendable {
             return .answer(session: session, answer: Answer(
                 id: id, text: wire.text.flatMap(answerText), reason: wire.reason.flatMap(word)
             ))
+        case "done":
+            guard let nonce = wire.nonce, (1...128).contains(nonce.count), nonce.allSatisfy(\.isHexDigit),
+                  let op = wire.op.flatMap(word), CommandEnvelope.ops.contains(op)
+            else { throw Failure.unreadable }
+            return .done(session: session, done: Done(
+                nonce: nonce, op: op, ok: wire.ok ?? false, error: wire.error.map { String($0.prefix(200)) }
+            ))
         default:
             throw Failure.unknownKind
         }
@@ -325,6 +349,10 @@ public enum ModReport: Equatable, Sendable {
         let phase: String?
         let text: String?
         let features: [String]?
+        let nonce: String?
+        let op: String?
+        let ok: Bool?
+        let error: String?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

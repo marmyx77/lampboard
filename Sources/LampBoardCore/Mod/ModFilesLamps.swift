@@ -2,8 +2,8 @@ import Foundation
 
 extension ModFiles {
 
-    /// `mod/hooks/lamps.js`, the lamps pane of `/lamps` (D131): a file of its
-    /// own in the mod, and so here, beside `register`, rather than inside it.
+    /// `mod/hooks/lamps.js`, the lamps pane of `/lamps` (D131).
+    /// Written by `Scripts/embed-mod.py` from the repository's copy: edit that one.
     public static let lamps = #"""
 // The lamps (D131): every session the LampBoard panel on this Mac shows, the
 // ones that want something first, in a pane beside the conversation. Opened by

@@ -45,6 +45,36 @@ enum ModFilesSuite {
             t.expect(!code.contains("https://"), "no address beyond this Mac")
         },
 
+        TestCase("Only the inbox submits, stops or runs a command, and only what the panel's key signed (D152)") { t in
+            for (name, code) in [("register", ModFiles.register), ("lamps", ModFiles.lamps), ("look", ModFiles.look), ("ed25519", ModFiles.ed25519)] {
+                for call in ["$.prompt.submit", "$.turn.abort", "$.command.run("] {
+                    t.expect(!code.contains(call), "\(name).js must not call \(call)")
+                }
+            }
+            let inbox = ModFiles.inbox
+            t.expect(inbox.contains("const payload = await opened($, envelope, panel.pub, session)"), "every command is opened first")
+            t.expect(inbox.contains("if (payload) await perform($, panel, payload)"), "and run only when it opened")
+            t.expect(inbox.contains("const valid = await verifyEd25519(new TextEncoder().encode(envelope.payload), bytesOf(envelope.sig), pub)"),
+                     "the signature covers the payload's own bytes")
+            t.expect(inbox.contains("/panel-key.pub`"), "with the panel's public key")
+            t.expect(!inbox.contains("check-key"), "never the permission key, which any process can read")
+            t.expect(inbox.contains("payload.sid !== session"), "for this session only")
+            t.expect(inbox.contains("Math.abs(payload.ts - now) > WINDOW"), "within its minute")
+            t.expect(inbox.contains("if (seen[payload.nonce]) return null"), "once")
+            t.expect(inbox.contains("const WAKE = '\(CommandEnvelope.wakeLine)'"), "the panel's wake line")
+            t.expect(inbox.contains("return { consumed: 'lampboard-wake' }"), "taken before the session reads it")
+            for call in ["$.fs.write", "$.process", "config.set", "https://"] {
+                t.expect(!inbox.contains(call), "the inbox must not use \(call)")
+            }
+            t.expect(!inbox.contains("command: 'model'"), "a model for one session through turn.step, never /model")
+            let register = ModFiles.register
+            if let governor = register.range(of: "on('turn.step'"), let inboxAt = register.range(of: "registerInbox(on)") {
+                t.expect(governor.lowerBound < inboxAt.lowerBound, "the inbox after the governor: the person's choice wins")
+            } else {
+                t.fail("both hooks are registered")
+            }
+        },
+
         TestCase("A side question is taken before the session reads it, and answered only when proven (D82)") { t in
             let code = ModFiles.register
             t.expect(code.contains("return { consumed: 'lampboard-ask' }"), "taken, proven or not")
@@ -53,7 +83,7 @@ enum ModFilesSuite {
             t.expect(code.contains("LampBoard asks without disturbing ["), "the head the mod looks for")
             t.expect(code.contains("hmac(key, `fork:${nonce}:${session}:${question}`)"), "the proof PeerAsk makes")
             t.expect(code.contains("/.lampboard/check-key`"), "with the permission key, never the token")
-            t.expect(code.contains("features: ['ask']"), "and the start says it can")
+            t.expect(code.contains("features: ['ask', 'commands']"), "and the start says it can")
         },
 
         TestCase("The band shows and opens; it answers nothing, and draws nothing when nothing waits (D84)") { t in

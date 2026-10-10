@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let preferences = Preferences()
 
     private var server: SignalServer?
+    /// The Hub's signed commands to the sessions' mods (D152).
+    private(set) var hubDesk: HubCommandDesk?
     private var panelController: PanelController?
     /// The live view's windows (D130): here and not in the panel, because the
     /// end-to-end suite runs headless and still opens them.
@@ -609,6 +611,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
 
+        // The Hub's commands are signed with the panel's key (D152): without a key
+        // the Hub sends nothing rather than something unsigned.
+        let panelKey = PanelKey.loadOrCreate()
+        server.hubDesk = panelKey.map { HubCommandDesk(key: $0) }
+        self.hubDesk = server.hubDesk
         do {
             try server.start()
             // A session in Auto has its asks decided without a person (D139).
