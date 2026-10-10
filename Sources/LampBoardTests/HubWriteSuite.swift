@@ -101,7 +101,7 @@ enum HubWriteSuite {
             t.expect(!HubWrite.arrived("run the tests", before: before, now: before), "the old one is not a receipt")
             t.expect(HubWrite.arrived("run the tests", before: before, now: before + ["run  the tests\n"]),
                      "spaces and the end of line do not matter")
-            t.expect(!HubWrite.arrived("deploy", before: before, now: before + ["something else"]))
+            t.expect(!HubWrite.arrived("deploy", before: before, now: before + ["something else"]), "another message is no receipt")
         },
     ])
 }
