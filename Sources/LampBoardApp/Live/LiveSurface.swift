@@ -23,6 +23,8 @@ protocol LiveSurface: AnyObject {
     /// A message sent as if typed, then Enter (D147): the chat's way in.
     /// `false` when the terminal is not running to take it.
     func submit(_ text: String) -> Bool
+    /// Shift+Tab, as the keyboard sends it: Claude Code's next mode (P12).
+    func shiftTab() -> Bool
     /// What the screen shows now, as plain text: the last `lines` of it.
     func screenText(lines: Int) -> String
     /// Whether the program asked for bracketed paste: until it has, a paste
@@ -83,6 +85,12 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
         } else {
             terminal.send(txt: cleaned.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " "))
         }
+    }
+
+    func shiftTab() -> Bool {
+        guard isRunning else { return false }
+        terminal.send(txt: "\u{1b}[Z")
+        return true
     }
 
     func submit(_ text: String) -> Bool {

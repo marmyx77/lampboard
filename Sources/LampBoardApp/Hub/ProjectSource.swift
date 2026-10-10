@@ -64,6 +64,28 @@ struct ProjectSource: Sendable {
         return SearchHits.parse(out ?? "")
     }
 
+    /// Copies files into the project's attachments (P11), each under a name of
+    /// its own, by one script here and there; the names it took, in order.
+    func attach(_ files: [URL]) async -> [String] {
+        let listing = host != nil ? await Self.ssh(host!, RemoteProject.attachments(root: root))
+                                  : await Self.run("/bin/sh", ["-c", RemoteProject.attachments(root: root)])
+        var taken = Set((listing ?? "").split(separator: "\n").map(String.init))
+        var names: [String] = []
+        for file in files {
+            guard let data = try? Data(contentsOf: file, options: .mappedIfSafe), data.count <= Self.mostAttached else { continue }
+            let name = HubBar.attachmentName(file.lastPathComponent, taken: taken)
+            guard let script = RemoteProject.attach(root: root, name: name) else { continue }
+            let done = host != nil ? await Self.ssh(host!, script, input: data) : await Self.run("/bin/sh", ["-c", script], input: data)
+            guard done != nil else { continue }
+            taken.insert(name)
+            names.append(name)
+        }
+        return names
+    }
+
+    /// The largest file attached: an image or a log, not a disk image.
+    static let mostAttached = 20 * 1024 * 1024
+
     /// The real path of a folder or file in the project, or `nil` when it leads out.
     private func resolved(_ relative: String?) -> String? {
         let realRoot = URL(fileURLWithPath: root).resolvingSymlinksInPath().path
@@ -81,7 +103,7 @@ struct ProjectSource: Sendable {
 
     /// One connection per machine, shared and kept a minute: the tree, a file
     /// and git status are three questions, not three logins.
-    static func ssh(_ host: String, _ script: String) async -> String? {
+    static func ssh(_ host: String, _ script: String, input: Data? = nil) async -> String? {
         guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
         // Short on purpose: a socket path is at most 104 bytes, and macOS's own
         // temporary folder plus the hash is longer (measured, 10 October 2026).
@@ -89,10 +111,10 @@ struct ProjectSource: Sendable {
         let args = SSHHardening.options + ["-o", "ConnectTimeout=8", "-o", "ControlMaster=auto",
                                           "-o", "ControlPath=\(control)", "-o", "ControlPersist=60",
                                           "-T", "--", host, script]
-        return await run("/usr/bin/ssh", args)
+        return await run("/usr/bin/ssh", args, input: input)
     }
 
-    static func run(_ executable: String, _ arguments: [String], timeout: TimeInterval = 15) async -> String? {
+    static func run(_ executable: String, _ arguments: [String], timeout: TimeInterval = 15, input: Data? = nil) async -> String? {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
@@ -101,8 +123,17 @@ struct ProjectSource: Sendable {
                 let pipe = Pipe()
                 process.standardOutput = pipe
                 process.standardError = FileHandle.nullDevice
-                process.standardInput = FileHandle.nullDevice
+                let feed = input.map { _ in Pipe() }
+                process.standardInput = feed ?? FileHandle.nullDevice
                 guard (try? process.run()) != nil else { return continuation.resume(returning: nil) }
+                if let feed, let input {
+                    // Written apart from the reading below: a large file and a full
+                    // output pipe would otherwise wait on each other.
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        feed.fileHandleForWriting.write(input)
+                        try? feed.fileHandleForWriting.close()
+                    }
+                }
                 let timer = DispatchWorkItem { if process.isRunning { process.terminate() } }
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()

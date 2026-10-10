@@ -73,6 +73,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "draft": model.selected.flatMap { model.drafts[$0] } ?? NSNull(),
             "band": model.composer.band ?? NSNull(),
             "effectiveMode": model.verdict.mode.rawValue,
+            "commands": model.bar.commands.map(\.name),
+            "sessionMode": model.bar.mode?.rawValue ?? NSNull(),
+            "reaching": model.bar.reaching?.rawValue ?? NSNull(),
+            "remote": model.bar.remote,
+            "chosenModel": model.bar.model ?? NSNull(),
+            "chosenEffort": model.bar.effort ?? NSNull(),
+            "barWarning": model.bar.warning ?? NSNull(),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,
@@ -221,6 +228,17 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let path = wish["open"] as? String { model.files.openFile(path) }
         if let query = wish["query"] as? String { model.files.query = query }
         if wish["stop"] as? Bool == true { model.stop() }
+        // The bar (D157), as its controls call it.
+        if let text = wish["composer"] as? String { model.composer.text = text }
+        if let path = wish["drop"] as? String { model.composer.insert(citation: path, at: wish["at"] as? Int) }
+        if let value = wish["model"] as? String { model.choose(model: value.isEmpty ? nil : value) }
+        if let value = wish["effort"] as? String { model.choose(effort: value.isEmpty ? nil : value) }
+        if let value = wish["mode"] as? String, let mode = HubBar.Mode(rawValue: value) { model.choose(mode: mode) }
+        if wish["remote"] as? Bool == true { model.toggleRemoteControl() }
+        if let paths = wish["attach"] as? [String] {
+            let urls = paths.map { URL(fileURLWithPath: $0) }
+            Task { @MainActor in await self.model.attach(urls) }
+        }
         if let preview = wish["preview"] as? Bool, let active = model.files.active {
             if preview { model.files.previews.insert(active) } else { model.files.previews.remove(active) }
         }

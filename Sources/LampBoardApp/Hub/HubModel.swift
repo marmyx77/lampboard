@@ -25,6 +25,9 @@ struct HubDependencies {
     let command: (_ session: String, _ op: String, _ args: [String: String]) -> Bool
     /// The tools the session ran lately, oldest first, for the files' marks.
     let tools: (String) -> [(name: String, detail: String?)]
+    /// Whether Shift+Tab can be pressed in the session's terminal (a live window).
+    let canShiftTab: (String) -> Bool
+    let shiftTab: (String) -> Bool
 }
 
 /// The Hub's state: which conversation is open, which sessions take signed
@@ -53,6 +56,9 @@ final class HubModel: ObservableObject {
     }
     let liveTail = HubLiveTail()
     let composer = HubComposer()
+    let bar = HubBarState()
+    /// A model chosen once over a warm cache, waiting for the second choice.
+    var pendingModel: String??
     /// Where each session's mod draws (`terminal`, `vscode`, …), from its start.
     private(set) var surfaces: [String: String] = [:]
     /// Whether the followed session's own box holds a draft, as its mod said.
@@ -95,6 +101,12 @@ final class HubModel: ObservableObject {
         case .done(let session, let done):
             // A message the mod could not put in: back in the box.
             if done.op == "submit", !done.ok { composer.failed(session: session) }
+        case .commands(let session, let list):
+            if session == followed { bar.heard(commands: list) }
+        case .mode(let session, let label):
+            if session == followed { bar.heard(mode: label) }
+        case .surfaces(let session, let list):
+            if session == followed { bar.heard(surfaces: list) }
         case .measure, .tool, .answer, .stopped:
             break
         }
@@ -118,7 +130,9 @@ final class HubModel: ObservableObject {
     /// and keeps it in the box when it could not go.
     @discardableResult
     func submit() -> HubComposer.Outcome {
-        guard let id = session?.id, let body = HubWrite.sendable(composer.text) else { return .refused }
+        guard let id = session?.id else { return .refused }
+        if let ran = runSlash(composer.text, in: id) { return ran }
+        guard let body = HubWrite.sendable(composer.text) else { return .refused }
         let verdict = HubWrite.verdict(mode, in: deps.situation(id))
         guard verdict.route != .none else {
             notice = "This session cannot take a message from here now. Open its window."
@@ -175,6 +189,8 @@ final class HubModel: ObservableObject {
     private func openChat(for id: String?) {
         follow(id)
         composer.show(session: id)
+        bar.show(session: id)
+        pendingModel = nil
         let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
         files.show(session: id, root: project?.root, host: project?.host)
         guard id != chatFor else { return }

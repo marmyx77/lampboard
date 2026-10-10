@@ -433,6 +433,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         return live.surface.submit(text)
     }
 
+    /// Shift+Tab into the window showing `sessionId`, by the same gate.
+    func shiftTab(session sessionId: String) -> Bool {
+        guard canPaste(into: sessionId), let live = live(showing: sessionId) else { return false }
+        return live.surface.shiftTab()
+    }
+
     private func live(showing sessionId: String) -> Live? {
         lives.values.first { live in
             if case .tmux(_, _, let id) = live.target { return id == sessionId }

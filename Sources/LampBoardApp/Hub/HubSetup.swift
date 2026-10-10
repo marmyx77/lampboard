@@ -61,7 +61,9 @@ enum HubSetup {
                     if case .tool(let name, let detail) = entry.kind { return (name, detail) }
                     return nil
                 }
-            }
+            },
+            canShiftTab: { id in live.canPaste(into: id) },
+            shiftTab: { id in live.shiftTab(session: id) }
         )
         let model = HubModel(deps: deps)
         weakModel = model

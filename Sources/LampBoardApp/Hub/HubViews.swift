@@ -111,6 +111,7 @@ struct HubConversationView: View {
                 LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false)
                 HubLiveBubble(tail: model.liveTail)
                 Divider()
+                HubBarView(bar: model.bar, composer: model.composer, model: model)
                 HubComposerView(composer: model.composer, submit: { model.submit() }, canWrite: model.route != .none)
             } else {
                 empty("No transcript to read for this session yet.")
