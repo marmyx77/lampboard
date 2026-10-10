@@ -42,6 +42,10 @@ final class ModReceiver {
             let start = store.state.sessions[id].map { $0.status == .working ? $0.statusSince : now } ?? now
             store.apply(.tooling(sessionId: id, tool: ledger.longestRunning(in: id, since: start)), now: now)
         }
+        if case .stopped(let id, let stopped) = report,
+           let action = stopped.action(for: store.state.sessions[id], now: now) {
+            store.apply(action, now: now)
+        }
         if case .measure(let id, let measure) = report, let usd = measure.costUSD {
             store.apply(.costed(sessionId: id, usd: usd), now: now)
         }
@@ -61,6 +65,7 @@ final class ModReceiver {
         case .tool(_, let run): return "tool \(run.finished ? "end" : "start") (\(run.tool))"
         case .answer(_, let answer): return "answer (\(answer.text == nil ? answer.reason ?? "none" : "text"))"
         case .done(_, let done): return "done (\(done.op) \(done.ok ? "ok" : done.error ?? "failed"))"
+        case .stopped(_, let stopped): return "stopped (\(stopped.turnId.prefix(12)))"
         }
     }
 

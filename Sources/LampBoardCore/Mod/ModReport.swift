@@ -25,11 +25,14 @@ public enum ModReport: Equatable, Sendable {
     case answer(session: String, answer: Answer)
     /// What became of a command the Hub signed (D152).
     case done(session: String, done: Done)
+    /// A turn the person stopped, with Esc or the Hub's Stop, which no hook
+    /// reports (D160): the only colour the mod gives.
+    case stopped(session: String, stopped: Stopped)
 
     public var session: String {
         switch self {
         case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
-             .answer(let session, _), .done(let session, _): return session
+             .answer(let session, _), .done(let session, _), .stopped(let session, _): return session
         }
     }
 
@@ -45,6 +48,26 @@ public enum ModReport: Equatable, Sendable {
             self.op = op
             self.ok = ok
             self.error = error
+        }
+    }
+
+    /// Which turn was stopped, and when by the session's clock.
+    public struct Stopped: Equatable, Sendable {
+        public let turnId: String
+        public let at: Date?
+
+        public init(turnId: String, at: Date?) {
+            self.turnId = turnId
+            self.at = at
+        }
+
+        /// What the column makes of it: the row rests from the moment of the
+        /// stop, unless the session has said anything since — a message sent
+        /// right after, from the Hub or the terminal, keeps it working. A
+        /// moment from the future (another machine's clock) counts as now.
+        public func action(for session: SessionState?, now: Date) -> ReducerAction? {
+            guard let session, session.baseStatus == .working else { return nil }
+            return .derive(sessionId: session.id, status: .idle, at: min(at ?? now, now))
         }
     }
 
@@ -226,6 +249,10 @@ public enum ModReport: Equatable, Sendable {
             return .done(session: session, done: Done(
                 nonce: nonce, op: op, ok: wire.ok ?? false, error: wire.error.map { String($0.prefix(200)) }
             ))
+        case "stopped":
+            guard let turnId = wire.turnId, isCallId(turnId) || isSessionId(turnId) else { throw Failure.unreadable }
+            let at = wire.at.flatMap { $0 > 0 && $0 < 1e14 ? Date(timeIntervalSince1970: $0 / 1000) : nil }
+            return .stopped(session: session, stopped: Stopped(turnId: turnId, at: at))
         default:
             throw Failure.unknownKind
         }
@@ -353,6 +380,8 @@ public enum ModReport: Equatable, Sendable {
         let op: String?
         let ok: Bool?
         let error: String?
+        let turnId: String?
+        let at: Double?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

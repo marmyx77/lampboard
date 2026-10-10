@@ -51,6 +51,28 @@ enum ModReportSuite {
             t.expectEqual(trimmed.text?.count, ModReport.maxAnswer, "cut to the bound")
         },
 
+        TestCase("A stopped turn rests the row from its moment, unless the session spoke since (D160)") { t in
+            guard case .stopped(_, let stopped)? = try? decode(
+                #"{"v":1,"kind":"stopped","session":"\#(id)","turnId":"turn-7","at":\#(Int((at.timeIntervalSince1970 + 30) * 1000))}"#)
+            else { return t.fail("not a stopped turn") }
+            t.expectEqual(stopped.turnId, "turn-7")
+            let working = TrafficLightState(sessions: [id: session(context: nil)])
+            guard let action = stopped.action(for: working.sessions[id], now: at.addingTimeInterval(31)) else { return t.fail("no action") }
+            let rested = StateReducer.reduce(working, action: action, now: at.addingTimeInterval(31))
+            t.expectEqual(rested.sessions[id]?.status, .idle)
+            t.expectEqual(rested.sessions[id]?.statusSince, at.addingTimeInterval(30), "from the moment of the stop")
+            let spokeSince = SessionState(id: id, status: .working, workspace: Workspace(path: "/home/dev/api"),
+                                          updatedAt: at.addingTimeInterval(30.5), statusSince: at.addingTimeInterval(30.5))
+            let next = TrafficLightState(sessions: [id: spokeSince])
+            let kept = stopped.action(for: spokeSince, now: at.addingTimeInterval(31)).map {
+                StateReducer.reduce(next, action: $0, now: at.addingTimeInterval(31))
+            } ?? next
+            t.expectEqual(kept.sessions[id]?.status, .working, "a message sent after the stop keeps it working")
+            let resting = SessionState(id: id, status: .ready, workspace: Workspace(path: "/home/dev/api"), updatedAt: at, statusSince: at)
+            t.expectNil(stopped.action(for: resting, now: at), "only a working row rests")
+            t.expectNil(try? decode(#"{"v":1,"kind":"stopped","session":"\#(id)","turnId":"bad id!"}"#))
+        },
+
         TestCase("A measure carries the session's own count, cost and windows") { t in
             guard case .measure(let session, let m) = try? decode(measure) else {
                 return t.fail("the measure was not read")

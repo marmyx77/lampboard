@@ -64,6 +64,7 @@ public struct ModLedger: Equatable, Sendable {
         // An answer is a reply to the panel's question, not a fact about the session.
         if case .answer = report { return self }
         if case .done = report { return self }
+        if case .stopped = report { return self }
         let old = sessions[report.session]
         var facts: Facts
         switch report {

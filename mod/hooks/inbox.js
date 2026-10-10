@@ -18,6 +18,9 @@ const running = new Map()
 const overrides = new Map()
 // The sessions whose reply the panel follows live (D153), and what waits to go.
 const streaming = new Set()
+// The sessions whose turn is being stopped to make room for the Hub's message:
+// that stop is no news, a new turn follows at once.
+const replacing = new Set()
 const pending = new Map()
 let trusted = null
 const FLUSH_EVERY = 150
@@ -113,7 +116,10 @@ async function perform($, panel, payload) {
       const text = typeof args.text === 'string' ? args.text : ''
       if (!text) throw new Error('empty')
       const turn = running.get(session)
-      if (args.mode === 'interrupt' && turn) await $.turn.abort({ turnId: turn })
+      if (args.mode === 'interrupt' && turn) {
+        replacing.add(session)
+        try { await $.turn.abort({ turnId: turn }) } finally { replacing.delete(session) }
+      }
       await $.prompt.submit(args.asUser === 'true' ? { text, asUser: true } : { text })
     } else if (payload.op === 'abort') {
       const turn = running.get(session)
@@ -191,11 +197,24 @@ async function flush($, session, done) {
   } catch (_) {}
 }
 
+async function stopped($, session, turnId) {
+  try {
+    const panel = await panelOf($)
+    if (!panel) return
+    await $.http.fetch(`${panel.base}/mod`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-LampBoard-Token': panel.token },
+      body: JSON.stringify({ v: VERSION, kind: 'stopped', session, turnId, at: await $.clock.now() }),
+    })
+  } catch (_) {}
+}
+
 export function endInbox(session) {
   const clock = clocks.get(session)
   if (clock) clearInterval(clock)
   clocks.delete(session)
   running.delete(session)
+  replacing.delete(session)
   overrides.delete(session)
   streaming.delete(session)
   pending.delete(session)
@@ -230,6 +249,10 @@ export function registerInbox(on) {
     if (!e.agentId) {
       const session = await $.session.id()
       if (running.get(session) === e.turnId) running.delete(session)
+      // No hook says a turn was stopped (D1's gap): the person's Esc or the
+      // Hub's Stop would leave the lamp yellow. The panel takes it as a moment,
+      // and anything the session said after it wins (D160).
+      if (e.reason === 'aborted' && !replacing.has(session)) void stopped($, session, e.turnId)
     }
     return next(e)
   })

@@ -14,6 +14,7 @@ const STALE = {"payload": "{\"args\":{\"text\":\"late\"},\"nonce\":\"d4\",\"op\"
 const COMMAND = {"payload": "{\"args\":{\"args\":\"\",\"name\":\"compact\"},\"nonce\":\"e5\",\"op\":\"command\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}", "sig": "79d42d993261f4c4ca52924f35eac3163e1c9aafe4c9645a2cd69750d6a6f6f8e00c3988fec88badee05919fd34fc85347db07f88faf5b4fe1d09a574d97f401"}
 const MODEL = {"payload": "{\"args\":{\"value\":\"claude-sonnet-5-5\"},\"nonce\":\"f6\",\"op\":\"model\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}", "sig": "5c09b61cfe7aa3182898a48d3ac922b674380ac302f2e3f71bf3379ce071d8fc0f77511f948d62dbcae8a7f71c597e5e0a5ac317785d9052b66d34afda80b90f"}
 const STREAM_ON = {"payload":"{\"args\":{\"on\":\"true\"},\"nonce\":\"g7\",\"op\":\"stream\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}","sig":"09bbaa366f0b97089e18a90f72c4b5b5534ba297b03f861725dec0a00b4c80c767edee0ee4b00cdf352b7d24f89bcc27dfffe26e9ddf589b065fa8a0354ec001"}
+const INTERRUPT = {"payload":"{\"args\":{\"asUser\":\"true\",\"mode\":\"interrupt\",\"text\":\"do this instead\"},\"nonce\":\"h8\",\"op\":\"submit\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}","sig":"48d320c592f96e4b81eb3403217c05840c8f9389dbbb2fa716ced4d0a4486e497ba188aca0c14a1eb86f70ecd51b5e3fa28db1d6506ec9e5df45826e8f3c9702"}
 const WAKE = 'LampBoard wake [v2]'
 
 function panel(on, inbox: unknown[]) {
@@ -50,6 +51,8 @@ function panel(on, inbox: unknown[]) {
   on('prompt.submit', ($, e) => { calls.submitted.push(e); return { text: e.text } })
   on('command.run', ($, e) => { calls.commands.push(e); return {} })
   on('session.receive', ($, e) => ({ text: e.text }))
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
   return calls
 }
 
@@ -130,4 +133,31 @@ test('a panel that cannot sign its hello gets none of the reply, even when it as
   await new Promise((r) => setTimeout(r, 100))
   expect(calls.hellos >= 1).toBe(true)
   expect(calls.streamed.length).toBe(0)
+})
+
+const ENDED = { answer: '', durationMs: 5 }
+
+test('a turn the person stopped is told to the panel; one that answered is not', async ($, on) => {
+  const calls = panel(on, [])
+  await $.turn.complete({ ...ENDED, turnId: 't20', isAborted: false, reason: 'answer' })
+  await $.turn.complete({ ...ENDED, turnId: 't21', isAborted: true, reason: 'aborted' })
+  await settle(calls, () => calls.done.length >= 1)
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls.done.length).toBe(1)
+  expect(calls.done[0]).toMatchObject({ kind: 'stopped', session: SID, turnId: 't21', at: TS })
+})
+
+test('a turn stopped to make room for the Hub\'s message is not told as stopped', async ($, on) => {
+  const calls = panel(on, [INTERRUPT])
+  const engine = $
+  on('turn.abort', async (_, e) => {
+    await engine.turn.complete({ ...ENDED, turnId: e.turnId, isAborted: true, reason: 'aborted' })
+    return { value: {} }
+  })
+  await $.turn.start({ turnId: 't30', text: 'a long job' })
+  await $.session.receive({ origin: { kind: 'peer-send-message' }, text: WAKE })
+  await settle(calls, () => calls.done.some((d) => d.kind === 'done'))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls.submitted.length).toBe(1)
+  expect(calls.done.filter((d) => d.kind === 'stopped').length).toBe(0)
 })
