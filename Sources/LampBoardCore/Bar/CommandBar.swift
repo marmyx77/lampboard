@@ -66,12 +66,15 @@ public enum CommandBar {
         public let title: String
         public let cwd: String?
         public let snippet: String
+        /// The machine it ran on, when not this Mac (M7).
+        public let host: String?
 
-        public init(sessionId: String, title: String, cwd: String?, snippet: String) {
+        public init(sessionId: String, title: String, cwd: String?, snippet: String, host: String? = nil) {
             self.sessionId = sessionId
             self.title = title
             self.cwd = cwd
             self.snippet = snippet
+            self.host = host
         }
     }
 

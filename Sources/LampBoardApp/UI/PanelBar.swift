@@ -85,14 +85,16 @@ extension PanelController {
         if let index = searchIndex {
             bar.onSearch = { words in
                 index.search(words, limit: 5).map { hit in
-                    CommandBar.Found(sessionId: hit.sessionId,
-                                     title: hit.title ?? hit.cwd.map { ($0 as NSString).lastPathComponent } ?? String(hit.sessionId.prefix(8)),
-                                     cwd: hit.cwd, snippet: hit.snippet)
+                    let title = hit.title ?? hit.cwd.map { ($0 as NSString).lastPathComponent } ?? String(hit.sessionId.prefix(8))
+                    // Another machine's conversation says where, as its row's R does.
+                    let machine = hit.host.map { " · R " + ($0.split(separator: "@").last.map(String.init) ?? $0) } ?? ""
+                    return CommandBar.Found(sessionId: hit.sessionId, title: title + machine,
+                                            cwd: hit.cwd, snippet: hit.snippet, host: hit.host)
                 }
             }
             bar.onWeek = { index.weekSummary() }
         }
-        bar.onConversation = { [weak self] id, foundCwd in
+        bar.onConversation = { [weak self] id, foundCwd, host in
             if let self, let session = self.session(named: id) {
                 self.activate(session: session)
                 return "Opened."
@@ -104,7 +106,12 @@ extension PanelController {
             let cwd = foundCwd.flatMap { path in
                 path.unicodeScalars.allSatisfy { !CharacterSet.controlCharacters.contains($0) } ? path : nil
             }
-            let command = (cwd.map { "cd '\($0.replacingOccurrences(of: "'", with: "'\\''"))' && " } ?? "") + "claude --resume \(id)"
+            var command = (cwd.map { "cd '\($0.replacingOccurrences(of: "'", with: "'\\''"))' && " } ?? "") + "claude --resume \(id)"
+            // On another machine: the same, through ssh with a terminal.
+            if let host {
+                guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return "That conversation's machine has a name this panel will not put in a command." }
+                command = "ssh -t \(host) -- '\(command.replacingOccurrences(of: "'", with: "'\\''"))'"
+            }
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(command, forType: .string)
             return "Closed. To resume it, paste in a terminal (copied): \(command)"

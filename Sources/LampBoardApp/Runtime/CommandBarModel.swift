@@ -40,7 +40,7 @@ final class CommandBarModel: ObservableObject {
     /// The search index's answer for the typed words (0.7), off the main actor.
     var onSearch: @Sendable (String) -> [CommandBar.Found] = { _ in [] }
     /// A conversation found: what to say in the bar about reaching it.
-    var onConversation: @MainActor (String, String?) -> String = { _, _ in "" }
+    var onConversation: @MainActor (String, String?, String?) -> String = { _, _, _ in "" }
     /// `/handoff @from @to` (5.4): what the bar says, or `nil` when the handoff
     /// waits in the second session's Plancia.
     var onHandoff: @MainActor (String, String) async -> String? = { _, _ in "Handing over is not available." }
@@ -155,7 +155,8 @@ final class CommandBarModel: ObservableObject {
             }
         case .conversation:
             guard let id = result.sessionId else { return }
-            answer = onConversation(id, found.first { $0.sessionId == id }?.cwd)
+            let hit = found.first { $0.sessionId == id }
+            answer = onConversation(id, hit?.cwd, hit?.host)
             onLayoutChange()
         case .askSession:
             guard sendingEnabled, let id = result.sessionId, !asking,
