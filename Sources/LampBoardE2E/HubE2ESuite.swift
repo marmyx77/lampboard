@@ -175,6 +175,21 @@ enum HubE2ESuite {
                 a.expect(wait(4) { report()["liveText"] is NSNull }, "\(report()["liveText"] ?? "none")")
             },
 
+            TestCase("a turn the person stopped rests the lamp, and an API error turns it red (E18, D160)") { a in
+                guard ready() else { return a.fail("no instance") }
+                func status() -> String? { report()["status"] as? String }
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: working, cwd: project), entrypoint: "cli")
+                a.expect(wait(3) { status() == "working" }, "working: \(status() ?? "none")")
+                let at = Int(Date().timeIntervalSince1970 * 1000)
+                let stopped = #"{"v":1,"kind":"stopped","session":"\#(working)","turnId":"turn-5","at":\#(at)}"#
+                a.expectEqual(app.raw(method: "POST", path: AppConfig.modPath, body: stopped).status, 204)
+                a.expect(wait(3) { status() == "idle" }, "a stop rests, not red: \(status() ?? "none")")
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: working, cwd: project), entrypoint: "cli")
+                a.expect(wait(3) { status() == "working" }, "working again: \(status() ?? "none")")
+                app.sendHook(HookPayloads.stopFailure(sessionId: working, cwd: project, errorType: "server_error"), entrypoint: "cli")
+                a.expect(wait(3) { status() == "failed" }, "an error is red: \(status() ?? "none")")
+            },
+
             TestCase("the project's tree and what git says of each file are beside the conversation") { a in
                 guard ready() else { return a.fail("no instance") }
                 a.expectEqual(open(working), 204)
