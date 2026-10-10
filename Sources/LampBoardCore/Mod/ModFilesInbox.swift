@@ -33,6 +33,9 @@ const pending = new Map()
 // Whether the followed session's own box holds a draft, as last told (D154):
 // a yes or a no, never the words.
 const drafting = new Map()
+// The footer's mode as last drawn, for every session: the Hub gets it when it
+// starts following, and each change after.
+const modes = new Map()
 let trusted = null
 const FLUSH_EVERY = 150
 const TRUST_FOR = 10 * 60 * 1000
@@ -143,6 +146,7 @@ async function perform($, panel, payload) {
         streaming.add(session)
         drafting.delete(session)
         void boxNow($, session)
+        void facts($, session)
       } else {
         streaming.delete(session)
         drafting.delete(session)
@@ -224,13 +228,32 @@ async function boxNow($, session) {
 async function presence($, session, draft) {
   if (drafting.get(session) === draft) return
   drafting.set(session, draft)
+  await tell($, { kind: 'presence', session, draft })
+}
+
+// What the composer offers for the session the Hub opens (D157): its commands,
+// each a name and one short line, its mode, and where it draws (Remote Control
+// adds `mobile`).
+async function facts($, session) {
+  try {
+    const list = (await $.command.list()).slice(0, 300)
+      .map((c) => ({ name: String(c.name).slice(0, 64), description: String(c.description || '').slice(0, 120) }))
+    await tell($, { kind: 'commands', session, list })
+  } catch (_) {}
+  try {
+    await tell($, { kind: 'surfaces', session, list: [...(await $.session.surfaces())].slice(0, 8) })
+  } catch (_) {}
+  if (modes.has(session)) await tell($, { kind: 'mode', session, label: modes.get(session) })
+}
+
+async function tell($, report) {
   try {
     const panel = await panelOf($)
     if (!panel) return
     await $.http.fetch(`${panel.base}/mod`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-LampBoard-Token': panel.token },
-      body: JSON.stringify({ v: VERSION, kind: 'presence', session, draft }),
+      body: JSON.stringify({ v: VERSION, ...report }),
     })
   } catch (_) {}
 }
@@ -254,6 +277,7 @@ export function endInbox(session) {
   running.delete(session)
   replacing.delete(session)
   drafting.delete(session)
+  modes.delete(session)
   overrides.delete(session)
   streaming.delete(session)
   pending.delete(session)
@@ -286,6 +310,19 @@ export function registerInbox(on) {
       // The person's Enter empties the box: the Hub hears it at the turn.
       if (streaming.has(session)) void boxNow($, session)
     }
+    return next(e)
+  })
+
+  // The footer's mode (Shift+Tab, /plan), as the session draws it.
+  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    try {
+      const session = await $.session.id()
+      const label = (e.props?.modes ?? []).map(String).join(' · ').slice(0, 80)
+      if (modes.get(session) !== label) {
+        modes.set(session, label)
+        if (streaming.has(session)) void tell($, { kind: 'mode', session, label })
+      }
+    } catch (_) {}
     return next(e)
   })
 
