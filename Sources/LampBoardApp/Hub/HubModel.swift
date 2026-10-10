@@ -62,6 +62,8 @@ final class HubModel: ObservableObject {
     let bar = HubBarState()
     /// A model chosen once over a warm cache, waiting for the second choice.
     var pendingModel: String??
+    /// Shows the files column (the bar's «Cite a project file»).
+    var showFiles: (() -> Void)?
     /// When `/plan` took, by the mod's word: Plan holds until the hooks or the
     /// screen say anything after it (the hooks speak again only at the next prompt).
     var planSince: Date?
@@ -103,7 +105,10 @@ final class HubModel: ObservableObject {
             commandable.remove(session)
             drafts[session] = nil
         case .presence(let session, let draft):
-            if session == followed { drafts[session] = draft }
+            if session == followed {
+                drafts[session] = draft
+                if session == selected { composer.heard(draft: draft) }
+            }
         case .done(let session, let done):
             // A message the mod could not put in: back in the box.
             if done.op == "submit", !done.ok { composer.failed(session: session) }

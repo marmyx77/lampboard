@@ -510,6 +510,14 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - NSWindowDelegate
 
+    /// The chat's palette is one for the app: a live window takes its own back
+    /// when it comes forward, after the Hub had set its own.
+    func windowDidBecomeKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              lives.values.contains(where: { $0.window === window && $0.chat != nil }) else { return }
+        LiveChatTheme.apply(preferences.liveAppearance, chatFont: LiveChatTheme.vsCodeChatFont())
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
               let live = lives.values.first(where: { $0.window === window }) else { return }

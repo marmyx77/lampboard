@@ -139,7 +139,8 @@ struct PanelRootView: View {
 
     private var column: some View {
         VStack(spacing: 0) {
-            if let tip = tips.current {
+            // In the Hub the rows stand alone (D150): no tip, no strips, no footer.
+            if let tip = tips.current, !inHub {
                 TipBand(tip: tip, compact: flags.compact, dismiss: tips.dismiss)
             }
             if samples.isOn || TrialStage.mode != nil {
@@ -174,10 +175,12 @@ struct PanelRootView: View {
                 queue: queue,
                 toggleResting: actions.toggleResting
             )
-            AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
-                           forecasts: allowance.forecasts)
+            if !inHub {
+                AllowanceStrip(reports: allowance.reports, quiet: allowance.quiet, compact: flags.compact,
+                               forecasts: allowance.forecasts)
+            }
             issueStrip
-            footer
+            if !inHub { footer }
         }
         // The panel menu stays reachable from the margins: over the rows it is
         // shadowed by the row menu, which is more specific and therefore takes the

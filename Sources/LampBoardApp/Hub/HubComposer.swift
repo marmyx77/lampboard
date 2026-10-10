@@ -25,6 +25,8 @@ final class HubComposer: ObservableObject {
     /// Send was pressed over the person's own draft: the next Send goes.
     @Published private(set) var confirming = false
     @Published private(set) var band: String?
+    /// Whether the session's own box holds a draft, as its mod said.
+    @Published private(set) var boxHasDraft = false
 
     private var drafts: [String: String] = [:]
     private var session: String?
@@ -36,6 +38,7 @@ final class HubComposer: ObservableObject {
         session = id
         text = id.flatMap { drafts[$0] } ?? ""
         confirming = false
+        boxHasDraft = false
     }
 
     func ask() { confirming = true }
@@ -58,6 +61,8 @@ final class HubComposer: ObservableObject {
     }
 
     func show(band: String?) { if self.band != band { self.band = band } }
+
+    func heard(draft: Bool) { if boxHasDraft != draft { boxHasDraft = draft } }
 
     /// The text left the box; it stays in sight until it arrives.
     func sent(_ text: String, session: String, before: [String]) {
@@ -87,8 +92,8 @@ final class HubComposer: ObservableObject {
     }
 }
 
-/// The box under the conversation: the band, the message waiting for its
-/// receipt, the question over a draft, and Send.
+/// The box under the conversation (the proposal's `.composer`): the message
+/// waiting for its receipt, the question over a draft, and the bordered text.
 struct HubComposerView: View {
     @ObservedObject var composer: HubComposer
     let submit: () -> Void
@@ -96,41 +101,31 @@ struct HubComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let band = composer.band {
-                Text(band).font(.system(size: 11)).padding(.horizontal, 10).padding(.vertical, 5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color.secondary.opacity(0.15)))
-                    .accessibilityIdentifier("hub.band")
-            }
             if let pending = composer.pending {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
-                    Text("Sending: \(pending.text)").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
+                    Text("Sending: \(pending.text)").font(.system(size: 11)).foregroundStyle(HubPalette.muted).lineLimit(2)
                 }
                 .accessibilityIdentifier("hub.pending")
             }
             if composer.confirming {
-                Text("Something is typed in the session's own box. Send anyway? Yours goes first; what is typed there stays.")
-                    .font(.system(size: 11)).foregroundStyle(.orange)
+                Text("Something is typed in the session's own box. Send again to send anyway: yours goes first, what is typed there stays.")
+                    .font(.system(size: 11)).foregroundStyle(HubPalette.amber)
                     .accessibilityIdentifier("hub.confirm")
             }
-            HStack(alignment: .bottom, spacing: 8) {
-                HubTextView(composer: composer, editable: canWrite, submit: submit)
-                    .frame(minHeight: 22, maxHeight: 140)
-                    .overlay(alignment: .topLeading) {
-                        if composer.text.isEmpty {
-                            Text(canWrite ? "Message the session… drop a file to cite it, / for commands" : "Read only from here")
-                                .font(.system(size: 13)).foregroundStyle(.tertiary).allowsHitTesting(false)
-                                .padding(.leading, 5).padding(.top, 2)
-                        }
+            HubTextView(composer: composer, editable: canWrite, submit: submit)
+                .frame(minHeight: 44, maxHeight: 160)
+                .padding(.horizontal, 4).padding(.vertical, 4)
+                .background(RoundedRectangle(cornerRadius: 8).fill(HubPalette.panel))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(HubPalette.line, lineWidth: 1))
+                .overlay(alignment: .topLeading) {
+                    if composer.text.isEmpty {
+                        Text(canWrite ? "Write to the session… drop a file to cite it, / for commands" : "Read only from here")
+                            .font(HubPalette.body).foregroundStyle(HubPalette.muted).allowsHitTesting(false)
+                            .padding(.leading, 9).padding(.top, 6)
                     }
-                Button(composer.confirming ? "Send anyway" : "Send", action: submit)
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(!canWrite || composer.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityIdentifier("hub.send")
-            }
+                }
         }
-        .padding(12)
     }
 }
 
@@ -155,6 +150,8 @@ struct HubTextView: NSViewRepresentable {
         text.isVerticallyResizable = true
         text.textContainer?.widthTracksTextView = true
         text.font = .systemFont(ofSize: 13)
+        text.textColor = NSColor(srgbRed: 0xE4 / 255, green: 0xE8 / 255, blue: 0xEB / 255, alpha: 1)
+        text.insertionPointColor = .white
         text.drawsBackground = false
         text.isRichText = false
         text.allowsUndo = true
@@ -185,11 +182,11 @@ struct HubTextView: NSViewRepresentable {
         let whole = NSRange(location: 0, length: storage.length)
         storage.beginEditing()
         storage.removeAttribute(.backgroundColor, range: whole)
-        storage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: whole)
+        storage.addAttribute(.foregroundColor, value: NSColor(srgbRed: 0xE4 / 255, green: 0xE8 / 255, blue: 0xEB / 255, alpha: 1), range: whole)
         storage.addAttribute(.font, value: NSFont.systemFont(ofSize: 13), range: whole)
         if let pattern = try? NSRegularExpression(pattern: "(?<![\\w@])@[^\\s@]+") {
             for match in pattern.matches(in: storage.string, range: whole) {
-                storage.addAttribute(.backgroundColor, value: NSColor.controlAccentColor.withAlphaComponent(0.22), range: match.range)
+                storage.addAttribute(.backgroundColor, value: NSColor(srgbRed: 0x22 / 255, green: 0x36 / 255, blue: 0x4A / 255, alpha: 1), range: match.range)
                 storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 12, weight: .medium), range: match.range)
             }
         }

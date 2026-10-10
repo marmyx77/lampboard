@@ -18,6 +18,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     private var window: NSWindow?
     private var split: NSSplitViewController?
     private var sidebarHost: NSHostingController<HubSidebarView>?
+    private var toolButtons: [NSToolbarItem.Identifier: NSButton] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     private static let sidebarItem = NSToolbarItem.Identifier("hub.sidebar")
@@ -38,7 +39,9 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     func show(session: String? = nil) {
         let window = self.window ?? makeWindow()
         if let session { model.selected = session }
+        HubChatTheme.apply()
         window.makeKeyAndOrderFront(nil)
+        refreshToolbar()
         onVisibilityChange()
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -150,8 +153,12 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         self.split = split
 
         let window = NSWindow(contentViewController: split)
-        window.title = "LampBoard"
-        window.subtitle = "Hub"
+        window.title = "LampBoard Hub"
+        // The proposal's window: one dark surface, a slim bar of icons, no title.
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.appearance = HubPalette.appearance
+        window.backgroundColor = HubPalette.nsWindow
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.setContentSize(NSSize(width: 1100, height: 720))
         window.minSize = NSSize(width: 640, height: 420)
@@ -163,8 +170,9 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         window.toolbar = toolbar
-        window.toolbarStyle = .unified
+        window.toolbarStyle = .unifiedCompact
         self.window = window
+        model.showFiles = { [weak self] in self?.setColumns(files: true, last: nil) }
         return window
     }
 
@@ -188,13 +196,19 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         case Self.terminalItem: spec = ("Terminal", "A shell in the project's folder", "apple.terminal", #selector(toggleTerminal))
         default: return nil
         }
+        // A button that stays lit while its column is shown (the proposal's `.ico`).
+        let button = NSButton(image: NSImage(systemSymbolName: spec.2, accessibilityDescription: spec.0) ?? NSImage(),
+                              target: self, action: spec.3)
+        button.setButtonType(.pushOnPushOff)
+        button.bezelStyle = .texturedRounded
+        button.isBordered = true
+        button.toolTip = spec.1
+        button.setAccessibilityIdentifier(id.rawValue)
+        toolButtons[id] = button
         let item = NSToolbarItem(itemIdentifier: id)
         item.label = spec.0
-        item.toolTip = spec.1
-        item.image = NSImage(systemSymbolName: spec.2, accessibilityDescription: spec.0)
-        item.target = self
-        item.action = spec.3
-        item.isBordered = true
+        item.view = button
+        DispatchQueue.main.async { [weak self] in self?.refreshToolbar() }
         return item
     }
 
@@ -202,6 +216,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         guard let items = split?.splitViewItems, items.count > 2 else { return }
         items[2].animator().isCollapsed.toggle()
         Preferences.sharedDefaults.set(!items[2].isCollapsed, forKey: Self.filesShownKey)
+        refreshToolbar()
     }
 
     @objc func togglePreview() { toggleLast(.file) }
@@ -219,6 +234,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         guard let items = split?.splitViewItems, items.count > 3 else { return }
         model.files.lastColumn = what
         if items[3].isCollapsed == shown { items[3].animator().isCollapsed = !shown }
+        refreshToolbar()
     }
 
     /// `POST /hub/files` (fake home only): `{"files", "last", "open", "query", "preview"}`.
@@ -256,7 +272,27 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         guard let item = split?.splitViewItems.first else { return }
         item.animator().isCollapsed.toggle()
         Preferences.sharedDefaults.set(item.isCollapsed, forKey: Self.sidebarCollapsedKey)
+        refreshToolbar()
     }
+
+    /// Each icon lit while its column is shown, in the accent's colour.
+    func refreshToolbar() {
+        guard let items = split?.splitViewItems, items.count > 3 else { return }
+        let last = !items[3].isCollapsed
+        let on: [NSToolbarItem.Identifier: Bool] = [
+            Self.sidebarItem: !items[0].isCollapsed,
+            Self.filesItem: !items[2].isCollapsed,
+            Self.previewItem: last && model.files.lastColumn == .file,
+            Self.terminalItem: last && model.files.lastColumn == .terminal,
+        ]
+        for (id, button) in toolButtons {
+            let lit = on[id] ?? false
+            button.state = lit ? .on : .off
+            button.contentTintColor = lit ? NSColor(srgbRed: 0x7F / 255, green: 0xB0 / 255, blue: 0xDE / 255, alpha: 1) : .secondaryLabelColor
+        }
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) { HubChatTheme.apply() }
 
     // MARK: - Window
 

@@ -13,18 +13,27 @@ struct HubFilesView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let source = files.source {
                 HStack(spacing: 6) {
-                    Text((source.root as NSString).lastPathComponent).font(.system(size: 11, weight: .semibold)).lineLimit(1)
-                    if source.isRemote { Text("R").font(.system(size: 9, weight: .bold)).padding(.horizontal, 3).background(RoundedRectangle(cornerRadius: 3).fill(Color.secondary.opacity(0.25))) }
+                    Text((source.root as NSString).lastPathComponent.uppercased())
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced)).kerning(0.8)
+                        .foregroundStyle(HubPalette.muted).lineLimit(1)
+                    if source.isRemote {
+                        Text("R").font(.system(size: 9, weight: .bold)).padding(.horizontal, 3)
+                            .background(RoundedRectangle(cornerRadius: 3).fill(HubPalette.line))
+                    }
                     Spacer()
                 }
-                TextField("Search the project…", text: $files.query)
-                    .textFieldStyle(.roundedBorder).controlSize(.small)
+                .padding(.top, 2)
+                TextField("Search a file…", text: $files.query)
+                    .textFieldStyle(.plain).font(.system(size: 11))
+                    .padding(.horizontal, 7).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(HubPalette.panel))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(HubPalette.line))
                     .accessibilityIdentifier("hub.files.search")
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 1) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         if files.query.trimmingCharacters(in: .whitespaces).count >= 2 {
                             ForEach(Array(files.hits.enumerated()), id: \.offset) { _, hit in hitRow(hit) }
-                            if files.hits.isEmpty { Text("Nothing found.").font(.system(size: 11)).foregroundStyle(.secondary) }
+                            if files.hits.isEmpty { Text("Nothing found.").font(.system(size: 11)).foregroundStyle(HubPalette.muted) }
                         } else {
                             tree(nil, depth: 0)
                         }
@@ -33,18 +42,20 @@ struct HubFilesView: View {
                 legend(remote: source.isRemote)
             } else {
                 Spacer()
-                Text("No project folder for this session.").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("No project folder for this session.").font(.system(size: 11)).foregroundStyle(HubPalette.muted)
                 Spacer()
             }
         }
-        .padding(8)
+        .padding(10)
         .frame(minWidth: 200, maxHeight: .infinity, alignment: .top)
+        .background(HubPalette.soft.ignoresSafeArea())
+        .foregroundStyle(HubPalette.ink)
     }
 
     private func tree(_ folder: String?, depth: Int) -> AnyView {
         AnyView(ForEach(files.entries(in: folder)) { entry in
             let path = folder.map { "\($0)/\(entry.name)" } ?? entry.name
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 0) {
                 row(entry, path: path, depth: depth)
                 if entry.isFolder, files.expanded.contains(path) { tree(path, depth: depth + 1) }
             }
@@ -56,19 +67,19 @@ struct HubFilesView: View {
             if entry.isFolder { files.toggle(path) } else { files.openFile(path) }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: entry.isFolder ? (files.expanded.contains(path) ? "chevron.down" : "chevron.right") : "doc")
-                    .font(.system(size: 9)).foregroundStyle(.secondary).frame(width: 10)
-                Text(entry.name).font(.system(size: 12, design: .monospaced)).lineLimit(1)
+                Text(entry.isFolder ? (files.expanded.contains(path) ? "▾" : "▸") : "·")
+                    .font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted).frame(width: 9)
+                Text(entry.isFolder ? entry.name + "/" : entry.name).font(HubPalette.mono).lineLimit(1)
                     .foregroundStyle(color(of: path))
                 Spacer(minLength: 4)
                 if let code = files.git[path] {
-                    Text(code).font(.system(size: 10, weight: .semibold, design: .monospaced)).foregroundStyle(.secondary)
+                    Text(code).font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
                 }
             }
-            .padding(.leading, CGFloat(depth) * 12)
-            .padding(.vertical, 2)
+            .padding(.leading, CGFloat(depth) * 10 + 2)
+            .padding(.vertical, 2).padding(.trailing, 4)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 4).fill(files.active == path ? Color.accentColor.opacity(0.18) : .clear))
+            .background(RoundedRectangle(cornerRadius: 4).fill(files.active == path ? HubPalette.accentSoft : .clear))
         }
         .buttonStyle(.plain)
         .onDrag { NSItemProvider(object: "@\(path)" as NSString) }
@@ -79,9 +90,10 @@ struct HubFilesView: View {
     private func hitRow(_ hit: SearchHits.Hit) -> some View {
         Button { files.openFile(hit.path) } label: {
             VStack(alignment: .leading, spacing: 1) {
-                Text("\(hit.path):\(hit.line)").font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
-                Text(hit.text).font(.system(size: 11, design: .monospaced)).lineLimit(1)
+                Text("\(hit.path):\(hit.line)").font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
+                Text(hit.text).font(HubPalette.monoSmall).lineLimit(1)
             }
+            .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -90,31 +102,28 @@ struct HubFilesView: View {
 
     private func color(of path: String) -> Color {
         switch files.marks[path] {
-        case .read: return Color(red: 0.62, green: 0.45, blue: 0.85)
-        case .written: return Color(red: 0.95, green: 0.6, blue: 0.2)
-        case .committed: return Color(red: 0.3, green: 0.75, blue: 0.45)
-        case nil: return .primary
+        case .read: return HubPalette.read
+        case .written: return HubPalette.amber
+        case .committed: return HubPalette.green
+        case nil: return HubPalette.ink
         }
     }
 
     private func legend(remote: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 8) {
-                Label("read", systemImage: "circle.fill").foregroundStyle(color(read: .read))
-                Label("written", systemImage: "circle.fill").foregroundStyle(color(read: .written))
-                Label("in a commit", systemImage: "circle.fill").foregroundStyle(color(read: .committed))
+                dot(HubPalette.read, "read")
+                dot(HubPalette.amber, "written")
+                dot(HubPalette.green, "in a commit")
             }
+            Text("Click: opens on the right · drag into the message: cites it")
             Text(remote ? "Read through LampBoard's ssh, inside the project only" : "Read from this Mac's disk")
         }
-        .font(.system(size: 10)).labelStyle(.titleAndIcon).foregroundStyle(.secondary)
+        .font(.system(size: 10)).foregroundStyle(HubPalette.muted)
     }
 
-    private func color(read mark: FileMarks.Mark) -> Color {
-        switch mark {
-        case .read: return Color(red: 0.62, green: 0.45, blue: 0.85)
-        case .written: return Color(red: 0.95, green: 0.6, blue: 0.2)
-        case .committed: return Color(red: 0.3, green: 0.75, blue: 0.45)
-        }
+    private func dot(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 3) { Circle().fill(color).frame(width: 6, height: 6); Text(label) }
     }
 }
 
@@ -129,7 +138,8 @@ struct HubViewerView: View {
         VStack(spacing: 0) {
             if files.open.isEmpty {
                 Spacer()
-                Text("Open a file from the project's tree.").foregroundStyle(.secondary)
+                Text("No file open. Open one from the project's files with the folder icon above.")
+                    .font(.system(size: 12)).foregroundStyle(HubPalette.muted).multilineTextAlignment(.center).padding()
                 Spacer()
             } else {
                 tabs
@@ -138,6 +148,8 @@ struct HubViewerView: View {
             }
         }
         .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity)
+        .background(HubPalette.panel)
+        .foregroundStyle(HubPalette.ink)
     }
 
     private var tabs: some View {
@@ -145,17 +157,19 @@ struct HubViewerView: View {
             HStack(spacing: 2) {
                 ForEach(files.open) { file in
                     HStack(spacing: 4) {
-                        Text(file.name).font(.system(size: 11, design: .monospaced))
+                        Text(file.name).font(HubPalette.monoSmall)
                         Button { files.close(file.path) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
                             .buttonStyle(.plain).help("Close \(file.name)")
                     }
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(files.active == file.path ? Color.secondary.opacity(0.2) : .clear))
+                    .background(RoundedRectangle(cornerRadius: 5).fill(files.active == file.path ? HubPalette.panel : .clear))
+                    .foregroundStyle(files.active == file.path ? HubPalette.ink : HubPalette.muted)
                     .onTapGesture { files.active = file.path }
                 }
             }
             .padding(4)
         }
+        .background(HubPalette.soft)
     }
 
     @ViewBuilder private func content(_ file: HubFilesModel.OpenFile) -> some View {
