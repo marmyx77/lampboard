@@ -25,9 +25,10 @@ const running = new Map()
 const overrides = new Map()
 // The sessions whose reply the panel follows live (D153), and what waits to go.
 const streaming = new Set()
-// The sessions whose turn is being stopped to make room for the Hub's message:
-// that stop is no news, a new turn follows at once.
-const replacing = new Set()
+// The turn each session is stopping to make room for the Hub's message: that
+// stop is no news, a new turn follows at once. By turn, since the turn ends
+// after the abort has returned (measured, 10 October 2026).
+const replacing = new Map()
 const pending = new Map()
 let trusted = null
 const FLUSH_EVERY = 150
@@ -124,8 +125,8 @@ async function perform($, panel, payload) {
       if (!text) throw new Error('empty')
       const turn = running.get(session)
       if (args.mode === 'interrupt' && turn) {
-        replacing.add(session)
-        try { await $.turn.abort({ turnId: turn }) } finally { replacing.delete(session) }
+        replacing.set(session, turn)
+        await $.turn.abort({ turnId: turn })
       }
       await $.prompt.submit(args.asUser === 'true' ? { text, asUser: true } : { text })
     } else if (payload.op === 'abort') {
@@ -259,7 +260,9 @@ export function registerInbox(on) {
       // No hook says a turn was stopped (D1's gap): the person's Esc or the
       // Hub's Stop would leave the lamp yellow. The panel takes it as a moment,
       // and anything the session said after it wins (D160).
-      if (e.reason === 'aborted' && !replacing.has(session)) void stopped($, session, e.turnId)
+      const replaced = replacing.get(session) === e.turnId
+      if (replaced) replacing.delete(session)
+      if (e.reason === 'aborted' && !replaced) void stopped($, session, e.turnId)
     }
     return next(e)
   })

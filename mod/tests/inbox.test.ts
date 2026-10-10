@@ -150,14 +150,15 @@ test('a turn the person stopped is told to the panel; one that answered is not',
 test('a turn stopped to make room for the Hub\'s message is not told as stopped', async ($, on) => {
   const calls = panel(on, [INTERRUPT])
   const engine = $
+  // As measured live: the abort returns first, the turn ends after.
   on('turn.abort', async (_, e) => {
-    await engine.turn.complete({ ...ENDED, turnId: e.turnId, isAborted: true, reason: 'aborted' })
+    setTimeout(() => { void engine.turn.complete({ ...ENDED, turnId: e.turnId, isAborted: true, reason: 'aborted' }) }, 20)
     return { value: {} }
   })
   await $.turn.start({ turnId: 't30', text: 'a long job' })
   await $.session.receive({ origin: { kind: 'peer-send-message' }, text: WAKE })
   await settle(calls, () => calls.done.some((d) => d.kind === 'done'))
-  await new Promise((r) => setTimeout(r, 50))
+  await new Promise((r) => setTimeout(r, 100))
   expect(calls.submitted.length).toBe(1)
   expect(calls.done.filter((d) => d.kind === 'stopped').length).toBe(0)
 })
