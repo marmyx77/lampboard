@@ -60,6 +60,12 @@ public struct LiveTheme: Equatable, Sendable {
     /// The space between lines, as a multiple of the font's own: a little air
     /// reads like a chat, too much breaks Claude Code's boxes apart.
     public static let lineSpacings: ClosedRange<Double> = 1.0...1.5
+    /// A cell's width as a fraction of the font's advance (D146): below 0.85
+    /// the wide letters (m, W) touch their neighbours.
+    public static let letterSpacings: ClosedRange<Double> = 0.85...1.0
+    public static func clampedLetterSpacing(_ value: Double) -> Double {
+        min(max(value, letterSpacings.lowerBound), letterSpacings.upperBound)
+    }
     public static func clampedLineSpacing(_ value: Double) -> Double {
         min(max(value, lineSpacings.lowerBound), lineSpacings.upperBound)
     }
@@ -103,8 +109,11 @@ public struct LiveAppearance: Equatable, Sendable {
     /// A fixed-pitch font family; `nil` is the system's own.
     public let fontFamily: String?
     public let lineSpacing: Double
+    public let letterSpacing: Double
 
-    public init(theme: LiveTheme, fontSize: Double, fontFamily: String? = nil, lineSpacing: Double = 1) {
+    public init(theme: LiveTheme, fontSize: Double, fontFamily: String? = nil, lineSpacing: Double = 1,
+                letterSpacing: Double = 1) {
+        self.letterSpacing = LiveTheme.clampedLetterSpacing(letterSpacing)
         self.theme = theme
         self.fontSize = LiveTheme.clampedFontSize(fontSize)
         self.fontFamily = fontFamily?.trimmingCharacters(in: .whitespaces).isEmpty == false ? fontFamily : nil

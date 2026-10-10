@@ -302,6 +302,7 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     var caretView: CaretView!
     var _fontSmoothing: Bool = true
     var _lineSpacing: CGFloat = 1.0
+    var _characterSpacing: CGFloat = 1.0  // Vendored patch 2
     public var terminal: Terminal!
 
     /// Marked (uncommitted) text from an input source (IME, dictation, etc.).

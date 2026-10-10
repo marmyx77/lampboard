@@ -141,6 +141,16 @@ struct ClicksPane: View {
                     }
                     .labelsHidden().fixedSize()
                 }
+                SettingRow(id: .liveLetterSpacing) {
+                    Stepper(value: Binding(get: { preferences.liveLetterSpacing }, set: { value in
+                        preferences.liveLetterSpacing = value
+                        NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                        model.refresh()
+                    }), in: LiveTheme.letterSpacings, step: 0.05) {
+                        Text("\(Int((preferences.liveLetterSpacing * 100).rounded()))%").monospacedDigit()
+                    }
+                    .fixedSize()
+                }
                 SettingRow(id: .liveLineSpacing) {
                     Stepper(value: Binding(get: { preferences.liveLineSpacing }, set: { value in
                         preferences.liveLineSpacing = value

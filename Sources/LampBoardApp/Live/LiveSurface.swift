@@ -90,6 +90,7 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
             NSFontManager.shared.font(withFamily: $0, traits: [], weight: 5, size: size)
         } ?? NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
         terminal.lineSpacing = appearance.lineSpacing
+        terminal.characterSpacing = appearance.letterSpacing
         terminal.nativeBackgroundColor = NSColor(liveHex: theme.card)
         terminal.nativeForegroundColor = NSColor(liveHex: theme.text)
         terminal.caretColor = NSColor(liveHex: theme.text)

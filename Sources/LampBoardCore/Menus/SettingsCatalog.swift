@@ -14,7 +14,7 @@ public enum SettingsCatalog {
         case width, onlyWaiting, terminalSessions, hiddenProjects
         case launchAtLogin
         case accessibility, sessionTab, barShortcut
-        case liveOpensBackground, liveTheme, liveFontSize, liveLook, liveFontFamily, liveLineSpacing
+        case liveOpensBackground, liveTheme, liveFontSize, liveLook, liveFontFamily, liveLineSpacing, liveLetterSpacing
         case notifications, notifyFinished, speak
         case mute, away, silenced
         case presence
@@ -84,6 +84,7 @@ public enum SettingsCatalog {
                 i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside, except with the VS Code themes; Like my VS Code reads the colours of the VS Code on this Mac."),
                 i(.liveFontSize, "Text size", "The size of the session's text, in every live window at once."),
                 i(.liveFontFamily, "Font", "Any fixed-width font on this Mac: Claude Code draws on a grid, which a proportional font would break."),
+                i(.liveLetterSpacing, "Letter spacing", "Tighter letters read more like an ordinary font; below 85% the wide ones touch."),
                 i(.liveLineSpacing, "Line spacing", "A little air between lines reads like a chat; too much splits Claude Code's boxes."),
                 i(.liveLook, "Claude Code's look", "The conversation drawn like Claude Code's VS Code panel: framed prompts, one line per tool, framed diffs, checklists. By the helper, in LampBoard's windows, in every terminal, or nowhere."),
             ]),

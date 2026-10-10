@@ -61,6 +61,7 @@ struct Preferences {
         static let liveFontSize = "live.fontSize"
         static let liveFontFamily = "live.fontFamily"
         static let liveLineSpacing = "live.lineSpacing"
+        static let liveLetterSpacing = "live.letterSpacing"
         static let liveOpensBackground = "live.opensBackground"
         static let liveLook = "live.look"
     }
@@ -367,18 +368,27 @@ struct Preferences {
         nonmutating set { defaults.set(LiveTheme.clampedLineSpacing(newValue), forKey: Key.liveLineSpacing) }
     }
 
+    /// How tight the live view's letters sit, within `LiveTheme.letterSpacings` (D146).
+    var liveLetterSpacing: Double {
+        get {
+            let stored = defaults.double(forKey: Key.liveLetterSpacing)
+            return stored == 0 ? 1 : LiveTheme.clampedLetterSpacing(stored)
+        }
+        nonmutating set { defaults.set(LiveTheme.clampedLetterSpacing(newValue), forKey: Key.liveLetterSpacing) }
+    }
+
     /// All of it, as a live window's terminal takes it.
     /// «Like my VS Code» reads VS Code each time it is applied; without a VS
     /// Code to read, its light theme stands in (D144).
     var liveAppearance: LiveAppearance {
         guard liveTheme == LiveTheme.fromVSCodeId else {
             return LiveAppearance(theme: LiveTheme.named(liveTheme), fontSize: liveFontSize,
-                                  fontFamily: liveFontFamily, lineSpacing: liveLineSpacing)
+                                  fontFamily: liveFontFamily, lineSpacing: liveLineSpacing, letterSpacing: liveLetterSpacing)
         }
         let mine = VSCodeReader.read()
         return LiveAppearance(theme: mine?.theme ?? LiveTheme.named("vscode-light"), fontSize: liveFontSize,
                               fontFamily: liveFontFamily.isEmpty ? mine?.fontFamily : liveFontFamily,
-                              lineSpacing: liveLineSpacing)
+                              lineSpacing: liveLineSpacing, letterSpacing: liveLetterSpacing)
     }
 
     /// A click on a background session's row opens it in the live view rather

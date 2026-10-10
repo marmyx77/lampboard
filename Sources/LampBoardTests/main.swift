@@ -67,6 +67,8 @@ let suites: [TestSuite] = [
     EngineBusySuite.suite,
     LookOfVSCodeSuite.suite,
     VSCodeThemeSuite.suite,
+    FixedPitchSuite.suite,
+    LetterSpacingSuite.suite,
     UnreadAnswersSuite.suite,
     FocusSuite.suite,
     AllowanceForecastSuite.suite,

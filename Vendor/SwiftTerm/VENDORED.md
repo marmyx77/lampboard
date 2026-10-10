@@ -47,6 +47,11 @@ Each one is marked in the source with `Vendored patch <n>`.
    author's home directory. It now writes to the temporary directory. The function
    is never called by LampBoard. The change exists because this repository's
    gate refuses real home directories in any tracked file (docs/08-gates.md).
+2. `AppleTerminalView.swift` and `MacTerminalView.swift`: `characterSpacing`, the
+   width of a cell as a fraction of the font's advance, beside upstream's
+   `lineSpacing` and applied the same way, in `computeFontDimensions`. It lets a
+   fixed-width font be set tighter, closer to a proportional one (LampBoard D146).
+   At 1, the default, nothing changes.
 
 ## Updating
 

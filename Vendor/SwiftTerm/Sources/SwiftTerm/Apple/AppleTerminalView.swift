@@ -285,6 +285,16 @@ extension TerminalView {
         }
     }
 
+    // Vendored patch 2: the width of a cell as a fraction of the font's own
+    // advance, so that a fixed-width font can be set tighter (LampBoard D146).
+    @objc open var characterSpacing: CGFloat {
+        get { _characterSpacing }
+        set {
+            _characterSpacing = newValue
+            resetFont()
+        }
+    }
+
     func resetCaches ()
     {
         self.attributes = [:]
@@ -426,7 +436,7 @@ extension TerminalView {
         //     partialResult = max(partialResult, sizes[idx].width)
         // }
         let glyph = fontSet.normal.glyph(withName: "W")
-        let cellWidth = fontSet.normal.advancement(forGlyph: glyph).width
+        let cellWidth = fontSet.normal.advancement(forGlyph: glyph).width * _characterSpacing  // Vendored patch 2
         #else
         let fontAttributes = [NSAttributedString.Key.font: fontSet.normal]
         let cellWidth = "W".size(withAttributes: fontAttributes).width

@@ -1,13 +1,13 @@
 # Code map
 
-~74,400 lines of Swift across five targets. For each file: what it contains, why
+~74,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,315 lines · 183 files  pure logic, zero AppKit
-  LampBoardApp/    28,036 lines · 154 files   shell: AppKit, network, windows
-  LampBoardTests/  17,991 lines · 122 files   1302 cases, instantaneous
+  LampBoardCore/  23,341 lines · 184 files  pure logic, zero AppKit
+  LampBoardApp/    28,068 lines · 154 files   shell: AppKit, network, windows
+  LampBoardTests/  18,024 lines · 123 files   1304 cases, instantaneous
   LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1559,6 +1559,10 @@ when it did not.
 > **Touching here** decides when a person's editor process is ended: every check
 > must hold before it is.
 
+### `FixedPitch.swift` · 16
+Whether a font is fixed-width, measured on four characters rather than taken
+from its own flag (D145).
+
 ### `VSCodeTheme.swift` · 146
 «Like my VS Code» (D144): VS Code's settings read (comments and trailing commas
 allowed), the chat's background and text and the sixteen terminal colours from
@@ -1800,7 +1804,7 @@ when it changes on disk; ⌘L and Cite, which paste the citation into the sessio
 The **New session…** window: where, which folder (the recent ones, a typed path,
 or the folder picker on this Mac) and what name, then Start.
 
-### `LiveFonts.swift` · 14
+### `LiveFonts.swift` · 25
 The fixed-pitch font families on this Mac, the only ones a live window may use
 (D142): Claude Code draws on a grid a proportional font would pull apart.
 
@@ -2086,7 +2090,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1302 cases
+## `LampBoardTests/` — 1304 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake

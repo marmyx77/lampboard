@@ -5570,3 +5570,45 @@ a URL in a string. It holds the order: the profile over the theme, a theme-scope
 customisation over a general one. Its case fails when the theme is read before
 the profile. On its user's Mac, the same steps written in Python found the right
 profile, `#D6CDB8` and `#22201C`, and all sixteen terminal colours.
+
+## D145 · Fixed-width fonts, measured
+
+**Decided.** The live view's Font list holds every family on this Mac that
+draws `i`, `W`, `m` and `.` at one width, as well as those that declare
+themselves fixed-width. Nothing else changes: a proportional family is still
+left out, since Claude Code draws on a grid.
+
+**Why.** Its user installed four reading fonts to replace the terminal-looking
+ones: Atkinson Hyperlegible Mono, IBM Plex Mono, Monaspace Neon and Argon, and
+iA Writer Mono. iA Writer Mono did not appear. Measured on that Mac: its four
+widths are equal (7.20 points at 12), but its files do not carry the flag macOS
+lists fixed-width fonts by.
+
+**Measured.** On that Mac, iA Writer Mono and Menlo measured four equal widths,
+Helvetica and the proportional Atkinson Hyperlegible did not. Each of the five
+families has a real Bold face, which the terminal uses for bold text. The
+domain suite holds the rule, and its case fails when unequal widths pass.
+
+## D146 · Letter spacing
+
+**Decided.** Settings › Clicks & keys › The live view › **Letter spacing** sets
+the width of a cell from 85% to 100% of the font's own advance, 100% by default.
+Below 85%, the wide letters (m, W) touch their neighbours.
+
+**Why.** Its user, comparing the live window with VS Code's chat beside it,
+asked for letters spaced more like an ordinary font. A fixed-width font gives
+an `i` the room of an `m`, and that room is what reads as a terminal. Two
+answers go together:
+- **A tighter cell**, this setting.
+- **A font that heals its texture:** Monaspace's contextual alternates let a
+  narrow letter lend room to a wide neighbour within the grid. SwiftTerm shapes
+  its runs with Core Text, which applies them by default.
+
+**How.** SwiftTerm sizes a cell by the advance of `W`. A local patch, `Vendored
+patch 2` in `Vendor/SwiftTerm/VENDORED.md`, multiplies that width by a
+`characterSpacing` set beside upstream's `lineSpacing` and applied the same way.
+At 1 it changes nothing.
+
+**Measured.** The domain suite holds the range, and its case fails when the
+floor is lowered. The setting has not been looked at on a screen yet; its user
+looks first.
