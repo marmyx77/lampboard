@@ -70,6 +70,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "composerText": model.composer.text,
             "pending": model.composer.pending?.text ?? NSNull(),
             "confirming": model.composer.confirming,
+            "draft": model.selected.flatMap { model.drafts[$0] } ?? NSNull(),
             "band": model.composer.band ?? NSNull(),
             "effectiveMode": model.verdict.mode.rawValue,
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),

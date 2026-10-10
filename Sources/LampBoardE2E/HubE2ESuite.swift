@@ -207,6 +207,7 @@ enum HubE2ESuite {
                 a.expectEqual(open(working, mode: "queue"), 204)
                 _ = inbox(working)
                 a.expectEqual(mod(#"{"v":1,"kind":"presence","session":"\#(working)","draft":true}"#), 204)
+                a.expect(wait(3) { report()["draft"] as? Bool == true }, "the box's draft heard")
                 let first = compose("Deploy to staging", confirm: false)
                 a.expectEqual(first.status, 202, "asked, not sent: \(first.body)")
                 a.expectEqual(report()["confirming"] as? Bool, true)
@@ -226,6 +227,7 @@ enum HubE2ESuite {
             TestCase("a message the mod could not put in comes back to the box (E22)") { a in
                 guard ready() else { return a.fail("no instance") }
                 a.expectEqual(mod(#"{"v":1,"kind":"presence","session":"\#(working)","draft":false}"#), 204)
+                a.expect(wait(3) { report()["draft"] as? Bool == false }, "the box emptied")
                 a.expectEqual(compose("Run the linter", confirm: false).status, 204)
                 a.expectEqual(mod(#"{"v":1,"kind":"done","session":"\#(working)","nonce":"ab12","op":"submit","ok":false,"error":"empty"}"#), 204)
                 a.expect(wait(3) { report()["composerText"] as? String == "Run the linter" }, "\(report()["composerText"] ?? "none")")
@@ -236,6 +238,7 @@ enum HubE2ESuite {
                 guard ready() else { return a.fail("no instance") }
                 let start = #"{"v":1,"kind":"start","session":"\#(resting)","surface":"vscode","interactive":true,"features":["ask","commands"]}"#
                 a.expectEqual(mod(start), 204)
+                Thread.sleep(forTimeInterval: 0.5)
                 a.expectEqual(open(resting, mode: "interrupt"), 204)
                 a.expect(wait(3) { report()["band"] is String }, "the band: \(report()["band"] ?? "none")")
                 a.expectEqual(report()["effectiveMode"] as? String, "queue")
