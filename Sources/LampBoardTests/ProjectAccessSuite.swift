@@ -99,10 +99,10 @@ enum ProjectAccessSuite {
             let here = ProjectShell.command(root: "/w/p", host: nil, shell: "/bin/zsh", environment: [:])
             t.expectEqual(here.executable, "/bin/zsh")
             t.expectEqual(here.directory, "/w/p")
-            let there = ProjectShell.command(root: "/home/x/it's", host: "bestia", shell: "/bin/zsh", environment: [:])
+            let there = ProjectShell.command(root: "/srv/x/it's", host: "bestia", shell: "/bin/zsh", environment: [:])
             t.expectEqual(there.executable, "/usr/bin/ssh")
             t.expect(there.arguments.contains("-t"), "with a terminal")
-            t.expect(there.arguments.last?.contains("cd -- '/home/x/it'\\''s'") == true, "\(there.arguments)")
+            t.expect(there.arguments.last?.contains("cd -- '/srv/x/it'\\''s'") == true, "\(there.arguments)")
         },
 
         TestCase("An attachment goes into the project's folder for them, kept out of git, never through a link out") { t in

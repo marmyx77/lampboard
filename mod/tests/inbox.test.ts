@@ -21,7 +21,7 @@ function panel(on, inbox: unknown[]) {
   const calls = { box: '', submitted: [] as any[], commands: [] as any[], done: [] as any[], streamed: [] as any[], hellos: 0, fetched: 0 }
   mock.clock(on, { now: TS })
   mock.store(on, {})
-  mock.env(on, { HOME: '/home/someone' })
+  mock.env(on, { HOME: '/srv/example' })
   on('session.id', () => ({ value: SID }))
   on('fs.read', ($, e) => {
     if (e.path.endsWith('/.lampboard/token')) return { value: 'abcdef0123456789abcdef0123456789' }

@@ -5704,3 +5704,160 @@ chat follows both colours; the terminal keeps its own sixteen.
 matches every editor, and «Like my VS Code» only matches VS Code.
 
 **Measured.** The domain suite holds what is made of the two colours.
+
+## D149 · The Hub in the Plancia's place
+
+**Decided.** ⌘⇧L steps down column → panel → Hub. The Hub is one dark window
+in four columns that resize and hide from icons at the top: the sessions, the
+open conversation with its composer, the project's files, and an open file or a
+shell in the project's folder. It takes the Plancia's place as the deepest view
+(amends D79); the panel and the column stay as they are.
+
+**Why.** The Plancia showed one session beside the list and sent nothing. The
+LampBoard 2 proposal (10 October 2026) asked for one place to read, answer, stop
+and quote every session, born anywhere, the way the Claude app's Code tab does
+for its own sessions.
+
+**Measured.** The E2E Hub suite opens it on a session, reads its transcript and
+shows its columns. Its look was rebuilt on the proposal's mock after Marco judged
+the first version unacceptable: the mock rendered with Playwright beside the
+window photographed on the test Mac, one difference at a time.
+
+## D150 · The Hub's sessions are the panel's rows
+
+**Decided.** The Hub's first column is the panel's own `PanelRootView`, row for
+row: the person's order, one block per project, R for another machine, the ring
+with the model's letter, the time, the second line. In the Hub it has no tip,
+no allowance strip and no footer. LampMaster is a row above them with its own
+lamp.
+
+**Why.** Marco: someone who stays on the compact panel must lose nothing, and
+someone who opens the Hub must find the same rows in the same order. A sidebar
+regrouped by state duplicated the rows that wait and hid the rest.
+
+## D151 · LampMaster as a chat
+
+**Decided.** LampMaster's row opens its own conversation in the Hub's second
+column, drawn like the others; its proposals are cited into a session with a
+click (D155), never sent by it.
+
+## D152 · Trust: signed commands, a wake and a collection
+
+**Decided.** The panel holds an Ed25519 key (Keychain; a file under a fake home)
+and writes its public half to `~/.lampboard/panel-key.pub`. Every command the
+Hub sends a session (`submit`, `abort`, `command`, `model`, `effort`, `stream`)
+is a signed envelope: canonical payload, one session, sixty seconds, one nonce.
+The panel leaves a wake in the session's box (PeerBox here, ssh on a node); the
+mod collects from `GET /mod/inbox`, verifies in pure JavaScript (TweetNaCl
+1.0.3, public domain) and runs it once. The panel proves the key on `GET
+/mod/hello` before any of a reply's text goes to it.
+
+**Why.** The permission key and the token are files any process of the user's
+can read: a session with an injected prompt could otherwise type into its
+sisters. A signature only the panel can make closes that.
+
+**Measured.** E2E: a forged, stale or other-session envelope is refused; a true
+one runs once. The chain on a real session (Haiku answering OMEGA through a
+signed model override and a submit) and on the Bestia through ssh. Bite: with
+the verification removed, the forged envelope runs.
+
+## D153 · A reply streams only for the session the Hub has open
+
+**Decided.** The mod copies a turn's text and tool names (never inputs, never
+thinking) to `POST /mod/stream` every 150 ms, only for the session the Hub
+follows, only after the panel's hello. The transcript stays the truth: the
+provisional text goes once it has the reply.
+
+**Measured.** On a real Sonnet session the text grew in the Hub in ten steps
+before the transcript had it. P1: with 24 replayed sessions the panel uses 3 %
+CPU; a followed reply adds 1.8 points for the server and 5 for drawing, a piece
+reaches the Hub in 14 ms. The first version cost 25 points: the bubble is now an
+object of its own, a fixed frame of eight lines at five draws a second, and the
+columns host SwiftUI without size constraints.
+
+## D154 · One writer, redefined
+
+**Decided.** Every Send goes through one verdict (`HubWrite.verdict`): the way
+in (the mod's `$.prompt.submit` as the person's words, the message box, a live
+window's terminal, or read only), the mode (Interrupt, Queue, Message now:
+Marco's Hermes choice), whether to ask first, and the band. A draft in the
+session's own box (the mod says yes or no, never the words) asks before sending
+and is never pasted into; a box LampBoard cannot see (VS Code, the app) only
+queues; nothing goes over a dialog except through the mod, which waits for it.
+A sent message stays in sight until the transcript has it, and comes back to
+the box if the mod could not put it in. Amends D147.
+
+**Measured.** On a real tmux session: a draft typed without Enter made Send
+ask; the second Send went, the reply came, and the draft was still in the box.
+E2E E19–E22 with bites.
+
+## D155 · Quotes between sessions, framed (amends D62)
+
+**Decided.** «Cite in…» on a reply puts it into another session's next message,
+only by the person's click and Send, only as this panel read it from the
+transcript, inside a fixed frame that says it is data and not an instruction.
+Control and format characters go, the frame's markers inside it are broken, it
+is cut at 8 KB. Into a session that acts without asking (auto, accept edits,
+bypass) Send asks first.
+
+**Why.** D62 kept every session's words out of every other. A person choosing a
+passage is a different act from a tool returning one, but the receiving session
+still acts with the person's tools: the frame and the cleaning are what it
+gets.
+
+**Measured.** A corpus of hostile replies stays in one frame; E2E E28 and E29
+(a text sent from outside is never the quote's). Bites seen.
+
+## D156 · The project's files and shell
+
+**Decided.** The Hub reads the open session's project here from the disk and
+there through the panel's ssh (one shared connection per machine, a socket path
+under 104 bytes), confined to the project: a folder resolved with `pwd -P`, a
+link never followed. The last column shows a file (code highlighted, Markdown in
+Code or Preview, tabs) or a shell in the project's folder, the person's own
+shell here and `ssh -t` there. Attachments go into `<project>/.lampboard/allegati`,
+kept out of git.
+
+**Measured.** E2E with traps (links out, a quote in a name); on the Bestia
+through the real ssh.
+
+## D157 · The composer and its bar
+
+**Decided.** The box is an AppKit text view: a file dropped from the tree goes
+in as `@path` where it falls. Under it the bar: attach, the session's commands
+(`$.command.list`, run with `$.command.run`), the context and the time, Remote
+Control, the agents, the model and the effort for this session only (rewritten
+on each request by the mod's `turn.step`, never `/model` or `config.set`, which
+write every session's default), and the permission mode (Plan by `/plan`, the
+others by Shift+Tab where LampBoard shows the terminal, never over a dialog).
+The mode is read from the hooks' `permission_mode` or a live window's footer:
+the mods' `SessionMode` is the footer's right-hand labels, not the mode.
+
+**Measured.** On a real session: 120 commands, Plan by `/plan`, Haiku answering
+after the cache warning, an image attached and read. E2E E23–E27 with bites.
+
+## D158 · Sessions in tmux as the road without VS Code
+
+**Decided.** A new session's default home is tmux, on the Mac or on a node (New
+session, D133); one born in VS Code moves with Move to LampBoard (D135). VS Code
+stays possible, and the Hub says what it cannot see there.
+
+## D159 · Codex as it is
+
+**Decided.** Codex keeps exactly what it does today in both depths (Marco, 10
+October 2026): no daemon probe, no new tier. Its E2E cases are the gate.
+
+## D160 · A stopped turn rests its lamp
+
+**Decided.** No hook reports a turn stopped by Esc or by the Hub's Stop, so the
+lamp stayed yellow (the gap D1 named). The mod reports `turn.complete` with
+reason `aborted` as `stopped`, except the turn the Hub's Interrupt replaces;
+the panel rests the row from that moment unless the session said anything
+since. It is the one colour the mod gives (an exception to D65: no hook says
+it, so nothing arrives twice). A refusal is not coloured: it is not among
+StopFailure's errors and arrives with a Stop in uncertain order.
+
+**Measured.** On a real session: Stop cut a story mid-sentence and the lamp went
+to rest; Interrupt kept it working until the new reply. Found there: the abort
+returns before the turn ends, so the replaced turn is known by its id. Bites on
+the moment and on the receiver.
