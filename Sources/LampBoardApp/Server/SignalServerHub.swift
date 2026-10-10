@@ -77,6 +77,41 @@ extension SignalServer {
             : HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
     }
 
+    /// `POST /hub/remote-check` — `{"host","root","file","query"}`: the Hub's own
+    /// reads of a project on another machine, through the panel's ssh, as JSON.
+    /// **Only against a fake home**: the test Mac's probe of the real ssh path,
+    /// with no machine added to Other Macs and nothing installed there.
+    func handleHubRemoteCheck(_ request: HTTPRequest) -> Data {
+        guard AppConfig.isUsingHomeOverride else { return HTTPRequestParser.response(status: 404, reason: "Not Found") }
+        guard request.method == "POST", let token, AccessToken.matches(request.header(AccessToken.headerName), expected: token)
+        else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
+        guard let wish = try? JSONSerialization.jsonObject(with: request.body) as? [String: String],
+              let host = wish["host"], let root = wish["root"]
+        else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
+        let source = ProjectSource(root: root, host: host)
+        let semaphore = DispatchSemaphore(value: 0)
+        nonisolated(unsafe) var result: [String: Any] = [:]
+        Task.detached {
+            let entries = await source.list(nil)
+            let git = await source.gitStatus()
+            var file: Data?
+            if let path = wish["file"] { file = await source.read(path) }
+            var hits: [SearchHits.Hit] = []
+            if let query = wish["query"] { hits = await source.search(query) }
+            result = [
+                "entries": entries.map { $0.isFolder ? $0.name + "/" : $0.name },
+                "git": git,
+                "file": file.map { String(decoding: $0, as: UTF8.self) } ?? NSNull(),
+                "hits": hits.map { "\($0.path):\($0.line)" },
+            ]
+            semaphore.signal()
+        }
+        guard semaphore.wait(timeout: .now() + 60) == .success,
+              let body = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+        else { return HTTPRequestParser.response(status: 504, reason: "Gateway Timeout") }
+        return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: body, as: UTF8.self), contentType: "application/json")
+    }
+
     private func getTokenRefusal(_ request: HTTPRequest) -> Data? {
         guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
         guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }

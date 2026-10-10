@@ -376,6 +376,9 @@ final class SignalServer {
         case AppConfig.hubSendPath:
             return handleHubSend(request)
 
+        case AppConfig.hubRemoteCheckPath:
+            return handleHubRemoteCheck(request)
+
         case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubComposePath, AppConfig.hubFilesPath:
             return handleHubTest(request)
 
