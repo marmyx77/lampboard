@@ -77,7 +77,7 @@ final class HubModel: ObservableObject {
             if session == selected { follow(session) }
         case .end(let session, _):
             commandable.remove(session)
-        case .measure, .tool, .answer, .done:
+        case .measure, .tool, .answer, .done, .stopped:
             break
         }
     }
