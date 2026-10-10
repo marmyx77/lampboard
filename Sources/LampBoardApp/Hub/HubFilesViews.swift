@@ -171,7 +171,7 @@ struct HubViewerView: View {
                     Text("Code").tag(false)
                     Text("Preview").tag(true)
                 }
-                .pickerStyle(.segmented).fixedSize().accessibilityIdentifier("hub.viewer.mode")
+                .pickerStyle(.segmented).labelsHidden().fixedSize().accessibilityIdentifier("hub.viewer.mode")
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
