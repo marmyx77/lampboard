@@ -22,21 +22,33 @@ extension StateStore {
     /// the `cwd` of the session's live file, or `nil` when there is no such
     /// file, the feature is off, the signal names a host, or nobody is in front
     /// of the session (`sdk`, `print`).
-    func terminalHome(for signal: HookSignal) -> Workspace? {
-        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight else { return nil }
-        guard let file = liveSessionReader.readLiveSessions()
-            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.deservesTrafficLight })
-        else { return nil }
+    func terminalHome(for signal: HookSignal, live file: LiveSession?) -> Workspace? {
+        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight, let file else { return nil }
         return Workspace(path: file.cwd)
     }
 
     /// The folder of a background session's live file, when the signal is from one.
-    func backgroundHome(for signal: HookSignal) -> Workspace? {
-        guard signal.host == nil, signal.deservesTrafficLight else { return nil }
-        guard let file = liveSessionReader.readLiveSessions()
-            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.isBackground && $0.deservesTrafficLight })
-        else { return nil }
+    func backgroundHome(for signal: HookSignal, live file: LiveSession?) -> Workspace? {
+        guard signal.host == nil, signal.deservesTrafficLight, let file, file.isBackground else { return nil }
         return Workspace(path: file.cwd)
+    }
+
+    /// A background session's folder, or else, for a signal no folder claims,
+    /// a terminal session's: from the signal's live file, read once.
+    func liveHome(for signal: HookSignal, claimed: Bool) -> (workspace: Workspace, origin: SessionOrigin)? {
+        let live = liveFile(for: signal)
+        if let home = backgroundHome(for: signal, live: live) { return (home, .background) }
+        if !claimed, let home = terminalHome(for: signal, live: live) { return (home, .terminal) }
+        return nil
+    }
+
+    /// The signal's own live file, read once for both questions above: each
+    /// read opens every session's file and asks after every process, and a
+    /// hook arrived to two of them (P1, 10 October 2026).
+    func liveFile(for signal: HookSignal) -> LiveSession? {
+        guard signal.host == nil, signal.deservesTrafficLight else { return nil }
+        return liveSessionReader.readLiveSessions()
+            .first(where: { $0.sessionId == signal.sessionId && $0.host == nil && $0.deservesTrafficLight })
     }
 
     /// Adopts the Claude Desktop conversations running on this Mac, and returns

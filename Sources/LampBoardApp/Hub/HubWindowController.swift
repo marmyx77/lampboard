@@ -36,11 +36,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     }
 
     var isOpen: Bool { window?.isVisible ?? false }
+    var isKey: Bool { window?.isKeyWindow ?? false }
 
     /// Opens the Hub, on `session` when one is named.
     func show(session: String? = nil) {
         let window = self.window ?? makeWindow()
         if let session { model.selected = session }
+        model.resume()
         HubChatTheme.apply()
         window.makeKeyAndOrderFront(nil)
         refreshToolbar()
@@ -100,6 +102,9 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "openFileText": model.files.activeFile?.text.map { String($0.prefix(2000)) } ?? NSNull(),
             "openFilePreview": model.files.active.map { model.files.previews.contains($0) } ?? false,
             "searchHits": model.files.hits.map { "\($0.path):\($0.line)" },
+            "viewer": HubCodeTextView.shown?.drawn ?? NSNull(),
+            "mainLongestMs": Int(MainThreadWatch.shared.snapshot.longestMs),
+            "mainStalls": MainThreadWatch.shared.snapshot.stalls,
             "shellRunning": model.files.source.map { model.shells.isRunning(root: $0.root, host: $0.host) } ?? false,
         ]
         return try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
@@ -251,6 +256,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let path = wish["open"] as? String { model.files.openFile(path) }
         if let query = wish["query"] as? String { model.files.query = query }
         if wish["stop"] as? Bool == true { model.stop() }
+        if wish["resetWatch"] as? Bool == true { MainThreadWatch.shared.reset() }
+        if wish["close"] as? Bool == true { close() }
         // The bar (D157), as its controls call it.
         if let text = wish["composer"] as? String { model.composer.text = text }
         if let path = wish["drop"] as? String { model.composer.insert(citation: path, at: wish["at"] as? Int) }

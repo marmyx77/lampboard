@@ -5861,3 +5861,37 @@ StopFailure's errors and arrives with a Stop in uncertain order.
 to rest; Interrupt kept it working until the new reply. Found there: the abort
 returns before the turn ends, so the replaced turn is known by its id. Bites on
 the moment and on the receiver.
+
+## D161 · The Hub measured as it is used, and nothing heavy on the main thread
+
+**Decided.** After 2.0.0, Marco opened a project's tree and its README, and the
+Hub showed the spinning cursor at every move, then stopped opening windows at
+all (10 October 2026). A sample of his own process found the main thread held
+in SwiftUI's text layout: the README was one `Text`, measured several times on
+every layout pass, and git's status, republished every three seconds even when
+unchanged, started the measuring again. The fix is a rule, not a patch: in the
+Hub nothing proportional to a file or a conversation runs on the main thread or
+in a view's body.
+
+- A file is drawn by an AppKit text view (TextKit 1, layout only of what is in
+  sight), made once off the main thread: Markdown cut into blocks in the core
+  (`MarkdownBlocks`), code highlighted by Clarc's highlighter (vendored patch 8:
+  off the main actor, its results kept). Lines are numbered in a margin the text
+  view draws itself: AppKit's ruler floats over the content since macOS 14 and
+  covered the code. A line past 2,000 characters wraps.
+- The files model publishes only what changed, asks git one question at a
+  time, pauses when the Hub closes, and reads the tree and the open file again
+  when git or the session's tools say they changed.
+- The transcript is decoded off the main thread; the conversation draws its last
+  twelve messages whole, the earlier ones a click away, twenty at a time. A lazy
+  stack opened at its end over hundreds of replies stayed blank.
+
+**Measured.** A watch on the main thread (`MainThreadWatch`, a fake home or the
+debug log only) times how long it goes without answering; `hub-stress.sh` runs
+twenty steps of real use on this repository (README of 109 KB, decisions of
+350 KB, a conversation of 600 messages, a megabyte of Markdown, a one-line JSON)
+and fails a step past 400 ms. On 2.0.0 ten steps failed, two never answered.
+Now, in a release build, the worst is opening the heaviest conversation (about
+300 ms, once). `hub-look.sh` photographs what is drawn; an end-to-end case
+checks the text is in sight, inside its window and as wide as its column when it
+wraps, each of which failed once while the numbers looked fine.

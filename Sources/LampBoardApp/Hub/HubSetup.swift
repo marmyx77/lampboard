@@ -73,6 +73,9 @@ enum HubSetup {
         weakModel = model
         let hub = HubWindowController(model: model)
         panel.openHub = { [weak hub] id in hub?.show(session: id) }
+        panel.hubIsOpen = { [weak hub] in hub?.isOpen ?? false }
+        panel.hubIsKey = { [weak hub] in hub?.isKey ?? false }
+        panel.closeHub = { [weak hub] in hub?.close() }
         panel.onRebuilt = { [weak hub] in hub?.refreshSidebar() }
         live.keepsDock = { [weak hub] in hub?.isOpen ?? false }
         hub.onVisibilityChange = { [weak live, weak model, weak hub] in

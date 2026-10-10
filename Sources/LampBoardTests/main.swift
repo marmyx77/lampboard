@@ -172,6 +172,7 @@ let suites: [TestSuite] = [
     CommandEnvelopeSuite.suite,
     HubWriteSuite.suite,
     HubBarSuite.suite,
+    MarkdownBlocksSuite.suite,
     CitationSuite.suite,
     RemoteTranscriptsSuite.suite,
     ProjectAccessSuite.suite,

@@ -131,8 +131,6 @@ struct HubFilesView: View {
 /// for Markdown, the code highlighted with line numbers (D156).
 struct HubViewerView: View {
     @ObservedObject var files: HubFilesModel
-    /// The most lines drawn: a generated file of a hundred thousand must not hold the Hub.
-    static let mostLines = 4000
 
     var body: some View {
         VStack(spacing: 0) {
@@ -194,35 +192,15 @@ struct HubViewerView: View {
         case .binary:
             note("Not text: open it with its own app.")
         case .markdown where files.previews.contains(file.path):
-            ScrollView { MarkdownContentView(text: file.text ?? "").padding(14).frame(maxWidth: .infinity, alignment: .leading) }
+            if let preview = file.preview { HubDocumentView(document: preview, place: file.path + "#preview").accessibilityIdentifier("hub.viewer.preview") } else { note("Reading…") }
         case .markdown, .code:
-            if let text = file.text { code(text, language: language(of: file)) } else { note("Reading…") }
+            if let code = file.code { HubDocumentView(document: code, place: file.path + "#code").accessibilityIdentifier("hub.viewer.code") } else { note("Reading…") }
         }
-    }
-
-    private func language(of file: HubFilesModel.OpenFile) -> String {
-        if case .code(let language) = file.kind { return language }
-        return "md"
-    }
-
-    private func code(_ text: String, language: String) -> some View {
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        let shown = lines.prefix(Self.mostLines).joined(separator: "\n")
-        return ScrollView([.vertical, .horizontal]) {
-            HStack(alignment: .top, spacing: 10) {
-                Text((1...max(1, min(lines.count, Self.mostLines))).map(String.init).joined(separator: "\n"))
-                    .font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-                Text(SyntaxHighlighter.highlight(shown, language: language, fontSize: 12)).textSelection(.enabled)
-            }
-            .padding(10)
-            if lines.count > Self.mostLines {
-                note("Showing the first \(Self.mostLines) of \(lines.count) lines.")
-            }
-        }
-        .accessibilityIdentifier("hub.viewer.code")
     }
 
     private func note(_ text: String) -> some View {
+        // Filling the column: a small note in the middle pulled the tabs down with it.
         Text(text).font(.system(size: 11)).foregroundStyle(.secondary).padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }

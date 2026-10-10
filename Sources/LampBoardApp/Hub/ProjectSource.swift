@@ -4,7 +4,7 @@ import LampBoardCore
 /// Where the Hub reads a session's project (D156): the disk here, or the
 /// panel's own ssh there, one shared connection per machine. Every call runs off
 /// the main actor and answers nothing rather than something outside the folder.
-struct ProjectSource: Sendable {
+struct ProjectSource: Sendable, Equatable {
 
     struct Entry: Equatable, Sendable, Identifiable {
         let name: String

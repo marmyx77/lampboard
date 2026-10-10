@@ -34,6 +34,8 @@ final class LiveChatModel: ObservableObject {
     private var stopped = false
     private var retries = 0
     private var rebuildPending = false
+    private var decoding = false
+    private var linesChanged = false
 
     init(source: Source) { self.source = source }
 
@@ -174,11 +176,33 @@ final class LiveChatModel: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.rebuildPending = false
-                self.messages = CLILineToBlocksMapper.map(lines: CLILineDecoder.decode(self.buffer.lines))
-                self.retries = 0
-                self.problem = nil
+                self.decode()
             }
         }
+    }
+
+    /// Decoded off the main thread: 800 lines of a long session are megabytes,
+    /// and decoding them here held the Hub (10 October 2026). One decode at a
+    /// time; lines that arrive meanwhile are decoded once it ends, so a session
+    /// that writes fast still shows its conversation.
+    private func decode() {
+        guard !decoding else { linesChanged = true; return }
+        decoding = true
+        linesChanged = false
+        let lines = buffer.lines
+        Task.detached(priority: .userInitiated) {
+            let messages = CLILineToBlocksMapper.map(lines: CLILineDecoder.decode(lines))
+            await self.decoded(messages)
+        }
+    }
+
+    private func decoded(_ messages: [ChatMessage]) {
+        decoding = false
+        guard !stopped else { return }
+        self.messages = messages
+        retries = 0
+        problem = nil
+        if linesChanged { decode() }
     }
 }
 
@@ -195,6 +219,12 @@ struct LiveChatView: View {
     var cite: ((ChatMessage) -> Void)? = nil
 
     @State private var draft = ""
+    /// The last messages drawn; the earlier ones a click away, a page at a time.
+    /// Twelve: forty replies with tables and code held the main thread a
+    /// second on opening, even in a release build (10 October 2026).
+    @State private var shown = Self.first
+    static let first = 12
+    static let page = 20
     @State private var windowState = WindowState()
     @State private var bridge = ChatBridge()
     @FocusState private var boxFocused: Bool
@@ -206,8 +236,16 @@ struct LiveChatView: View {
             }
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
-                        ForEach(model.messages) { message in
+                    // Not lazy: a lazy stack opened at its end over hundreds of
+                    // replies stayed blank (10 October 2026). A page of the last
+                    // replies is drawn whole, the earlier ones a click away.
+                    VStack(alignment: .leading, spacing: 14) {
+                        if model.messages.count > shown {
+                            Button("Show \(min(Self.page, model.messages.count - shown)) earlier messages") { shown += Self.page }
+                                .buttonStyle(.link).font(.callout).frame(maxWidth: .infinity)
+                                .accessibilityIdentifier("chat.earlier")
+                        }
+                        ForEach(model.messages.suffix(shown)) { message in
                             if let cite, message.role == .assistant {
                                 CitableBubble(message: message, cite: cite)
                             } else {
@@ -219,12 +257,22 @@ struct LiveChatView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 14)
                 }
+                // Opened at the end, by the scroll view itself: a jump made by
+                // hand over a lazy stack of hundreds of replies left the column
+                // blank until scrolled (10 October 2026).
+                .defaultScrollAnchor(.bottom)
                 // The last message, not their count: past 800 lines the count
                 // stays flat while the conversation goes on.
-                .onChange(of: model.messages.last?.id) { _, _ in
+                .onChange(of: model.messages.last?.id) { before, _ in
+                    // The first load jumps: an animated scroll through hundreds of
+                    // replies measured each one on the way and held the main
+                    // thread for seconds (10 October 2026).
+                    guard before != nil else {
+                        DispatchQueue.main.async { proxy.scrollTo("end", anchor: .bottom) }
+                        return
+                    }
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("end", anchor: .bottom) }
                 }
-                .onAppear { proxy.scrollTo("end", anchor: .bottom) }
             }
             if model.asksInTerminal {
                 HStack {

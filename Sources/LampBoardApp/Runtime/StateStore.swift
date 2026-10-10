@@ -433,12 +433,9 @@ final class StateStore: ObservableObject {
         // its folder open: its live file says `kind: bg`, and its place is the
         // panel. Admitted with or without terminal sessions shown, by the same
         // evidence a terminal row needs — the file, and its process alive.
-        if let home = backgroundHome(for: signal) {
-            workspace = home
-            origin = .background
-        } else if workspace == nil, let home = terminalHome(for: signal) {
-            workspace = home
-            origin = .terminal
+        if let home = liveHome(for: signal, claimed: workspace != nil) {
+            workspace = home.workspace
+            origin = home.origin
         }
 
         // A session that already has a row keeps it, whatever the gate says about

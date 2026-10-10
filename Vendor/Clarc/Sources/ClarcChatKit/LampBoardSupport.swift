@@ -100,7 +100,8 @@ public final class ChatBridge {
 /// Clarc's decoder for the CLI's lines, taken out of its session store (which
 /// LampBoard does not take): ISO 8601 dates, with or without fractional
 /// seconds, which Foundation's `.iso8601` alone refuses.
-public enum CLILineDecoder {
+// Vendored patch 9: off the main actor, so a transcript is decoded away from it.
+nonisolated public enum CLILineDecoder {
     public static func decode(_ lines: [String]) -> [CLISessionLine] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = dateStrategy

@@ -90,9 +90,9 @@ extension PanelController {
         }
 
         // A background session has no tab and no window (AV1): its conversation
-        // opens in the Plancia, where its box takes a message as any other's.
+        // opens in the Hub (the Plancia before it), where it can be answered.
         if session.origin == .background {
-            openPlancia(sessionId: session.id)
+            if let openHub { openHub(session.id) } else { openPlancia(sessionId: session.id) }
             return
         }
 

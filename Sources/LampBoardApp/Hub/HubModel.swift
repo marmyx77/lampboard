@@ -273,8 +273,18 @@ final class HubModel: ObservableObject {
         composer.check(userTexts: HubComposer.userTexts(chat.messages), session: session.id)
     }
 
+    /// The Hub opened again: what closing ended (the conversation, git's
+    /// questions) starts again on the session it shows, even when that session
+    /// is the same and so changes nothing (a review finding, 10 October 2026).
+    func resume() {
+        guard chatFor == nil else { return }
+        openChat(for: selected)
+    }
+
     func close() {
         follow(nil)
+        // Closed, it asked git every three seconds all the same (10 October 2026).
+        files.pause()
         shells.endAll()
         chat?.stop()
         chat = nil

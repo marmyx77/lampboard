@@ -12,6 +12,11 @@ final class HubFilesModel: ObservableObject {
         let path: String
         let kind: ProjectAccess.Kind
         var text: String?
+        /// The file as drawn, made away from the main thread once it is read.
+        var code: HubDocument?
+        var preview: HubDocument?
+        /// When it was last changed on this Mac's disk, to read it again when it changes.
+        var stamp: Date?
         var id: String { path }
         var name: String { (path as NSString).lastPathComponent }
     }
@@ -36,6 +41,10 @@ final class HubFilesModel: ObservableObject {
     private var session: String?
     private var timer: AnyCancellable?
     private var searchTask: Task<Void, Never>?
+    private var refreshing = false
+    /// Each read of a file takes the next number; only the latest one is kept,
+    /// so a slow read finishing late never overwrites a newer one.
+    private var reads: [String: Int] = [:]
 
     /// Points the model at a session's project; a session of the same folder
     /// keeps what is open.
@@ -43,10 +52,21 @@ final class HubFilesModel: ObservableObject {
         session = id
         guard let root else { reset(nil); return }
         let next = ProjectSource(root: root, host: host)
-        guard source?.root != next.root || source?.host != next.host else { return }
+        guard source?.root != next.root || source?.host != next.host else {
+            if timer == nil { refresh(); startTimer() }
+            return
+        }
         reset(next)
         load(nil)
         refresh()
+        startTimer()
+    }
+
+    /// The Hub closed: git is asked nothing more until it opens again, and
+    /// what is open stays open.
+    func pause() { timer = nil }
+
+    private func startTimer() {
         timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect().sink { [weak self] _ in self?.refresh() }
     }
 
@@ -66,11 +86,52 @@ final class HubFilesModel: ObservableObject {
         open.append(OpenFile(path: path, kind: kind, text: nil))
         if kind == .markdown { previews.insert(path) }
         guard kind != .binary else { return }
-        Task {
-            let data = await source.read(path)
-            let text = data.flatMap { ProjectFiles.previewText($0) ?? String(data: $0, encoding: .utf8) }
-            if let index = self.open.firstIndex(where: { $0.path == path }) { self.open[index].text = text ?? "" }
+        Task { await self.read(path, from: source) }
+    }
+
+    /// Reads an open file and makes what is drawn of it, away from the main
+    /// thread; read again, a file that has not changed is left as it is.
+    private func read(_ path: String, from source: ProjectSource) async {
+        guard let kind = open.first(where: { $0.path == path })?.kind else { return }
+        let number = (reads[path] ?? 0) + 1
+        reads[path] = number
+        // Still this read, of this project: another project's file of the same
+        // name, or a newer read, is never overwritten by this one.
+        func current() -> Bool { reads[path] == number && self.source == source }
+        let stamp = source.isRemote ? nil : Self.stamp(of: path, in: source.root)
+        let data = await source.read(path)
+        let text = await Task.detached(priority: .userInitiated) {
+            data.flatMap { ProjectFiles.previewText($0) ?? String(data: $0, encoding: .utf8) } ?? ""
+        }.value
+        guard current(), let file = open.first(where: { $0.path == path }) else { return }
+        update(path) { $0.stamp = stamp }
+        // Unchanged and fully made: nothing to do. A read that replaced an
+        // older one still making its views makes them itself.
+        let made = file.code != nil && (kind != .markdown || file.preview != nil)
+        guard file.text != text || !made else { return }
+        update(path) { $0.text = text }
+        // The view shown first: a Markdown file opens as its preview.
+        if kind == .markdown {
+            let preview = await Task.detached(priority: .userInitiated) { HubDocument.markdown(text) }.value
+            guard current() else { return }
+            update(path) { $0.preview = preview }
         }
+        let language: String
+        if case .code(let name) = kind { language = name } else { language = "md" }
+        let code = await Task.detached(priority: .userInitiated) { HubDocument.code(text, language: language) }.value
+        guard current() else { return }
+        update(path) { $0.code = code }
+    }
+
+    private static func stamp(of path: String, in root: String) -> Date? {
+        let url = URL(fileURLWithPath: root).appendingPathComponent(path)
+        return (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    }
+
+    /// Changes an open file, if it is still open.
+    private func update(_ path: String, _ change: (inout OpenFile) -> Void) {
+        guard let index = open.firstIndex(where: { $0.path == path }) else { return }
+        change(&open[index])
     }
 
     func close(_ path: String) {
@@ -84,6 +145,8 @@ final class HubFilesModel: ObservableObject {
 
     private func reset(_ next: ProjectSource?) {
         timer = nil
+        refreshing = false
+        reads = [:]
         source = next
         folders = [:]
         expanded = []
@@ -98,20 +161,43 @@ final class HubFilesModel: ObservableObject {
         guard let source else { return }
         Task {
             let entries = await source.list(folder)
-            guard self.source?.root == source.root else { return }
+            guard self.source == source else { return }
             self.folders[folder ?? ""] = entries
         }
     }
 
+    /// Git and the marks, every few seconds: published only when they change,
+    /// since every change draws the columns again; one question at a time.
     private func refresh() {
-        guard let source else { return }
+        guard let source, !refreshing else { return }
+        refreshing = true
         Task {
+            defer { self.refreshing = false }
             let status = await source.gitStatus()
-            guard self.source?.root == source.root else { return }
-            self.git = status
+            guard self.source == source else { return }
+            var changed = false
+            if self.git != status { self.git = status; changed = true }
             if let session = self.session {
-                self.marks = FileMarks.marks(tools: self.tools(session), root: source.root, changed: Set(status.keys))
+                let marks = FileMarks.marks(tools: self.tools(session), root: source.root, changed: Set(status.keys))
+                if self.marks != marks { self.marks = marks; changed = true }
             }
+            // The session works on the project while it is open here: what git
+            // or its tools say changed is read again, the tree and the file in
+            // sight; a file changed on this Mac's disk is read again too.
+            if changed { await self.reloadFolders(from: source) }
+            if let active = self.active, let file = self.open.first(where: { $0.path == active }), file.kind != .binary,
+               changed || (!source.isRemote && Self.stamp(of: active, in: source.root) != file.stamp) {
+                await self.read(active, from: source)
+            }
+        }
+    }
+
+    /// The folders already listed, listed again; published only when they differ.
+    private func reloadFolders(from source: ProjectSource) async {
+        for key in folders.keys {
+            let entries = await source.list(key.isEmpty ? nil : key)
+            guard self.source == source else { return }
+            if folders[key] != entries { folders[key] = entries }
         }
     }
 

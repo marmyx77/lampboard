@@ -6,7 +6,9 @@ import AppKit
 
 // MARK: - Syntax Highlighter
 
-public enum SyntaxHighlighter {
+// Vendored patch 8 too: off the main actor, so a file can be highlighted
+// away from the main thread.
+nonisolated public enum SyntaxHighlighter {
     public static func highlightNS(_ code: String, language: String, fontSize: CGFloat = 12) -> NSAttributedString {
         let normalized = normalizeLanguage(language)
         let tokens = tokenize(code, language: normalized)
@@ -17,13 +19,39 @@ public enum SyntaxHighlighter {
             let font = (token.kind == .keyword || token.kind == .builtinType) ? mediumFont : regularFont
             result.append(NSAttributedString(string: token.text, attributes: [
                 .font: font,
-                .foregroundColor: NSColor(color(for: token.kind)),
+                .foregroundColor: nsColors[token.kind] ?? NSColor.textColor,
             ]))
         }
         return result
     }
 
+    // Vendored patch 8: one colour per kind, made once. A new colour for every
+    // token kept a file of 300 KB in a hundred thousand runs that could not
+    // merge, copied on the main thread when shown.
+    nonisolated(unsafe) private static let nsColors: [TokenKind: NSColor] = {
+        let kinds: [TokenKind] = [.keyword, .string, .comment, .number, .builtinType, .attribute, .property, .plain]
+        return Dictionary(uniqueKeysWithValues: kinds.map { ($0, NSColor(color(for: $0))) })
+    }()
+
+    // Vendored patch 8: what was highlighted is kept. A view's body calls this,
+    // and a body runs again on every change: a reply's code blocks, tokenized
+    // anew each time, held the Hub's main thread for seconds.
+    private final class Highlighted { let value: AttributedString; init(_ value: AttributedString) { self.value = value } }
+    nonisolated(unsafe) private static let highlighted: NSCache<NSString, Highlighted> = {
+        let cache = NSCache<NSString, Highlighted>()
+        cache.totalCostLimit = 32 * 1024 * 1024
+        return cache
+    }()
+
     public static func highlight(_ code: String, language: String, fontSize: CGFloat = 12) -> AttributedString {
+        let key = "\(language)\u{0}\(fontSize)\u{0}\(code)" as NSString
+        if let kept = highlighted.object(forKey: key) { return kept.value }
+        let value = tokenized(code, language: language, fontSize: fontSize)
+        highlighted.setObject(Highlighted(value), forKey: key, cost: code.utf8.count * 4)
+        return value
+    }
+
+    private static func tokenized(_ code: String, language: String, fontSize: CGFloat) -> AttributedString {
         let normalized = normalizeLanguage(language)
         var result = AttributedString()
         let tokens = tokenize(code, language: normalized)
@@ -100,8 +128,9 @@ public enum SyntaxHighlighter {
             }
 
             // Single-line comment
-            if let commentPrefix = lang.lineComment,
-               code[code.index(code.startIndex, offsetBy: i)...].hasPrefix(commentPrefix) {
+            // Vendored patch 8: compared in the array; walking the string from its
+            // start at every character never finished on a file of 120 KB.
+            if let commentPrefix = lang.lineComment, Self.starts(chars, at: i, with: commentPrefix) {
                 let start = i
                 while i < chars.count, chars[i] != "\n" { i += 1 }
                 tokens.append(Token(text: String(chars[start..<i]), kind: .comment))
@@ -209,6 +238,15 @@ public enum SyntaxHighlighter {
         }
 
         return tokens
+    }
+
+    private static func starts(_ chars: [Character], at index: Int, with prefix: String) -> Bool {
+        var position = index
+        for character in prefix {
+            guard position < chars.count, chars[position] == character else { return false }
+            position += 1
+        }
+        return true
     }
 
     private static func languageConfig(for ext: String) -> LanguageConfig {
@@ -376,16 +414,16 @@ public enum SyntaxHighlighter {
 
 // MARK: - Token Types
 
-private struct Token {
+nonisolated private struct Token {
     let text: String
     let kind: TokenKind
 }
 
-private enum TokenKind {
+nonisolated private enum TokenKind {
     case keyword, string, comment, number, builtinType, attribute, property, plain
 }
 
-private struct LanguageConfig {
+nonisolated private struct LanguageConfig {
     let lineComment: String?
     let hashComment: Bool
     let keywords: Set<String>

@@ -21,12 +21,15 @@ extension PanelController {
 
     func wirePlancia() {
         planciaKeys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.panel.isKeyWindow, !self.bar.isEditing, !self.isTyping else { return event }
+            guard let self else { return event }
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
-            if modifiers == [.command, .shift], event.charactersIgnoringModifiers?.lowercased() == "l" {
+            // ⌘⇧L from the Hub too: there it closes the round, back to the column.
+            if modifiers == [.command, .shift], event.charactersIgnoringModifiers?.lowercased() == "l",
+               self.hubIsKey?() == true || (self.panel.isKeyWindow && !self.bar.isEditing && !self.isTyping) {
                 self.cycleDepth()
                 return nil
             }
+            guard self.panel.isKeyWindow, !self.bar.isEditing, !self.isTyping else { return event }
             // Esc closes the Plancia and nothing else: narrowing the panel to a
             // column on a key somebody presses to dismiss things would surprise.
             if event.keyCode == 53, modifiers.isEmpty, self.plancia.isOpen {
@@ -140,12 +143,23 @@ extension PanelController {
         Diagnostics.log("band: \(id.prefix(8)) opened from a session's band")
         panel.orderFrontRegardless()
         if isCompact { toggleCompact() }
-        if session.workspace.isRemote { activate(session: session) } else { openPlancia(sessionId: session.id) }
+        if session.workspace.isRemote { activate(session: session) }
+        else if let openHub { openHub(session.id) } else { openPlancia(sessionId: session.id) }
         return true
     }
 
     func cycleDepth() {
-        if isCompact {
+        if hubIsOpen?() == true {
+            // The round's last depth: the Hub closes and the column comes back.
+            closeHub?()
+            if !isCompact { toggleCompact() }
+            // The keys come back to the column, for the next ⌘⇧L to reach it:
+            // after the Hub's close is done, or the window server gives them away.
+            DispatchQueue.main.async { [weak self] in
+                NSApp.activate(ignoringOtherApps: true)
+                self?.panel.makeKeyAndOrderFront(nil)
+            }
+        } else if isCompact {
             toggleCompact()
         } else if plancia.isOpen {
             closePlancia()

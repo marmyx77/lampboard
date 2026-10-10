@@ -62,6 +62,16 @@ that, each change is marked in the source with `Vendored patch <n>`:
 7. `BubbleStyle.swift`: an assistant's reply has no outline, only tools keep
    theirs: the reply reads as plain text, as the LampBoard 2 proposal and VS
    Code's chat draw it.
+8. `SyntaxHighlighter.swift`: off the main actor, and what `highlight` returned
+   is kept in a cache: a view's body calls it on every change, and a reply's
+   code blocks tokenized anew each time held the Hub's main thread for seconds
+   (10 October 2026). Its tokenizer found a line comment by walking the string
+   from its start at every character, which never finished on 120 KB: it
+   compares in the array of characters instead. And one colour per kind of
+   token, made once, for `highlightNS`.
+9. `CLILineToBlocksMapper.swift`, `LampBoardSupport.swift`: the mapper and the
+   decoder off the main actor: a long session's transcript is decoded away from
+   the main thread (10 October 2026).
 
 The target builds in Swift 5 language mode with the main actor as its default
 isolation, as upstream is written, and with its warnings suppressed: upstream's
@@ -69,6 +79,6 @@ warnings are upstream's.
 
 ## Updating
 
-Copy the same files from a newer commit, put back the seven patches and the
+Copy the same files from a newer commit, put back the nine patches and the
 top-of-file notes, and run the gate: the chat's end-to-end case reads a
 transcript written as Claude Code writes it.

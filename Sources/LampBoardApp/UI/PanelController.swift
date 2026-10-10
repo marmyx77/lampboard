@@ -72,6 +72,10 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
     var openHub: ((String?) -> Void)?
+    /// Whether the Hub is open, or has the keys; and closing it: ⌘⇧L's round ends there.
+    var hubIsOpen: (() -> Bool)?
+    var hubIsKey: (() -> Bool)?
+    var closeHub: (() -> Void)?
     /// After the panel redraws, so the Hub's sidebar redraws with it (D150).
     var onRebuilt: (() -> Void)?
     /// What each session has been doing, for the Plancia's tabs.

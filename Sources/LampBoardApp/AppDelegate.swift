@@ -94,6 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Diagnostics.startSession()
+        // Off for measuring CPU (P1): its tenth-of-a-second ping wakes the main thread.
+        if AppConfig.isUsingHomeOverride || Diagnostics.isEnabled,
+           ProcessInfo.processInfo.environment["LAMPBOARD_MAIN_WATCH"] != "0" { MainThreadWatch.shared.start() }
         // The live view's terminals hold ptys; and what a crash left attached
         // ends here, before any window opens (D130).
         LiveProcesses.raiseFileLimit()

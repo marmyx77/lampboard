@@ -1,18 +1,18 @@
 # Code map
 
-~81,900 lines of Swift across five targets. For each file: what it contains, why
+~82,900 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,095 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    31,984 lines · 175 files   shell: AppKit, network, windows
-  LampBoardTests/  18,720 lines · 129 files   1359 cases, instantaneous
-  LampBoardE2E/    5,734 lines · 24 files   200 cases, the real binary
+  LampBoardCore/  25,292 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    32,614 lines · 177 files   shell: AppKit, network, windows
+  LampBoardTests/  18,795 lines · 130 files   1365 cases, instantaneous
+  LampBoardE2E/    5,783 lines · 24 files   202 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
-No file exceeds 800 lines. The limit the project sets itself is 800.
+No file exceeds 797 lines. The limit the project sets itself is 800.
 
 Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
 the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
@@ -1738,6 +1738,13 @@ Code's permission modes as its footer names them, and how many Shift+Tab reach o
 from another (measured with 2.1.296); when a model change needs its warning over a
 warm cache; an attachment's name.
 
+### `MarkdownBlocks.swift` · 197
+A Markdown file cut into the blocks the Hub's preview draws (D161): headings,
+paragraphs, lists with their depth, quotes, fenced code (a longer fence holds a
+shorter one), tables and rules, with inline marks left in the text for the drawing
+to read. Pure and quick, so a README of a hundred kilobytes is parsed off the main
+thread once per file.
+
 ---
 
 # LampBoardApp
@@ -1762,7 +1769,7 @@ seconds in, for a picture taken on a Mac nobody is clicking.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
 
-### `AppDelegateHub.swift` · 75
+### `AppDelegateHub.swift` · 78
 The Hub's wiring apart from the delegate's start: its test routes on the server —
 what it shows, opening it, Send typed as the person would, the files column, a
 reply as it arrives, the remote index probe — and the other machines'
@@ -1884,7 +1891,7 @@ drawn together, the terminal's text was clipped away.
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
 
-### `LiveChat.swift` · 298
+### `LiveChat.swift` · 346
 The live view's chat (D147): `LiveChatModel` follows a session's transcript, a
 file here read where it was left, or `tail -F` over ssh on another machine, and
 turns its lines into Clarc's messages; `LiveChatView` draws them with Clarc's
@@ -1935,16 +1942,16 @@ files; an open file or the project's shell (D156) — at the deepest step of ⌘
 where the Plancia was. Every rule it follows is in Core's `Hub/`; this reads,
 draws and sends.
 
-### `HubWindowController.swift` · 321
+### `HubWindowController.swift` · 329
 The window: columns in an `NSSplitView`, shown and hidden from the toolbar's
 icons, their widths and what is shown kept by macOS between launches. Opens on a
 named session, redraws the sidebar when the panel changes — an order, a name, a
 mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 95
+### `HubSetup.swift` · 98
 Builds the Hub and wires it to the panel, the mod's reports and the Dock.
 
-### `HubModel.swift` · 316
+### `HubModel.swift` · 326
 What the Hub needs from the rest of the app, handed in once (`HubDependencies`):
 the panel's view, where a transcript is read, the session's project and machine,
 what is known of a session when Send is pressed, a signed command (D152), the send
@@ -1961,7 +1968,7 @@ any other mode by Shift+Tab where LampBoard shows the session's terminal. Each
 goes through the session's mod or that terminal; none writes Claude Code's
 settings, which would change every session (measured, M0).
 
-### `HubViews.swift` · 358
+### `HubViews.swift` · 360
 The first two columns: LampMaster's row (D151) — its lamp working while a round
 runs and green while cards wait, its count, the time of its last round — above the
 panel's own rows (D150); the open conversation with its waiting card, the line
@@ -1990,16 +1997,27 @@ opens in place. `HubBarState` holds what the bar knows of the open session — i
 commands, its mode, the model and effort chosen for it, a model change waiting for
 its second click — apart from `HubModel`, so the bar redraws alone.
 
-### `HubFilesModel.swift` · 130
+### `HubFilesModel.swift` · 216
 The open session's project as the Hub shows it (D156): its tree, what git and the
 session's recent tools say of each file, a search, the files open in tabs, and
 whether the last column shows a file or the shell. A session of the same folder
-keeps what is open.
+keeps what is open. It publishes only what changed, asks git one question at a
+time and nothing while the Hub is closed, reads the tree and the open file again
+when git or the session's tools say they changed, and keeps only the latest read
+of a file (D161).
 
-### `HubFilesViews.swift` · 228
+### `HubFilesViews.swift` · 206
 The third column, the tree with its search and its marks, where a click opens a
 file in the last column and a drag carries `@path` to the composer; and the last
-column's viewer, code highlighted and Markdown in Code or Preview.
+column's tabs, the file's path and git letter, and Code or Preview for Markdown.
+
+### `HubDocument.swift` · 403
+A file as the last column draws it (D161): made once off the main thread —
+Markdown from `MarkdownBlocks`, code from Clarc's highlighter — and drawn by an
+AppKit text view that lays out only what is in sight. Lines numbered in a margin
+the text view draws itself (AppKit's ruler floats over the content since macOS
+14), code kept whole and wrapped past 2,000 characters, the place kept when the
+file is read again. What is drawn is reported for the tests.
 
 ### `HubShell.swift` · 96
 The project's shell in the last column (D156): the person's own shell in the
@@ -2087,6 +2105,7 @@ and a live window sets its own (`LiveChatTheme`).
 | `UpdateChecker.swift` | 109 | asks GitHub for the latest release and compares it with this build: the stable address's redirect first, with redirects not followed, and the API only when no redirect came back (D50) |
 | `UpdateInstaller.swift` | 267 | downloads, verifies the signature matches this one, swaps the bundle and relaunches — with a deadline on every step |
 | `Diagnostics.swift` | | file log, active only with `LAMPBOARD_DEBUG` |
+| `MainThreadWatch.swift` | 59 | how long the main thread goes without answering, timed from a thread of its own every tenth of a second, on a fake home or with the debug log (D161). A stall is a number in `GET /hub` and a line in the log, so a test fails on the spinning cursor; `LAMPBOARD_MAIN_WATCH=0` turns it off for measuring CPU |
 
 > **`DictationService`** — the ordering in `start()` is load-bearing and
 > commented at length. `SpeechAnalyzer.start(inputSequence:)` is the pump, not the
@@ -2302,7 +2321,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1359 cases
+## `LampBoardTests/` — 1365 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2417,7 +2436,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 200 cases
+## `LampBoardE2E/` — 202 cases
 
 | Suite | Covers |
 |---|---|

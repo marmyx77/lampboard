@@ -129,6 +129,8 @@ struct HubConversationView: View {
             if let chat = model.chat {
                 LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false,
                              cite: { model.cite($0) })
+                    // Another session's conversation starts from its first page.
+                    .id(ObjectIdentifier(chat))
                 HubLiveBubble(tail: model.liveTail)
                 HubAskCard(queue: model.deps.queue, sessionId: session.id, asking: session.status == .awaiting,
                            openRealWindow: { model.deps.openRealWindow(session.id) })

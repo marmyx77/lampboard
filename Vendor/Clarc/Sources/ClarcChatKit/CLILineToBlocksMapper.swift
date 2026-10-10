@@ -7,7 +7,8 @@ import CryptoKit
 /// Converts a stream of decoded jsonl lines into the `[ChatMessage]` shape Clarc
 /// renders. Sidechain (subagent) lines and meta caveats are skipped; tool_result
 /// user-lines fold back into the matching assistant `ToolCall.result`.
-public enum CLILineToBlocksMapper {
+// Vendored patch 9: off the main actor, so a transcript is decoded away from it.
+nonisolated public enum CLILineToBlocksMapper {
 
     public static func map(lines: [CLISessionLine]) -> [ChatMessage] {
         var messages: [ChatMessage] = []

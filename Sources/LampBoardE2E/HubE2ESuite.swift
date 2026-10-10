@@ -306,6 +306,55 @@ enum HubE2ESuite {
                 a.expectEqual(report()["openFilePreview"] as? Bool, false)
             },
 
+            TestCase("a README of 100 KB and a one-line file of 300 KB are drawn in their column, and the main thread stays free") { a in
+                guard ready() else { return a.fail("no instance") }
+                // 10 October 2026: a README held the main thread for tens of
+                // seconds, then code showed numbers without text, then wrapped
+                // text ran past the column. Each is a number here.
+                let part = "## Part\n\nWords of a long document that goes on and on. **Bold** and `code`.\n\n- one\n- two\n\n```swift\nlet x = 1\n```\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n"
+                try? String(repeating: part, count: 800).write(toFile: project + "/BIG.md", atomically: true, encoding: .utf8)
+                try? ("[" + (0..<30_000).map { "{\"k\":\($0)}" }.joined(separator: ",") + "]").write(toFile: project + "/wide.json", atomically: true, encoding: .utf8)
+                func drawn() -> [String: Any] { report()["viewer"] as? [String: Any] ?? [:] }
+                func length(_ name: String) -> Int {
+                    ((try? String(contentsOfFile: project + "/" + name, encoding: .utf8)) ?? "").utf16.count
+                }
+                // The file's own text in sight: the view of the file before stays
+                // until this one is made, and would answer for it.
+                func check(_ what: String, wraps: Bool, numbered: Bool, chars: Int? = nil) {
+                    a.expect(wait(20) {
+                        (drawn()["glyphsInSight"] as? Int ?? 0) > 0 && (chars == nil || drawn()["chars"] as? Int == chars)
+                    }, "\(what): text in sight: \(drawn())")
+                    let view = drawn()
+                    a.expectEqual(view["inWindow"] as? Bool, true, "\(what): inside the window")
+                    a.expectEqual(view["wraps"] as? Bool, wraps, "\(what): wrapping")
+                    if wraps { a.expectEqual(view["textWidth"] as? Int, view["columnWidth"] as? Int, "\(what): as wide as its column") }
+                    a.expect((((view["margin"] as? Int) ?? 0) > 20) == numbered, "\(what): the numbers' margin: \(view)")
+                    a.expect((report()["mainLongestMs"] as? Int ?? 9999) < 500, "\(what): main thread held \(report()["mainLongestMs"] ?? "?") ms")
+                }
+                a.expectEqual(files(#"{"resetWatch":true}"#), 204)
+                a.expectEqual(files(#"{"open":"BIG.md"}"#), 204)
+                check("BIG.md as preview", wraps: true, numbered: false)
+                a.expectEqual(files(#"{"preview":false}"#), 204)
+                check("BIG.md as code", wraps: false, numbered: true, chars: length("BIG.md"))
+                for text in ["a", "ab", "abc"] { a.expectEqual(files(#"{"composer":"\#(text)"}"#), 204) }
+                a.expectEqual(files(#"{"open":"wide.json"}"#), 204)
+                check("one line of 300 KB", wraps: true, numbered: true, chars: length("wide.json"))
+                a.expectEqual(files(#"{"composer":""}"#), 204)
+            },
+
+            TestCase("closed and opened again on the same session, the Hub reads its conversation and asks git again") { a in
+                guard ready() else { return a.fail("no instance") }
+                // A review finding: the same session chosen again changed
+                // nothing, so the conversation stayed empty and git unasked.
+                a.expectEqual(files(#"{"close":true}"#), 204)
+                a.expect(wait(4) { report()["open"] as? Bool == false }, "closed")
+                try? "new\n".write(toFile: project + "/reopened.txt", atomically: true, encoding: .utf8)
+                a.expectEqual(open(working), 204)
+                a.expect(wait(6) { (report()["chatMessages"] as? Int ?? 0) > 0 }, "the conversation: \(report()["chatMessages"] ?? "none")")
+                a.expect(wait(8) { (report()["git"] as? [String: String])?["reopened.txt"] == "?" }, "git asked again: \(report()["git"] ?? "none")")
+                try? FileManager.default.removeItem(atPath: project + "/reopened.txt")
+            },
+
             TestCase("a file through a link out of the project is not read") { a in
                 guard ready() else { return a.fail("no instance") }
                 a.expectEqual(files(#"{"open":"out/hosts"}"#), 204)

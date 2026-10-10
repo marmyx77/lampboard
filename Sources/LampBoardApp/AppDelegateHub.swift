@@ -46,11 +46,14 @@ extension AppDelegate {
     /// bytes read, a budget a pass, the newest first.
     func startRemoteIndexing() {
         let index = searchIndex
-        remoteIndexTask = Task.detached(priority: .utility) { [weak self] in
+        remoteIndexTask = Task.detached(priority: .utility) {
             try? await Task.sleep(nanoseconds: 20_000_000_000)
             while !Task.isCancelled {
-                let hosts = await MainActor.run { self?.preferences.remoteHosts ?? [] }
-                if Preferences().searchIndexed {
+                // Read from the defaults, as the line below: no captured self
+                // in a task that runs apart (Swift 6's rule, the strict gate's).
+                let settings = Preferences()
+                let hosts = settings.remoteHosts
+                if settings.searchIndexed {
                     for host in hosts { await Self.indexRemote(host: host, into: index) }
                 }
                 try? await Task.sleep(nanoseconds: 120_000_000_000)
