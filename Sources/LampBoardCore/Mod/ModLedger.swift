@@ -95,7 +95,7 @@ public struct ModLedger: Equatable, Sendable {
                 next.running[run.id] = RunningTool(tool: run.tool, detail: run.detail, since: now)
             }
             facts = next.heard(at: now)
-        case .answer, .done:
+        case .answer, .done, .stopped:
             return self
         case .end(_, let reason):
             facts = Facts(
