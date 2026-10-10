@@ -78,38 +78,48 @@ struct HubBarView: View {
                 Text(warning).font(.system(size: 11)).foregroundStyle(HubPalette.amber).accessibilityIdentifier("hub.bar.warning")
             }
             if !typed.isEmpty { typedCommands }
-            HubFlow(spacing: 6) {
-                Button { open = .attach } label: { Image(systemName: "plus") }
-                    .buttonStyle(HubIconStyle()).help("Attach or cite")
-                    .popover(item: binding(.attach), arrowEdge: .top) { _ in pop(.attach) }
-                    .accessibilityIdentifier("hub.bar.attach")
-                Button { filter = ""; open = .commands } label: { Image(systemName: "slash.circle") }
-                    .buttonStyle(HubIconStyle()).help("The session's commands").disabled(bar.commands.isEmpty)
-                    .popover(item: binding(.commands), arrowEdge: .top) { _ in pop(.commands) }
-                ContextRing(reading: session.context).scaleEffect(0.9)
-                if let fraction = session.context?.fraction {
-                    Text("\(Int((fraction * 100).rounded()))%").font(.system(size: 11)).monospacedDigit().foregroundStyle(HubPalette.muted)
-                }
-                Text(RelativeTime.label(for: session.statusSince, now: Date())).font(.system(size: 11)).monospacedDigit()
-                    .foregroundStyle(HubPalette.muted)
-                Button(bar.remote ? "Remote Control · phone" : "Remote Control") { model.toggleRemoteControl() }
-                    .buttonStyle(HubPillStyle(on: bar.remote))
-                    .disabled(!bar.names.contains("remote-control"))
-                    .help("Claude Code's Remote Control, to follow this session from the phone")
-                    .accessibilityIdentifier("hub.bar.remote")
-                Text(session.activeSubagents == 1 ? "1 agent" : "\(session.activeSubagents) agents")
-                    .font(.system(size: 11)).foregroundStyle(HubPalette.muted)
-                Button(modelTitle) { open = .model }
-                    .buttonStyle(HubPillStyle())
-                    .popover(item: binding(.model), arrowEdge: .top) { _ in pop(.model) }
-                    .help("For this session only, from its next request")
-                    .accessibilityIdentifier("hub.bar.model")
-                Button(modeTitle) { open = .mode }
-                    .buttonStyle(HubPillStyle())
-                    .popover(item: binding(.mode), arrowEdge: .top) { _ in pop(.mode) }
-                    .accessibilityIdentifier("hub.bar.mode")
+            // The pills on the right when there is room, as the proposal draws
+            // them; otherwise everything wraps within the column.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { leftItems; Spacer(minLength: 6); rightItems }
+                HubFlow(spacing: 6) { leftItems; rightItems }
             }
         }
+    }
+
+    @ViewBuilder private var leftItems: some View {
+        Button { open = .attach } label: { Image(systemName: "plus") }
+            .buttonStyle(HubIconStyle()).help("Attach or cite")
+            .popover(item: binding(.attach), arrowEdge: .top) { _ in pop(.attach) }
+            .accessibilityIdentifier("hub.bar.attach")
+        Button { filter = ""; open = .commands } label: { Image(systemName: "slash.circle") }
+            .buttonStyle(HubIconStyle()).help("The session's commands").disabled(bar.commands.isEmpty)
+            .popover(item: binding(.commands), arrowEdge: .top) { _ in pop(.commands) }
+        ContextRing(reading: session.context).scaleEffect(0.9)
+        if let fraction = session.context?.fraction {
+            Text("\(Int((fraction * 100).rounded()))%").font(.system(size: 11)).monospacedDigit().foregroundStyle(HubPalette.muted)
+        }
+        Text(RelativeTime.label(for: session.statusSince, now: Date())).font(.system(size: 11)).monospacedDigit()
+            .foregroundStyle(HubPalette.muted)
+        Button(bar.remote ? "Remote Control · phone" : "Remote Control") { model.toggleRemoteControl() }
+            .buttonStyle(HubPillStyle(on: bar.remote))
+            .disabled(!bar.names.contains("remote-control"))
+            .help("Claude Code's Remote Control, to follow this session from the phone")
+            .accessibilityIdentifier("hub.bar.remote")
+        Text(session.activeSubagents == 1 ? "1 agent" : "\(session.activeSubagents) agents")
+            .font(.system(size: 11)).foregroundStyle(HubPalette.muted)
+    }
+
+    @ViewBuilder private var rightItems: some View {
+        Button(modelTitle) { open = .model }
+            .buttonStyle(HubPillStyle())
+            .popover(item: binding(.model), arrowEdge: .top) { _ in pop(.model) }
+            .help("For this session only, from its next request")
+            .accessibilityIdentifier("hub.bar.model")
+        Button(modeTitle) { open = .mode }
+            .buttonStyle(HubPillStyle())
+            .popover(item: binding(.mode), arrowEdge: .top) { _ in pop(.mode) }
+            .accessibilityIdentifier("hub.bar.mode")
     }
 
     private func binding(_ which: Pop) -> Binding<Pop?> {

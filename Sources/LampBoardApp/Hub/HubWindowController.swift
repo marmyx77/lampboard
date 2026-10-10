@@ -19,6 +19,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     private var split: NSSplitViewController?
     private var sidebarHost: NSHostingController<HubSidebarView>?
     private var toolButtons: [NSToolbarItem.Identifier: NSButton] = [:]
+    private var toolSymbols: [NSToolbarItem.Identifier: String] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     private static let sidebarItem = NSToolbarItem.Identifier("hub.sidebar")
@@ -205,6 +206,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         button.toolTip = spec.1
         button.setAccessibilityIdentifier(id.rawValue)
         toolButtons[id] = button
+        toolSymbols[id] = spec.2
         let item = NSToolbarItem(itemIdentifier: id)
         item.label = spec.0
         item.view = button
@@ -285,10 +287,15 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             Self.previewItem: last && model.files.lastColumn == .file,
             Self.terminalItem: last && model.files.lastColumn == .terminal,
         ]
+        let accent = NSColor(srgbRed: 0x7F / 255, green: 0xB0 / 255, blue: 0xDE / 255, alpha: 1)
         for (id, button) in toolButtons {
             let lit = on[id] ?? false
             button.state = lit ? .on : .off
-            button.contentTintColor = lit ? NSColor(srgbRed: 0x7F / 255, green: 0xB0 / 255, blue: 0xDE / 255, alpha: 1) : .secondaryLabelColor
+            guard let symbol = toolSymbols[id], let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) else { continue }
+            button.image = lit
+                ? image.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [accent]))
+                : image
+            button.setAccessibilityValue(lit ? "on" : "off")
         }
     }
 

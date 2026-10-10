@@ -165,7 +165,18 @@ struct HubConversationView: View {
     /// Send in the chosen mode, its menu for the other two (Marco's Hermes
     /// choice), Message now, Stop, and the way it goes.
     private func buttons(_ session: SessionState) -> some View {
-        HubFlow(spacing: 8) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { sendButtons(session); Spacer(minLength: 8); routeText }
+            HubFlow(spacing: 8) { sendButtons(session); routeText }
+        }
+    }
+
+    private var routeText: some View {
+        Text(model.notice ?? routeLine).font(.system(size: 11))
+            .foregroundStyle(model.notice == nil ? HubPalette.muted : HubPalette.amber).lineLimit(1)
+    }
+
+    @ViewBuilder private func sendButtons(_ session: SessionState) -> some View {
             Menu {
                 ForEach(HubWrite.Mode.allCases, id: \.self) { mode in
                     Button(Self.title(mode)) { model.mode = mode; model.submit() }
@@ -190,9 +201,6 @@ struct HubConversationView: View {
                 .disabled(!(session.status == .working || session.status == .waiting))
                 .help("Stops the turn. Commands it started in the background keep running.")
                 .accessibilityIdentifier("hub.stop")
-            Text(model.notice ?? routeLine).font(.system(size: 11))
-                .foregroundStyle(model.notice == nil ? HubPalette.muted : HubPalette.amber).lineLimit(1)
-        }
     }
 
     static func title(_ mode: HubWrite.Mode) -> String {
