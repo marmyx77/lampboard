@@ -78,7 +78,7 @@ struct HubBarView: View {
                 Text(warning).font(.system(size: 11)).foregroundStyle(HubPalette.amber).accessibilityIdentifier("hub.bar.warning")
             }
             if !typed.isEmpty { typedCommands }
-            HStack(spacing: 6) {
+            HubFlow(spacing: 6) {
                 Button { open = .attach } label: { Image(systemName: "plus") }
                     .buttonStyle(HubIconStyle()).help("Attach or cite")
                     .popover(item: binding(.attach), arrowEdge: .top) { _ in pop(.attach) }
@@ -99,7 +99,6 @@ struct HubBarView: View {
                     .accessibilityIdentifier("hub.bar.remote")
                 Text(session.activeSubagents == 1 ? "1 agent" : "\(session.activeSubagents) agents")
                     .font(.system(size: 11)).foregroundStyle(HubPalette.muted)
-                Spacer(minLength: 6)
                 Button(modelTitle) { open = .model }
                     .buttonStyle(HubPillStyle())
                     .popover(item: binding(.model), arrowEdge: .top) { _ in pop(.model) }

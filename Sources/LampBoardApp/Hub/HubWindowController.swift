@@ -128,7 +128,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         sidebarItem.canCollapse = true
         sidebarItem.isCollapsed = Preferences.sharedDefaults.bool(forKey: Self.sidebarCollapsedKey)
         let chatItem = NSSplitViewItem(viewController: conversation)
-        chatItem.minimumThickness = 320
+        chatItem.minimumThickness = 440
         chatItem.holdingPriority = .defaultLow
         let filesItem = NSSplitViewItem(viewController: Self.column(HubFilesView(files: model.files)))
         filesItem.minimumThickness = 200
@@ -148,7 +148,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             self?.setLast(.file, shown: true)
         }.store(in: &cancellables)
         // A fake home keeps its widths apart from the person's (Preferences.sharedDefaults' rule).
-        split.splitView.autosaveName = AppConfig.isUsingHomeOverride ? "LampBoardHub.columns.test" : "LampBoardHub.columns"
+        split.splitView.autosaveName = AppConfig.isUsingHomeOverride ? "LampBoardHub2.columns.test" : "LampBoardHub2.columns"
         split.splitView.identifier = NSUserInterfaceItemIdentifier("hub.split")
         self.split = split
 
@@ -162,7 +162,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.setContentSize(NSSize(width: 1480, height: 880))
         window.minSize = NSSize(width: 640, height: 420)
-        window.setFrameAutosaveName(AppConfig.isUsingHomeOverride ? "LampBoardHub.test" : "LampBoardHub")
+        window.setFrameAutosaveName(AppConfig.isUsingHomeOverride ? "LampBoardHub2.test" : "LampBoardHub2")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("hub.window")
         window.delegate = self
