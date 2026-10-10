@@ -254,7 +254,7 @@ extension StateStore {
     func hearMode(_ signal: HookSignal) {
         if let mode = signal.permissionMode {
             permissionModes[signal.sessionId] = mode
-            permissionModesHeardAt[signal.sessionId] = clock()
+            permissionModesHeardAt[signal.sessionId] = Date()
         }
     }
 
