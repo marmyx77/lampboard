@@ -36,7 +36,8 @@ enum HubE2ESuite {
             try? (lines.joined(separator: "\n") + "\n").write(to: transcript(working), atomically: true, encoding: .utf8)
             let quiet = #"{"type":"user","uuid":"r1","sessionId":"\#(resting)","timestamp":"2026-10-10T09:00:00.000Z","message":{"role":"user","content":"Update the pricing page."}}"#
             try? (quiet + "\n").write(to: transcript(resting), atomically: true, encoding: .utf8)
-            for (id, folder) in [(working, "/tmp/lbhub-e2e/atlas-api"), (resting, "/tmp/lbhub-e2e/site")] {
+            makeProject(project)
+            for (id, folder) in [(working, project), (resting, "/tmp/lbhub-e2e/site")] {
                 try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
                 let sleeper = Process()
                 sleeper.executableURL = URL(fileURLWithPath: "/bin/sleep")
@@ -47,10 +48,12 @@ enum HubE2ESuite {
                 app.sendHook(HookPayloads.sessionStart(sessionId: id, cwd: folder)
                     .merging(["transcript_path": transcript(id).path]) { _, new in new }, entrypoint: "cli")
             }
-            app.sendHook(HookPayloads.userPromptSubmit(sessionId: working, cwd: "/tmp/lbhub-e2e/atlas-api")
+            app.sendHook(HookPayloads.userPromptSubmit(sessionId: working, cwd: project)
                 .merging(["transcript_path": transcript(working).path]) { _, new in new }, entrypoint: "cli")
             return wait(10) { (app.sessions()?.sessions.count ?? 0) >= 2 }
         }
+
+        func files(_ wish: String) -> Int { app.raw(method: "POST", path: AppConfig.hubFilesPath, body: wish).status }
 
         func report() -> [String: Any] {
             let body = app.raw(method: "GET", path: AppConfig.hubPath).body
@@ -134,6 +137,53 @@ enum HubE2ESuite {
                 a.expectEqual(payload.args["mode"], "interrupt")
             },
 
+            TestCase("the project's tree and what git says of each file are beside the conversation") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(open(working), 204)
+                a.expectEqual(files(#"{"files":true}"#), 204)
+                a.expect(wait(6) { (report()["treeEntries"] as? [String] ?? []).contains("src/") }, "the tree: \(report()["treeEntries"] ?? "none")")
+                let shown = report()
+                a.expectEqual(shown["filesShown"] as? Bool, true)
+                a.expectEqual(shown["projectRoot"] as? String, project)
+                a.expect(wait(6) { (report()["git"] as? [String: String])?["src/a.swift"] == "M" }, "git: \(report()["git"] ?? "none")")
+                a.expectEqual((report()["git"] as? [String: String])?["notes.txt"], "?")
+            },
+
+            TestCase("a Markdown file opens as a preview, and as code on asking") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"open":"README.md"}"#), 204)
+                a.expect(wait(5) { (report()["openFileText"] as? String)?.contains("# Atlas") == true }, "\(report()["openFileText"] ?? "none")")
+                a.expectEqual(report()["lastShown"] as? Bool, true, "opening a file shows the last column")
+                a.expectEqual(report()["openFilePreview"] as? Bool, true)
+                a.expectEqual(files(#"{"preview":false}"#), 204)
+                a.expectEqual(report()["openFilePreview"] as? Bool, false)
+            },
+
+            TestCase("a file through a link out of the project is not read") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"open":"out/hosts"}"#), 204)
+                _ = wait(2) { report()["openFile"] as? String == "out/hosts" }
+                let text = report()["openFileText"] as? String ?? ""
+                a.expect(!text.contains("localhost"), "/etc/hosts must not be read: \(text.prefix(80))")
+            },
+
+            TestCase("a search finds the line, and the session's tools colour the files they touched") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"query":"let answer"}"#), 204)
+                a.expect(wait(5) { (report()["searchHits"] as? [String] ?? []).contains("src/a.swift:1") }, "\(report()["searchHits"] ?? "none")")
+                let tool = #"{"v":1,"kind":"tool","session":"\#(working)","id":"toolu_e2e_edit_1","tool":"Edit","detail":"\#(project)/src/a.swift","phase":"start"}"#
+                a.expectEqual(app.raw(method: "POST", path: AppConfig.modPath, body: tool).status, 204)
+                a.expect(wait(6) { (report()["marks"] as? [String: String])?["src/a.swift"] == "written" }, "\(report()["marks"] ?? "none")")
+                a.expectEqual(files(#"{"query":""}"#), 204)
+            },
+
+            TestCase("the terminal is a shell in the project's folder") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"last":"terminal"}"#), 204)
+                a.expect(wait(4) { report()["shellRunning"] as? Bool == true }, "\(report())")
+                a.expectEqual(report()["lastColumn"] as? String, "terminal")
+            },
+
             TestCase("closing the instance leaves nothing behind") { a in
                 app.stop()
                 sleepers.forEach { $0.terminate() }
@@ -141,6 +191,29 @@ enum HubE2ESuite {
                 a.expect(!app.isRunning, "stopped")
             },
         ])
+    }
+
+    static let project = "/tmp/lbhub-e2e/atlas-api"
+
+    /// A project with git, a change, a new file, a Markdown file and a link out.
+    private static func makeProject(_ root: String) {
+        try? FileManager.default.removeItem(atPath: root)
+        try? FileManager.default.createDirectory(atPath: root + "/src", withIntermediateDirectories: true)
+        try? "let answer = 41\n".write(toFile: root + "/src/a.swift", atomically: true, encoding: .utf8)
+        try? "# Atlas\n\nThe example API.\n".write(toFile: root + "/README.md", atomically: true, encoding: .utf8)
+        try? FileManager.default.createSymbolicLink(atPath: root + "/out", withDestinationPath: "/etc")
+        for args in [["init", "-q"], ["add", "src", "README.md"],
+                     ["-c", "user.name=e2e", "-c", "user.email=e2e@example.com", "commit", "-q", "-m", "start"]] {
+            let git = Process()
+            git.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            git.arguments = ["-C", root] + args
+            git.standardOutput = FileHandle.nullDevice
+            git.standardError = FileHandle.nullDevice
+            try? git.run()
+            git.waitUntilExit()
+        }
+        try? "let answer = 42\n".write(toFile: root + "/src/a.swift", atomically: true, encoding: .utf8)
+        try? "a new file\n".write(toFile: root + "/notes.txt", atomically: true, encoding: .utf8)
     }
 
     private static func wait(_ seconds: TimeInterval, until condition: () -> Bool) -> Bool {
