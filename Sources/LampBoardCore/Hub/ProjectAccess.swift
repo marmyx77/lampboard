@@ -154,6 +154,24 @@ public enum RemoteProject {
         return "cd -- \(quote(root)) && grep -rnIF --exclude-dir=.git --exclude-dir=node_modules -m 5 -- \(quote(query)) . 2>/dev/null | head -n 200"
     }
 
+    /// Takes a file on standard input into the project's attachments (P11):
+    /// the folder made if missing and resolved inside the project, the name a
+    /// plain one not there yet, `.lampboard/` written once into git's exclude.
+    /// The same script runs here with `/bin/sh` and there through ssh.
+    public static func attach(root: String, name: String) -> String? {
+        guard !name.isEmpty, name == HubBar.attachmentName(name, taken: []) else { return nil }
+        let folder = quote(HubBar.attachmentFolder)
+        let file = "\"$d\"/" + quote(name)
+        return "cd -- \(quote(root)) && r=$(pwd -P) && [ ! -L .lampboard ] && [ ! -L \(folder) ] && mkdir -p -- \(folder) && d=$(cd -- \(folder) && pwd -P) "
+            + "&& case \"$d/\" in \"$r\"/*) ;; *) exit 3 ;; esac && [ ! -e \(file) ] && [ ! -L \(file) ] && cat > \(file) "
+            + "&& { [ ! -d .git/info ] || grep -qxF '.lampboard/' .git/info/exclude 2>/dev/null || echo '.lampboard/' >> .git/info/exclude; }"
+    }
+
+    /// The names already in the attachments folder, one per line.
+    public static func attachments(root: String) -> String {
+        "cd -- \(quote(root)) && [ -d \(quote(HubBar.attachmentFolder)) ] && ls -1A -- \(quote(HubBar.attachmentFolder)) || true"
+    }
+
 }
 
 /// A shell in the project's folder (D156): the person's own shell here, an ssh

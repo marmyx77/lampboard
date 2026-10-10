@@ -67,6 +67,9 @@ final class ModReceiver {
         case .done(_, let done): return "done (\(done.op) \(done.ok ? "ok" : done.error ?? "failed"))"
         case .stopped(_, let stopped): return "stopped (\(stopped.turnId.prefix(12)))"
         case .presence(_, let draft): return "presence (\(draft ? "draft" : "empty"))"
+        case .commands(_, let list): return "commands (\(list.count))"
+        case .mode(_, let label): return "mode (\(label.isEmpty ? "none" : label))"
+        case .surfaces(_, let list): return "surfaces (\(list.joined(separator: ", ")))"
         }
     }
 

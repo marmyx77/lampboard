@@ -80,6 +80,19 @@ enum ModReportSuite {
             t.expectNil(try? decode(#"{"v":1,"kind":"presence","session":"\#(id)"}"#), "no answer is no report")
         },
 
+        TestCase("The bar's facts: commands by plain names, the footer's mode on one line, the surfaces as words") { t in
+            let json = #"{"v":1,"kind":"commands","session":"\#(id)","list":[{"name":"compact","description":"Keep a\nsummary\u0007"},{"name":"bad name;rm","description":"x"},{"name":"plugin:cmd","description":""}]}"#
+            guard case .commands(_, let list)? = try? decode(json) else { return t.fail("not commands") }
+            t.expectEqual(list.map(\.name), ["compact", "plugin:cmd"])
+            t.expectEqual(list.first?.description, "Keep a summary")
+            guard case .mode(_, let label)? = try? decode(#"{"v":1,"kind":"mode","session":"\#(id)","label":"plan mode on"}"#)
+            else { return t.fail("not a mode") }
+            t.expectEqual(label, "plan mode on")
+            guard case .surfaces(_, let surfaces)? = try? decode(#"{"v":1,"kind":"surfaces","session":"\#(id)","list":["terminal","mobile","Bad Word"]}"#)
+            else { return t.fail("not surfaces") }
+            t.expectEqual(surfaces, ["terminal", "mobile"])
+        },
+
         TestCase("A measure carries the session's own count, cost and windows") { t in
             guard case .measure(let session, let m) = try? decode(measure) else {
                 return t.fail("the measure was not read")

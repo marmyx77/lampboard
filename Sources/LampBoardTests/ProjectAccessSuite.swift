@@ -7,14 +7,18 @@ import TestKit
 enum ProjectAccessSuite {
 
     /// Runs a script the way ssh would on the other machine, here with `/bin/sh`.
-    private static func sh(_ script: String) -> (status: Int32, output: String) {
+    private static func sh(_ script: String, input: Data? = nil) -> (status: Int32, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", script]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
+        let feed = Pipe()
+        process.standardInput = feed
         guard (try? process.run()) != nil else { return (-1, "") }
+        feed.fileHandleForWriting.write(input ?? Data())
+        try? feed.fileHandleForWriting.close()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         return (process.terminationStatus, String(decoding: data, as: UTF8.self))
@@ -99,6 +103,29 @@ enum ProjectAccessSuite {
             t.expectEqual(there.executable, "/usr/bin/ssh")
             t.expect(there.arguments.contains("-t"), "with a terminal")
             t.expect(there.arguments.last?.contains("cd -- '/home/x/it'\\''s'") == true, "\(there.arguments)")
+        },
+
+        TestCase("An attachment goes into the project's folder for them, kept out of git, never through a link out") { t in
+            let root = project()
+            defer { try? FileManager.default.removeItem(atPath: root) }
+            try? FileManager.default.createDirectory(atPath: root + "/.git/info", withIntermediateDirectories: true)
+            guard let script = RemoteProject.attach(root: root, name: "shot.png") else { return t.fail("no script") }
+            t.expectEqual(sh(script, input: Data("PNG".utf8)).status, 0)
+            t.expectEqual(try? String(contentsOfFile: root + "/.lampboard/allegati/shot.png", encoding: .utf8), "PNG")
+            _ = sh(RemoteProject.attach(root: root, name: "b.png")!, input: Data("B".utf8))
+            let exclude = (try? String(contentsOfFile: root + "/.git/info/exclude", encoding: .utf8)) ?? ""
+            t.expectEqual(exclude.components(separatedBy: "\n").filter { $0 == ".lampboard/" }.count, 1, "once: \(exclude)")
+            t.expect(sh(script, input: Data("again".utf8)).status != 0, "a name already there is not overwritten")
+            t.expectEqual(sh(RemoteProject.attachments(root: root)).output.split(separator: "\n").sorted(), ["b.png", "shot.png"])
+            t.expectNil(RemoteProject.attach(root: root, name: "../x.png"), "only a plain name")
+
+            let trap = project()
+            let outside = FileManager.default.temporaryDirectory.appendingPathComponent("lb-out-\(UUID().uuidString)").path
+            defer { try? FileManager.default.removeItem(atPath: trap); try? FileManager.default.removeItem(atPath: outside) }
+            try? FileManager.default.createDirectory(atPath: outside, withIntermediateDirectories: true)
+            try? FileManager.default.createSymbolicLink(atPath: trap + "/.lampboard", withDestinationPath: outside)
+            t.expect(sh(RemoteProject.attach(root: trap, name: "x.png")!, input: Data("X".utf8)).status != 0, "refused")
+            t.expect(!FileManager.default.fileExists(atPath: outside + "/allegati"), "nothing made outside, not even the folder")
         },
     ])
 }

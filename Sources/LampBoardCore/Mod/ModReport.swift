@@ -31,12 +31,19 @@ public enum ModReport: Equatable, Sendable {
     /// Whether the followed session's own box holds a draft (D154): a yes or
     /// a no, never the words.
     case presence(session: String, draft: Bool)
+    /// The followed session's commands, for the bar's `/` (D157).
+    case commands(session: String, list: [Command])
+    /// The followed session's footer mode label (`plan mode on`, or empty).
+    case mode(session: String, label: String)
+    /// Where the followed session draws: Remote Control adds `mobile`.
+    case surfaces(session: String, list: [String])
 
     public var session: String {
         switch self {
         case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
              .answer(let session, _), .done(let session, _), .stopped(let session, _),
-             .presence(let session, _): return session
+             .presence(let session, _), .commands(let session, _), .mode(let session, _),
+             .surfaces(let session, _): return session
         }
     }
 
@@ -52,6 +59,17 @@ public enum ModReport: Equatable, Sendable {
             self.op = op
             self.ok = ok
             self.error = error
+        }
+    }
+
+    /// One of a session's commands: what it is run by, and its one line.
+    public struct Command: Equatable, Sendable {
+        public let name: String
+        public let description: String
+
+        public init(name: String, description: String) {
+            self.name = name
+            self.description = description
         }
     }
 
@@ -253,6 +271,20 @@ public enum ModReport: Equatable, Sendable {
             return .done(session: session, done: Done(
                 nonce: nonce, op: op, ok: wire.ok ?? false, error: wire.error.map { String($0.prefix(200)) }
             ))
+        case "commands":
+            let list = (wire.list ?? []).prefix(300).compactMap { item -> Command? in
+                guard let name = item.name, (1...64).contains(name.count),
+                      name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || ":_-".contains($0)) })
+                else { return nil }
+                return Command(name: name, description: oneLine(item.description ?? "", 120))
+            }
+            return .commands(session: session, list: Array(list))
+        case "mode":
+            guard let label = wire.label else { throw Failure.unreadable }
+            return .mode(session: session, label: oneLine(label, 80))
+        case "surfaces":
+            let list = (wire.list ?? []).prefix(8).compactMap { $0.word.flatMap(word) }
+            return .surfaces(session: session, list: Array(list))
         case "presence":
             guard let draft = wire.draft else { throw Failure.unreadable }
             return .presence(session: session, draft: draft)
@@ -308,6 +340,11 @@ public enum ModReport: Equatable, Sendable {
         })).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !kept.isEmpty else { return nil }
         return String(kept.prefix(maxAnswer))
+    }
+
+    /// A short line of a mod's own words: no control characters, no breaks.
+    static func oneLine(_ raw: String, _ most: Int) -> String {
+        (answerText(String(raw.prefix(most * 2))) ?? "").replacingOccurrences(of: "\n", with: " ").prefix(most).description
     }
 
     /// `toolu_01AbC…`: letters, digits, `_` and `-`.
@@ -390,6 +427,28 @@ public enum ModReport: Equatable, Sendable {
         let turnId: String?
         let at: Double?
         let draft: Bool?
+        let label: String?
+        let list: [ListItem]?
+
+        /// A command (`{name, description}`) or a plain word (a surface).
+        struct ListItem: Decodable {
+            let name: String?
+            let description: String?
+            let word: String?
+
+            private enum Keys: String, CodingKey { case name, description }
+
+            init(from decoder: Decoder) throws {
+                if let single = try? decoder.singleValueContainer().decode(String.self) {
+                    word = single; name = nil; description = nil
+                } else {
+                    let keyed = try decoder.container(keyedBy: Keys.self)
+                    name = try? keyed.decode(String.self, forKey: .name)
+                    description = try? keyed.decode(String.self, forKey: .description)
+                    word = nil
+                }
+            }
+        }
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }
