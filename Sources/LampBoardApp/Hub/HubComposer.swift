@@ -99,6 +99,14 @@ struct HubComposerView: View {
     let submit: () -> Void
     let canWrite: Bool
 
+    /// One line to start, a line more for each the text takes, up to eight:
+    /// the box grows with what is written, as the proposal's does.
+    private var height: CGFloat {
+        let lines = composer.text.split(separator: "\n", omittingEmptySubsequences: false)
+            .reduce(0) { $0 + max(1, Int(ceil(Double($1.count) / 70))) }
+        return min(160, max(36, CGFloat(lines) * 17 + 18))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let pending = composer.pending {
@@ -114,7 +122,7 @@ struct HubComposerView: View {
                     .accessibilityIdentifier("hub.confirm")
             }
             HubTextView(composer: composer, editable: canWrite, submit: submit)
-                .frame(minHeight: 44, maxHeight: 160)
+                .frame(height: height)
                 .padding(.horizontal, 4).padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: 8).fill(HubPalette.panel))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(HubPalette.line, lineWidth: 1))

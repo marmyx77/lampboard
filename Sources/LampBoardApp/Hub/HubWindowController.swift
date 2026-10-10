@@ -119,7 +119,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         sidebarHost = sidebar
         // Dark whatever the Mac is, like the panel (StatusPalette.appearance).
         sidebar.view.appearance = StatusPalette.appearance
-        let conversation = Self.column(HubConversationView(model: model))
+        let conversation = Self.column(HubConversationView(model: model, store: model.deps.store))
 
         let split = NSSplitViewController()
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
@@ -160,7 +160,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         window.appearance = HubPalette.appearance
         window.backgroundColor = HubPalette.nsWindow
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.setContentSize(NSSize(width: 1100, height: 720))
+        window.setContentSize(NSSize(width: 1480, height: 880))
         window.minSize = NSSize(width: 640, height: 420)
         window.setFrameAutosaveName(AppConfig.isUsingHomeOverride ? "LampBoardHub.test" : "LampBoardHub")
         window.isReleasedWhenClosed = false
@@ -179,11 +179,11 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     // MARK: - Toolbar
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.sidebarItem, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
+        [Self.sidebarItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.sidebarItem, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
+        [Self.sidebarItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,

@@ -89,6 +89,7 @@ struct HubPillStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 11))
             .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(on ? HubPalette.panel : HubPalette.ink)
             .padding(.horizontal, 9).padding(.vertical, 2)
             .background(Capsule().fill(on ? HubPalette.accent : HubPalette.soft))

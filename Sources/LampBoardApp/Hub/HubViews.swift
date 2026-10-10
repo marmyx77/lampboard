@@ -85,6 +85,8 @@ struct HubSidebarView: View {
 /// says what the session's own box holds, and the composer with its bar.
 struct HubConversationView: View {
     @ObservedObject var model: HubModel
+    /// The rows' state: the lamp, the ring and the time follow the session.
+    @ObservedObject var store: StateStore
 
     var body: some View {
         Group {
@@ -136,11 +138,11 @@ struct HubConversationView: View {
     private func header(_ session: SessionState) -> some View {
         HStack(spacing: 10) {
             HubLamp(color: StatusPalette.color(for: session.status))
-            Text(session.displayName).font(.system(size: 15, weight: .bold)).lineLimit(1)
-            Text(meta(session)).font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1)
+            Text(session.displayName).font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)
+            Text(meta(session)).font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 8)
             Button("Open the real window ⌘↩") { model.deps.openRealWindow(session.id) }
-                .buttonStyle(HubButtonStyle())
+                .buttonStyle(HubButtonStyle()).fixedSize()
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityIdentifier("hub.openReal")
         }
@@ -173,24 +175,25 @@ struct HubConversationView: View {
             } primaryAction: {
                 model.submit()
             }
-            .menuStyle(.button).menuIndicator(.visible).fixedSize()
+            .menuStyle(.button).menuIndicator(.visible).fixedSize().layoutPriority(3)
             .buttonStyle(HubButtonStyle(kind: .primary))
             .disabled(model.route == .none)
             .accessibilityIdentifier("hub.send")
             if model.mode != .steer {
                 Button("Message now") { let kept = model.mode; model.mode = .steer; model.submit(); model.mode = kept }
-                    .buttonStyle(HubButtonStyle())
+                    .buttonStyle(HubButtonStyle()).fixedSize().layoutPriority(3)
                     .disabled(model.route == .none)
                     .help("Into the running turn, through the session's message box")
             }
             Button("Stop") { model.stop() }
-                .buttonStyle(HubButtonStyle(kind: .danger))
+                .buttonStyle(HubButtonStyle(kind: .danger)).fixedSize().layoutPriority(3)
                 .disabled(!(session.status == .working || session.status == .waiting))
                 .help("Stops the turn. Commands it started in the background keep running.")
                 .accessibilityIdentifier("hub.stop")
             Spacer(minLength: 8)
             Text(model.notice ?? routeLine).font(.system(size: 11))
                 .foregroundStyle(model.notice == nil ? HubPalette.muted : HubPalette.amber).lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 

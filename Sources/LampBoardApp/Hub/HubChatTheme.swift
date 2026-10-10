@@ -25,7 +25,7 @@ enum HubChatTheme {
             assistantBubble: Color.clear,
             statusSuccess: HubPalette.green, statusError: HubPalette.red, statusWarning: HubPalette.amber,
             inputBackground: HubPalette.panel, inputBorder: HubPalette.line)
-        store.messageFontSizeAdjustment = -1
+        store.messageFontSizeAdjustment = -2
         store.messageFontFamily = nil
     }
 }

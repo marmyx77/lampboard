@@ -55,7 +55,9 @@ struct BubbleStyle: ViewModifier {
     @ViewBuilder
     private var border: some View {
         switch variant {
-        case .user:
+        case .user, .assistant:
+            // Vendored patch 7: a reply is plain text, as in the LampBoard 2
+            // proposal and VS Code's chat; only tools keep their outline.
             EmptyView()
         case .error:
             shape.strokeBorder(ClaudeTheme.statusError.opacity(0.3), lineWidth: Self.borderWidth)
