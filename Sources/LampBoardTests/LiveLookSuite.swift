@@ -125,3 +125,57 @@ enum LetterSpacingSuite {
         },
     ])
 }
+
+/// The live view's chat (D147): a transcript followed as it grows.
+enum LiveChatFeedSuite {
+    static let suite = TestSuite("The live view's chat", [
+
+        TestCase("A line counts once its newline has arrived, in whatever pieces it came") { t in
+            var buffer = TranscriptLineBuffer(keep: 10)
+            t.expect(!buffer.append(Data(#"{"type":"user","#.utf8)), "half a line is not one")
+            t.expect(buffer.append(Data((#""x":1}"# + "\n").utf8)), "its end completes it")
+            t.expectEqual(buffer.lines, [#"{"type":"user","x":1}"#])
+            buffer.append(Data("\n   \n".utf8))
+            t.expectEqual(buffer.lines.count, 1, "blank lines are not lines")
+        },
+
+        TestCase("A character split between two reads arrives whole") { t in
+            var buffer = TranscriptLineBuffer(keep: 10)
+            let bytes = Array("città\n".utf8)
+            buffer.append(Data(bytes[..<4]))
+            buffer.append(Data(bytes[4...]))
+            t.expectEqual(buffer.lines, ["città"])
+        },
+
+        TestCase("Only the last lines are kept: a long transcript's end is what a chat shows") { t in
+            var buffer = TranscriptLineBuffer(keep: 3)
+            buffer.append(Data((1...6).map { "line \($0)\n" }.joined().utf8))
+            t.expectEqual(buffer.lines, ["line 4", "line 5", "line 6"])
+        },
+
+        TestCase("Another machine's transcript: where Claude Code writes it, followed under sh, quoted") { t in
+            let path = LiveChatSource.remotePath(sessionId: "s1", cwd: "/home/dev/my web")
+            t.expectEqual(path, ".claude/projects/-home-dev-my-web/s1.jsonl")
+            let command = LiveChatSource.remoteFollow(path: path)
+            t.expect(command.hasPrefix("sh -c '"), command)
+            t.expect(command.contains("tail -n \(LiveChatSource.keptLines) -F"), command)
+            t.expect(command.contains("cat >/dev/null; kill $p"), "tail ends when the connection's input closes: \(command)")
+            t.expect(command.contains(#"'\''.claude/projects/-home-dev-my-web/s1.jsonl'\''"#), command)
+        },
+    ])
+}
+
+/// «Custom» (D148): two colours picked, the rest following them.
+enum CustomThemeSuite {
+    static let suite = TestSuite("The custom look", [
+        TestCase("The card is the background picked, the window a shade darker, dark or light by it") { t in
+            let light = LiveTheme.custom(background: "#f4efe6", text: "#22201c")
+            t.expectEqual(light.card, "#f4efe6")
+            t.expectEqual(light.text, "#22201c")
+            t.expect(!light.isDark, "a light background")
+            t.expect(VSCodeTheme.luminance(light.backdropBottom) < VSCodeTheme.luminance(light.card), "darker behind")
+            t.expect(LiveTheme.custom(background: "#101418", text: "#e0e0e0").isDark, "a dark one")
+            t.expectNil(light.ansi, "the terminal keeps its own sixteen")
+        },
+    ])
+}

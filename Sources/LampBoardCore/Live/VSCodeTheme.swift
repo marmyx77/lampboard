@@ -91,7 +91,7 @@ public enum VSCodeTheme {
                   card: colors.background, text: colors.text, isDark: colors.isDark, ansi: colors.ansi)
     }
 
-    static func shade(_ hex: String, by amount: Double) -> String {
+    public static func shade(_ hex: String, by amount: Double) -> String {
         guard let (r, g, b) = LiveTheme.rgb(hex) else { return hex }
         let f = { (v: Double) in String(format: "%02x", Int((v * (1 - amount)) * 255 + 0.5)) }
         return "#" + f(r) + f(g) + f(b)

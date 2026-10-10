@@ -28,6 +28,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var live = LiveWindowController(preferences: preferences) { [store] target in
         LiveHeading.of(store.placed(target), in: store.state)
     }
+    /// Where a live window's session keeps its transcript, for its chat (D147):
+    /// a file here, or a path on the machine it runs on.
+    private func chatSource(for target: LiveTarget) -> LiveChatModel.Source? {
+        func local(_ session: SessionState) -> LiveChatModel.Source {
+            .local(session.transcriptPath.map { URL(fileURLWithPath: $0) }
+                ?? TranscriptLocator.candidateURL(sessionId: session.id, cwd: session.workspace.path))
+        }
+        switch store.placed(target) {
+        case .job(let job):
+            return store.state.sessions.values.first { $0.backgroundJob?.id == job }.map(local)
+        case .tmux(nil, _, let id):
+            return store.state.sessions[id].map(local)
+        case .tmux(let host?, _, let id):
+            // The session file's own folder: a row's may have moved to its window's.
+            guard let cwd = store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd
+                ?? store.state.sessions[id]?.workspace.path else { return nil }
+            return .remote(host: host, path: LiveChatSource.remotePath(sessionId: id, cwd: cwd))
+        case .newTmux:
+            return nil
+        }
+    }
+
     /// Where this Mac's sessions sit in tmux, for Open here (D132).
     private let localTmux = LocalTmuxPlaces()
     /// The remote machines: their tunnels and their hooks. Started in every mode,
@@ -115,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startInterface()
         }
         localTmux.start()
+        live.chatSource = { [weak self] target in self?.chatSource(for: target) }
 
         // `--live <job>` opens a background session in the live view (D130): for
         // the pictures, and for the end-to-end suite, which cannot click. Against
@@ -140,6 +163,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            CommandLine.arguments.indices.contains(index + 1) {
             let path = CommandLine.arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.live.snapshot(to: path) }
+        }
+        // `--live-chat-send <text>`, against a fake home: a message sent from the
+        // chat of the session `--live-session` opens (D147).
+        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-chat-send"),
+           CommandLine.arguments.indices.contains(index + 1),
+           let sessionIndex = CommandLine.arguments.firstIndex(of: "--live-session"),
+           CommandLine.arguments.indices.contains(sessionIndex + 1) {
+            let session = CommandLine.arguments[sessionIndex + 1]
+            let text = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+                guard let self, let target = self.localTmux.places[session].map({ LiveTarget.tmux(host: nil, place: $0, sessionId: session) })
+                else { return }
+                self.live.sendFromChat(text, into: target.key)
+            }
         }
         // `--live-files <path>`, against a fake home: the files beside every window,
         // that file in the preview (D136).

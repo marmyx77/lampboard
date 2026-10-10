@@ -21,6 +21,17 @@ final class LiveFrameView: NSView {
     /// The project beside the session (D136), shown with the Files button.
     let files = LiveFilesView()
     private let filesButton = NSButton(title: "Files", target: nil, action: nil)
+    /// Terminal or chat (D147): the terminal always runs; the chat is drawn over it.
+    private let viewSwitch = NSSegmentedControl(labels: ["Terminal", "Chat"], trackingMode: .selectOne, target: nil, action: nil)
+    /// Asked for the chat the first time it is shown, and kept.
+    var makeChat: (() -> NSView?)?
+    /// Told which view is shown, for the keys to follow it.
+    var onSwitch: ((Bool) -> Void)?
+    private var chat: NSView?
+    /// Whether the chat is what the window shows.
+    private(set) var showsChat = false
+    /// The chat's view, for the window's picture.
+    var chatView: NSView? { chat }
     private var cardBesideFiles: NSLayoutConstraint!
     private var cardAlone: NSLayoutConstraint!
     private var knownFolder: String?
@@ -44,7 +55,12 @@ final class LiveFrameView: NSView {
         filesButton.isHidden = true
         files.isHidden = true
 
-        for view in [lamp, title, detail, hint, reattach, filesButton, files, card] {
+        viewSwitch.controlSize = .small
+        viewSwitch.selectedSegment = 0
+        viewSwitch.target = self
+        viewSwitch.action = #selector(switchView)
+
+        for view in [lamp, title, detail, hint, reattach, viewSwitch, filesButton, files, card] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -65,7 +81,9 @@ final class LiveFrameView: NSView {
             reattach.centerYAnchor.constraint(equalTo: lamp.centerYAnchor),
             hint.leadingAnchor.constraint(equalTo: reattach.trailingAnchor, constant: 10),
             hint.centerYAnchor.constraint(equalTo: lamp.centerYAnchor),
-            filesButton.leadingAnchor.constraint(equalTo: hint.trailingAnchor, constant: 10),
+            viewSwitch.leadingAnchor.constraint(equalTo: hint.trailingAnchor, constant: 10),
+            viewSwitch.centerYAnchor.constraint(equalTo: lamp.centerYAnchor),
+            filesButton.leadingAnchor.constraint(equalTo: viewSwitch.trailingAnchor, constant: 8),
             filesButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
             filesButton.centerYAnchor.constraint(equalTo: lamp.centerYAnchor),
 
@@ -83,6 +101,28 @@ final class LiveFrameView: NSView {
         cardAlone.isActive = true
         seat(terminal)
         apply(theme: theme)
+    }
+
+    @objc private func switchView() { show(chat: viewSwitch.selectedSegment == 1) }
+
+    /// The chat over the terminal, or the terminal alone. The terminal keeps
+    /// running either way: it is the session's one writer.
+    func show(chat wanted: Bool) {
+        if wanted, chat == nil, let view = makeChat?() {
+            view.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview(view)
+            NSLayoutConstraint.activate([
+                view.topAnchor.constraint(equalTo: card.topAnchor, constant: 1),
+                view.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 1),
+                view.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -1),
+                view.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -1),
+            ])
+            chat = view
+        }
+        showsChat = wanted && chat != nil
+        chat?.isHidden = !showsChat
+        viewSwitch.selectedSegment = showsChat ? 1 : 0
+        onSwitch?(showsChat)
     }
 
     /// The files beside the session, if it has them.
@@ -103,7 +143,9 @@ final class LiveFrameView: NSView {
     /// The terminal on the card, at the card's margins.
     private func seat(_ terminal: NSView) {
         terminal.translatesAutoresizingMaskIntoConstraints = false
-        if terminal.superview !== card { card.addSubview(terminal) }
+        // Under the chat, when there is one: a terminal seated again after a
+        // reattach must not cover it.
+        if terminal.superview !== card { card.addSubview(terminal, positioned: .below, relativeTo: chat) }
         NSLayoutConstraint.activate([
             terminal.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
             terminal.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),

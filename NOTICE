@@ -26,10 +26,19 @@ is free, welcome, and should carry a name of its own.
 
 THIRD-PARTY CODE
 
-One package: SwiftTerm, the terminal emulator behind the live view.
-Copyright (c) 2019-2026 Miguel de Icaza and contributors, MIT licensed. It is
-vendored in Vendor/SwiftTerm, with its licence unmodified beside it and
-VENDORED.md recording the release, what was left out and every local patch.
+Two packages, each vendored with its licence unmodified beside it and a
+VENDORED.md recording the release, what was taken or left out, and every local
+patch:
+
+- SwiftTerm, the terminal emulator behind the live view. Copyright (c)
+  2019-2026 Miguel de Icaza and contributors, MIT licensed. In Vendor/SwiftTerm.
+- Part of Clarc, a native Mac client for Claude Code: its message views and
+  its transcript line reader, behind the live view's chat. Copyright 2026
+  TNEAR (https://github.com/ttnear/Clarc), Apache License 2.0. In
+  Vendor/Clarc. Every file taken was modified, and says so at its top.
+
+The licences of both, LampBoard's own and this notice are in the app too,
+under Contents/Resources/Licenses.
 
 Everything else, every line in Sources/ and the test framework included, was
 written for this project.

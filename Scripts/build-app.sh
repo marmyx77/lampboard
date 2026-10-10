@@ -45,6 +45,16 @@ cp "$BUILD_DIR/LampBoardApp" "$MACOS_DIR/lampboard"
 # One empty file, and Spotlight skips the whole tree.
 touch "$ROOT/.build/.metadata_never_index" 2>/dev/null || true
 
+# The licences travel with the app (D147): LampBoard's own and its notice, and
+# each vendored package's, as the MIT and Apache licences ask of a binary.
+mkdir -p "$RESOURCES_DIR/Licenses"
+cp "$ROOT/LICENSE" "$RESOURCES_DIR/Licenses/LampBoard-LICENSE.txt"
+cp "$ROOT/NOTICE" "$RESOURCES_DIR/Licenses/NOTICE.txt"
+for vendored in "$ROOT"/Vendor/*/; do
+    name="$(basename "$vendored")"
+    cp "$vendored/LICENSE" "$RESOURCES_DIR/Licenses/$name-LICENSE.txt"
+done
+
 ICON="$ROOT/Resources/$APP_NAME.icns"
 if [ -f "$ICON" ]; then
     cp "$ICON" "$RESOURCES_DIR/$APP_NAME.icns"

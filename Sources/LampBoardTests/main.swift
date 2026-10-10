@@ -69,6 +69,8 @@ let suites: [TestSuite] = [
     VSCodeThemeSuite.suite,
     FixedPitchSuite.suite,
     LetterSpacingSuite.suite,
+    LiveChatFeedSuite.suite,
+    CustomThemeSuite.suite,
     UnreadAnswersSuite.suite,
     FocusSuite.suite,
     AllowanceForecastSuite.suite,

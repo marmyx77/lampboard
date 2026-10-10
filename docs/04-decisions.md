@@ -5612,3 +5612,95 @@ At 1 it changes nothing.
 **Measured.** The domain suite holds the range, and its case fails when the
 floor is lowered. The setting has not been looked at on a screen yet; its user
 looks first.
+
+## D147 · The chat
+
+**Decided.** A live window has two views, **Terminal** and **Chat**, switched in
+its header. The terminal is the default, and nothing about it changes. The chat
+shows the session's conversation the way an editor's chat panel does: the
+person's messages in bubbles, the replies as set text with their markdown, each
+tool call as a row with its result, a diff as a diff. There is a box at the
+bottom to write in. Settings › Clicks & keys › The live view › **Open on the
+chat** makes the chat what a window opens on. Off by default.
+
+**How it works.** The chat draws; the terminal stays the session's one writer.
+- **Reading.** The chat reads the session's transcript, which Claude Code writes
+  line by line. A session of this Mac's is read from its file, polled where it
+  was left. One on another machine is read over ssh, with `tail -F` on its
+  transcript there: the last 800 lines, then each new one.
+- **Writing.** A message from the box goes into the terminal as a paste followed
+  by Enter, the same as typing it.
+- **Dialogs.** A permission, a question or a menu is the terminal's. While the
+  session waits for one, the chat says so and offers the terminal.
+- **Looks.** The chat takes the window's colours. Its messages are set in VS
+  Code's chat font when this Mac has it, the system's otherwise.
+
+**From Clarc.** The message views and the line decoder are Clarc's (Apache 2.0),
+vendored with their licence and five local patches (`Vendor/Clarc/VENDORED.md`).
+Every client found starts a `claude` of its own and draws that. None draws a
+session already running elsewhere and writes to it without becoming a second
+writer, which is what this needed. Clarc's views had already met real
+transcripts. Its message list was not taken: it needs macOS 15, and LampBoard
+runs from 14.
+
+**Measured.** The end-to-end suite writes a transcript as Claude Code writes it:
+ISO dates with fractions, a reply in markdown. It opens the session's window on
+the chat and reads both messages back. It sends a message from the chat and finds
+it in the terminal, Enter after it. The case fails when the dates are read
+Foundation's default way: every line is then dropped. The window's picture showed
+the bubbles, the bold and the box, in VS Code Light's colours.
+
+**What a review changed.** It found four high issues, six medium and eight low.
+- **High: Send at a dialog or a shell.** Send went out at any moment. At a
+  permission dialog its Enter would have approved the dialog's default; with
+  Claude gone, it would have run in the shell left behind in a tmux pane. Send is
+  now allowed only while the session's row says Claude is there and waits on no
+  dialog, and the terminal is still attached. A message that could not go is
+  kept in the box.
+- **High: a transcript not written yet.** A new session's chat stopped at "not
+  there yet" for good. The file is now looked for again until it appears, and
+  read again from the start when it shrinks or is replaced.
+- **High: opening a remote chat.** The whole transcript was decoded once per piece
+  that arrived, on the main thread. Rebuilds are now gathered into one per burst,
+  and the line buffer reads its bytes once.
+- **High: a dropped connection.** The chat froze without a word. Now it says so,
+  connects again less and less often, and connects again when the terminal is
+  reattached.
+- **Medium.**
+  - Quitting stops every chat's ssh, and the remote `tail` ends when the
+    connection's input closes.
+  - The keys follow the view shown: the chat's box, or the terminal.
+  - A link in a reply opens only for `http` and `https`.
+  - Autoscroll follows the last message, not the count.
+  - The licences travel inside the app, and the notice names Clarc's owner as
+    its licence does.
+  - Clarc's diff view and its `git` helper were left out: nothing reached them,
+    and a path from a transcript is never handed to `git`.
+- **Low.** Enter is sent a moment after the paste's closing mark, not in the
+  same write. The chat is published only when what the window knows changes.
+
+A second end-to-end case has the session wait on a permission, then sends from
+the chat. The chat says the session asks, Send is off, and nothing reaches the
+terminal. With the gate removed, the message reached the dialog with its Enter,
+and the case failed.
+
+**Not yet.**
+- A reply appears line by line as the transcript grows, not letter by letter as
+  in the terminal.
+- A file named in a tool row is not opened from the chat.
+- After `/clear`, the chat stays on the conversation it opened with.
+- A message cannot be forked or edited, as Clarc can.
+- A theme changed in Settings reaches a chat already open only when its window
+  is opened again.
+
+## D148 · Custom colours
+
+**Decided.** Look › **Custom** shows two colour pickers in Settings, Background
+and Text. The card is the background picked, and the window behind it is a
+shade darker. The theme is dark or light by the background's brightness. The
+chat follows both colours; the terminal keeps its own sixteen.
+
+**Why.** Its user asked for a colour picker beside the presets: a preset never
+matches every editor, and «Like my VS Code» only matches VS Code.
+
+**Measured.** The domain suite holds what is made of the two colours.

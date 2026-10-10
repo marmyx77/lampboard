@@ -35,6 +35,16 @@ public struct LiveTheme: Equatable, Sendable {
     /// «Like my VS Code» (D144): a theme read from VS Code at the moment it is
     /// used, not one of the presets.
     public static let fromVSCodeId = "vscode-mine"
+    /// «Custom» (D148): a background and a text colour the person picks.
+    public static let customId = "custom"
+
+    /// The custom theme: the card the person's background, the window behind it
+    /// a shade darker, dark or light by its brightness.
+    public static func custom(background: String, text: String) -> LiveTheme {
+        LiveTheme(id: customId, name: "Custom",
+                  backdropTop: VSCodeTheme.shade(background, by: 0.06), backdropBottom: VSCodeTheme.shade(background, by: 0.11),
+                  card: background, text: text, isDark: VSCodeTheme.luminance(background) < 0.5)
+    }
 
     public static let presets: [LiveTheme] = [
         LiveTheme(id: "night", name: "Night", backdropTop: "#141a2e", backdropBottom: "#2a1a3a",

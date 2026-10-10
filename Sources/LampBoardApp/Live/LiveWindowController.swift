@@ -1,5 +1,6 @@
 import AppKit
 import LampBoardCore
+import SwiftUI
 
 /// The live view's windows, one per background session (D130).
 ///
@@ -18,12 +19,16 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let surface: LiveSurface
         let frame: LiveFrameView
         var ended = false
+        /// The chat, once it has been shown (D147).
+        var chat: LiveChatModel?
         init(target: LiveTarget, window: NSWindow, surface: LiveSurface, frame: LiveFrameView) {
             self.target = target; self.window = window; self.surface = surface; self.frame = frame
         }
     }
 
     private var lives: [String: Live] = [:]
+    /// Where a session's transcript is, for its chat (D147); set by the app.
+    var chatSource: (LiveTarget) -> LiveChatModel.Source? = { _ in nil }
     /// The conversations being moved here (D135).
     private var moving: Set<String> = []
     private var clock: Timer?
@@ -65,6 +70,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         frame.reattach.target = self
         frame.reattach.action = #selector(reattachPressed(_:))
         frame.reattach.identifier = NSUserInterfaceItemIdentifier(job)
+        frame.makeChat = { [weak self] in self?.makeChat(for: job) }
         // A citation goes to the session's prompt, and the keys back to it.
         frame.files.cite = { [weak self] text in
             guard let live = self?.lives[job], !live.ended else { NSSound.beep(); return }
@@ -75,8 +81,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         lives[job] = live
         updateDockPresence()
         start(live, command)
+        if preferences.liveOpensChat { frame.show(chat: true) }
         bringToFront(window)
-        window.makeFirstResponder(surface.view)
+        if !frame.showsChat { window.makeFirstResponder(surface.view) }
         startClock()
         return true
     }
@@ -198,6 +205,13 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
                 view["text"] = live.surface.screenText(lines: 40)
                 if let folder = describe(live.target).folder { view["folder"] = folder }
                 if !live.frame.files.isHidden, let showing = live.frame.files.showingPath { view["showing"] = showing }
+                view["chatShown"] = live.frame.showsChat
+                if let chat = live.chat {
+                    view["chatMessages"] = chat.messages.count
+                    view["chatAsks"] = chat.asksInTerminal
+                    view["chatCanSend"] = chat.canSend
+                    view["chatText"] = String(chat.messages.map(\.content).joined(separator: " | ").suffix(400))
+                }
             }
             return view
         }
@@ -217,7 +231,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             guard let view = live.window.contentView else { continue }
             view.wantsLayer = true
             let scale = live.window.backingScaleFactor
-            let terminal = live.surface.view
+            // With the chat shown, the chat is what the picture must show.
+            let terminal = live.frame.showsChat ? (live.frame.chatView ?? live.surface.view) : live.surface.view
             guard let layer = view.layer,
                   let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width * scale),
                                                 pixelsHigh: Int(view.bounds.height * scale), bitsPerSample: 8,
@@ -266,6 +281,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// timer set now would never fire; an attach that outlives even SIGKILL
     /// stays in the ledger for the next launch.
     func endAll() {
+        // The chats' followers go too: an ssh left reading would outlive LampBoard.
+        for live in lives.values { live.chat?.stop() }
         clock?.invalidate()
         clock = nil
         for live in lives.values {
@@ -303,6 +320,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     private func attach(_ live: Live) {
         guard live.ended, let command = command(for: live.target) else { return }
         let replacement = Live(target: live.target, window: live.window, surface: makeSurface(), frame: live.frame)
+        replacement.chat = live.chat
+        live.chat?.restartIfLost()
         // The old one has exited: ending it closes its pty and signals nothing.
         live.surface.onExit = nil
         live.surface.end(waiting: false)
@@ -386,6 +405,14 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// Whether the last ⌘V pressed found its menu item.
     private var keyRouted = false
 
+    /// A message sent from the chat, as its Send would (D147), for the
+    /// end-to-end suite.
+    /// Through the same gate as the chat's Send: refused while Claude asks or is gone.
+    func sendFromChat(_ text: String, into job: String) {
+        guard let live = lives[job], !live.ended, live.chat?.canSend == true else { return }
+        _ = live.surface.submit(text)
+    }
+
     /// Every live window forward, the Dock icon's click; `false` with none open.
     func bringAllForward() -> Bool {
         guard !lives.isEmpty else { return false }
@@ -402,9 +429,41 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// The chat for `job`'s window: its transcript followed, its messages sent
+    /// through the terminal.
+    private func makeChat(for job: String) -> NSView? {
+        guard let live = lives[job] else { return nil }
+        guard let source = chatSource(live.target) else {
+            return NSHostingView(rootView: Text("LampBoard cannot find this session's conversation to show it as a chat.")
+                .foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity))
+        }
+        LiveChatTheme.apply(preferences.liveAppearance, chatFont: LiveChatTheme.vsCodeChatFont())
+        let model = LiveChatModel(source: source)
+        model.start()
+        live.chat = model
+        live.frame.onSwitch = { [weak self, weak model] chat in
+            guard let live = self?.lives[job] else { return }
+            // The keys go to what is shown: the chat's box, or the terminal.
+            if chat { model?.requestFocus() } else { live.window.makeFirstResponder(live.surface.view) }
+        }
+        return NSHostingView(rootView: LiveChatView(
+            model: model,
+            send: { [weak self] text in
+                guard let live = self?.lives[job], !live.ended, live.chat?.canSend == true else { return false }
+                return live.surface.submit(text)
+            },
+            showTerminal: { [weak self] in self?.lives[job]?.frame.show(chat: false) }))
+    }
+
     private func refreshHeaders() {
         for live in lives.values {
             let header = describe(live.target)
+            // A message may go only while Claude is there and asks nothing: at a
+            // dialog its Enter would answer the dialog, and with Claude gone it
+            // would run in the shell left behind (the row goes with Claude).
+            let status = header.status
+            live.chat?.update(asking: status == .awaiting,
+                              sendable: status != nil && status != .awaiting && !live.ended && live.surface.isRunning)
             live.frame.show(header, ended: live.ended)
             if live.window.title != header.title { live.window.title = header.title }
         }
@@ -416,6 +475,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         guard let window = notification.object as? NSWindow,
               let live = lives.values.first(where: { $0.window === window }) else { return }
         live.surface.end(waiting: false)
+        live.chat?.stop()
         LiveProcesses.forget(pid: live.surface.pid)
         lives[live.job] = nil
         if lives.isEmpty { clock?.invalidate(); clock = nil }

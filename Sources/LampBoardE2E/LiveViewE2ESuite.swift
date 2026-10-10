@@ -111,6 +111,41 @@ enum LiveViewE2ESuite {
         return shell
     }
 
+    /// A session in a fake tmux pane whose transcript says two things, the
+    /// chat opened first, and the pane recording what it is sent (D147).
+    static func chatApp(binaryURL: URL, port: UInt16, sessionId: String, shell: Process) -> (AppUnderTest, String) {
+        let app = tmuxApp(binaryURL: binaryURL, port: port, sessionId: sessionId, shell: shell, ["--live-chat-send", "sent-from-the-chat"])
+        // The chat first, as the setting asks; the terminal records what it is sent.
+        let domain = "com.lampboard.app.test.\(app.home.lastPathComponent)"
+        UserDefaults(suiteName: domain)?.set(true, forKey: "live.opensChat")
+        UserDefaults(suiteName: domain)?.synchronize()
+        let prepare = app.beforeLaunch
+        app.beforeLaunch = { home in
+            prepare?(home)
+            let bin = home.appendingPathComponent(".local/bin")
+            let tmux = """
+            #!/bin/sh
+            here="$(dirname "$0")"
+            case "$1" in
+              list-panes) cat "$here/panes.txt" ;;
+              attach-session) stty raw -echo 2>/dev/null; exec dd bs=1 of="$here/typed.txt" 2>/dev/null ;;
+            esac
+            """
+            try? tmux.write(to: bin.appendingPathComponent("tmux"), atomically: true, encoding: .utf8)
+            // A transcript as Claude Code writes it: ISO dates with fractions, a reply in markdown.
+            let web = home.appendingPathComponent("web").path
+            let folder = home.appendingPathComponent(".claude/projects/" + TranscriptLocator.directoryName(forWorkspace: web))
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let lines = [
+                #"{"type":"user","uuid":"6f1d0b52-0000-4000-8000-000000000001","timestamp":"2026-10-10T08:00:00.123Z","sessionId":"\#(sessionId)","cwd":"\#(web)","message":{"role":"user","content":"Read the README"}}"#,
+                #"{"type":"assistant","uuid":"6f1d0b52-0000-4000-8000-000000000002","timestamp":"2026-10-10T08:00:03.456Z","sessionId":"\#(sessionId)","cwd":"\#(web)","message":{"id":"msg_1","model":"claude-opus-5-5","role":"assistant","content":[{"type":"text","text":"It says **hello**."}]}}"#,
+            ]
+            try? (lines.joined(separator: "\n") + "\n").write(to: folder.appendingPathComponent("\(sessionId).jsonl"),
+                                                            atomically: true, encoding: .utf8)
+        }
+        return (app, domain)
+    }
+
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
         TestSuite("E2E · live view", [
 
@@ -219,6 +254,51 @@ enum LiveViewE2ESuite {
                 let shown = app.waitUntil(timeout: 25) { views(app).contains { ($0["showing"] as? String)?.hasSuffix("/web/README.md") == true } }
                 t.expect(shown, "README.md in the preview: \(views(app)) · rows \(app.sessions()?.sessions.map(\.id) ?? [])")
                 t.expect(views(app).contains { ($0["folder"] as? String)?.hasSuffix("/web") == true }, "the session's folder")
+            },
+
+            TestCase("the chat shows the conversation from its transcript, and sends through the terminal (D147)") { t in
+                let sessionId = "e2e7d0aa-0000-4000-8000-0000000074a3"
+                let shell = sleeper()
+                defer { shell.terminate() }
+                let (app, domain) = chatApp(binaryURL: binaryURL, port: port, sessionId: sessionId, shell: shell)
+                defer { UserDefaults(suiteName: domain)?.removePersistentDomain(forName: domain) }
+                defer { endAttaches(app); app.stop() }
+                do { try app.start() } catch { t.fail("did not start: \(error)"); return }
+                let web = app.home.appendingPathComponent("web").path
+                app.writeIDELock(port: 47_212, folders: [web])
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: web))
+                let read = app.waitUntil(timeout: 25) { (views(app).first?["chatMessages"] as? Int ?? 0) >= 2 }
+                t.expect(read, "both messages in the chat: \(views(app))")
+                t.expectEqual(views(app).first?["chatShown"] as? Bool, true, "the chat is what opened")
+                t.expect((views(app).first?["chatText"] as? String ?? "").contains("It says **hello**."), "the reply's text")
+                let typed = { file(app, "typed.txt") }
+                // Enter follows the paste a moment later, on its own.
+                let entered = { typed().contains("sent-from-the-chat\u{1B}[201~\r") || typed().contains("sent-from-the-chat\r") }
+                let sent = app.waitUntil(timeout: 20) { entered() }
+                t.expect(sent, "the message reached the session through its terminal: \(typed().debugDescription)")
+                // Bracketed when the program asked for it, as Claude Code does; plain
+                // here, where the stand-in did not. Enter after it either way.
+                t.expect(entered(), "then Enter: \(typed().debugDescription)")
+            },
+
+            TestCase("the chat sends nothing while the session waits on a dialog: its Enter would answer it (D147)") { t in
+                let sessionId = "e2e7d0aa-0000-4000-8000-0000000074a4"
+                let shell = sleeper()
+                defer { shell.terminate() }
+                let (app, domain) = chatApp(binaryURL: binaryURL, port: port, sessionId: sessionId, shell: shell)
+                defer { UserDefaults(suiteName: domain)?.removePersistentDomain(forName: domain) }
+                defer { endAttaches(app); app.stop() }
+                do { try app.start() } catch { t.fail("did not start: \(error)"); return }
+                let web = app.home.appendingPathComponent("web").path
+                app.writeIDELock(port: 47_213, folders: [web])
+                app.sendHook(HookPayloads.userPromptSubmit(sessionId: sessionId, cwd: web))
+                app.sendHook(HookPayloads.notification(sessionId: sessionId, cwd: web, kind: "permission_prompt"))
+                let asking = app.waitUntil(timeout: 20) { views(app).first?["chatAsks"] as? Bool == true }
+                t.expect(asking, "the chat says the session asks: \(views(app))")
+                t.expectEqual(views(app).first?["chatCanSend"] as? Bool, false, "and Send is off")
+                // The test's own send comes at eight seconds; give it time to have gone, if it went.
+                Thread.sleep(forTimeInterval: 12)
+                t.expect(!file(app, "typed.txt").contains("sent-from-the-chat"), "nothing reached the dialog: \(file(app, "typed.txt").debugDescription)")
             },
 
             TestCase("what a crash left attached is ended by the next launch, and only that") { t in

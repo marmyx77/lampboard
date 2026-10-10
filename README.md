@@ -952,6 +952,13 @@ the agent changes it. **⌘L** cites the file, or the lines you selected, in the
 session's prompt as `@path#L3-7`, ready to send and not sent
 ([D136](docs/04-decisions.md#d136--the-files-beside-the-session)).
 
+**Terminal | Chat**, in a window's header, switches to the conversation shown as
+a chat: your messages in bubbles, the replies in an ordinary font with their
+markdown, each tool call a row, and a box to write in that sends to the session
+through its terminal. Dialogs stay in the terminal. *Open on the chat* in Settings
+makes it the default; *Custom* in Look picks the colours freely
+([D147](docs/04-decisions.md#d147--the-chat), [D148](docs/04-decisions.md#d148--custom-colours)).
+
 The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), vendored
 ([D129](docs/04-decisions.md#d129--a-terminal-of-our-own-vendored)).
 
@@ -1769,8 +1776,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1304 domain tests, instantaneous
-swift run LampBoardE2E                # 168 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1309 domain tests, instantaneous
+swift run LampBoardE2E                # 170 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
@@ -1833,11 +1840,14 @@ It covers the software and this documentation. It grants no rights in the
 project's name or its icon: a fork is free and welcome, and should carry a name
 of its own.
 
-There is **one third-party package**: [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)
-(MIT), the terminal emulator behind the live view. It is vendored in
-`Vendor/SwiftTerm` rather than fetched, with its licence beside it and
-`VENDORED.md` recording the release, what was left out and every local change
-(D129). Every line under `Sources/` was written for this project, the test
+There are **two third-party packages**, each vendored rather than fetched, with
+its licence beside it and a `VENDORED.md` recording the release, what was taken
+and every local change. The licences also travel inside the app.
+- [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT), the terminal
+  emulator behind the live view, in `Vendor/SwiftTerm` (D129).
+- Part of [Clarc](https://github.com/ttnear/Clarc) (Apache 2.0), its message
+  views and transcript reader, behind the live view's chat, in `Vendor/Clarc`
+  (D147). Every line under `Sources/` was written for this project, the test
 framework included.
 
 [NOTICE](NOTICE) carries one more statement, and it belongs at the end of a

@@ -28,6 +28,13 @@ enum VSCodeReader {
         return Result(theme: VSCodeTheme.liveTheme(colors), fontFamily: font)
     }
 
+    /// The families VS Code's chat is set in, as its settings list them.
+    static func chatFontFamilies() -> [String] {
+        guard let value = activeSettings()["chat.fontFamily"] as? String else { return [] }
+        return value.split(separator: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " '\"")) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("-") }
+    }
+
     // MARK: - The profile in use
 
     /// The default settings, under the profile whose editor background is the

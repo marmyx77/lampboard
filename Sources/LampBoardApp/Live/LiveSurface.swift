@@ -20,6 +20,9 @@ protocol LiveSurface: AnyObject {
     /// for them, so Claude Code takes `@path` as typed text and never as Enter.
     func paste(_ text: String)
     func apply(_ appearance: LiveAppearance)
+    /// A message sent as if typed, then Enter (D147): the chat's way in.
+    /// `false` when the terminal is not running to take it.
+    func submit(_ text: String) -> Bool
     /// What the screen shows now, as plain text: the last `lines` of it.
     func screenText(lines: Int) -> String
     /// Whether the program asked for bracketed paste: until it has, a paste
@@ -80,6 +83,18 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
         } else {
             terminal.send(txt: cleaned.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " "))
         }
+    }
+
+    func submit(_ text: String) -> Bool {
+        guard isRunning, !ended else { return false }
+        paste(text)
+        // Enter on its own, a moment after the paste's closing mark: a program
+        // may read a mark and an Enter in one write as part of the paste.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            guard let self, self.isRunning else { return }
+            self.terminal.send(txt: "\r")
+        }
+        return true
     }
 
     func apply(_ appearance: LiveAppearance) {
@@ -202,5 +217,12 @@ extension NSColor {
     convenience init(liveHex hex: String) {
         let (r, g, b) = LiveTheme.rgb(hex) ?? (0, 0, 0)
         self.init(srgbRed: r, green: g, blue: b, alpha: 1)
+    }
+
+    /// `#rrggbb` in sRGB, as the custom theme keeps a picked colour (D148).
+    var liveHex: String {
+        let c = usingColorSpace(.sRGB) ?? self
+        let f = { (v: CGFloat) in String(format: "%02x", Int((min(max(v, 0), 1) * 255).rounded())) }
+        return "#" + f(c.redComponent) + f(c.greenComponent) + f(c.blueComponent)
     }
 }

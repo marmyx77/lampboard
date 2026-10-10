@@ -63,6 +63,9 @@ struct Preferences {
         static let liveLineSpacing = "live.lineSpacing"
         static let liveLetterSpacing = "live.letterSpacing"
         static let liveOpensBackground = "live.opensBackground"
+        static let liveOpensChat = "live.opensChat"
+        static let liveCustomBackground = "live.customBackground"
+        static let liveCustomText = "live.customText"
         static let liveLook = "live.look"
     }
 
@@ -339,7 +342,8 @@ struct Preferences {
     var liveTheme: String {
         get {
             let stored = defaults.string(forKey: Key.liveTheme)
-            return stored == LiveTheme.fromVSCodeId ? LiveTheme.fromVSCodeId : LiveTheme.named(stored).id
+            if stored == LiveTheme.fromVSCodeId || stored == LiveTheme.customId { return stored! }
+            return LiveTheme.named(stored).id
         }
         nonmutating set { defaults.set(newValue, forKey: Key.liveTheme) }
     }
@@ -377,10 +381,27 @@ struct Preferences {
         nonmutating set { defaults.set(LiveTheme.clampedLetterSpacing(newValue), forKey: Key.liveLetterSpacing) }
     }
 
+    /// The custom theme's two colours (D148), `#rrggbb`.
+    var liveCustomBackground: String {
+        get { defaults.string(forKey: Key.liveCustomBackground).flatMap(VSCodeTheme.hex6) ?? "#f4efe6" }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveCustomBackground) }
+    }
+    var liveCustomText: String {
+        get { defaults.string(forKey: Key.liveCustomText).flatMap(VSCodeTheme.hex6) ?? "#22201c" }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveCustomText) }
+    }
+
     /// All of it, as a live window's terminal takes it.
+    ///
     /// «Like my VS Code» reads VS Code each time it is applied; without a VS
-    /// Code to read, its light theme stands in (D144).
+    /// Code to read, its light theme stands in (D144). «Custom» is the two
+    /// colours picked (D148).
     var liveAppearance: LiveAppearance {
+        if liveTheme == LiveTheme.customId {
+            return LiveAppearance(theme: LiveTheme.custom(background: liveCustomBackground, text: liveCustomText),
+                                  fontSize: liveFontSize, fontFamily: liveFontFamily, lineSpacing: liveLineSpacing,
+                                  letterSpacing: liveLetterSpacing)
+        }
         guard liveTheme == LiveTheme.fromVSCodeId else {
             return LiveAppearance(theme: LiveTheme.named(liveTheme), fontSize: liveFontSize,
                                   fontFamily: liveFontFamily, lineSpacing: liveLineSpacing, letterSpacing: liveLetterSpacing)
@@ -389,6 +410,13 @@ struct Preferences {
         return LiveAppearance(theme: mine?.theme ?? LiveTheme.named("vscode-light"), fontSize: liveFontSize,
                               fontFamily: liveFontFamily.isEmpty ? mine?.fontFamily : liveFontFamily,
                               lineSpacing: liveLineSpacing, letterSpacing: liveLetterSpacing)
+    }
+
+    /// A live window opens on its chat rather than its terminal (D147). Off by
+    /// default: the terminal is what 1.2 to 1.4 opened, and it stays.
+    var liveOpensChat: Bool {
+        get { defaults.bool(forKey: Key.liveOpensChat) }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveOpensChat) }
     }
 
     /// A click on a background session's row opens it in the live view rather

@@ -109,6 +109,10 @@ struct ClicksPane: View {
                     preferences.liveOpensBackground = value
                     model.refresh()
                 }
+                SettingToggle(id: .liveOpensChat, isOn: preferences.liveOpensChat) { value in
+                    preferences.liveOpensChat = value
+                    model.refresh()
+                }
                 SettingRow(id: .liveTheme) {
                     Picker("", selection: Binding(get: { preferences.liveTheme }, set: { value in
                         preferences.liveTheme = value
@@ -117,8 +121,28 @@ struct ClicksPane: View {
                     })) {
                         ForEach(LiveTheme.presets, id: \.id) { Text($0.name).tag($0.id) }
                         Text("Like my VS Code").tag(LiveTheme.fromVSCodeId)
+                        Text("Custom").tag(LiveTheme.customId)
                     }
                     .labelsHidden().fixedSize()
+                }
+                if preferences.liveTheme == LiveTheme.customId {
+                    SettingRow(id: .liveCustomColors) {
+                        HStack(spacing: 14) {
+                            ColorPicker("Background", selection: Binding(get: { Color(nsColor: NSColor(liveHex: preferences.liveCustomBackground)) },
+                                                                         set: { color in
+                                preferences.liveCustomBackground = NSColor(color).liveHex
+                                NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                                model.refresh()
+                            }), supportsOpacity: false)
+                            ColorPicker("Text", selection: Binding(get: { Color(nsColor: NSColor(liveHex: preferences.liveCustomText)) },
+                                                                   set: { color in
+                                preferences.liveCustomText = NSColor(color).liveHex
+                                NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                                model.refresh()
+                            }), supportsOpacity: false)
+                        }
+                        .fixedSize()
+                    }
                 }
                 SettingRow(id: .liveFontSize) {
                     Stepper(value: Binding(get: { preferences.liveFontSize }, set: { value in

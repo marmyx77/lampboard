@@ -1,22 +1,24 @@
 # Code map
 
-~74,700 lines of Swift across five targets. For each file: what it contains, why
+~75,500 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  23,341 lines · 184 files  pure logic, zero AppKit
-  LampBoardApp/    28,068 lines · 154 files   shell: AppKit, network, windows
-  LampBoardTests/  18,024 lines · 123 files   1304 cases, instantaneous
-  LampBoardE2E/    4,984 lines · 21 files   168 cases, the real binary
+  LampBoardCore/  23,408 lines · 185 files  pure logic, zero AppKit
+  LampBoardApp/    28,591 lines · 156 files   shell: AppKit, network, windows
+  LampBoardTests/  18,080 lines · 123 files   1309 cases, instantaneous
+  LampBoardE2E/    5,064 lines · 21 files   170 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
 No file exceeds 798 lines. The limit the project sets itself is 800.
 
-One more target was not written here: `Vendor/SwiftTerm`, about 36,000 lines, the
-terminal emulator behind the live view. It is described at the end, under
-[Vendored code](#vendored-code), and none of the figures above count it.
+Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
+the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
+lines, the message views and transcript reader behind its chat. They are
+described at the end, under [Vendored code](#vendored-code), and none of the
+figures above count them.
 
 ---
 
@@ -50,7 +52,7 @@ and Quit. The App only draws what it is given (`MenuEntriesView`).
 > **Adding an entry here** is adding it to a menu a test counts: the ⋯ had grown to
 > twenty-five entries one reasonable addition at a time.
 
-### `SettingsCatalog.swift` · 154
+### `SettingsCatalog.swift` · 159
 Every setting, its section, its group, its one name and the line saying what it
 does: nine sections, from Panel to About & help, the two that act on the sessions
 or leave the Mac marked. The Settings window draws from it, and a menu that offers
@@ -471,7 +473,7 @@ form, and looked up as an id it opened nothing.
 to be there made yellows immortal, because `Stop` doesn't fire when you interrupt
 a turn with Esc.
 
-### `HookSignal.swift` · 267
+### `HookSignal.swift` · 274
 The validated signal. `deservesTrafficLight` and `subagentDelta` are the two
 questions the reducer asks it.
 
@@ -1244,7 +1246,7 @@ implementation: what Claude writes, and anything unrecognized becomes a paragrap
 
 ## `Parsing/`
 
-### `HookPayloadDecoder.swift` · 208
+### `HookPayloadDecoder.swift` · 209
 The only point where external data enters the domain. Strict validation: no
 required field is ever inferred or filled in with a default.
 
@@ -1321,7 +1323,7 @@ to close after them counting as delivered.
 
 ## `Permission/`
 
-### `PermissionGate.swift` · 144
+### `PermissionGate.swift` · 156
 Allow and Deny from the panel (D73, D80), as rules: the ask a session's mod posts —
 session, call, tool, and one masked line, read with the mod's own validators and
 refused rather than guessed when malformed; the verdict, one of `allow`, `deny`,
@@ -1402,7 +1404,7 @@ dialog (`returned`).
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 719
+### `StateReducer.swift` · 728
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1569,6 +1571,11 @@ allowed), the chat's background and text and the sixteen terminal colours from
 the profile over the theme, the chat font's fixed-width sibling, and the live
 theme made of them.
 
+### `LiveChatFeed.swift` · 55
+The chat's source (D147): where a session on another machine keeps its
+transcript, the `tail -F` that follows it there under `sh`, and a buffer that
+keeps whole lines only, the last 800.
+
 ### `ProjectFiles.swift` · 86
 The live view's files (D136): which entries a tree shows and in what order, the
 citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
@@ -1583,7 +1590,7 @@ a new tmux session on another machine, picking a free name there.
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
 
-### `LiveTheme.swift` · 110
+### `LiveTheme.swift` · 132
 The live view's looks: four presets of backdrop, card and text, a font size kept
 between 10 and 24 points, and the contrast every preset is held to. The frame
 takes the theme; the sixteen ANSI colours stay the terminal's, because Claude Code
@@ -1608,7 +1615,7 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 210
+### `RemoteProbeScript.swift` · 211
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
@@ -1629,7 +1636,7 @@ from a row called "experiment" whose window was called `simlab` (D51).
 Which sessions another machine's probe reports become rows before they speak
 (D137): a terminal's, with a conversation, while terminal sessions are shown.
 
-### `RemoteSessionsDecoder.swift` · 138
+### `RemoteSessionsDecoder.swift` · 140
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -1771,7 +1778,7 @@ there, the hooks are registered — and it names the link that broke.
 
 The live view (D130): background sessions in a terminal of LampBoard's own.
 
-### `LiveSurface.swift` · 191
+### `LiveSurface.swift` · 228
 The only file that knows SwiftTerm. `LiveSurface` is what the window sees, an
 `NSView` and a few verbs (start, paste, appearance, screen text, end);
 `SwiftTermSurface` implements it. Option types characters, as on any Mac
@@ -1780,12 +1787,12 @@ wrapped in bracketed-paste marks when the program asked for them, so `@path`
 never arrives as an Enter. Ending sends SIGHUP to the process group, then SIGTERM
 and SIGKILL: SwiftTerm's own `terminate()` closes the pty and can leave the child.
 
-### `LiveFrameView.swift` · 191
+### `LiveFrameView.swift` · 233
 The frame: the theme's backdrop, a header with the session's lamp, name and state,
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 421
+### `LiveWindowController.swift` · 484
 One window per background session, never two: two attaches of different sizes
 garble each other. Opens, starts (`claude --bg` off the main thread, then the
 attach), reattaches in the same window, closes (which detaches), and answers
@@ -1794,6 +1801,20 @@ drawn together, the terminal's text was clipped away.
 
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
+
+### `LiveChat.swift` · 262
+The live view's chat (D147): `LiveChatModel` follows a session's transcript, a
+file here read where it was left, or `tail -F` over ssh on another machine, and
+turns its lines into Clarc's messages; `LiveChatView` draws them with Clarc's
+bubbles, says when the session waits on its own dialog, and sends what is written
+through the terminal, paste and Enter.
+
+> **Touching here**: the chat only reads. Writing goes through the terminal, the
+> session's one writer; a chat that wrote anywhere else would be a second one.
+
+### `LiveChatTheme.swift` · 41
+Clarc's palette made from the live window's theme, and its messages set in VS
+Code's chat font when this Mac has it, at the live view's text size.
 
 ### `LiveFilesView.swift` · 349
 The files beside a live session (D136): the tree, read as folders open; the line
@@ -1808,7 +1829,7 @@ or the folder picker on this Mac) and what name, then Start.
 The fixed-pitch font families on this Mac, the only ones a live window may use
 (D142): Claude Code draws on a grid a proportional font would pull apart.
 
-### `VSCodeReader.swift` · 97
+### `VSCodeReader.swift` · 104
 Where «Like my VS Code» reads from: the profile in use (by the editor background
 VS Code last drew), the colour theme's file in the bundled or installed
 extensions, and the fonts on this Mac.
@@ -1828,8 +1849,8 @@ raises the limit of open files, which a few terminals reach.
 
 | File | Lines | What |
 |---|---|---|
-| `StateStore.swift` | 793 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 287 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStore.swift` | 798 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
+| `StateStoreAdoption.swift` | 300 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -1838,10 +1859,10 @@ raises the limit of open files, which a few terminals reach.
 | `CodexProbe.swift` | 27 | an `actor` around the Codex scanner. It spawns `lsof`, and instrumented here it was 80 ms of a 150 ms sweep on the thread that draws. Serialising also means a slow probe cannot have a second started on top of it |
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
-| `Preferences.swift` | 648 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `Preferences.swift` | 720 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
 | `ActivityRecorder.swift` | 34 | what each session has been doing, for the Plancia's tabs: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
-| `PermissionDesk.swift` | 226 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
+| `PermissionDesk.swift` | 229 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
 | `PlanciaModel.swift` | 65 | the Plancia's state: the open session, or LampMaster's own Plancia and the sheet it opens on (D97), its `ChatSession` with the mailbox opened and released the way the chat window does it and the same sending switch (D15, D81), the pin |
 | `CommandBarModel.swift` | 258 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
@@ -2013,7 +2034,7 @@ what it found.
 ### `RemoteHookInstaller.swift` · 277
 The local installer's merge applied to another machine: inspect over ssh, merge here with `HookConfigMerger`, write there through `RemoteInstallScripts` — dated backup, atomic replace, no shell in the data path. Also asks the node whether the tunnel answers. `repairToken` brings a node's hooks up to the current token by the same rule the launch applies here (D48), previous-name registrations included, and only when they post to that user's tunnel port; the fleet calls it on every check. The inspection carries the version of the mod there.
 
-### `RemoteModInstaller.swift` · 79
+### `RemoteModInstaller.swift` · 86
 The companion mod on a node (D83): installed with the hooks when it is on here and the node's Claude Code can take it, its files and the three it reads written by `RemoteModScripts`; brought up to this app's version at launch when the node has an older one; taken out with the hooks, before them, while the inspection can still find it. A mod that fails is said after the hooks' line and leaves the hooks in place.
 
 ## `UI/`
@@ -2031,7 +2052,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelBar.swift` | 207 | the bar wired in: sessions open as a click on their row does, `@name message` sent through the Plancia's composer opened on that session, or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `WaitingCardView.swift` | 153 | one waiting card, drawn at the top of a session's Plancia: a card dimmed until it is armed and outlined while selected with the keyboard; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip; VoiceOver reads the kind, the project and the ask |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
-| `PanelActivation.swift` | 187 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103), or to the live view when Settings says so (D130) |
+| `PanelActivation.swift` | 193 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103), or to the live view when Settings says so (D130) |
 | `PanelLive.swift` | 90 | «Open here» and «New conversation in LampBoard» from a row, and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -2068,7 +2089,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `WelcomeWindow.swift` | 212 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
 | `CapabilitiesWindow.swift` | 134 | «What LampBoard can do» (D127): the six groups, a badge for what needs the helper, *Try* doing the gesture in the real panel — the bar opened with its first characters typed, the samples, the legend — and *Turn on…* opening the switch in Settings, installing the helper first when it is the helper's |
 | `PanelTips.swift` | 70 | the tip at the top of the panel (D127): asked when the state changes and every half minute, never in the demo, only while the panel is on screen and the bar not being typed in; gone by itself when its thing is over; two lines and *Got it*, one line with a bulb in the narrow panel; remeasured, never rebuilt; shown tips kept by name with when |
-| `SettingsPanes.swift` | 321 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
+| `SettingsPanes.swift` | 377 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 126 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 68 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
 | `SettingsWindowController.swift` | 124 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
@@ -2090,7 +2111,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1304 cases
+## `LampBoardTests/` — 1309 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2205,7 +2226,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 168 cases
+## `LampBoardE2E/` — 170 cases
 
 | Suite | Covers |
 |---|---|
@@ -2299,6 +2320,7 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | Folder | What it is |
 |---|---|
 | `Vendor/SwiftTerm` | SwiftTerm 1.20.0 (MIT), the terminal emulator behind the live view (D129). Copied without its iOS views, its documentation and its Metal shader; `VENDORED.md` records the upstream commit, what was left out and every local patch, each marked `Vendored patch <n>` in the source. **Touching it** means a change nobody upstream will review: write it down there, or it is lost at the next update |
+| `Vendor/Clarc` | Part of Clarc (Apache 2.0), a native Mac client for Claude Code: its message views and its transcript line reader, behind the live view's chat (D147). Only those files; the rest of the app, its message list and its session store were left out. `VENDORED.md` records the commit, what was taken, and five local patches, each marked in the source; every file says at its top that it was modified, as the licence asks. **Touching it**: the same rule as SwiftTerm |
 
 # Scripts
 

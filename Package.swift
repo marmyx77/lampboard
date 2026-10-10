@@ -41,10 +41,19 @@ let package = Package(
             // they are not allowed to drown ours.
             swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-suppress-warnings"])]
         ),
+        // The live view's chat (D147): message views and the transcript reader
+        // from Clarc (Apache 2.0), vendored like SwiftTerm. Vendor/Clarc says
+        // which files were taken and what was changed.
+        .target(
+            name: "ClarcChatKit",
+            path: "Vendor/Clarc/Sources/ClarcChatKit",
+            // Upstream is written with the main actor as its default isolation.
+            swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-suppress-warnings", "-default-isolation", "MainActor"])]
+        ),
         // AppKit/SwiftUI shell: floating panel, HTTP server, window focus.
         .executableTarget(
             name: "LampBoardApp",
-            dependencies: ["LampBoardCore", "SwiftTerm"],
+            dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],
             swiftSettings: strict,
             // The system's SQLite, for the search index's FTS5 (0.7): nothing bundled.
             linkerSettings: [.linkedLibrary("sqlite3")]
