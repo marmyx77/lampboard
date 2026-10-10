@@ -630,6 +630,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } ?? false
         }
         server.onHubCompose = { [weak self] text in Self.onMain(timeout: 2) { self?.hub?.model.send(text) } ?? false }
+        server.onHubFiles = { [weak self] body in Self.onMain(timeout: 2) { self?.hub?.applyTest(body) } ?? false }
         self.hubDesk = server.hubDesk
         do {
             try server.start()

@@ -101,6 +101,7 @@ public enum AppConfig {
     public static let hubPath = "/hub"
     public static let hubOpenPath = "/hub/open"
     public static let hubComposePath = "/hub/compose"
+    public static let hubFilesPath = "/hub/files"
 
     /// How many slots a key can address.
     ///

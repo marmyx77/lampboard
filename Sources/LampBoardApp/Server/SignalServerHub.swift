@@ -61,6 +61,11 @@ extension SignalServer {
         guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
         struct Wire: Decodable { let session: String?; let mode: String?; let text: String? }
         let wire = try? JSONDecoder().decode(Wire.self, from: request.body)
+        if request.path == AppConfig.hubFilesPath {
+            return onHubFiles?(request.body) == true
+                ? HTTPRequestParser.response(status: 204, reason: "No Content")
+                : HTTPRequestParser.response(status: 400, reason: "Bad Request")
+        }
         if request.path == AppConfig.hubComposePath {
             guard let text = wire?.text else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
             return onHubCompose?(text) == true

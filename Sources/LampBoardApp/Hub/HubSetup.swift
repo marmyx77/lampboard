@@ -44,6 +44,18 @@ enum HubSetup {
             openRealWindow: { [weak panel] id in
                 guard let panel, let session = store.state.session(named: id) else { return }
                 panel.activate(session: session)
+            },
+            project: { id in
+                guard let session = store.state.session(named: id) else { return nil }
+                guard let host = session.workspace.host else { return (session.workspace.path, nil) }
+                let cwd = store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd ?? session.workspace.path
+                return (cwd, host)
+            },
+            tools: { [weak panel] id in
+                (panel?.activity?.logs[id]?.entries ?? []).compactMap { entry in
+                    if case .tool(let name, let detail) = entry.kind { return (name, detail) }
+                    return nil
+                }
             }
         )
         let model = HubModel(deps: deps)

@@ -88,6 +88,7 @@ final class SignalServer {
     var onHubReport: (() -> Data?)?
     var onHubOpen: ((String?, String?) -> Bool)?
     var onHubCompose: ((String) -> Bool)?
+    var onHubFiles: ((Data) -> Bool)?
 
     private var listener: NWListener?
 
@@ -375,7 +376,7 @@ final class SignalServer {
         case AppConfig.hubSendPath:
             return handleHubSend(request)
 
-        case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubComposePath:
+        case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubComposePath, AppConfig.hubFilesPath:
             return handleHubTest(request)
 
         case AppConfig.healthPath:

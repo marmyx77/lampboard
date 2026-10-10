@@ -57,6 +57,8 @@ that, each change is marked in the source with `Vendored patch <n>`:
 5. `ClaudeTheme.swift`, `AppTheme.swift` and the views: messages are set in a
    family LampBoard chooses (`ThemeStore.messageFontFamily`, VS Code's chat font
    when this Mac has it), the system's otherwise. Monospaced text is unchanged.
+6. `MarkdownView.swift`: `MarkdownContentView` public, with a public initialiser,
+   for the Hub's preview of a project's Markdown files (D156).
 
 The target builds in Swift 5 language mode with the main actor as its default
 isolation, as upstream is written, and with its warnings suppressed: upstream's
@@ -64,6 +66,6 @@ warnings are upstream's.
 
 ## Updating
 
-Copy the same files from a newer commit, put back the five patches and the
+Copy the same files from a newer commit, put back the six patches and the
 top-of-file notes, and run the gate: the chat's end-to-end case reads a
 transcript written as Claude Code writes it.

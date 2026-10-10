@@ -35,12 +35,13 @@ private final class RenderGroupCache: @unchecked Sendable {
 // MARK: - Markdown Content View
 
 /// Renders markdown text with styled code blocks, headers, lists, and rich text.
-struct MarkdownContentView: View {
+// Vendored patch 6: public, with a public initialiser, for the Hub's file preview.
+public struct MarkdownContentView: View {
     let text: String
     @State private var cachedGroups: [RenderGroup]
     @State private var cachedText: String
 
-    init(text: String) {
+    public init(text: String) {
         self.text = text
         let groups: [RenderGroup]
         if let cached = RenderGroupCache.shared.get(text) {
@@ -53,7 +54,7 @@ struct MarkdownContentView: View {
         _cachedText = State(initialValue: text)
     }
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(cachedGroups.enumerated()), id: \.offset) { _, group in
                 switch group {

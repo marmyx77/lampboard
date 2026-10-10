@@ -19,6 +19,10 @@ struct HubDependencies {
     let send: (_ session: String, _ text: String, _ route: HubWrite.Route, _ mode: HubWrite.Mode) -> Bool
     /// The same engine as a click in the panel: the session's own window.
     let openRealWindow: (String) -> Void
+    /// The session's project: its folder, and its machine when not this Mac (D156).
+    let project: (String) -> (root: String, host: String?)?
+    /// The tools the session ran lately, oldest first, for the files' marks.
+    let tools: (String) -> [(name: String, detail: String?)]
 }
 
 /// The Hub's state: which conversation is open, which sessions take signed
@@ -39,6 +43,9 @@ final class HubModel: ObservableObject {
     @Published var notice: String?
 
     let deps: HubDependencies
+    /// The open session's project, and its shells (D156).
+    let files = HubFilesModel()
+    let shells = HubShells()
     private var chatFor: String?
     private var cancellables = Set<AnyCancellable>()
 
@@ -47,6 +54,7 @@ final class HubModel: ObservableObject {
     init(deps: HubDependencies) {
         self.deps = deps
         self.mode = Preferences.sharedDefaults.string(forKey: Self.modeKey).flatMap(HubWrite.Mode.init(rawValue:)) ?? .queue
+        files.tools = deps.tools
         $selected.removeDuplicates().sink { [weak self] id in self?.openChat(for: id) }.store(in: &cancellables)
         // Once a second, as the live view does: whether Send can go now.
         Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -91,6 +99,8 @@ final class HubModel: ObservableObject {
     }
 
     private func openChat(for id: String?) {
+        let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
+        files.show(session: id, root: project?.root, host: project?.host)
         guard id != chatFor else { return }
         chat?.stop()
         chat = nil
@@ -108,6 +118,7 @@ final class HubModel: ObservableObject {
     }
 
     func close() {
+        shells.endAll()
         chat?.stop()
         chat = nil
         chatFor = nil
