@@ -277,7 +277,7 @@ public enum ModReport: Equatable, Sendable {
     }
 
     /// `toolu_01AbC…`: letters, digits, `_` and `-`.
-    static func isCallId(_ id: String) -> Bool {
+    public static func isCallId(_ id: String) -> Bool {
         (1...80).contains(id.count) && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") }
     }
 

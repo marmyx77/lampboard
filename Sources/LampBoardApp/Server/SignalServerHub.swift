@@ -30,6 +30,21 @@ extension SignalServer {
         return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: desk.collect(session: session), as: UTF8.self), contentType: "application/json")
     }
 
+    /// `POST /mod/stream` — `{"session","turnId","text","done"}`: a piece of the
+    /// open session's reply, which the mod sends only after the hello (D153).
+    func handleModStream(_ request: HTTPRequest) -> Data {
+        guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        guard let token, AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        struct Wire: Decodable { let session: String; let turnId: String; let text: String; let done: Bool? }
+        guard let wire = try? JSONDecoder().decode(Wire.self, from: request.body), ModReport.isSessionId(wire.session),
+              ModReport.isCallId(wire.turnId) || ModReport.isSessionId(wire.turnId), wire.text.utf8.count <= 64_000
+        else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
+        onModStream?(wire.session, wire.turnId, wire.text, wire.done ?? false)
+        return HTTPRequestParser.response(status: 204, reason: "No Content")
+    }
+
     /// `POST /hub/send` — `{"session","op","args"}`: queue a command as the Hub
     /// would. **Only against a fake home**, for the tests and the test Mac's
     /// probes; in a real install only the Hub's own controls queue a command.

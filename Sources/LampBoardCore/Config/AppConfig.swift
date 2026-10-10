@@ -95,6 +95,8 @@ public enum AppConfig {
     public static let modHelloPath = "/mod/hello"
     /// The commands waiting for a session's mod, signed by the panel (D152).
     public static let modInboxPath = "/mod/inbox"
+    /// The open session's reply as it arrives, from its mod (D153).
+    public static let modStreamPath = "/mod/stream"
     /// A command queued as the Hub would, under a fake home only (tests).
     public static let hubSendPath = "/hub/send"
     /// What the Hub shows, and opening it on a session, under a fake home only (tests).

@@ -640,6 +640,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } ?? false
         }
         server.onHubCompose = { [weak self] text in Self.onMain(timeout: 2) { self?.hub?.model.send(text) } ?? false }
+        server.onModStream = { [weak self] session, turn, text, done in
+            DispatchQueue.main.async { self?.hub?.model.heard(stream: text, turn: turn, done: done, session: session) }
+        }
         server.onHubFiles = { [weak self] body in Self.onMain(timeout: 2) { self?.hub?.applyTest(body) } ?? false }
         self.hubDesk = server.hubDesk
         do {

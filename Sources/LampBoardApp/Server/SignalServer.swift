@@ -89,6 +89,8 @@ final class SignalServer {
     var onHubOpen: ((String?, String?) -> Bool)?
     var onHubCompose: ((String) -> Bool)?
     var onHubFiles: ((Data) -> Bool)?
+    /// A piece of a reply as it arrives (D153): session, turn, text, done.
+    var onModStream: ((String, String, String, Bool) -> Void)?
 
     private var listener: NWListener?
 
@@ -372,6 +374,9 @@ final class SignalServer {
 
         case AppConfig.modInboxPath:
             return handleModInbox(request)
+
+        case AppConfig.modStreamPath:
+            return handleModStream(request)
 
         case AppConfig.hubSendPath:
             return handleHubSend(request)

@@ -65,6 +65,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "status": session?.status.rawValue ?? NSNull(),
             "windowNumber": window?.windowNumber ?? 0,
             "notice": model.notice ?? NSNull(),
+            "followed": model.followed ?? NSNull(),
+            "liveText": model.live?.text ?? NSNull(),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,

@@ -109,6 +109,7 @@ struct HubConversationView: View {
             PlanciaPendingCard(queue: model.deps.queue, sessionId: session.id).padding(.top, 6)
             if let chat = model.chat {
                 LiveChatView(model: chat, send: { model.send($0) }, showTerminal: { model.deps.openRealWindow(session.id) })
+                if let live = model.live, !live.text.isEmpty { liveBubble(live.text) }
             } else {
                 empty("No transcript to read for this session yet.")
             }
@@ -123,11 +124,34 @@ struct HubConversationView: View {
             Text(session.displayName).font(.system(size: 14, weight: .semibold)).lineLimit(1)
             Text(meta(session)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             Spacer(minLength: 8)
+            if session.status == .working || session.status == .waiting {
+                Button("Stop") { model.stop() }
+                    .help("Stops the turn. Commands it started in the background keep running.")
+                    .accessibilityIdentifier("hub.stop")
+            }
             Button("Open the real window") { model.deps.openRealWindow(session.id) }
                 .keyboardShortcut(.return, modifiers: .command)
                 .accessibilityIdentifier("hub.openReal")
         }
         .padding(.horizontal, 14).padding(.vertical, 9)
+    }
+
+    /// The reply as it arrives: provisional, in grey, until the transcript has it.
+    private func liveBubble(_ text: String) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                    Text(text).font(.system(size: 13)).foregroundStyle(.secondary).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Color.clear.frame(height: 1).id("live-end")
+                }
+                .padding(.horizontal, 18).padding(.vertical, 8)
+            }
+            .frame(maxHeight: 180)
+            .onChange(of: text) { _, _ in proxy.scrollTo("live-end", anchor: .bottom) }
+        }
+        .accessibilityIdentifier("hub.live")
     }
 
     private func meta(_ session: SessionState) -> String {

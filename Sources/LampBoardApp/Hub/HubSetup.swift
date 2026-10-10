@@ -51,6 +51,7 @@ enum HubSetup {
                 let cwd = store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd ?? session.workspace.path
                 return (cwd, host)
             },
+            command: { id, op, args in hubDesk()?.send(session: id, op: op, args: args) ?? false },
             tools: { [weak panel] id in
                 (panel?.activity?.logs[id]?.entries ?? []).compactMap { entry in
                     if case .tool(let name, let detail) = entry.kind { return (name, detail) }

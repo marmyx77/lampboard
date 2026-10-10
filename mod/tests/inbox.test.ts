@@ -13,10 +13,11 @@ const OTHER_SESSION = {"payload": "{\"args\":{\"text\":\"hello\"},\"nonce\":\"c3
 const STALE = {"payload": "{\"args\":{\"text\":\"late\"},\"nonce\":\"d4\",\"op\":\"submit\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1790999880000,\"v\":2}", "sig": "d6fd86ef1611b75a73654294e7f9c5a864d9900994685b06f5144cc2bee7f508e740ded90df580d0f2f20d00c9c244be835d0b50239a34021efea5e6ae79f409"}
 const COMMAND = {"payload": "{\"args\":{\"args\":\"\",\"name\":\"compact\"},\"nonce\":\"e5\",\"op\":\"command\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}", "sig": "79d42d993261f4c4ca52924f35eac3163e1c9aafe4c9645a2cd69750d6a6f6f8e00c3988fec88badee05919fd34fc85347db07f88faf5b4fe1d09a574d97f401"}
 const MODEL = {"payload": "{\"args\":{\"value\":\"claude-sonnet-5-5\"},\"nonce\":\"f6\",\"op\":\"model\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}", "sig": "5c09b61cfe7aa3182898a48d3ac922b674380ac302f2e3f71bf3379ce071d8fc0f77511f948d62dbcae8a7f71c597e5e0a5ac317785d9052b66d34afda80b90f"}
+const STREAM_ON = {"payload":"{\"args\":{\"on\":\"true\"},\"nonce\":\"g7\",\"op\":\"stream\",\"sid\":\"8c1d2f3a-0b4e-4c5d-9e6f-7a8b9c0d1e2f\",\"ts\":1791000000000,\"v\":2}","sig":"09bbaa366f0b97089e18a90f72c4b5b5534ba297b03f861725dec0a00b4c80c767edee0ee4b00cdf352b7d24f89bcc27dfffe26e9ddf589b065fa8a0354ec001"}
 const WAKE = 'LampBoard wake [v2]'
 
 function panel(on, inbox: unknown[]) {
-  const calls = { submitted: [] as any[], commands: [] as any[], done: [] as any[], fetched: 0 }
+  const calls = { submitted: [] as any[], commands: [] as any[], done: [] as any[], streamed: [] as any[], hellos: 0, fetched: 0 }
   mock.clock(on, { now: TS })
   mock.store(on, {})
   mock.env(on, { HOME: '/home/someone' })
@@ -31,6 +32,14 @@ function panel(on, inbox: unknown[]) {
     if (e.url.endsWith('/mod/inbox')) {
       calls.fetched += 1
       return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify(calls.fetched === 1 ? inbox : []) } }
+    }
+    if (e.url.endsWith('/mod/hello')) {
+      calls.hellos += 1
+      return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify({ pub: PUB, sig: '00'.repeat(64) }) } }
+    }
+    if (e.url.endsWith('/mod/stream')) {
+      calls.streamed.push(JSON.parse(e.init.body))
+      return { value: { status: 204, ok: true, headers: {}, text: '' } }
     }
     if (e.url.endsWith('/mod')) {
       calls.done.push(JSON.parse(e.init.body))
@@ -87,4 +96,38 @@ test('any other message passes to the session untouched', async ($, on) => {
   const out = await $.session.receive({ origin: { kind: 'peer-send-message' }, text: 'a peer says hello' })
   expect(out.text).toBe('a peer says hello')
   expect(calls.fetched).toBe(0)
+})
+
+async function drain(stream) {
+  let item = await stream.next()
+  while (item.done !== true) item = await stream.next()
+  return item.value
+}
+
+test('a reply is not followed for a session the panel did not ask for', async ($, on) => {
+  const calls = panel(on, [])
+  on('turn.step', async function* ($, e) {
+    yield { kind: 'text', index: 0, text: 'secret plan' }
+    return { turnId: e.turnId, index: e.index, answer: 'x', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
+  await drain($.turn.step({ turnId: 't9', index: 0, model: 'claude-haiku-5-5', messageCount: 1 }))
+  await new Promise((r) => setTimeout(r, 100))
+  expect(calls.streamed.length).toBe(0)
+})
+
+test('a panel that cannot sign its hello gets none of the reply, even when it asked', async ($, on) => {
+  const calls = panel(on, [STREAM_ON])
+  on('turn.step', async function* ($, e) {
+    yield { kind: 'text', index: 0, text: 'secret plan' }
+    yield { kind: 'tool', index: 1, id: 'toolu_1', name: 'Bash' }
+    return { turnId: e.turnId, index: e.index, answer: 'x', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
+  await $.session.receive({ origin: { kind: 'peer-send-message' }, text: WAKE })
+  await settle(calls, () => calls.done.length >= 1)
+  expect(calls.done[0]).toMatchObject({ op: 'stream', ok: true })
+  await drain($.turn.step({ turnId: 't10', index: 0, model: 'claude-haiku-5-5', messageCount: 1 }))
+  await settle(calls, () => calls.hellos >= 1)
+  await new Promise((r) => setTimeout(r, 100))
+  expect(calls.hellos >= 1).toBe(true)
+  expect(calls.streamed.length).toBe(0)
 })

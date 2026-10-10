@@ -21,6 +21,8 @@ struct HubDependencies {
     let openRealWindow: (String) -> Void
     /// The session's project: its folder, and its machine when not this Mac (D156).
     let project: (String) -> (root: String, host: String?)?
+    /// A signed command to a session's mod (D152): `false` when none could go.
+    let command: (_ session: String, _ op: String, _ args: [String: String]) -> Bool
     /// The tools the session ran lately, oldest first, for the files' marks.
     let tools: (String) -> [(name: String, detail: String?)]
 }
@@ -41,6 +43,11 @@ final class HubModel: ObservableObject {
     }
     /// What the composer said about the last send.
     @Published var notice: String?
+    /// The open session's reply as it arrives (D153): provisional, replaced by
+    /// the transcript once the turn's lines are written.
+    @Published private(set) var live: (turn: String, text: String)?
+    /// The session whose reply is followed, if any.
+    private(set) var followed: String?
 
     let deps: HubDependencies
     /// The open session's project, and its shells (D156).
@@ -67,6 +74,7 @@ final class HubModel: ObservableObject {
         switch report {
         case .start(let session, let start):
             if start.features.contains("commands") { commandable.insert(session) } else { commandable.remove(session) }
+            if session == selected { follow(session) }
         case .end(let session, _):
             commandable.remove(session)
         case .measure, .tool, .answer, .done:
@@ -98,7 +106,39 @@ final class HubModel: ObservableObject {
         return sent
     }
 
+    /// A piece of a reply from the followed session; anything else is dropped.
+    func heard(stream text: String, turn: String, done: Bool, session: String) {
+        guard session == followed, session == selected else { return }
+        if live?.turn == turn {
+            live = (turn, String((live?.text ?? "") + text).suffix(64_000).description)
+        } else {
+            live = (turn, String(text.suffix(64_000)))
+        }
+    }
+
+    /// Follows `id`'s reply live, and stops following the one before (D153):
+    /// one session at a time, the one on screen.
+    private func follow(_ id: String?) {
+        let next = id.flatMap { $0 != Self.lampMasterId && commandable.contains($0) ? $0 : nil }
+        guard next != followed else { return }
+        if let previous = followed { _ = deps.command(previous, "stream", ["on": "false"]) }
+        followed = next
+        live = nil
+        if let next { _ = deps.command(next, "stream", ["on": "true"]) }
+    }
+
+    /// Stops the turn (Stop), through the mod; says what keeps running.
+    func stop() {
+        guard let id = session?.id else { return }
+        guard commandable.contains(id), deps.command(id, "abort", [:]) else {
+            notice = "Stop needs LampBoard's helper in this session: press Esc in its window."
+            return
+        }
+        notice = "Stopped from the Hub. Commands it started in the background keep running."
+    }
+
     private func openChat(for id: String?) {
+        follow(id)
         let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
         files.show(session: id, root: project?.root, host: project?.host)
         guard id != chatFor else { return }
@@ -113,11 +153,14 @@ final class HubModel: ObservableObject {
     }
 
     private func refreshSendable() {
+        // The transcript caught up: the turn ended and its lines are read.
+        if live != nil, let session, session.status != .working, session.status != .waiting { live = nil }
         guard let chat, let session else { return }
         chat.update(asking: session.status == .awaiting, sendable: route != .none)
     }
 
     func close() {
+        follow(nil)
         shells.endAll()
         chat?.stop()
         chat = nil
