@@ -83,7 +83,9 @@ struct ProjectSource: Sendable {
     /// and git status are three questions, not three logins.
     static func ssh(_ host: String, _ script: String) async -> String? {
         guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
-        let control = (NSTemporaryDirectory() as NSString).appendingPathComponent("lb-hub-%C")
+        // Short on purpose: a socket path is at most 104 bytes, and macOS's own
+        // temporary folder plus the hash is longer (measured, 10 October 2026).
+        let control = "/tmp/lb-\(getuid())-%C"
         let args = SSHHardening.options + ["-o", "ConnectTimeout=8", "-o", "ControlMaster=auto",
                                           "-o", "ControlPath=\(control)", "-o", "ControlPersist=60",
                                           "-T", "--", host, script]
