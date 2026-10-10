@@ -66,7 +66,7 @@ public struct ModLedger: Equatable, Sendable {
         if case .done = report { return self }
         if case .stopped = report { return self }
         if case .presence = report { return self }
-        switch report { case .commands, .mode, .surfaces: return self; default: break }
+        switch report { case .commands, .surfaces: return self; default: break }
         let old = sessions[report.session]
         var facts: Facts
         switch report {
