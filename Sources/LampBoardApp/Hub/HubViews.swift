@@ -115,10 +115,12 @@ struct HubConversationView: View {
         VStack(spacing: 0) {
             header(session)
             line
-            PlanciaPendingCard(queue: model.deps.queue, sessionId: session.id).padding(.horizontal, 14).padding(.top, 8)
             if let chat = model.chat {
                 LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false)
                 HubLiveBubble(tail: model.liveTail)
+                HubAskCard(queue: model.deps.queue, sessionId: session.id, asking: session.status == .awaiting,
+                           openRealWindow: { model.deps.openRealWindow(session.id) })
+                    .padding(.horizontal, 14).padding(.bottom, 10)
             } else {
                 empty("No transcript to read for this session yet.")
             }

@@ -224,7 +224,8 @@ final class HubModel: ObservableObject {
         if live != nil, let session, session.status != .working, session.status != .waiting { live = nil }
         guard let chat, let session else { return }
         let verdict = verdict
-        chat.update(asking: session.status == .awaiting, sendable: verdict.route != .none)
+        // The Hub's own card says what the session asks (HubAskCard).
+        chat.update(asking: false, sendable: verdict.route != .none)
         composer.show(band: verdict.band)
         let seen = deps.mode(session.id)
         if let since = planSince, (seen.at ?? .distantPast) <= since {
