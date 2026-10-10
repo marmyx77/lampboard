@@ -30,6 +30,9 @@ const streaming = new Set()
 // after the abort has returned (measured, 10 October 2026).
 const replacing = new Map()
 const pending = new Map()
+// Whether the followed session's own box holds a draft, as last told (D154):
+// a yes or a no, never the words.
+const drafting = new Map()
 let trusted = null
 const FLUSH_EVERY = 150
 const TRUST_FOR = 10 * 60 * 1000
@@ -136,8 +139,14 @@ async function perform($, panel, payload) {
       if (!/^[a-z0-9][a-z0-9:_-]{0,63}$/.test(args.name || '')) throw new Error('command name')
       await $.command.run({ command: args.name, args: typeof args.args === 'string' ? args.args : '' })
     } else if (payload.op === 'stream') {
-      if (args.on === 'true') streaming.add(session)
-      else streaming.delete(session)
+      if (args.on === 'true') {
+        streaming.add(session)
+        drafting.delete(session)
+        void boxNow($, session)
+      } else {
+        streaming.delete(session)
+        drafting.delete(session)
+      }
     } else if (payload.op === 'model' || payload.op === 'effort') {
       const current = overrides.get(session) || {}
       const value = typeof args.value === 'string' && args.value ? args.value : undefined
@@ -205,6 +214,27 @@ async function flush($, session, done) {
   } catch (_) {}
 }
 
+async function boxNow($, session) {
+  try {
+    const box = await $.prompt.read()
+    await presence($, session, typeof box.text === 'string' && box.text.trim().length > 0)
+  } catch (_) {}
+}
+
+async function presence($, session, draft) {
+  if (drafting.get(session) === draft) return
+  drafting.set(session, draft)
+  try {
+    const panel = await panelOf($)
+    if (!panel) return
+    await $.http.fetch(`${panel.base}/mod`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-LampBoard-Token': panel.token },
+      body: JSON.stringify({ v: VERSION, kind: 'presence', session, draft }),
+    })
+  } catch (_) {}
+}
+
 async function stopped($, session, turnId) {
   try {
     const panel = await panelOf($)
@@ -223,6 +253,7 @@ export function endInbox(session) {
   clocks.delete(session)
   running.delete(session)
   replacing.delete(session)
+  drafting.delete(session)
   overrides.delete(session)
   streaming.delete(session)
   pending.delete(session)
@@ -249,8 +280,23 @@ export function registerInbox(on) {
   })
 
   on('turn.start', { turnId: /./ }, async ($, e, next) => {
-    if (!e.agentId) running.set(await $.session.id(), e.turnId)
+    if (!e.agentId) {
+      const session = await $.session.id()
+      running.set(session, e.turnId)
+      // The person's Enter empties the box: the Hub hears it at the turn.
+      if (streaming.has(session)) void boxNow($, session)
+    }
     return next(e)
+  })
+
+  // The person typing in the session's own box, for the Hub's Send (D154).
+  on('prompt.edit', async ($, e, next) => {
+    const box = await next(e)
+    try {
+      const session = await $.session.id()
+      if (streaming.has(session)) void presence($, session, typeof box?.text === 'string' && box.text.trim().length > 0)
+    } catch (_) {}
+    return box
   })
 
   on('turn.complete', async ($, e, next) => {
