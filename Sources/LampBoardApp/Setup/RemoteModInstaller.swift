@@ -15,7 +15,8 @@ enum RemoteModInstaller {
         guard let token = TokenStore().read(), let key = TokenStore(url: AppConfig.checkKeyURL).read() else {
             return .failure(.remoteFailure("this panel has no token or permission key to give the helper there"))
         }
-        return run(on: host, RemoteModScripts.payload(token: token, port: inspection.port, checkKey: key))
+        let panelKey = (try? String(contentsOf: AppConfig.panelKeyPublicURL, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return run(on: host, RemoteModScripts.payload(token: token, port: inspection.port, checkKey: key, panelKey: panelKey))
             .map { "helper \(ModFiles.version) installed on \(host), reporting through the tunnel" }
     }
 

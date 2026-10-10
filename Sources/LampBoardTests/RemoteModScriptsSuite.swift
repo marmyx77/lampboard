@@ -72,6 +72,17 @@ enum RemoteModScriptsSuite {
             t.expectEqual(calls.first, "plugin uninstall lampboard@lampboard --scope user", "from a clean slate")
         },
 
+        TestCase("The panel's public key goes with them, for the Hub's commands, and goes when they go (D152)") { t in
+            let home = home()
+            defer { try? FileManager.default.removeItem(at: home) }
+            let pub = String(repeating: "ab", count: 32)
+            let result = run(RemoteModScripts.payload(token: token, port: 30503, checkKey: key, panelKey: pub), home: home)
+            t.expectEqual(result["ok"] as? Bool, true, "\(result)")
+            t.expectEqual(text(home, ".lampboard/panel-key.pub"), pub + "\n")
+            _ = run(RemoteModScripts.removal(port: 30503), home: home)
+            t.expectNil(text(home, ".lampboard/panel-key.pub"), "removed with the helper")
+        },
+
         TestCase("A machine with a panel of its own is left alone") { t in
             let home = home()
             defer { try? FileManager.default.removeItem(at: home) }

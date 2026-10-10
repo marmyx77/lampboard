@@ -22,8 +22,10 @@ public enum RemoteModScripts {
     public static let folderRelativePath = ".lampboard/mod-marketplace"
 
     /// The payload, as JSON: the files, the three values, the steps.
-    public static func payload(token: String, port: UInt16, checkKey: String) -> [String: Any] {
+    public static func payload(token: String, port: UInt16, checkKey: String, panelKey: String? = nil) -> [String: Any] {
         [
+            // The panel's public key (D152): the mod there checks the Hub's commands with it.
+            "panelKey": panelKey ?? "",
             "files": ModFiles.all.map { ["path": $0.path, "content": $0.content] },
             "token": token,
             "port": String(port),
@@ -77,7 +79,7 @@ public enum RemoteModScripts {
             done(False, "this machine runs a LampBoard panel of its own; its mod reports to it")
 
         def forget():
-            for name in ("token", "port", "check-key", "tunnel-mod"):
+            for name in ("token", "port", "check-key", "panel-key.pub", "tunnel-mod"):
                 if os.path.lexists(os.path.join(base, name)):
                     os.unlink(os.path.join(base, name))
 
@@ -135,6 +137,8 @@ public enum RemoteModScripts {
         private(os.path.join(base, "token"), payload["token"])
         private(os.path.join(base, "port"), payload["port"] + "\\n")
         private(os.path.join(base, "check-key"), payload["checkKey"])
+        if payload.get("panelKey"):
+            private(os.path.join(base, "panel-key.pub"), payload["panelKey"] + "\\n")
         for step in payload["installSteps"]:
             ok, said = run(step)
             if not ok:

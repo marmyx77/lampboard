@@ -618,7 +618,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The Hub's commands are signed with the panel's key (D152): without a key
         // the Hub sends nothing rather than something unsigned.
         let panelKey = PanelKey.loadOrCreate()
-        server.hubDesk = panelKey.map { HubCommandDesk(key: $0) }
+        server.hubDesk = panelKey.map { key in
+            // A session here is woken through its box; one on another machine through ssh (D83).
+            HubCommandDesk(key: key) { [store] id in
+                DispatchQueue.main.async {
+                    guard let host = store.state.sessions[id]?.workspace.host else { return HubCommandDesk.wakeLocally(id) }
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        _ = RemotePeerSender.send(content: HubCommandDesk.wakeLine, to: id, on: host)
+                    }
+                }
+            }
+        }
         server.onHubReport = { [weak self] in Self.onMain(timeout: 2) { self?.hub?.report() } }
         server.onHubOpen = { [weak self] id, mode in
             Self.onMain(timeout: 2) {
