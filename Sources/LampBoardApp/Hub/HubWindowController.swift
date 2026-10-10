@@ -80,6 +80,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "chosenModel": model.bar.model ?? NSNull(),
             "chosenEffort": model.bar.effort ?? NSNull(),
             "barWarning": model.bar.warning ?? NSNull(),
+            "cacheWarm": HubBar.cacheWarm(session?.context, now: Date()),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,
