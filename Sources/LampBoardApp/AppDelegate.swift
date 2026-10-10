@@ -683,8 +683,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } ?? nil
         }
         server.onRemoteIndex = { [searchIndex] host, query in
-            // Several passes, as the clock would make them, until nothing is left to read.
-            for _ in 0..<20 { await AppDelegate.indexRemote(host: host, into: searchIndex, budgetFiles: 400, budgetBytes: 64 << 20) }
+            // One small pass: the newest few transcripts are enough to prove the way,
+            // and a test index holds as little of a real machine as it can.
+            await AppDelegate.indexRemote(host: host, into: searchIndex, budgetFiles: 5, budgetBytes: 4 << 20)
             let hits = searchIndex.search(query, limit: 20)
             return ["hits": hits.map { ["session": $0.sessionId, "host": $0.host ?? "this Mac"] }]
         }
