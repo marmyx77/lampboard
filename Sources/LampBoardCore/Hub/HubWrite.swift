@@ -84,4 +84,14 @@ public enum HubWrite {
         guard !trimmed.isEmpty, trimmed.utf8.count <= maxBytes else { return nil }
         return trimmed
     }
+
+    /// The end of a reply being written, as the live bubble shows it: the last
+    /// `lines` lines, each cut from the left to 200 characters. Bounded whatever
+    /// the reply's size, so a piece costs the same at the first line and the
+    /// thousandth (P1).
+    public static func tail(of full: String, lines: Int) -> String {
+        full.suffix(4_000).split(separator: "\n", omittingEmptySubsequences: false)
+            .suffix(lines).map { $0.count > 200 ? "…" + $0.suffix(199) : String($0) }
+            .joined(separator: "\n")
+    }
 }

@@ -50,5 +50,16 @@ enum HubWriteSuite {
             t.expectNil(HubWrite.sendable(String(repeating: "x", count: HubWrite.maxBytes + 1)))
             t.expectEqual(HubWrite.sendable("  run the tests \n"), "run the tests")
         },
+        TestCase("The live bubble shows the last lines of a reply, each cut from the left") { t in
+            let reply = (1...50).map { "line \($0)" }.joined(separator: "\n")
+            t.expectEqual(HubWrite.tail(of: reply, lines: 3), "line 48\nline 49\nline 50")
+            let long = String(repeating: "a", count: 300) + "END"
+            let cut = HubWrite.tail(of: long, lines: 8)
+            t.expectEqual(cut.count, 200, "a long line is cut to a bubble's width")
+            t.expect(cut.hasPrefix("…") && cut.hasSuffix("END"), "from the left, so the newest words stay")
+            t.expectEqual(HubWrite.tail(of: "", lines: 8), "")
+            let huge = String(repeating: "word ", count: 200_000)
+            t.expect(HubWrite.tail(of: huge, lines: 8).count <= 200, "a huge reply costs no more than a short one")
+        },
     ])
 }

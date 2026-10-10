@@ -204,10 +204,5 @@ final class HubLiveTail: ObservableObject {
         if latest != text { text = latest }
     }
 
-    /// The last lines, each cut to a width a bubble shows.
-    static func tail(of full: String) -> String {
-        full.suffix(4_000).split(separator: "\n", omittingEmptySubsequences: false)
-            .suffix(lines).map { $0.count > 200 ? "…" + $0.suffix(199) : String($0) }
-            .joined(separator: "\n")
-    }
+    static func tail(of full: String) -> String { HubWrite.tail(of: full, lines: lines) }
 }
