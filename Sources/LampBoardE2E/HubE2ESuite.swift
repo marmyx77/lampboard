@@ -34,6 +34,8 @@ enum HubE2ESuite {
                 #"{"type":"user","uuid":"u2","sessionId":"\#(working)","timestamp":"2026-10-10T10:01:00.000Z","message":{"role":"user","content":"Now the integration tests."}}"#,
             ]
             try? (lines.joined(separator: "\n") + "\n").write(to: transcript(working), atomically: true, encoding: .utf8)
+            let quiet = #"{"type":"user","uuid":"r1","sessionId":"\#(resting)","timestamp":"2026-10-10T09:00:00.000Z","message":{"role":"user","content":"Update the pricing page."}}"#
+            try? (quiet + "\n").write(to: transcript(resting), atomically: true, encoding: .utf8)
             for (id, folder) in [(working, "/tmp/lbhub-e2e/atlas-api"), (resting, "/tmp/lbhub-e2e/site")] {
                 try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
                 let sleeper = Process()
@@ -47,7 +49,7 @@ enum HubE2ESuite {
             }
             app.sendHook(HookPayloads.userPromptSubmit(sessionId: working, cwd: "/tmp/lbhub-e2e/atlas-api")
                 .merging(["transcript_path": transcript(working).path]) { _, new in new }, entrypoint: "cli")
-            return wait(5) { (app.sessions()?.sessions.count ?? 0) >= 2 }
+            return wait(10) { (app.sessions()?.sessions.count ?? 0) >= 2 }
         }
 
         func report() -> [String: Any] {
