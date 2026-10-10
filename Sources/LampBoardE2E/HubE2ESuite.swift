@@ -69,6 +69,18 @@ enum HubE2ESuite {
             app.raw(method: "POST", path: AppConfig.hubComposePath, body: #"{"text":"\#(text)"}"#).status
         }
 
+        func compose(_ text: String, confirm: Bool) -> (status: Int, body: String) {
+            let answer = app.raw(method: "POST", path: AppConfig.hubComposePath, body: #"{"text":"\#(text)","confirm":\#(confirm)}"#)
+            return (answer.status, answer.body)
+        }
+
+        func mod(_ body: String) -> Int { app.raw(method: "POST", path: AppConfig.modPath, body: body).status }
+
+        func submits(_ id: String) -> [CommandEnvelope.Payload] {
+            guard let key = publicKey() else { return [] }
+            return inbox(id).compactMap { try? CommandEnvelope.open($0, publicKey: key, session: id).get() }.filter { $0.op == "submit" }
+        }
+
         func inbox(_ id: String) -> [CommandEnvelope] {
             let body = app.raw(method: "GET", path: AppConfig.modInboxPath, headers: ["X-LampBoard-Session": id]).body
             return (try? JSONDecoder().decode([CommandEnvelope].self, from: Data(body.utf8))) ?? []
@@ -188,6 +200,49 @@ enum HubE2ESuite {
                 a.expect(wait(3) { status() == "working" }, "working again: \(status() ?? "none")")
                 app.sendHook(HookPayloads.stopFailure(sessionId: working, cwd: project, errorType: "server_error"), entrypoint: "cli")
                 a.expect(wait(3) { status() == "failed" }, "an error is red: \(status() ?? "none")")
+            },
+
+            TestCase("a draft in the session's own box asks first; the second Send goes, and stays in sight until the transcript has it (E19, E22)") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(open(working, mode: "queue"), 204)
+                _ = inbox(working)
+                a.expectEqual(mod(#"{"v":1,"kind":"presence","session":"\#(working)","draft":true}"#), 204)
+                let first = compose("Deploy to staging", confirm: false)
+                a.expectEqual(first.status, 202, "asked, not sent: \(first.body)")
+                a.expectEqual(report()["confirming"] as? Bool, true)
+                a.expect(submits(working).isEmpty, "nothing went before the answer")
+                a.expectEqual(compose("Deploy to staging", confirm: true).status, 204)
+                a.expectEqual(submits(working).map { $0.args["text"] }, ["Deploy to staging"])
+                let shown = report()
+                a.expectEqual(shown["pending"] as? String, "Deploy to staging", "kept in sight")
+                a.expectEqual(shown["composerText"] as? String, "")
+                let line = #"{"type":"user","uuid":"u9","sessionId":"\#(working)","timestamp":"2026-10-10T10:09:00.000Z","message":{"role":"user","content":"Deploy to staging"}}"#
+                if let handle = try? FileHandle(forWritingTo: transcript(working)) {
+                    handle.seekToEndOfFile(); handle.write(Data((line + "\n").utf8)); try? handle.close()
+                }
+                a.expect(wait(5) { report()["pending"] is NSNull }, "the receipt: \(report()["pending"] ?? "none")")
+            },
+
+            TestCase("a message the mod could not put in comes back to the box (E22)") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(mod(#"{"v":1,"kind":"presence","session":"\#(working)","draft":false}"#), 204)
+                a.expectEqual(compose("Run the linter", confirm: false).status, 204)
+                a.expectEqual(mod(#"{"v":1,"kind":"done","session":"\#(working)","nonce":"ab12","op":"submit","ok":false,"error":"empty"}"#), 204)
+                a.expect(wait(3) { report()["composerText"] as? String == "Run the linter" }, "\(report()["composerText"] ?? "none")")
+                a.expect(report()["pending"] is NSNull, "no longer pending")
+            },
+
+            TestCase("a session in VS Code gets the band and only queues, whatever the mode (E21)") { a in
+                guard ready() else { return a.fail("no instance") }
+                let start = #"{"v":1,"kind":"start","session":"\#(resting)","surface":"vscode","interactive":true,"features":["ask","commands"]}"#
+                a.expectEqual(mod(start), 204)
+                a.expectEqual(open(resting, mode: "interrupt"), 204)
+                a.expect(wait(3) { report()["band"] is String }, "the band: \(report()["band"] ?? "none")")
+                a.expectEqual(report()["effectiveMode"] as? String, "queue")
+                _ = inbox(resting)
+                a.expectEqual(compose("Rename the button", confirm: false).status, 204)
+                a.expectEqual(submits(resting).first?.args["mode"], "queue", "never an interrupt")
+                a.expectEqual(open(working, mode: "queue"), 204)
             },
 
             TestCase("the project's tree and what git says of each file are beside the conversation") { a in
