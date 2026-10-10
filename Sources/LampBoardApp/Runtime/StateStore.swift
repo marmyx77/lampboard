@@ -101,6 +101,8 @@ final class StateStore: ObservableObject {
     private(set) var remoteSessions: [String: [LiveSession]] = [:]
     /// Each session's permission mode, as its hooks last said (D139).
     var permissionModes: [String: String] = [:]
+    /// When each session's mode was last heard, for the Hub's bar (D157).
+    var permissionModesHeardAt: [String: Date] = [:]
     /// The editor windows open on each host, as its last probe reported them.
     /// A remote row's folder is resolved against these, the way a local row's is
     /// resolved against this Mac's lock files (D51).

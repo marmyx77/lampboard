@@ -252,7 +252,10 @@ extension StateStore {
     /// (D139). A subagent's signal carries the mode it runs in, inherited from
     /// its session unless its definition says otherwise.
     func hearMode(_ signal: HookSignal) {
-        if let mode = signal.permissionMode { permissionModes[signal.sessionId] = mode }
+        if let mode = signal.permissionMode {
+            permissionModes[signal.sessionId] = mode
+            permissionModesHeardAt[signal.sessionId] = clock()
+        }
     }
 
     /// Claude Code's own `busy` lights a row known only as idle (D141).
