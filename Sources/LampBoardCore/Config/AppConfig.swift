@@ -95,6 +95,8 @@ public enum AppConfig {
     public static let modHelloPath = "/mod/hello"
     /// The commands waiting for a session's mod, signed by the panel (D152).
     public static let modInboxPath = "/mod/inbox"
+    /// A command queued as the Hub would, under a fake home only (tests).
+    public static let hubSendPath = "/hub/send"
 
     /// How many slots a key can address.
     ///

@@ -30,6 +30,23 @@ extension SignalServer {
         return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: desk.collect(session: session), as: UTF8.self), contentType: "application/json")
     }
 
+    /// `POST /hub/send` — `{"session","op","args"}`: queue a command as the Hub
+    /// would. **Only against a fake home**, for the tests and the test Mac's
+    /// probes; in a real install only the Hub's own controls queue a command.
+    func handleHubSend(_ request: HTTPRequest) -> Data {
+        guard AppConfig.isUsingHomeOverride else { return HTTPRequestParser.response(status: 404, reason: "Not Found") }
+        guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        guard let token, AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        guard let desk = hubDesk else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+        struct Wire: Decodable { let session: String; let op: String; let args: [String: String]? }
+        guard let wire = try? JSONDecoder().decode(Wire.self, from: request.body),
+              desk.send(session: wire.session, op: wire.op, args: wire.args ?? [:])
+        else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
+        return HTTPRequestParser.response(status: 204, reason: "No Content")
+    }
+
     private func getTokenRefusal(_ request: HTTPRequest) -> Data? {
         guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
         guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }

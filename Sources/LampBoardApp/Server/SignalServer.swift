@@ -368,6 +368,9 @@ final class SignalServer {
         case AppConfig.modInboxPath:
             return handleModInbox(request)
 
+        case AppConfig.hubSendPath:
+            return handleHubSend(request)
+
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")
 

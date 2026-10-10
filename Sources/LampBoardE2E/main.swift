@@ -74,6 +74,7 @@ app.writeIDELock(port: 40003, folders: [CoverageSuite.terminalWorkspace])
 
 let suites: [TestSuite] = [
     TransportSuite.suite(app),
+    TrustE2ESuite.suite(app),
     LifecycleSuite.suite(app),
     CoverageSuite.suite(app),
     ScaleSuite.suite(app),
