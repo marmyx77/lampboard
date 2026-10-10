@@ -60,6 +60,15 @@ final class HubModel: ObservableObject {
     }
     let liveTail = HubLiveTail()
     let composer = HubComposer()
+    /// The first-run guide, until the person has read it (Marco's choice).
+    @Published var guideShown = !Preferences.sharedDefaults.bool(forKey: HubModel.guideKey)
+    static let guideKey = "hub.guideSeen"
+
+    func dismissGuide() {
+        guideShown = false
+        Preferences.sharedDefaults.set(true, forKey: Self.guideKey)
+    }
+
     /// A reply chosen for «Cite in…», waiting for where it goes.
     @Published var citing: Citation.Source?
     let bar = HubBarState()

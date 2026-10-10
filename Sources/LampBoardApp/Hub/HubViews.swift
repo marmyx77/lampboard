@@ -89,6 +89,20 @@ struct HubConversationView: View {
     @ObservedObject var store: StateStore
 
     var body: some View {
+        VStack(spacing: 0) {
+            if model.guideShown { HubGuideBand(dismiss: model.dismissGuide) }
+            content
+        }
+        .frame(minWidth: 320, minHeight: 360)
+        .background(HubPalette.panel)
+        .foregroundStyle(HubPalette.ink)
+        .sheet(item: $model.citing) { quote in
+            HubCiteSheet(quote: quote, sessions: store.sessions.filter { $0.id != quote.session },
+                         pick: { model.cite(into: $0) }, cancel: { model.citing = nil })
+        }
+    }
+
+    @ViewBuilder private var content: some View {
         Group {
             if model.selected == HubModel.lampMasterId {
                 lampMaster
@@ -97,13 +111,6 @@ struct HubConversationView: View {
             } else {
                 empty("Choose a session on the left to open its conversation.")
             }
-        }
-        .frame(minWidth: 320, minHeight: 360)
-        .background(HubPalette.panel)
-        .foregroundStyle(HubPalette.ink)
-        .sheet(item: $model.citing) { quote in
-            HubCiteSheet(quote: quote, sessions: store.sessions.filter { $0.id != quote.session },
-                         pick: { model.cite(into: $0) }, cancel: { model.citing = nil })
         }
     }
 
@@ -184,8 +191,10 @@ struct HubConversationView: View {
     }
 
     @ViewBuilder private func sendButtons(_ session: SessionState) -> some View {
+            // Marco's choice (10 October): the button does the mode set, its menu
+            // holds the other two; choosing one there sets it and sends.
             Menu {
-                ForEach(HubWrite.Mode.allCases, id: \.self) { mode in
+                ForEach(HubWrite.Mode.allCases.filter { $0 != model.mode }, id: \.self) { mode in
                     Button(Self.title(mode)) { model.mode = mode; model.submit() }
                 }
             } label: {
@@ -197,12 +206,6 @@ struct HubConversationView: View {
             .buttonStyle(HubButtonStyle(kind: .primary))
             .disabled(model.route == .none)
             .accessibilityIdentifier("hub.send")
-            if model.mode != .steer {
-                Button("Message now") { let kept = model.mode; model.mode = .steer; model.submit(); model.mode = kept }
-                    .buttonStyle(HubButtonStyle()).fixedSize().layoutPriority(3)
-                    .disabled(model.route == .none)
-                    .help("Into the running turn, through the session's message box")
-            }
             Button("Stop") { model.stop() }
                 .buttonStyle(HubButtonStyle(kind: .danger)).fixedSize().layoutPriority(3)
                 .disabled(!(session.status == .working || session.status == .waiting))
@@ -324,5 +327,32 @@ struct HubCiteSheet: View {
         .background(HubPalette.panel)
         .foregroundStyle(HubPalette.ink)
         .environment(\.colorScheme, .dark)
+    }
+}
+
+/// The first time the Hub opens: where things are, in four lines, until read.
+struct HubGuideBand: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "lightbulb").foregroundStyle(HubPalette.accent).padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("This is the Hub").font(.system(size: 13, weight: .semibold))
+                Group {
+                    Text("Your sessions on the left, the panel's rows in your order. Read and answer here; the real window is ⌘↩ away.")
+                    Text("Send does the mode you chose; its menu interrupts the turn or reaches into it. Stop ends the turn.")
+                    Text("Files, the open file and a shell in the project come and go with the icons at the top right.")
+                    Text("Cite a reply into another session from its corner; it goes framed, and only when you send.")
+                }
+                .font(.system(size: 12)).foregroundStyle(HubPalette.muted)
+            }
+            Spacer(minLength: 8)
+            Button("Got it", action: dismiss).buttonStyle(HubButtonStyle(kind: .primary)).accessibilityIdentifier("hub.guide.done")
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(HubPalette.accentSoft)
+        .overlay(alignment: .bottom) { Rectangle().fill(HubPalette.line).frame(height: 1) }
+        .accessibilityIdentifier("hub.guide")
     }
 }

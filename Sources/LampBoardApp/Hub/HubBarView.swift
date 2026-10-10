@@ -95,17 +95,17 @@ struct HubBarView: View {
         Button { filter = ""; open = .commands } label: { Image(systemName: "slash.circle") }
             .buttonStyle(HubIconStyle()).help("The session's commands").disabled(bar.commands.isEmpty)
             .popover(item: binding(.commands), arrowEdge: .top) { _ in pop(.commands) }
+        Button(bar.remote ? "Remote Control · phone" : "Remote Control") { model.toggleRemoteControl() }
+            .buttonStyle(HubPillStyle(on: bar.remote))
+            .disabled(!bar.names.contains("remote-control"))
+            .help("Claude Code's Remote Control, to follow this session from the phone")
+            .accessibilityIdentifier("hub.bar.remote")
         ContextRing(reading: session.context).scaleEffect(0.9)
         if let fraction = session.context?.fraction {
             Text("\(Int((fraction * 100).rounded()))%").font(.system(size: 11)).monospacedDigit().foregroundStyle(HubPalette.muted)
         }
         Text(RelativeTime.label(for: session.statusSince, now: Date())).font(.system(size: 11)).monospacedDigit()
             .foregroundStyle(HubPalette.muted)
-        Button(bar.remote ? "Remote Control · phone" : "Remote Control") { model.toggleRemoteControl() }
-            .buttonStyle(HubPillStyle(on: bar.remote))
-            .disabled(!bar.names.contains("remote-control"))
-            .help("Claude Code's Remote Control, to follow this session from the phone")
-            .accessibilityIdentifier("hub.bar.remote")
         Text(session.activeSubagents == 1 ? "1 agent" : "\(session.activeSubagents) agents")
             .font(.system(size: 11)).foregroundStyle(HubPalette.muted)
     }

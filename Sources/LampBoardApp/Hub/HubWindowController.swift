@@ -87,6 +87,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "barWarning": model.bar.warning ?? NSNull(),
             "cacheWarm": HubBar.cacheWarm(session?.context, now: Date()),
             "quotes": model.composer.quotes.map(\.text),
+            "guide": model.guideShown,
             "question": model.composer.question ?? NSNull(),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
@@ -257,6 +258,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let value = wish["effort"] as? String { model.choose(effort: value.isEmpty ? nil : value) }
         if let value = wish["mode"] as? String, let mode = HubBar.Mode(rawValue: value) { model.choose(mode: mode) }
         if wish["remote"] as? Bool == true { model.toggleRemoteControl() }
+        if wish["guide"] as? Bool == false { model.dismissGuide() }
         // «Cite in…» on the n-th reply of the open conversation: the text is
         // always the transcript's; a "text" in the wish is never read (E29).
         if let index = wish["cite"] as? Int, let target = wish["into"] as? String,

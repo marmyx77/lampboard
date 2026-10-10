@@ -105,6 +105,9 @@ enum HubE2ESuite {
                 a.expectEqual(shown["selected"] as? String, working)
                 a.expectEqual(shown["status"] as? String, SessionStatus.working.rawValue)
                 a.expectEqual(shown["sessionsShown"] as? Bool, true, "the sessions' column is there")
+                a.expectEqual(shown["guide"] as? Bool, true, "the first time, the guide")
+                a.expectEqual(files(#"{"guide":false}"#), 204)
+                a.expectEqual(report()["guide"] as? Bool, false, "read: it goes, and stays gone")
             },
 
             TestCase("a session that says nothing of commands is read only: nothing is sent, and the Hub says why") { a in
