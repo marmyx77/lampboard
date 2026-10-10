@@ -106,7 +106,7 @@ final class HubComposer: ObservableObject {
 
     /// The text left the box; it stays in sight until it arrives.
     func sent(_ text: String, session: String, before: [String]) {
-        pending = Pending(session: session, text: text, before: before, quotes: quotes, written: self.text)
+        pending = Pending(session: session, text: text, quotes: quotes, written: self.text, before: before)
         self.text = ""
         quotes = []
         confirming = false
