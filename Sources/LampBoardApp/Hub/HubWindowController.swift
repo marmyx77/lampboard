@@ -45,6 +45,23 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         host.rootView = HubSidebarView(model: model, panel: sidebarContent { [weak self] id in self?.model.selected = id })
     }
 
+    /// What the Hub shows, for the tests (fake home only).
+    func report() -> Data? {
+        let session = model.session
+        let body: [String: Any] = [
+            "open": isOpen,
+            "selected": model.selected ?? NSNull(),
+            "sessionsShown": !(split?.splitViewItems.first?.isCollapsed ?? true),
+            "lampMasterRow": model.deps.lampMaster?.snapshot.enabled ?? false,
+            "mode": model.mode.rawValue,
+            "route": model.route.rawValue,
+            "chatMessages": model.chat?.messages.count ?? 0,
+            "status": session?.status.rawValue ?? NSNull(),
+            "windowNumber": window?.windowNumber ?? 0,
+        ]
+        return try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+    }
+
     // MARK: - Building
 
     private func makeWindow() -> NSWindow {

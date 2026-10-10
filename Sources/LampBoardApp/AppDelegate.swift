@@ -619,6 +619,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // the Hub sends nothing rather than something unsigned.
         let panelKey = PanelKey.loadOrCreate()
         server.hubDesk = panelKey.map { HubCommandDesk(key: $0) }
+        server.onHubReport = { [weak self] in Self.onMain(timeout: 2) { self?.hub?.report() } }
+        server.onHubOpen = { [weak self] id in Self.onMain(timeout: 2) { self?.hub.map { $0.show(session: id); return true } } ?? false }
         self.hubDesk = server.hubDesk
         do {
             try server.start()

@@ -84,6 +84,9 @@ final class SignalServer {
     private let checkKey: String?
     /// The Hub's signed commands (D152); `nil` until the panel has its key.
     var hubDesk: HubCommandDesk?
+    /// The Hub's report and opening it, for the tests (fake home only).
+    var onHubReport: (() -> Data?)?
+    var onHubOpen: ((String?) -> Bool)?
 
     private var listener: NWListener?
 
@@ -370,6 +373,9 @@ final class SignalServer {
 
         case AppConfig.hubSendPath:
             return handleHubSend(request)
+
+        case AppConfig.hubPath, AppConfig.hubOpenPath:
+            return handleHubTest(request)
 
         case AppConfig.healthPath:
             return HTTPRequestParser.response(status: 200, reason: "OK", body: "lampboard")

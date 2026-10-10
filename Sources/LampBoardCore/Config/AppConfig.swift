@@ -97,6 +97,9 @@ public enum AppConfig {
     public static let modInboxPath = "/mod/inbox"
     /// A command queued as the Hub would, under a fake home only (tests).
     public static let hubSendPath = "/hub/send"
+    /// What the Hub shows, and opening it on a session, under a fake home only (tests).
+    public static let hubPath = "/hub"
+    public static let hubOpenPath = "/hub/open"
 
     /// How many slots a key can address.
     ///

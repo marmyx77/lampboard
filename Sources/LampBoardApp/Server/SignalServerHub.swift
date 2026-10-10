@@ -47,6 +47,27 @@ extension SignalServer {
         return HTTPRequestParser.response(status: 204, reason: "No Content")
     }
 
+    /// `GET /hub` — what the Hub shows; `POST /hub/open` — `{"session"}`:
+    /// open it there. **Only against a fake home**, for the tests.
+    func handleHubTest(_ request: HTTPRequest) -> Data {
+        guard AppConfig.isUsingHomeOverride else { return HTTPRequestParser.response(status: 404, reason: "Not Found") }
+        guard let token, AccessToken.matches(request.header(AccessToken.headerName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        if request.path == AppConfig.hubPath, request.method == "GET" {
+            guard let body = onHubReport?() else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: body, as: UTF8.self), contentType: "application/json")
+        }
+        guard request.path == AppConfig.hubOpenPath, request.method == "POST" else {
+            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        }
+        struct Wire: Decodable { let session: String? }
+        let session = (try? JSONDecoder().decode(Wire.self, from: request.body))?.session
+        return onHubOpen?(session) == true
+            ? HTTPRequestParser.response(status: 204, reason: "No Content")
+            : HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
+    }
+
     private func getTokenRefusal(_ request: HTTPRequest) -> Data? {
         guard request.method == "GET" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
         guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
