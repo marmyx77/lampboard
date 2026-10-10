@@ -6,6 +6,8 @@ import SwiftUI
 /// grouping is off.
 struct TrafficLightColumn: View {
     @ObservedObject var store: StateStore
+    /// In the Hub the rows take the sidebar's width; in the panel, the panel's (D150).
+    @Environment(\.columnFillsWidth) private var fillsWidth
     let compact: Bool
     let options: ColumnOptions
     let notificationsEnabled: Bool
@@ -88,7 +90,8 @@ struct TrafficLightColumn: View {
             }
         }
         .padding(Layout.panelPadding)
-        .frame(width: Layout.width(compact: compact))
+        .frame(width: fillsWidth ? nil : Layout.width(compact: compact))
+        .frame(maxWidth: fillsWidth ? .infinity : nil)
         .onReceive(tick) { now = $0 }
         // A card describes the row that was under the pointer. When rows
         // reorder, arrive or leave, another one may be there now and the card
@@ -651,5 +654,18 @@ private struct SelectionRing: View {
                 .strokeBorder(StatusPalette.color(for: .awaiting).opacity(0.7), lineWidth: 1)
                 .allowsHitTesting(false)
         }
+    }
+}
+
+/// Whether the column takes the width it is given rather than the panel's own:
+/// on only in the Hub's sidebar (D150).
+private struct ColumnFillsWidthKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var columnFillsWidth: Bool {
+        get { self[ColumnFillsWidthKey.self] }
+        set { self[ColumnFillsWidthKey.self] = newValue }
     }
 }

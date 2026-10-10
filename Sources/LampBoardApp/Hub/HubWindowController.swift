@@ -73,7 +73,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
         let split = NSSplitViewController()
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
-        sidebarItem.minimumThickness = 220
+        sidebarItem.minimumThickness = 280
         sidebarItem.maximumThickness = 520
         sidebarItem.canCollapse = true
         sidebarItem.isCollapsed = UserDefaults.standard.bool(forKey: Self.sidebarCollapsedKey)

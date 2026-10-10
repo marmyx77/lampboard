@@ -66,7 +66,9 @@ struct HubSidebarView: View {
                 .padding(.horizontal, 4).padding(.top, 6)
                 Divider().padding(.top, 4)
             }
-            ScrollView(.vertical) { panel }
+            ScrollView(.vertical) {
+                panel.environment(\.columnFillsWidth, true).frame(maxWidth: .infinity, alignment: .topLeading)
+            }
         }
         .frame(minWidth: 220)
     }
