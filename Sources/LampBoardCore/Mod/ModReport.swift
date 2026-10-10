@@ -28,11 +28,15 @@ public enum ModReport: Equatable, Sendable {
     /// A turn the person stopped, with Esc or the Hub's Stop, which no hook
     /// reports (D160): the only colour the mod gives.
     case stopped(session: String, stopped: Stopped)
+    /// Whether the followed session's own box holds a draft (D154): a yes or
+    /// a no, never the words.
+    case presence(session: String, draft: Bool)
 
     public var session: String {
         switch self {
         case .start(let session, _), .measure(let session, _), .end(let session, _), .tool(let session, _),
-             .answer(let session, _), .done(let session, _), .stopped(let session, _): return session
+             .answer(let session, _), .done(let session, _), .stopped(let session, _),
+             .presence(let session, _): return session
         }
     }
 
@@ -249,6 +253,9 @@ public enum ModReport: Equatable, Sendable {
             return .done(session: session, done: Done(
                 nonce: nonce, op: op, ok: wire.ok ?? false, error: wire.error.map { String($0.prefix(200)) }
             ))
+        case "presence":
+            guard let draft = wire.draft else { throw Failure.unreadable }
+            return .presence(session: session, draft: draft)
         case "stopped":
             guard let turnId = wire.turnId, isCallId(turnId) || isSessionId(turnId) else { throw Failure.unreadable }
             let at = wire.at.flatMap { $0 > 0 && $0 < 1e14 ? Date(timeIntervalSince1970: $0 / 1000) : nil }
@@ -382,6 +389,7 @@ public enum ModReport: Equatable, Sendable {
         let error: String?
         let turnId: String?
         let at: Double?
+        let draft: Bool?
 
         struct Context: Decodable { let tokens: Double?; let window: Double? }
         struct Limit: Decodable { let kind: String?; let percentUsed: Double?; let resetsAt: String? }

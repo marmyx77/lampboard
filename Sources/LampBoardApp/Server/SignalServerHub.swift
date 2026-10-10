@@ -74,7 +74,7 @@ extension SignalServer {
             return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: body, as: UTF8.self), contentType: "application/json")
         }
         guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
-        struct Wire: Decodable { let session: String?; let mode: String?; let text: String? }
+        struct Wire: Decodable { let session: String?; let mode: String?; let text: String?; let confirm: Bool? }
         let wire = try? JSONDecoder().decode(Wire.self, from: request.body)
         if request.path == AppConfig.hubFilesPath {
             return onHubFiles?(request.body) == true
@@ -83,9 +83,11 @@ extension SignalServer {
         }
         if request.path == AppConfig.hubComposePath {
             guard let text = wire?.text else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
-            return onHubCompose?(text) == true
-                ? HTTPRequestParser.response(status: 204, reason: "No Content")
-                : HTTPRequestParser.response(status: 409, reason: "Conflict", body: "nothing sent")
+            switch onHubCompose?(text, wire?.confirm == true) {
+            case "sent": return HTTPRequestParser.response(status: 204, reason: "No Content")
+            case "confirm": return HTTPRequestParser.response(status: 202, reason: "Accepted", body: "confirm")
+            default: return HTTPRequestParser.response(status: 409, reason: "Conflict", body: "nothing sent")
+            }
         }
         return onHubOpen?(wire?.session, wire?.mode) == true
             ? HTTPRequestParser.response(status: 204, reason: "No Content")

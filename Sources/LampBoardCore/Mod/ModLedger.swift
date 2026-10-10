@@ -65,6 +65,7 @@ public struct ModLedger: Equatable, Sendable {
         if case .answer = report { return self }
         if case .done = report { return self }
         if case .stopped = report { return self }
+        if case .presence = report { return self }
         let old = sessions[report.session]
         var facts: Facts
         switch report {
@@ -95,7 +96,7 @@ public struct ModLedger: Equatable, Sendable {
                 next.running[run.id] = RunningTool(tool: run.tool, detail: run.detail, since: now)
             }
             facts = next.heard(at: now)
-        case .answer, .done, .stopped:
+        case .answer, .done, .stopped, .presence:
             return self
         case .end(_, let reason):
             facts = Facts(

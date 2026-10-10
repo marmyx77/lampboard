@@ -639,7 +639,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             } ?? false
         }
-        server.onHubCompose = { [weak self] text in Self.onMain(timeout: 2) { self?.hub?.model.send(text) } ?? false }
+        server.onHubCompose = { [weak self] text, confirm in
+            Self.onMain(timeout: 2) { () -> String? in
+                guard let model = self?.hub?.model else { return nil }
+                // As the person would: type it, Send; Send again to answer the question.
+                if model.composer.text != text { model.composer.text = text }
+                var outcome = model.submit()
+                if outcome == .confirm, confirm { outcome = model.submit() }
+                return outcome.rawValue
+            } ?? nil
+        }
         server.onModStream = { [weak self] session, turn, text, done in
             DispatchQueue.main.async { self?.hub?.model.heard(stream: text, turn: turn, done: done, session: session) }
         }

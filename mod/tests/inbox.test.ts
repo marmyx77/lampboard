@@ -18,7 +18,7 @@ const INTERRUPT = {"payload":"{\"args\":{\"asUser\":\"true\",\"mode\":\"interrup
 const WAKE = 'LampBoard wake [v2]'
 
 function panel(on, inbox: unknown[]) {
-  const calls = { submitted: [] as any[], commands: [] as any[], done: [] as any[], streamed: [] as any[], hellos: 0, fetched: 0 }
+  const calls = { box: '', submitted: [] as any[], commands: [] as any[], done: [] as any[], streamed: [] as any[], hellos: 0, fetched: 0 }
   mock.clock(on, { now: TS })
   mock.store(on, {})
   mock.env(on, { HOME: '/home/someone' })
@@ -52,6 +52,8 @@ function panel(on, inbox: unknown[]) {
   on('command.run', ($, e) => { calls.commands.push(e); return {} })
   on('session.receive', ($, e) => ({ text: e.text }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('prompt.read', () => ({ value: { text: calls.box, cursor: calls.box.length } }))
+  on('prompt.edit', ($, e) => ({ text: e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end), cursor: e.start + e.inputText.length }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
   return calls
 }
@@ -161,4 +163,27 @@ test('a turn stopped to make room for the Hub\'s message is not told as stopped'
   await new Promise((r) => setTimeout(r, 100))
   expect(calls.submitted.length).toBe(1)
   expect(calls.done.filter((d) => d.kind === 'stopped').length).toBe(0)
+})
+
+test('the open session says whether its box holds a draft, never what it says', async ($, on) => {
+  const calls = panel(on, [STREAM_ON])
+  calls.box = 'half a thought'
+  await $.session.receive({ origin: { kind: 'peer-send-message' }, text: WAKE })
+  await settle(calls, () => calls.done.some((d) => d.kind === 'presence'))
+  expect(calls.done.find((d) => d.kind === 'presence')).toMatchObject({ kind: 'presence', session: SID, draft: true })
+  await $.prompt.edit({ origin: { kind: 'composer' }, text: 'x', cursor: 1, start: 0, end: 1, inputText: '' })
+  await settle(calls, () => calls.done.filter((d) => d.kind === 'presence').length >= 2)
+  const said = calls.done.filter((d) => d.kind === 'presence')
+  expect(said[1]).toMatchObject({ draft: false })
+  expect(JSON.stringify(said)).not.toContain('half a thought')
+  await $.prompt.edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: '' })
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls.done.filter((d) => d.kind === 'presence').length).toBe(2)
+})
+
+test('a session the panel does not follow says nothing of its box', async ($, on) => {
+  const calls = panel(on, [])
+  await $.prompt.edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: 'hello' })
+  await new Promise((r) => setTimeout(r, 50))
+  expect(calls.done.filter((d) => d.kind === 'presence').length).toBe(0)
 })

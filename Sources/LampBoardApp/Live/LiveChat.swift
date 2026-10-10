@@ -189,6 +189,8 @@ struct LiveChatView: View {
     /// when it could not be.
     let send: (String) -> Bool
     let showTerminal: () -> Void
+    /// Whether the chat has its own box; the Hub puts its composer below (D154).
+    var composes = true
 
     @State private var draft = ""
     @State private var windowState = WindowState()
@@ -226,6 +228,22 @@ struct LiveChatView: View {
                 .padding(10)
                 .background(.orange.opacity(0.15))
             }
+            if composes { composer }
+        }
+        .background(ClaudeTheme.background)
+        .foregroundStyle(ClaudeTheme.textPrimary)
+        .environment(windowState)
+        .environment(bridge)
+        // A link in a reply opens only on the web: a transcript's text can carry
+        // any scheme, and its label need not match its target.
+        .environment(\.openURL, OpenURLAction { url in
+            ["http", "https"].contains(url.scheme?.lowercased() ?? "") ? .systemAction : .discarded
+        })
+        .onChange(of: model.focusRequest) { _, _ in boxFocused = true }
+        .onAppear { if composes { boxFocused = true } }
+    }
+
+    @ViewBuilder private var composer: some View {
             Divider()
             HStack(alignment: .bottom, spacing: 8) {
                 TextField(model.canSend ? "Message the session…" : "Sending waits until Claude is there and asks nothing",
@@ -239,18 +257,6 @@ struct LiveChatView: View {
                     .disabled(!model.canSend || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(12)
-        }
-        .background(ClaudeTheme.background)
-        .foregroundStyle(ClaudeTheme.textPrimary)
-        .environment(windowState)
-        .environment(bridge)
-        // A link in a reply opens only on the web: a transcript's text can carry
-        // any scheme, and its label need not match its target.
-        .environment(\.openURL, OpenURLAction { url in
-            ["http", "https"].contains(url.scheme?.lowercased() ?? "") ? .systemAction : .discarded
-        })
-        .onChange(of: model.focusRequest) { _, _ in boxFocused = true }
-        .onAppear { boxFocused = true }
     }
 
     private func submit() {

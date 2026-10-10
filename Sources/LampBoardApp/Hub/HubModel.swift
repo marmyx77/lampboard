@@ -52,6 +52,11 @@ final class HubModel: ObservableObject {
         didSet { liveTail.show(live?.text) }
     }
     let liveTail = HubLiveTail()
+    let composer = HubComposer()
+    /// Where each session's mod draws (`terminal`, `vscode`, …), from its start.
+    private(set) var surfaces: [String: String] = [:]
+    /// Whether the followed session's own box holds a draft, as its mod said.
+    private(set) var drafts: [String: Bool] = [:]
     /// The session whose reply is followed, if any.
     private(set) var followed: String?
 
@@ -80,10 +85,17 @@ final class HubModel: ObservableObject {
         switch report {
         case .start(let session, let start):
             if start.features.contains("commands") { commandable.insert(session) } else { commandable.remove(session) }
+            surfaces[session] = start.surface
             if session == selected { follow(session) }
         case .end(let session, _):
             commandable.remove(session)
-        case .measure, .tool, .answer, .done, .stopped:
+            drafts[session] = nil
+        case .presence(let session, let draft):
+            if session == followed { drafts[session] = draft }
+        case .done(let session, let done):
+            // A message the mod could not put in: back in the box.
+            if done.op == "submit", !done.ok { composer.failed(session: session) }
+        case .measure, .tool, .answer, .stopped:
             break
         }
     }
@@ -93,23 +105,37 @@ final class HubModel: ObservableObject {
         return deps.store.state.session(named: selected)
     }
 
-    /// The route Send would take now, for the composer to say.
-    var route: HubWrite.Route {
-        guard let id = session?.id else { return .none }
-        return HubWrite.route(mode, in: deps.situation(id))
+    /// What Send would do now, for the composer to say (D154).
+    var verdict: HubWrite.Verdict {
+        guard let id = session?.id else { return HubWrite.verdict(mode, in: .init(commands: false, box: false, paste: false, busy: false, asking: false)) }
+        return HubWrite.verdict(mode, in: deps.situation(id))
     }
 
-    /// Sends the text; keeps nothing and says why when nothing went.
-    func send(_ text: String) -> Bool {
-        guard let id = session?.id, let body = HubWrite.sendable(text) else { return false }
-        let route = HubWrite.route(mode, in: deps.situation(id))
-        guard route != .none else {
+    var route: HubWrite.Route { verdict.route }
+
+    /// Sends what the box holds, through the one rule: asks first over the
+    /// person's own draft, keeps the text in sight until the transcript has it,
+    /// and keeps it in the box when it could not go.
+    @discardableResult
+    func submit() -> HubComposer.Outcome {
+        guard let id = session?.id, let body = HubWrite.sendable(composer.text) else { return .refused }
+        let verdict = HubWrite.verdict(mode, in: deps.situation(id))
+        guard verdict.route != .none else {
             notice = "This session cannot take a message from here now. Open its window."
-            return false
+            return .refused
         }
-        let sent = deps.send(id, body, route, mode)
-        notice = sent ? nil : "The message did not go. It is still in the box."
-        return sent
+        if verdict.confirm, !composer.confirming {
+            composer.ask()
+            return .confirm
+        }
+        let before = chat.map { HubComposer.userTexts($0.messages) } ?? []
+        guard deps.send(id, body, verdict.route, verdict.mode) else {
+            notice = "The message did not go. It is still in the box."
+            return .refused
+        }
+        notice = nil
+        composer.sent(body, session: id, before: before)
+        return .sent
     }
 
     /// A piece of a reply from the followed session; anything else is dropped.
@@ -127,7 +153,10 @@ final class HubModel: ObservableObject {
     private func follow(_ id: String?) {
         let next = id.flatMap { $0 != Self.lampMasterId && commandable.contains($0) ? $0 : nil }
         guard next != followed else { return }
-        if let previous = followed { _ = deps.command(previous, "stream", ["on": "false"]) }
+        if let previous = followed {
+            _ = deps.command(previous, "stream", ["on": "false"])
+            drafts[previous] = nil
+        }
         followed = next
         live = nil
         if let next { _ = deps.command(next, "stream", ["on": "true"]) }
@@ -145,6 +174,7 @@ final class HubModel: ObservableObject {
 
     private func openChat(for id: String?) {
         follow(id)
+        composer.show(session: id)
         let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
         files.show(session: id, root: project?.root, host: project?.host)
         guard id != chatFor else { return }
@@ -162,7 +192,10 @@ final class HubModel: ObservableObject {
         // The transcript caught up: the turn ended and its lines are read.
         if live != nil, let session, session.status != .working, session.status != .waiting { live = nil }
         guard let chat, let session else { return }
-        chat.update(asking: session.status == .awaiting, sendable: route != .none)
+        let verdict = verdict
+        chat.update(asking: session.status == .awaiting, sendable: verdict.route != .none)
+        composer.show(band: verdict.band)
+        composer.check(userTexts: HubComposer.userTexts(chat.messages), session: session.id)
     }
 
     func close() {

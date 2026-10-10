@@ -108,8 +108,10 @@ struct HubConversationView: View {
             Divider()
             PlanciaPendingCard(queue: model.deps.queue, sessionId: session.id).padding(.top, 6)
             if let chat = model.chat {
-                LiveChatView(model: chat, send: { model.send($0) }, showTerminal: { model.deps.openRealWindow(session.id) })
+                LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false)
                 HubLiveBubble(tail: model.liveTail)
+                Divider()
+                HubComposerView(composer: model.composer, submit: { model.submit() }, canWrite: model.route != .none)
             } else {
                 empty("No transcript to read for this session yet.")
             }

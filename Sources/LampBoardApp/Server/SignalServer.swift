@@ -87,7 +87,8 @@ final class SignalServer {
     /// The Hub's report and opening it, for the tests (fake home only).
     var onHubReport: (() -> Data?)?
     var onHubOpen: ((String?, String?) -> Bool)?
-    var onHubCompose: ((String) -> Bool)?
+    /// `sent`, `confirm` (a draft waits in the session's box) or `refused`.
+    var onHubCompose: ((_ text: String, _ confirm: Bool) -> String?)?
     var onHubFiles: ((Data) -> Bool)?
     /// A piece of a reply as it arrives (D153): session, turn, text, done.
     var onModStream: ((String, String, String, Bool) -> Void)?

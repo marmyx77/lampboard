@@ -418,6 +418,28 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         _ = live.surface.submit(text)
     }
 
+    /// The Hub's paste route (D154): a live window shows `sessionId` and its
+    /// terminal may be typed into now, by the chat's own gate (Claude there,
+    /// asking nothing).
+    func canPaste(into sessionId: String) -> Bool {
+        guard let live = live(showing: sessionId) else { return false }
+        let status = describe(live.target).status
+        return status != nil && status != .awaiting && !live.ended && live.surface.isRunning
+    }
+
+    /// Types `text` into that window's terminal and presses Enter.
+    func paste(_ text: String, into sessionId: String) -> Bool {
+        guard canPaste(into: sessionId), let live = live(showing: sessionId) else { return false }
+        return live.surface.submit(text)
+    }
+
+    private func live(showing sessionId: String) -> Live? {
+        lives.values.first { live in
+            if case .tmux(_, _, let id) = live.target { return id == sessionId }
+            return false
+        }
+    }
+
     /// Every live window forward, the Dock icon's click; `false` with none open.
     func bringAllForward() -> Bool {
         guard !lives.isEmpty else { return false }

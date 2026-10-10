@@ -28,6 +28,25 @@ public enum HubWrite {
         case steer
     }
 
+    /// What the Hub knows of the session's own message box (D154).
+    public enum Presence: String, Equatable, Sendable {
+        /// Nothing typed there, or a terminal without the mod, which the live
+        /// view already writes to as it is (D147).
+        case empty
+        /// The person has typed something there and not sent it.
+        case draft
+        /// A box LampBoard cannot see: VS Code's panel, the Claude app.
+        case unseen
+    }
+
+    /// The presence for a session: its mod's surface, else how it was started,
+    /// and the mod's last word on the draft.
+    public static func presence(surface: String?, entrypoint: String?, draft: Bool?) -> Presence {
+        if let surface, surface != "terminal" { return .unseen }
+        if surface == nil, ["claude-vscode", "claude-desktop"].contains(entrypoint ?? "") { return .unseen }
+        return draft == true ? .draft : .empty
+    }
+
     /// What the Hub knows of a session when the person presses Send.
     public struct Situation: Equatable, Sendable {
         /// The session's mod says it takes signed commands.
@@ -40,14 +59,56 @@ public enum HubWrite {
         public var busy: Bool
         /// A dialog waits for the person (a permission, a question).
         public var asking: Bool
+        /// What the session's own box holds.
+        public var presence: Presence
 
-        public init(commands: Bool, box: Bool, paste: Bool, busy: Bool, asking: Bool) {
+        public init(commands: Bool, box: Bool, paste: Bool, busy: Bool, asking: Bool, presence: Presence = .empty) {
             self.commands = commands
             self.box = box
             self.paste = paste
             self.busy = busy
             self.asking = asking
+            self.presence = presence
         }
+    }
+
+    /// What Send does in a situation: the way in, the mode it goes in, whether
+    /// to ask first, and the band to show.
+    public struct Verdict: Equatable, Sendable {
+        public let route: Route
+        public let mode: Mode
+        /// The person is typing in the session's own box: ask before sending.
+        public let confirm: Bool
+        public let band: String?
+    }
+
+    /// The one decision every Send goes through (D154).
+    ///
+    /// - A box LampBoard cannot see only queues: stopping a turn someone may be
+    ///   watching in VS Code is theirs to do there.
+    /// - A draft is never pasted into, and is asked about otherwise: the
+    ///   message goes first and the draft stays where it is (measured, M0).
+    public static func verdict(_ mode: Mode, in situation: Situation) -> Verdict {
+        let unseen = situation.presence == .unseen
+        let effective: Mode = unseen ? .queue : mode
+        var way = route(effective, in: situation)
+        if way == .paste, situation.presence == .draft { way = .none }
+        return Verdict(
+            route: way, mode: effective,
+            confirm: way != .none && situation.presence == .draft,
+            band: unseen ? "LampBoard cannot see this session's own message box: messages wait for the turn to end." : nil
+        )
+    }
+
+    /// Whether a sent message has reached the transcript: one more user
+    /// message with its words than when it was sent (D154's receipt).
+    public static func arrived(_ sent: String, before: [String], now: [String]) -> Bool {
+        let key = words(sent)
+        return now.filter { words($0) == key }.count > before.filter { words($0) == key }.count
+    }
+
+    private static func words(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     /// The route for `mode` in `situation`.

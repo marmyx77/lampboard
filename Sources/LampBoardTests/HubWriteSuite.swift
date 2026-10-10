@@ -8,8 +8,9 @@ import TestKit
 enum HubWriteSuite {
 
     private static func situation(commands: Bool = false, box: Bool = false, paste: Bool = false,
-                                  busy: Bool = false, asking: Bool = false) -> HubWrite.Situation {
-        HubWrite.Situation(commands: commands, box: box, paste: paste, busy: busy, asking: asking)
+                                  busy: Bool = false, asking: Bool = false,
+                                  presence: HubWrite.Presence = .empty) -> HubWrite.Situation {
+        HubWrite.Situation(commands: commands, box: box, paste: paste, busy: busy, asking: asking, presence: presence)
     }
 
     static let suite = TestSuite("The Hub's way into a session", [
@@ -60,6 +61,47 @@ enum HubWriteSuite {
             t.expectEqual(HubWrite.tail(of: "", lines: 8), "")
             let huge = String(repeating: "word ", count: 200_000)
             t.expect(HubWrite.tail(of: huge, lines: 8).count <= 200, "a huge reply costs no more than a short one")
+        },
+
+        TestCase("A draft in the session's own box asks before sending, and is never pasted into (E19)") { t in
+            let mod = HubWrite.verdict(.queue, in: situation(commands: true, presence: .draft))
+            t.expectEqual(mod.route, .mod)
+            t.expect(mod.confirm, "the person is typing there: ask first")
+            t.expect(!HubWrite.verdict(.queue, in: situation(commands: true)).confirm, "an empty box: no question")
+            t.expectEqual(HubWrite.verdict(.queue, in: situation(paste: true, presence: .draft)).route, .none,
+                          "a paste would join the draft")
+        },
+
+        TestCase("A box LampBoard cannot see gets a band, and messages only queue (E21)") { t in
+            let unseen = HubWrite.verdict(.interrupt, in: situation(commands: true, busy: true, presence: .unseen))
+            t.expectEqual(unseen.mode, .queue, "no stopping a turn in a window we cannot see")
+            t.expectEqual(unseen.route, .mod)
+            t.expect(unseen.band != nil, "the band says why")
+            t.expectNil(HubWrite.verdict(.interrupt, in: situation(commands: true)).band)
+            t.expectEqual(HubWrite.verdict(.interrupt, in: situation(commands: true)).mode, .interrupt)
+        },
+
+        TestCase("Nothing goes over a dialog except through the mod, which waits for it (E20)") { t in
+            t.expectEqual(HubWrite.verdict(.queue, in: situation(box: true, paste: true, asking: true)).route, .none)
+            t.expectEqual(HubWrite.verdict(.queue, in: situation(commands: true, asking: true)).route, .mod)
+        },
+
+        TestCase("Where a session's box is: the mod's surface, else how it was started") { t in
+            t.expectEqual(HubWrite.presence(surface: "terminal", entrypoint: "cli", draft: true), .draft)
+            t.expectEqual(HubWrite.presence(surface: "terminal", entrypoint: "cli", draft: nil), .empty)
+            t.expectEqual(HubWrite.presence(surface: "vscode", entrypoint: "claude-vscode", draft: false), .unseen)
+            t.expectEqual(HubWrite.presence(surface: "desktop", entrypoint: nil, draft: nil), .unseen)
+            t.expectEqual(HubWrite.presence(surface: nil, entrypoint: "claude-vscode", draft: nil), .unseen)
+            t.expectEqual(HubWrite.presence(surface: nil, entrypoint: "claude-desktop", draft: nil), .unseen)
+            t.expectEqual(HubWrite.presence(surface: nil, entrypoint: "cli", draft: nil), .empty)
+        },
+
+        TestCase("A message has arrived once the transcript holds one more of it than when it was sent (E22)") { t in
+            let before = ["run the tests", "and the lint"]
+            t.expect(!HubWrite.arrived("run the tests", before: before, now: before), "the old one is not a receipt")
+            t.expect(HubWrite.arrived("run the tests", before: before, now: before + ["run  the tests\n"]),
+                     "spaces and the end of line do not matter")
+            t.expect(!HubWrite.arrived("deploy", before: before, now: before + ["something else"]))
         },
     ])
 }

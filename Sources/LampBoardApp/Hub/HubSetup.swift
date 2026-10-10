@@ -25,9 +25,11 @@ enum HubSetup {
                 return HubWrite.Situation(
                     commands: weakModel?.commandable.contains(id) ?? false,
                     box: local && PeerSender().hasBox(sessionId: id),
-                    paste: false,
+                    paste: live.canPaste(into: id),
                     busy: session.map { $0.status == .working || $0.status == .waiting } ?? false,
-                    asking: session?.status == .awaiting
+                    asking: session?.status == .awaiting,
+                    presence: HubWrite.presence(surface: weakModel?.surfaces[id], entrypoint: session?.entrypoint,
+                                                draft: weakModel?.drafts[id])
                 )
             },
             send: { id, text, route, mode in
@@ -37,7 +39,9 @@ enum HubSetup {
                 case .box:
                     if case .success = PeerSender().send(text, to: id) { return true }
                     return false
-                case .paste, .none:
+                case .paste:
+                    return live.paste(text, into: id)
+                case .none:
                     return false
                 }
             },

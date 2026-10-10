@@ -73,6 +73,13 @@ enum ModReportSuite {
             t.expectNil(try? decode(#"{"v":1,"kind":"stopped","session":"\#(id)","turnId":"bad id!"}"#))
         },
 
+        TestCase("A session's box is reported as a draft or not, and nothing else is read") { t in
+            guard case .presence(_, let draft)? = try? decode(#"{"v":1,"kind":"presence","session":"\#(id)","draft":true,"text":"secret"}"#)
+            else { return t.fail("not a presence") }
+            t.expect(draft, "a draft")
+            t.expectNil(try? decode(#"{"v":1,"kind":"presence","session":"\#(id)"}"#), "no answer is no report")
+        },
+
         TestCase("A measure carries the session's own count, cost and windows") { t in
             guard case .measure(let session, let m) = try? decode(measure) else {
                 return t.fail("the measure was not read")

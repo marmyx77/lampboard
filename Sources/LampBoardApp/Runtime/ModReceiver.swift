@@ -66,6 +66,7 @@ final class ModReceiver {
         case .answer(_, let answer): return "answer (\(answer.text == nil ? answer.reason ?? "none" : "text"))"
         case .done(_, let done): return "done (\(done.op) \(done.ok ? "ok" : done.error ?? "failed"))"
         case .stopped(_, let stopped): return "stopped (\(stopped.turnId.prefix(12)))"
+        case .presence(_, let draft): return "presence (\(draft ? "draft" : "empty"))"
         }
     }
 
