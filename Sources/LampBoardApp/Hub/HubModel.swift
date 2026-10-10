@@ -45,7 +45,13 @@ final class HubModel: ObservableObject {
     @Published var notice: String?
     /// The open session's reply as it arrives (D153): provisional, replaced by
     /// the transcript once the turn's lines are written.
-    @Published private(set) var live: (turn: String, text: String)?
+    /// The followed turn's reply so far. Not published: a piece every 150 ms
+    /// would redraw the whole conversation (P1, measured 10 October 2026); the
+    /// bubble watches `liveTail` alone.
+    private(set) var live: (turn: String, text: String)? {
+        didSet { liveTail.show(live?.text) }
+    }
+    let liveTail = HubLiveTail()
     /// The session whose reply is followed, if any.
     private(set) var followed: String?
 
@@ -165,5 +171,18 @@ final class HubModel: ObservableObject {
         chat?.stop()
         chat = nil
         chatFor = nil
+    }
+}
+
+/// What the live bubble draws: the end of the reply being written, never more
+/// than a bubble shows. The whole reply comes with the transcript.
+@MainActor
+final class HubLiveTail: ObservableObject {
+    static let most = 2_000
+    @Published private(set) var text = ""
+
+    func show(_ full: String?) {
+        let tail = String((full ?? "").suffix(Self.most))
+        if tail != text { text = tail }
     }
 }

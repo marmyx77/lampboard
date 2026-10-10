@@ -109,7 +109,7 @@ struct HubConversationView: View {
             PlanciaPendingCard(queue: model.deps.queue, sessionId: session.id).padding(.top, 6)
             if let chat = model.chat {
                 LiveChatView(model: chat, send: { model.send($0) }, showTerminal: { model.deps.openRealWindow(session.id) })
-                if let live = model.live, !live.text.isEmpty { liveBubble(live.text) }
+                HubLiveBubble(tail: model.liveTail)
             } else {
                 empty("No transcript to read for this session yet.")
             }
@@ -137,23 +137,6 @@ struct HubConversationView: View {
     }
 
     /// The reply as it arrives: provisional, in grey, until the transcript has it.
-    private func liveBubble(_ text: String) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
-                    Text(text).font(.system(size: 13)).foregroundStyle(.secondary).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Color.clear.frame(height: 1).id("live-end")
-                }
-                .padding(.horizontal, 18).padding(.vertical, 8)
-            }
-            .frame(maxHeight: 180)
-            .onChange(of: text) { _, _ in proxy.scrollTo("live-end", anchor: .bottom) }
-        }
-        .accessibilityIdentifier("hub.live")
-    }
-
     private func meta(_ session: SessionState) -> String {
         var parts: [String] = []
         if let host = session.workspace.host { parts.append(host) }
@@ -193,5 +176,30 @@ struct HubConversationView: View {
         VStack { Spacer(); Text(text).foregroundStyle(.secondary).multilineTextAlignment(.center); Spacer() }
             .frame(maxWidth: .infinity)
             .padding()
+    }
+}
+
+/// The reply as it is written, apart from the conversation so that a piece
+/// redraws this and nothing else.
+struct HubLiveBubble: View {
+    @ObservedObject var tail: HubLiveTail
+
+    var body: some View {
+        if !tail.text.isEmpty {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                        Text(tail.text).font(.system(size: 13)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Color.clear.frame(height: 1).id("live-end")
+                    }
+                    .padding(.horizontal, 18).padding(.vertical, 8)
+                }
+                .frame(maxHeight: 180)
+                .onChange(of: tail.text) { _, _ in proxy.scrollTo("live-end", anchor: .bottom) }
+            }
+            .accessibilityIdentifier("hub.live")
+        }
     }
 }
