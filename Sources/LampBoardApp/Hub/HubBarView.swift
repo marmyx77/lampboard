@@ -78,7 +78,7 @@ struct HubBarView: View {
                 Text(warning).font(.system(size: 11)).foregroundStyle(HubPalette.amber).accessibilityIdentifier("hub.bar.warning")
             }
             if !typed.isEmpty { typedCommands }
-            HubFlow(spacing: 6).callAsFunction {
+            HubFlow(spacing: 6) {
                 Button { open = .attach } label: { Image(systemName: "plus") }
                     .buttonStyle(HubIconStyle()).help("Attach or cite")
                     .popover(item: binding(.attach), arrowEdge: .top) { _ in pop(.attach) }

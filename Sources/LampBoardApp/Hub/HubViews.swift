@@ -165,7 +165,7 @@ struct HubConversationView: View {
     /// Send in the chosen mode, its menu for the other two (Marco's Hermes
     /// choice), Message now, Stop, and the way it goes.
     private func buttons(_ session: SessionState) -> some View {
-        HubFlow(spacing: 8).callAsFunction {
+        HubFlow(spacing: 8) {
             Menu {
                 ForEach(HubWrite.Mode.allCases, id: \.self) { mode in
                     Button(Self.title(mode)) { model.mode = mode; model.submit() }

@@ -177,7 +177,7 @@ struct HubPopList<Item: Identifiable>: View {
 
 /// Children in a row that wraps to the next line when the room runs out, as
 /// the proposal's bar does (`flex-wrap`); never wider than its column.
-struct HubFlow: Layout {
+struct HubFlow: SwiftUI.Layout {
     var spacing: CGFloat = 6
     var lineSpacing: CGFloat = 6
 
