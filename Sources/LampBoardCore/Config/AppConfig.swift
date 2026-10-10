@@ -100,6 +100,7 @@ public enum AppConfig {
     /// What the Hub shows, and opening it on a session, under a fake home only (tests).
     public static let hubPath = "/hub"
     public static let hubOpenPath = "/hub/open"
+    public static let hubComposePath = "/hub/compose"
 
     /// How many slots a key can address.
     ///

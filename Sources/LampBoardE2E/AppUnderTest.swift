@@ -33,6 +33,8 @@ final class AppUnderTest {
     let port: UInt16
     /// Added to the launch, for the cases that start the app in another mode.
     var extraArguments: [String] = []
+    /// Off for the suites that need the panel and its windows (the Hub).
+    var headless = true
     /// Variables set over the test run's own, for the cases that check what does
     /// not get through (the live view's `TMUX`, D130).
     var extraEnvironment: [String: String] = [:]
@@ -82,7 +84,7 @@ final class AppUnderTest {
 
         beforeLaunch?(home)
         process.executableURL = binaryURL
-        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"] + extraArguments
+        process.arguments = (headless ? ["--headless"] : []) + ["--port", String(port), "--skip-setup-prompt"] + extraArguments
 
         var environment = ProcessInfo.processInfo.environment
         for (key, value) in extraEnvironment { environment[key] = value }
@@ -107,7 +109,7 @@ final class AppUnderTest {
         }
 
         process.executableURL = binaryURL
-        process.arguments = ["--headless", "--port", String(port), "--skip-setup-prompt"] + extraArguments
+        process.arguments = (headless ? ["--headless"] : []) + ["--port", String(port), "--skip-setup-prompt"] + extraArguments
 
         var environment = ProcessInfo.processInfo.environment
         environment[AppConfig.homeOverrideVariable] = home.path
@@ -131,6 +133,8 @@ final class AppUnderTest {
     }
 
     /// Stops the process and deletes the fake home.
+    var isRunning: Bool { process.isRunning }
+
     func stop() {
         if process.isRunning {
             process.terminate()

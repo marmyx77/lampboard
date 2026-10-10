@@ -58,12 +58,16 @@ extension SignalServer {
             guard let body = onHubReport?() else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
             return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: body, as: UTF8.self), contentType: "application/json")
         }
-        guard request.path == AppConfig.hubOpenPath, request.method == "POST" else {
-            return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed")
+        guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        struct Wire: Decodable { let session: String?; let mode: String?; let text: String? }
+        let wire = try? JSONDecoder().decode(Wire.self, from: request.body)
+        if request.path == AppConfig.hubComposePath {
+            guard let text = wire?.text else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
+            return onHubCompose?(text) == true
+                ? HTTPRequestParser.response(status: 204, reason: "No Content")
+                : HTTPRequestParser.response(status: 409, reason: "Conflict", body: "nothing sent")
         }
-        struct Wire: Decodable { let session: String? }
-        let session = (try? JSONDecoder().decode(Wire.self, from: request.body))?.session
-        return onHubOpen?(session) == true
+        return onHubOpen?(wire?.session, wire?.mode) == true
             ? HTTPRequestParser.response(status: 204, reason: "No Content")
             : HTTPRequestParser.response(status: 503, reason: "Service Unavailable")
     }

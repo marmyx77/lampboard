@@ -58,6 +58,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "chatMessages": model.chat?.messages.count ?? 0,
             "status": session?.status.rawValue ?? NSNull(),
             "windowNumber": window?.windowNumber ?? 0,
+            "notice": model.notice ?? NSNull(),
         ]
         return try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
     }
@@ -69,6 +70,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             self?.model.selected = id
         }))
         sidebarHost = sidebar
+        // Dark whatever the Mac is, like the panel (StatusPalette.appearance).
+        sidebar.view.appearance = StatusPalette.appearance
         let conversation = NSHostingController(rootView: HubConversationView(model: model))
 
         let split = NSSplitViewController()

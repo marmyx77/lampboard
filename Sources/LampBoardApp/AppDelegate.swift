@@ -620,7 +620,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panelKey = PanelKey.loadOrCreate()
         server.hubDesk = panelKey.map { HubCommandDesk(key: $0) }
         server.onHubReport = { [weak self] in Self.onMain(timeout: 2) { self?.hub?.report() } }
-        server.onHubOpen = { [weak self] id in Self.onMain(timeout: 2) { self?.hub.map { $0.show(session: id); return true } } ?? false }
+        server.onHubOpen = { [weak self] id, mode in
+            Self.onMain(timeout: 2) {
+                self?.hub.map { hub in
+                    if let mode = mode.flatMap(HubWrite.Mode.init(rawValue:)) { hub.model.mode = mode }
+                    hub.show(session: id)
+                    return true
+                }
+            } ?? false
+        }
+        server.onHubCompose = { [weak self] text in Self.onMain(timeout: 2) { self?.hub?.model.send(text) } ?? false }
         self.hubDesk = server.hubDesk
         do {
             try server.start()

@@ -18,6 +18,7 @@ import SwiftUI
 /// was written to avoid.
 struct SessionSubRow: View {
     let member: RowSession
+    @Environment(\.hubSelection) private var hubSelection
     let now: Date
     let open: (RowSession) -> Void
     let rename: (RowSession) -> Void
@@ -102,7 +103,7 @@ struct SessionSubRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.white.opacity(drag?.isDragged == true ? 0.16 : hovering ? 0.10 : 0))
+                .fill(Color.white.opacity(drag?.isDragged == true ? 0.16 : hovering ? 0.10 : hubSelection == member.id ? 0.14 : 0))
         )
         .contentShape(Rectangle())
         .onHover { hovering = $0 }

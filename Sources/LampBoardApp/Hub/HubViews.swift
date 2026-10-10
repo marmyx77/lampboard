@@ -67,10 +67,13 @@ struct HubSidebarView: View {
                 Divider().padding(.top, 4)
             }
             ScrollView(.vertical) {
-                panel.environment(\.columnFillsWidth, true).frame(maxWidth: .infinity, alignment: .topLeading)
+                panel.environment(\.columnFillsWidth, true).environment(\.hubSelection, model.selected)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
-        .frame(minWidth: 220)
+        .frame(minWidth: 220, maxHeight: .infinity, alignment: .top)
+        // The panel's dark material, full height: the rows are drawn for it (D150).
+        .background(PanelBackground().overlay(StatusPalette.panelScrim).ignoresSafeArea())
     }
 }
 

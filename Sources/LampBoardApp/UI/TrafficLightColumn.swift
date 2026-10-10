@@ -669,3 +669,15 @@ extension EnvironmentValues {
         set { self[ColumnFillsWidthKey.self] = newValue }
     }
 }
+
+/// The session open in the Hub, which its row marks; `nil` in the panel (D150).
+private struct HubSelectionKey: EnvironmentKey {
+    static let defaultValue: String? = nil
+}
+
+extension EnvironmentValues {
+    var hubSelection: String? {
+        get { self[HubSelectionKey.self] }
+        set { self[HubSelectionKey.self] = newValue }
+    }
+}

@@ -86,7 +86,8 @@ final class SignalServer {
     var hubDesk: HubCommandDesk?
     /// The Hub's report and opening it, for the tests (fake home only).
     var onHubReport: (() -> Data?)?
-    var onHubOpen: ((String?) -> Bool)?
+    var onHubOpen: ((String?, String?) -> Bool)?
+    var onHubCompose: ((String) -> Bool)?
 
     private var listener: NWListener?
 
@@ -374,7 +375,7 @@ final class SignalServer {
         case AppConfig.hubSendPath:
             return handleHubSend(request)
 
-        case AppConfig.hubPath, AppConfig.hubOpenPath:
+        case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubComposePath:
             return handleHubTest(request)
 
         case AppConfig.healthPath:

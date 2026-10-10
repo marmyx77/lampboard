@@ -117,18 +117,15 @@ struct PanelRootView: View {
     var openInEditor: (String) -> Void = { _ in }
     var closePlancia: () -> Void = {}
 
+    @Environment(\.columnFillsWidth) private var inHub
+
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             if let plancia, planciaLeading { planciaColumn(plancia) }
             column
             if let plancia, !planciaLeading { planciaColumn(plancia) }
         }
-        .background(PanelBackground().overlay(StatusPalette.panelScrim))
-        .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-        )
+        .modifier(PanelChrome(inHub: inHub))
     }
 
     private func planciaColumn(_ model: PlanciaModel) -> some View {
@@ -472,7 +469,27 @@ private struct FooterButton: View {
 }
 
 /// Translucent panel background.
-private struct PanelBackground: NSViewRepresentable {
+/// The panel's own frame: the dark material, rounded, with its hairline. In the
+/// Hub the sidebar is the material, full height, and the rows sit in it (D150).
+private struct PanelChrome: ViewModifier {
+    let inHub: Bool
+
+    func body(content: Content) -> some View {
+        if inHub {
+            content
+        } else {
+            content
+                .background(PanelBackground().overlay(StatusPalette.panelScrim))
+                .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                )
+        }
+    }
+}
+
+struct PanelBackground: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .hudWindow

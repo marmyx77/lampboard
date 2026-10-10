@@ -110,6 +110,9 @@ struct TrafficLightRow: View {
     var drag: RowDragState? = nil
 
     @State private var hovering = false
+    /// The conversation open in the Hub, marked like a hover (D150).
+    @Environment(\.hubSelection) private var hubSelection
+    private var isOpenInHub: Bool { row.count == 1 && hubSelection == row.primary.id }
     @State private var hoveringFolder = false
 
     private var isDragged: Bool { drag?.isDragged ?? false }
@@ -260,7 +263,7 @@ struct TrafficLightRow: View {
         .frame(maxWidth: .infinity, alignment: compact ? .center : .leading)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.white.opacity(isDragged ? 0.18 : hovering ? 0.12 : 0))
+                .fill(Color.white.opacity(isDragged ? 0.18 : hovering ? 0.12 : isOpenInHub ? 0.14 : 0))
         )
         .contentShape(Rectangle())
         // One sentence for VoiceOver, the way the UX spells it: the project,
