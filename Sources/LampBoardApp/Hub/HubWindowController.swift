@@ -85,14 +85,24 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
     // MARK: - Building
 
+    /// A column's SwiftUI, with no size constraints of its own: the split item
+    /// holds the widths, and a hosting view that measured its whole tree for
+    /// Auto Layout on every change was most of what a live reply cost (P1).
+    private static func column<Content: View>(_ view: Content) -> NSHostingController<Content> {
+        let host = NSHostingController(rootView: view)
+        host.sizingOptions = []
+        return host
+    }
+
     private func makeWindow() -> NSWindow {
         let sidebar = NSHostingController(rootView: HubSidebarView(model: model, panel: sidebarContent { [weak self] id in
             self?.model.selected = id
         }))
+        sidebar.sizingOptions = []
         sidebarHost = sidebar
         // Dark whatever the Mac is, like the panel (StatusPalette.appearance).
         sidebar.view.appearance = StatusPalette.appearance
-        let conversation = NSHostingController(rootView: HubConversationView(model: model))
+        let conversation = Self.column(HubConversationView(model: model))
 
         let split = NSSplitViewController()
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
@@ -103,11 +113,11 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         let chatItem = NSSplitViewItem(viewController: conversation)
         chatItem.minimumThickness = 320
         chatItem.holdingPriority = .defaultLow
-        let filesItem = NSSplitViewItem(viewController: NSHostingController(rootView: HubFilesView(files: model.files)))
+        let filesItem = NSSplitViewItem(viewController: Self.column(HubFilesView(files: model.files)))
         filesItem.minimumThickness = 200
         filesItem.canCollapse = true
         filesItem.isCollapsed = !Preferences.sharedDefaults.bool(forKey: Self.filesShownKey)
-        let lastItem = NSSplitViewItem(viewController: NSHostingController(rootView: HubLastColumnView(files: model.files, shells: model.shells)))
+        let lastItem = NSSplitViewItem(viewController: Self.column(HubLastColumnView(files: model.files, shells: model.shells)))
         lastItem.minimumThickness = 260
         lastItem.canCollapse = true
         lastItem.isCollapsed = true
