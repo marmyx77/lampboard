@@ -33,9 +33,6 @@ const pending = new Map()
 // Whether the followed session's own box holds a draft, as last told (D154):
 // a yes or a no, never the words.
 const drafting = new Map()
-// The footer's mode as last drawn, for every session: the Hub gets it when it
-// starts following, and each change after.
-const modes = new Map()
 let trusted = null
 const FLUSH_EVERY = 150
 const TRUST_FOR = 10 * 60 * 1000
@@ -232,8 +229,8 @@ async function presence($, session, draft) {
 }
 
 // What the composer offers for the session the Hub opens (D157): its commands,
-// each a name and one short line, its mode, and where it draws (Remote Control
-// adds `mobile`).
+// each a name and one short line, and where it draws (Remote Control adds
+// `mobile`). The permission mode is not here: the hooks carry it (D139).
 async function facts($, session) {
   try {
     const list = (await $.command.list()).slice(0, 300)
@@ -243,7 +240,6 @@ async function facts($, session) {
   try {
     await tell($, { kind: 'surfaces', session, list: [...(await $.session.surfaces())].slice(0, 8) })
   } catch (_) {}
-  if (modes.has(session)) await tell($, { kind: 'mode', session, label: modes.get(session) })
 }
 
 async function tell($, report) {
@@ -277,7 +273,6 @@ export function endInbox(session) {
   running.delete(session)
   replacing.delete(session)
   drafting.delete(session)
-  modes.delete(session)
   overrides.delete(session)
   streaming.delete(session)
   pending.delete(session)
@@ -310,19 +305,6 @@ export function registerInbox(on) {
       // The person's Enter empties the box: the Hub hears it at the turn.
       if (streaming.has(session)) void boxNow($, session)
     }
-    return next(e)
-  })
-
-  // The footer's mode (Shift+Tab, /plan), as the session draws it.
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    try {
-      const session = await $.session.id()
-      const label = (e.props?.modes ?? []).map(String).join(' · ').slice(0, 80)
-      if (modes.get(session) !== label) {
-        modes.set(session, label)
-        if (streaming.has(session)) void tell($, { kind: 'mode', session, label })
-      }
-    } catch (_) {}
     return next(e)
   })
 
