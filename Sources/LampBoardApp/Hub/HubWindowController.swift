@@ -79,13 +79,14 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         sidebarItem.minimumThickness = 280
         sidebarItem.maximumThickness = 520
         sidebarItem.canCollapse = true
-        sidebarItem.isCollapsed = UserDefaults.standard.bool(forKey: Self.sidebarCollapsedKey)
+        sidebarItem.isCollapsed = Preferences.sharedDefaults.bool(forKey: Self.sidebarCollapsedKey)
         let chatItem = NSSplitViewItem(viewController: conversation)
         chatItem.minimumThickness = 320
         chatItem.holdingPriority = .defaultLow
         split.addSplitViewItem(sidebarItem)
         split.addSplitViewItem(chatItem)
-        split.splitView.autosaveName = "LampBoardHub.columns"
+        // A fake home keeps its widths apart from the person's (Preferences.sharedDefaults' rule).
+        split.splitView.autosaveName = AppConfig.isUsingHomeOverride ? "LampBoardHub.columns.test" : "LampBoardHub.columns"
         split.splitView.identifier = NSUserInterfaceItemIdentifier("hub.split")
         self.split = split
 
@@ -95,7 +96,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
         window.setContentSize(NSSize(width: 1100, height: 720))
         window.minSize = NSSize(width: 640, height: 420)
-        window.setFrameAutosaveName("LampBoardHub")
+        window.setFrameAutosaveName(AppConfig.isUsingHomeOverride ? "LampBoardHub.test" : "LampBoardHub")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("hub.window")
         window.delegate = self
@@ -134,7 +135,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     @objc func toggleSessions() {
         guard let item = split?.splitViewItems.first else { return }
         item.animator().isCollapsed.toggle()
-        UserDefaults.standard.set(item.isCollapsed, forKey: Self.sidebarCollapsedKey)
+        Preferences.sharedDefaults.set(item.isCollapsed, forKey: Self.sidebarCollapsedKey)
     }
 
     // MARK: - Window

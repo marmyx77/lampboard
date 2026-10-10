@@ -33,7 +33,7 @@ final class HubModel: ObservableObject {
     @Published private(set) var commandable: Set<String> = []
     @Published private(set) var chat: LiveChatModel?
     @Published var mode: HubWrite.Mode {
-        didSet { UserDefaults.standard.set(mode.rawValue, forKey: Self.modeKey) }
+        didSet { Preferences.sharedDefaults.set(mode.rawValue, forKey: Self.modeKey) }
     }
     /// What the composer said about the last send.
     @Published var notice: String?
@@ -46,7 +46,7 @@ final class HubModel: ObservableObject {
 
     init(deps: HubDependencies) {
         self.deps = deps
-        self.mode = UserDefaults.standard.string(forKey: Self.modeKey).flatMap(HubWrite.Mode.init(rawValue:)) ?? .queue
+        self.mode = Preferences.sharedDefaults.string(forKey: Self.modeKey).flatMap(HubWrite.Mode.init(rawValue:)) ?? .queue
         $selected.removeDuplicates().sink { [weak self] id in self?.openChat(for: id) }.store(in: &cancellables)
         // Once a second, as the live view does: whether Send can go now.
         Timer.publish(every: 1, on: .main, in: .common).autoconnect()
