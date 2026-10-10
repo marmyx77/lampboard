@@ -428,7 +428,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Types `text` into that window's terminal and presses Enter.
-    func paste(_ text: String, into sessionId: String) -> Bool {
+    func submit(_ text: String, toSession sessionId: String) -> Bool {
         guard canPaste(into: sessionId), let live = live(showing: sessionId) else { return false }
         return live.surface.submit(text)
     }

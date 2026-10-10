@@ -40,7 +40,7 @@ enum HubSetup {
                     if case .success = PeerSender().send(text, to: id) { return true }
                     return false
                 case .paste:
-                    return live.paste(text, into: id)
+                    return live.submit(text, toSession: id)
                 case .none:
                     return false
                 }
