@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var server: SignalServer?
     /// The Hub's signed commands to the sessions' mods (D152).
     private(set) var hubDesk: HubCommandDesk?
+    private var hub: HubWindowController?
     private var panelController: PanelController?
     /// The live view's windows (D130): here and not in the panel, because the
     /// end-to-end suite runs headless and still opens them.
@@ -130,9 +131,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // What each session's tools did, with or without a panel on screen: the
         // radar (§4.4) answers from it either way.
-        mod.onReport = { [activity, askDesk] report, at in
+        mod.onReport = { [weak self, activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)
+            Task { @MainActor in self?.hub?.model.heard(report) }
         }
 
         if !headless {
@@ -332,6 +334,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                           ?? localTmux.places[session.id])
         }
         panelController = controller
+        // The Hub (D149), where the Plancia was.
+        hub = HubSetup.make(store: store, panel: controller, live: live, hubDesk: { [weak self] in self?.hubDesk })
 
         startNotifier(for: controller)
         startPresence()

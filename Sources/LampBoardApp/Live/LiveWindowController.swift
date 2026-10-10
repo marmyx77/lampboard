@@ -369,8 +369,13 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// A live window is somewhere to come back to (D138): while one is open,
     /// LampBoard has a Dock icon, a place in ⌘Tab and a Window menu listing
     /// them; with the last one closed it is a menu-bar app again.
+    /// Another window that needs the Dock and the menu while it is open: the Hub.
+    var keepsDock: () -> Bool = { false }
+
+    func refreshDockPresence() { updateDockPresence() }
+
     private func updateDockPresence() {
-        let policy: NSApplication.ActivationPolicy = lives.isEmpty ? .accessory : .regular
+        let policy: NSApplication.ActivationPolicy = lives.isEmpty && !keepsDock() ? .accessory : .regular
         guard NSApp.activationPolicy() != policy else { return }
         NSApp.setActivationPolicy(policy)
         if policy == .regular { NSApp.activate(ignoringOtherApps: true) }

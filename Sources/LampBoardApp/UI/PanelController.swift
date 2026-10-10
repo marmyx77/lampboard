@@ -70,6 +70,10 @@ final class PanelController {
     var onOpenLegend: (() -> Void)?
     /// LampMaster's round and the opening of its window, set by whoever owns them.
     var lampMaster: LampMasterService?
+    /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
+    var openHub: ((String?) -> Void)?
+    /// After the panel redraws, so the Hub's sidebar redraws with it (D150).
+    var onRebuilt: (() -> Void)?
     /// What each session has been doing, for the Plancia's tabs.
     var activity: ActivityRecorder?
     /// The permissions the panel holds, answered from the queue (D80).
@@ -332,12 +336,15 @@ final class PanelController {
             closePlancia: { [weak self] in self?.closePlancia() }
         )
         panel.contentView = NSHostingView(rootView: root)
+        onRebuilt?()
         renderedOptions = columnOptions
         restingDrawn = ColumnLayout.render(store.state, options: columnOptions, now: Date()).resting?.rows.map(\.id) ?? []
         resizeToFit(store.state)
     }
 
-    var panelFlags: PanelFlags {
+    var panelFlags: PanelFlags { flags(compact: compact) }
+
+    func flags(compact: Bool) -> PanelFlags {
         PanelFlags(
             compact: compact,
             home: home,
@@ -449,7 +456,7 @@ final class PanelController {
 
     // MARK: - Row actions
 
-    private func makeRowActions() -> RowActions {
+    func makeRowActions() -> RowActions {
         RowActions(
             open: { [weak self] row in self?.activate(row, markSeen: true) },
             peek: { [weak self] row in self?.activate(row, markSeen: false) },
@@ -501,7 +508,9 @@ final class PanelController {
                 self?.move(member, in: row, by: offset)
             },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) },
-            openPlancia: { [weak self] row in self?.openPlancia(sessionId: row.primary.id) },
+            openPlancia: { [weak self] row in
+                if let openHub = self?.openHub { openHub(row.primary.id) } else { self?.openPlancia(sessionId: row.primary.id) }
+            },
             pinDecision: { [weak self] repository in self?.pinDecision(in: repository) },
             unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
             decisions: { [weak self] repository in

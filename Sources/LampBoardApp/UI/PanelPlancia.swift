@@ -151,7 +151,7 @@ extension PanelController {
             closePlancia()
             toggleCompact()
         } else if let id = queue.cards.first?.sessionIds.first ?? currentRendering.rows.first?.primary.id {
-            openPlancia(sessionId: id)
+            if let openHub { openHub(id) } else { openPlancia(sessionId: id) }
         } else {
             toggleCompact()
         }

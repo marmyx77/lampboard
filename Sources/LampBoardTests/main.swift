@@ -170,6 +170,7 @@ let suites: [TestSuite] = [
     ModLedgerSuite.suite,
     ModFilesSuite.suite,
     CommandEnvelopeSuite.suite,
+    HubWriteSuite.suite,
     ModLookSuite.suite,
     ModTrustSuite.suite,
     ModAllowanceSuite.suite,

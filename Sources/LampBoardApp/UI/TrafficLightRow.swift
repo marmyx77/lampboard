@@ -7,7 +7,7 @@ import SwiftUI
 /// six of them and there will be more: a signature with six closures becomes
 /// unreadable the first time a parameter is added in the middle.
 struct RowActions {
-    let open: (ColumnRow) -> Void
+    var open: (ColumnRow) -> Void
     let peek: (ColumnRow) -> Void
     let markUnread: (ColumnRow) -> Void
     /// Moves the row one place up (`-1`) or down (`+1`) among the rows shown.
@@ -26,7 +26,7 @@ struct RowActions {
     /// conversations does, since a row that contains rows is a heading.
     let toggleExpansion: (ColumnRow) -> Void
     /// Raises one conversation, and clears only that one.
-    let openSession: (RowSession) -> Void
+    var openSession: (RowSession) -> Void
     /// Names one conversation, touching nothing else.
     let renameSession: (RowSession) -> Void
     let dismissSession: (RowSession) -> Void
