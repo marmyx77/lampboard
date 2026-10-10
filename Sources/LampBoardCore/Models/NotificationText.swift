@@ -18,6 +18,27 @@ public enum NotificationText {
         case finished
     }
 
+    /// A notification's name in Notification Centre: one per session and kind,
+    /// so a newer one replaces it and a stale one can be taken back.
+    public static func identifier(_ event: Event, session: String) -> String {
+        "lampboard.\(event).\(session)"
+    }
+
+    /// What a status change makes stale (M7): the news of the state a session
+    /// left. A permission answered, a failed turn started again, an answer read
+    /// or followed by another turn: the alert about it goes from Notification
+    /// Centre. A session gone takes all of its alerts with it.
+    public static func stale(before: SessionStatus?, after: SessionStatus?) -> [Event] {
+        guard before != after else { return [] }
+        guard after != nil else { return [.waiting, .failed, .finished] }
+        switch before {
+        case .awaiting: return [.waiting]
+        case .failed: return [.failed]
+        case .ready: return [.finished]
+        default: return []
+        }
+    }
+
     /// The longest body, so a long command or answer is cut where it says so.
     public static let bodyLimit = 160
 

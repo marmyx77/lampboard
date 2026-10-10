@@ -88,6 +88,8 @@ final class SignalServer {
     var onHubReport: (() -> Data?)?
     var onHubOpen: ((String?, String?) -> Bool)?
     /// `sent`, `confirm` (a draft waits in the session's box) or `refused`.
+    /// Indexes `host`'s conversations and searches them (fake home only, M7).
+    var onRemoteIndex: ((_ host: String, _ query: String) async -> [String: Any])?
     var onHubCompose: ((_ text: String, _ confirm: Bool) -> String?)?
     var onHubFiles: ((Data) -> Bool)?
     /// A piece of a reply as it arrives (D153): session, turn, text, done.

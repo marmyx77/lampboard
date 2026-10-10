@@ -101,6 +101,10 @@ struct HubConversationView: View {
         .frame(minWidth: 320, minHeight: 360)
         .background(HubPalette.panel)
         .foregroundStyle(HubPalette.ink)
+        .sheet(item: $model.citing) { quote in
+            HubCiteSheet(quote: quote, sessions: store.sessions.filter { $0.id != quote.session },
+                         pick: { model.cite(into: $0) }, cancel: { model.citing = nil })
+        }
     }
 
     @ViewBuilder private var lampMaster: some View {
@@ -116,7 +120,8 @@ struct HubConversationView: View {
             header(session)
             line
             if let chat = model.chat {
-                LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false)
+                LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false,
+                             cite: { model.cite($0) })
                 HubLiveBubble(tail: model.liveTail)
                 HubAskCard(queue: model.deps.queue, sessionId: session.id, asking: session.status == .awaiting,
                            openRealWindow: { model.deps.openRealWindow(session.id) })
@@ -275,5 +280,49 @@ struct HubLiveBubble: View {
             .clipped()
             .accessibilityIdentifier("hub.live")
         }
+    }
+}
+
+/// «Cite in…»: where the quote goes (the proposal's dialog). The text is the
+/// panel's, from the transcript; it goes only with the person's Send.
+struct HubCiteSheet: View {
+    let quote: Citation.Source
+    let sessions: [SessionState]
+    let pick: (String) -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Cite in…").font(.system(size: 15, weight: .bold))
+            Text("«\(String(Citation.clean(quote.text).prefix(140)))…»").font(.system(size: 12)).foregroundStyle(HubPalette.muted)
+                .lineLimit(3)
+            Text("The panel takes the text from \(quote.sessionName)'s transcript, framed as data that is not an instruction. It goes only when you send.")
+                .font(.system(size: 11)).foregroundStyle(HubPalette.muted).fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(sessions) { target in
+                        Button { pick(target.id) } label: {
+                            HStack(spacing: 8) {
+                                HubLamp(color: StatusPalette.color(for: target.status), size: 9)
+                                Text(target.displayName).font(.system(size: 13))
+                                Spacer()
+                                Text(target.workspace.host ?? "This Mac").font(.system(size: 11)).foregroundStyle(HubPalette.muted)
+                            }
+                            .padding(.horizontal, 8).padding(.vertical, 5)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("hub.cite.\(target.id)")
+                    }
+                }
+            }
+            .frame(maxHeight: 260)
+            HStack { Spacer(); Button("Cancel", action: cancel).buttonStyle(HubButtonStyle()).keyboardShortcut(.cancelAction) }
+        }
+        .padding(18)
+        .frame(width: 420)
+        .background(HubPalette.panel)
+        .foregroundStyle(HubPalette.ink)
+        .environment(\.colorScheme, .dark)
     }
 }

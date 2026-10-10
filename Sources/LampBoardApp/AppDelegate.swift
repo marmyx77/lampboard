@@ -81,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let askDesk = PeerAskDesk()
     /// Every conversation of this Mac, searchable (0.7); kept up off the main thread.
     let searchIndex = SearchIndex()
+    private var remoteIndexTask: Task<Void, Never>?
     private var indexClock: DispatchSourceTimer?
     private lazy var lampMaster = LampMasterService(preferences: preferences, rows: { [store] in store.sessions })
 
@@ -356,6 +357,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         clock.resume()
         indexClock = clock
+        startRemoteIndexing()
+    }
+
+    /// The other machines' conversations for ⌘K (M7): every two minutes, each
+    /// machine's transcripts listed through the panel's ssh and only their new
+    /// bytes read, a budget a pass, the newest first.
+    private func startRemoteIndexing() {
+        let index = searchIndex
+        remoteIndexTask = Task.detached(priority: .utility) { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            while !Task.isCancelled {
+                let hosts = await MainActor.run { self?.preferences.remoteHosts ?? [] }
+                if Preferences().searchIndexed {
+                    for host in hosts { await Self.indexRemote(host: host, into: index) }
+                }
+                try? await Task.sleep(nanoseconds: 120_000_000_000)
+            }
+        }
+    }
+
+    nonisolated static func indexRemote(host: String, into index: SearchIndex,
+                                        budgetFiles: Int = 40, budgetBytes: Int = 8 << 20) async {
+        guard let listing = await ProjectSource.ssh(host, RemoteTranscripts.list()) else { return }
+        var files = 0, bytes = 0, messages = 0
+        for file in RemoteTranscripts.parse(listing) where files < budgetFiles && bytes < budgetBytes {
+            guard let start = index.nextOffset(for: file),
+                  let script = RemoteTranscripts.read(path: file.path, from: start, limit: 2 << 20),
+                  let data = await ProjectSource.sshData(host, script), !data.isEmpty else { continue }
+            files += 1; bytes += data.count
+            messages += index.ingest(host: host, file: file, from: start, chunk: data) ?? 0
+        }
+        if files > 0 { Diagnostics.log("index: \(files) transcripts of \(host), \(messages) messages") }
     }
 
     private func startNotifier(for controller: PanelController) {
@@ -648,6 +681,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if outcome == .confirm, confirm { outcome = model.submit() }
                 return outcome.rawValue
             } ?? nil
+        }
+        server.onRemoteIndex = { [searchIndex] host, query in
+            // Several passes, as the clock would make them, until nothing is left to read.
+            for _ in 0..<20 { await AppDelegate.indexRemote(host: host, into: searchIndex, budgetFiles: 400, budgetBytes: 64 << 20) }
+            let hits = searchIndex.search(query, limit: 20)
+            return ["hits": hits.map { ["session": $0.sessionId, "host": $0.host ?? "this Mac"] }]
         }
         server.onModStream = { [weak self] session, turn, text, done in
             DispatchQueue.main.async { self?.hub?.model.heard(stream: text, turn: turn, done: done, session: session) }

@@ -1,4 +1,5 @@
 import AppKit
+import ClarcChatKit
 import Combine
 import LampBoardCore
 import SwiftUI
@@ -85,6 +86,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "chosenEffort": model.bar.effort ?? NSNull(),
             "barWarning": model.bar.warning ?? NSNull(),
             "cacheWarm": HubBar.cacheWarm(session?.context, now: Date()),
+            "quotes": model.composer.quotes.map(\.text),
+            "question": model.composer.question ?? NSNull(),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,
@@ -254,6 +257,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let value = wish["effort"] as? String { model.choose(effort: value.isEmpty ? nil : value) }
         if let value = wish["mode"] as? String, let mode = HubBar.Mode(rawValue: value) { model.choose(mode: mode) }
         if wish["remote"] as? Bool == true { model.toggleRemoteControl() }
+        // «Cite in…» on the n-th reply of the open conversation: the text is
+        // always the transcript's; a "text" in the wish is never read (E29).
+        if let index = wish["cite"] as? Int, let target = wish["into"] as? String,
+           let replies = model.chat?.messages.filter({ $0.role == .assistant }), replies.indices.contains(index) {
+            model.cite(replies[index])
+            model.cite(into: target)
+        }
         if let paths = wish["attach"] as? [String] {
             let urls = paths.map { URL(fileURLWithPath: $0) }
             Task { @MainActor in await self.model.attach(urls) }

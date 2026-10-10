@@ -103,11 +103,24 @@ extension SignalServer {
         guard request.method == "POST", let token, AccessToken.matches(request.header(AccessToken.headerName), expected: token)
         else { return HTTPRequestParser.response(status: 401, reason: "Unauthorized") }
         guard let wish = try? JSONSerialization.jsonObject(with: request.body) as? [String: String],
-              let host = wish["host"], let root = wish["root"]
+              let host = wish["host"]
         else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
-        let source = ProjectSource(root: root, host: host)
         let semaphore = DispatchSemaphore(value: 0)
         nonisolated(unsafe) var result: [String: Any] = [:]
+        // ⌘K over that machine's conversations (M7): indexed through the real
+        // ssh, then searched; the answer names conversations, never their words.
+        if let query = wish["index"], let index = onRemoteIndex {
+            Task.detached {
+                result = await index(host, query)
+                semaphore.signal()
+            }
+            guard semaphore.wait(timeout: .now() + 300) == .success,
+                  let body = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+            else { return HTTPRequestParser.response(status: 504, reason: "Gateway Timeout") }
+            return HTTPRequestParser.response(status: 200, reason: "OK", body: String(decoding: body, as: UTF8.self), contentType: "application/json")
+        }
+        guard let root = wish["root"] else { return HTTPRequestParser.response(status: 400, reason: "Bad Request") }
+        let source = ProjectSource(root: root, host: host)
         Task.detached {
             let entries = await source.list(nil)
             let git = await source.gitStatus()

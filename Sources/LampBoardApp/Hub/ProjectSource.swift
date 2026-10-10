@@ -104,6 +104,12 @@ struct ProjectSource: Sendable {
     /// One connection per machine, shared and kept a minute: the tree, a file
     /// and git status are three questions, not three logins.
     static func ssh(_ host: String, _ script: String, input: Data? = nil) async -> String? {
+        await sshData(host, script, input: input).map { String(decoding: $0, as: UTF8.self) }
+    }
+
+    /// The same, as bytes: a transcript's chunk can end inside a character, and
+    /// decoding it would move the index's offset (M7).
+    static func sshData(_ host: String, _ script: String, input: Data? = nil) async -> Data? {
         guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
         // Short on purpose: a socket path is at most 104 bytes, and macOS's own
         // temporary folder plus the hash is longer (measured, 10 October 2026).
@@ -111,10 +117,14 @@ struct ProjectSource: Sendable {
         let args = SSHHardening.options + ["-o", "ConnectTimeout=8", "-o", "ControlMaster=auto",
                                           "-o", "ControlPath=\(control)", "-o", "ControlPersist=60",
                                           "-T", "--", host, script]
-        return await run("/usr/bin/ssh", args, input: input)
+        return await runData("/usr/bin/ssh", args, input: input)
     }
 
     static func run(_ executable: String, _ arguments: [String], timeout: TimeInterval = 15, input: Data? = nil) async -> String? {
+        await runData(executable, arguments, timeout: timeout, input: input).map { String(decoding: $0, as: UTF8.self) }
+    }
+
+    static func runData(_ executable: String, _ arguments: [String], timeout: TimeInterval = 15, input: Data? = nil) async -> Data? {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
@@ -139,7 +149,7 @@ struct ProjectSource: Sendable {
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit()
                 timer.cancel()
-                continuation.resume(returning: process.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil)
+                continuation.resume(returning: process.terminationStatus == 0 ? data : nil)
             }
         }
     }

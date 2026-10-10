@@ -1,3 +1,4 @@
+import ClarcChatKit
 import Combine
 import Foundation
 import LampBoardCore
@@ -59,6 +60,8 @@ final class HubModel: ObservableObject {
     }
     let liveTail = HubLiveTail()
     let composer = HubComposer()
+    /// A reply chosen for «Cite in…», waiting for where it goes.
+    @Published var citing: Citation.Source?
     let bar = HubBarState()
     /// A model chosen once over a warm cache, waiting for the second choice.
     var pendingModel: String??
@@ -145,16 +148,22 @@ final class HubModel: ObservableObject {
     @discardableResult
     func submit() -> HubComposer.Outcome {
         guard let id = session?.id else { return .refused }
-        if let ran = runSlash(composer.text, in: id) { return ran }
-        guard let body = HubWrite.sendable(composer.text) else { return .refused }
+        if composer.quotes.isEmpty, let ran = runSlash(composer.text, in: id) { return ran }
+        guard let body = HubWrite.sendable(composer.outgoing) else { return .refused }
         let verdict = HubWrite.verdict(mode, in: deps.situation(id))
         guard verdict.route != .none else {
             notice = "This session cannot take a message from here now. Open its window."
             return .refused
         }
-        if verdict.confirm, !composer.confirming {
-            composer.ask()
-            return .confirm
+        if !composer.confirming {
+            if verdict.confirm {
+                composer.ask("Something is typed in the session's own box. Send again to send anyway: yours goes first, what is typed there stays.")
+                return .confirm
+            }
+            if !composer.quotes.isEmpty, Citation.warnsFor(mode: bar.mode) {
+                composer.ask("This session acts without asking (\(bar.mode?.title.lowercased() ?? "")): quoted text could steer what it does. Send again to send anyway.")
+                return .confirm
+            }
         }
         let before = chat.map { HubComposer.userTexts($0.messages) } ?? []
         guard deps.send(id, body, verdict.route, verdict.mode) else {
@@ -164,6 +173,24 @@ final class HubModel: ObservableObject {
         notice = nil
         composer.sent(body, session: id, before: before)
         return .sent
+    }
+
+    /// «Cite in…» on one of the open conversation's replies: the text as this
+    /// panel read it from the transcript, never from anywhere else (D155).
+    func cite(_ message: ChatMessage) {
+        guard let id = session?.id, message.role == .assistant else { return }
+        citing = Citation.Source(session: id, sessionName: session?.displayName ?? id,
+                                 messageId: message.id.uuidString, text: message.content)
+    }
+
+    /// The person chose where the quote goes: ready in that session's box, sent
+    /// only by their Send.
+    func cite(into target: String) {
+        guard let quote = citing, target != quote.session else { return }
+        citing = nil
+        composer.add(quote: quote, for: target)
+        selected = target
+        notice = "Quote ready: it goes only when you send."
     }
 
     /// A piece of a reply from the followed session; anything else is dropped.

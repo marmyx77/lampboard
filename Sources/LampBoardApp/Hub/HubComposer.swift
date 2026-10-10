@@ -14,6 +14,10 @@ final class HubComposer: ObservableObject {
     struct Pending: Equatable {
         let session: String
         let text: String
+        /// The quotes it carried, back in the box if it does not go.
+        var quotes: [Citation.Source] = []
+        /// What the person wrote, without the quotes.
+        var written: String = ""
         /// The user messages the transcript held when it went, for the receipt.
         let before: [String]
     }
@@ -25,23 +29,58 @@ final class HubComposer: ObservableObject {
     /// Send was pressed over the person's own draft: the next Send goes.
     @Published private(set) var confirming = false
     @Published private(set) var band: String?
+    /// Quotes from other sessions waiting to go with the next message (D155).
+    @Published private(set) var quotes: [Citation.Source] = []
+    /// Why Send asks first: a draft in the session's box, or quotes into a
+    /// session that acts without asking.
+    @Published private(set) var question: String?
     /// Whether the session's own box holds a draft, as its mod said.
     @Published private(set) var boxHasDraft = false
 
     private var drafts: [String: String] = [:]
+    private var quotesBySession: [String: [Citation.Source]] = [:]
     private var session: String?
 
     /// The box follows the open session: each keeps its own draft.
     func show(session id: String?) {
         guard id != session else { return }
-        if let session { drafts[session] = text }
+        if let session {
+            drafts[session] = text
+            quotesBySession[session] = quotes
+        }
         session = id
         text = id.flatMap { drafts[$0] } ?? ""
+        quotes = id.flatMap { quotesBySession[$0] } ?? []
+        question = nil
         confirming = false
         boxHasDraft = false
     }
 
-    func ask() { confirming = true }
+    func ask(_ why: String) {
+        confirming = true
+        question = why
+    }
+
+    /// A quote for `target`'s next message: in its box now if it is open,
+    /// kept for it otherwise. The same message once only.
+    func add(quote: Citation.Source, for target: String) {
+        if target == session {
+            if !quotes.contains(quote) { quotes.append(quote) }
+        } else {
+            var kept = quotesBySession[target] ?? []
+            if !kept.contains(quote) { kept.append(quote) }
+            quotesBySession[target] = kept
+        }
+    }
+
+    func remove(quote: Citation.Source) {
+        quotes.removeAll { $0 == quote }
+        confirming = false
+        question = nil
+    }
+
+    /// What goes: the quotes in their frames, then the words.
+    var outgoing: String { Citation.message(quotes: quotes, text: text.trimmingCharacters(in: .whitespacesAndNewlines)) }
 
     /// A file cited where it was dropped (D157): `@path` at `index` (a
     /// character offset, clamped), with a space either side where words touch.
@@ -58,6 +97,7 @@ final class HubComposer: ObservableObject {
     func ran() {
         text = ""
         confirming = false
+        question = nil
     }
 
     func show(band: String?) { if self.band != band { self.band = band } }
@@ -66,9 +106,11 @@ final class HubComposer: ObservableObject {
 
     /// The text left the box; it stays in sight until it arrives.
     func sent(_ text: String, session: String, before: [String]) {
-        pending = Pending(session: session, text: text, before: before)
+        pending = Pending(session: session, text: text, before: before, quotes: quotes, written: self.text)
         self.text = ""
+        quotes = []
         confirming = false
+        question = nil
     }
 
     /// Whether the transcript now holds the message: then it goes.
@@ -82,8 +124,15 @@ final class HubComposer: ObservableObject {
     func failed(session: String) {
         guard let pending, pending.session == session else { return }
         self.pending = nil
-        let back = text.isEmpty ? pending.text : pending.text + "\n" + text
-        if self.session == session { text = back } else { drafts[session] = back }
+        let written = pending.quotes.isEmpty ? pending.text : pending.written
+        let back = text.isEmpty ? written : written + "\n" + text
+        if self.session == session {
+            text = back
+            quotes = pending.quotes + quotes.filter { !pending.quotes.contains($0) }
+        } else {
+            drafts[session] = back
+            quotesBySession[session] = pending.quotes + (quotesBySession[session] ?? [])
+        }
     }
 
     /// The user messages of a conversation, as text, for the receipt.
@@ -116,10 +165,25 @@ struct HubComposerView: View {
                 }
                 .accessibilityIdentifier("hub.pending")
             }
-            if composer.confirming {
-                Text("Something is typed in the session's own box. Send again to send anyway: yours goes first, what is typed there stays.")
-                    .font(.system(size: 11)).foregroundStyle(HubPalette.amber)
+            if composer.confirming, let question = composer.question {
+                Text(question).font(.system(size: 11)).foregroundStyle(HubPalette.amber)
                     .accessibilityIdentifier("hub.confirm")
+            }
+            if !composer.quotes.isEmpty {
+                HubFlow(spacing: 6) {
+                    ForEach(composer.quotes, id: \.messageId) { quote in
+                        HStack(spacing: 4) {
+                            Text("↳ \(quote.sessionName): «\(String(Citation.clean(quote.text).prefix(48)))…»")
+                                .font(.system(size: 11)).lineLimit(1)
+                            Button { composer.remove(quote: quote) } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
+                                .buttonStyle(.plain).help("Take the quote out")
+                        }
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(Capsule().fill(HubPalette.codexSoft))
+                        .overlay(Capsule().stroke(HubPalette.codex))
+                    }
+                }
+                .accessibilityIdentifier("hub.quotes")
             }
             HubTextView(composer: composer, editable: canWrite, submit: submit)
                 .frame(height: height)

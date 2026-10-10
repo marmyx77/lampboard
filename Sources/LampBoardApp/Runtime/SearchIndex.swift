@@ -22,6 +22,8 @@ final class SearchIndex: @unchecked Sendable {
         let cwd: String?
         let lastAt: Date?
         let snippet: String
+        /// The machine it ran on, for a conversation of another one (M7).
+        var host: String? = nil
     }
 
     /// Transcripts older than this are left out of a first build.
@@ -144,7 +146,9 @@ final class SearchIndex: @unchecked Sendable {
         guard sqlite3_prepare_v2(db, "SELECT sid, path FROM conv ORDER BY last_at LIMIT 400", -1, &statement, nil) == SQLITE_OK else { return }
         var gone: [String] = []
         while gone.count < 20, sqlite3_step(statement) == SQLITE_ROW {
-            if let path = text(statement, 1), !FileManager.default.fileExists(atPath: path), let sid = text(statement, 0) { gone.append(sid) }
+            // Another machine's transcript is not on this disk; its listing keeps it (M7).
+            if let path = text(statement, 1), !path.hasPrefix("ssh://"), !FileManager.default.fileExists(atPath: path),
+               let sid = text(statement, 0) { gone.append(sid) }
         }
         sqlite3_finalize(statement)
         for sid in gone {
@@ -174,7 +178,7 @@ final class SearchIndex: @unchecked Sendable {
         return queue.sync {
             var statement: OpaquePointer?
             let sql = """
-                SELECT msg.sid, snippet(msg, 3, '«', '»', '…', 12), conv.title, conv.cwd, conv.last_at
+                SELECT msg.sid, snippet(msg, 3, '«', '»', '…', 12), conv.title, conv.cwd, conv.last_at, conv.path
                 FROM msg LEFT JOIN conv ON conv.sid = msg.sid WHERE msg MATCH ? ORDER BY bm25(msg) LIMIT 400
                 """
             guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
@@ -189,7 +193,8 @@ final class SearchIndex: @unchecked Sendable {
                 hits.append(Hit(sessionId: sid, title: text(statement, 2), cwd: text(statement, 3),
                                 lastAt: sqlite3_column_type(statement, 4) == SQLITE_NULL ? nil
                                     : Date(timeIntervalSince1970: sqlite3_column_double(statement, 4)),
-                                snippet: RowActivity.flat(text(statement, 1) ?? "")))
+                                snippet: RowActivity.flat(text(statement, 1) ?? ""),
+                                host: Self.host(ofKey: text(statement, 5))))
             }
             return hits
         }
@@ -257,6 +262,51 @@ final class SearchIndex: @unchecked Sendable {
     func cwd(of sessionId: String) -> String? {
         guard open() else { return nil }
         return queue.sync { stored(sessionId)?.facts.cwd }
+    }
+
+    // MARK: - Another machine's transcripts (M7)
+
+    /// Where to read `file` from next, or `nil` when the index has all of it.
+    /// A file that shrank is read again from its start.
+    func nextOffset(for file: RemoteTranscripts.File) -> Int? {
+        guard open() else { return nil }
+        return queue.sync {
+            guard let known = stored(file.sessionId) else { return 0 }
+            if known.offset == file.size { return nil }
+            return known.offset < file.size ? known.offset : 0
+        }
+    }
+
+    /// A chunk of another machine's transcript, read from `start` through the
+    /// panel's ssh: kept like a local one, under its `ssh://` key. Taken only
+    /// if the index still stands at `start`, so two passes never add one chunk
+    /// twice. The messages it added.
+    @discardableResult
+    func ingest(host: String, file: RemoteTranscripts.File, from start: Int, chunk raw: Data) -> Int? {
+        guard open() else { return nil }
+        return queue.sync {
+            guard run("BEGIN IMMEDIATE") else { return nil }
+            let sid = file.sessionId
+            let known = stored(sid)
+            let expected = known.map { $0.offset <= file.size ? $0.offset : 0 } ?? 0
+            guard expected == start, let last = raw.lastIndex(of: UInt8(ascii: "\n")) else { run("ROLLBACK"); return nil }
+            let chunk = Data(raw.prefix(through: last))
+            let lines = String(decoding: chunk, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: true)
+            let read = IndexRecords.read(lines: lines)
+            var ok = start > 0 || known == nil || delete(sid)
+            for message in read.messages where ok { ok = insert(sid, message) }
+            let earlier = start == 0 ? IndexRecords.Facts() : (known?.facts ?? IndexRecords.Facts())
+            ok = ok && save(sid, read.facts.following(earlier), path: RemoteTranscripts.key(host: host, path: file.path),
+                            offset: start + chunk.count)
+            guard ok, run("COMMIT") else { run("ROLLBACK"); return nil }
+            return read.messages.count
+        }
+    }
+
+    /// The machine in an `ssh://host/…` key; `nil` for a path on this Mac.
+    static func host(ofKey key: String?) -> String? {
+        guard let key, key.hasPrefix("ssh://") else { return nil }
+        return key.dropFirst("ssh://".count).split(separator: "/", maxSplits: 1).first.map(String.init)
     }
 
     // MARK: - Files

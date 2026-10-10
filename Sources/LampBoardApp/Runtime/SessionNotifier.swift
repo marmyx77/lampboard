@@ -174,7 +174,9 @@ final class SessionNotifier {
     private func announceTransitions(in state: TrafficLightState) {
         let now = state.sessions.mapValues(\.status)
         defer { lastStatus = now }
-        guard let before = lastStatus, preferences.notificationsEnabled else { return }
+        guard let before = lastStatus else { return }
+        withdrawStale(before: before, now: now)
+        guard preferences.notificationsEnabled else { return }
         for session in state.sessions.values where before[session.id] != session.status {
             switch session.status {
             case .failed where passesGate(session) && passesFocus(session, event: .failed, in: state):
@@ -185,6 +187,19 @@ final class SessionNotifier {
                 continue
             }
         }
+    }
+
+    /// Takes back from Notification Centre the alerts a change made stale: an
+    /// alert that stays after it was dealt with teaches that alerts lie.
+    private func withdrawStale(before: [String: SessionStatus], now: [String: SessionStatus]) {
+        guard Bundle.main.bundleIdentifier != nil else { return }
+        var stale: [String] = []
+        for id in Set(before.keys).union(now.keys) {
+            stale += NotificationText.stale(before: before[id], after: now[id]).map { NotificationText.identifier($0, session: id) }
+        }
+        guard !stale.isEmpty else { return }
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: stale)
+        Diagnostics.log("notifications withdrawn: \(stale.count)")
     }
 
     /// The gate deciding whether the alert is really needed.
@@ -295,7 +310,7 @@ final class SessionNotifier {
         content.userInfo = ["sessionId": session.id]
 
         let request = UNNotificationRequest(
-            identifier: "lampboard.\(event).\(session.id)",
+            identifier: NotificationText.identifier(event, session: session.id),
             content: content,
             trigger: nil
         )

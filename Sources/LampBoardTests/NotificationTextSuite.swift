@@ -51,5 +51,15 @@ enum NotificationTextSuite {
             t.expectEqual(calm.counter, "0 · 2")
             t.expectEqual(MenuBarSummary.empty.counter, "")
         },
+        TestCase("An alert is taken back once its news is stale: answered, started again, read, or the session gone") { t in
+            t.expectEqual(NotificationText.stale(before: .awaiting, after: .working), [.waiting], "the permission was answered")
+            t.expectEqual(NotificationText.stale(before: .failed, after: .working), [.failed], "the turn started again")
+            t.expectEqual(NotificationText.stale(before: .ready, after: .idle), [.finished], "the answer was read")
+            t.expectEqual(NotificationText.stale(before: .awaiting, after: .awaiting), [], "still waiting: the alert stays")
+            t.expectEqual(NotificationText.stale(before: .working, after: .ready), [], "news, not stale")
+            t.expectEqual(NotificationText.stale(before: .awaiting, after: nil), [.waiting, .failed, .finished], "gone")
+            t.expectEqual(NotificationText.stale(before: nil, after: .awaiting), [], "new")
+            t.expectEqual(NotificationText.identifier(.waiting, session: "s1"), "lampboard.waiting.s1")
+        },
     ])
 }

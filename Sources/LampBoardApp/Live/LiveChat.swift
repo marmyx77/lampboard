@@ -191,6 +191,8 @@ struct LiveChatView: View {
     let showTerminal: () -> Void
     /// Whether the chat has its own box; the Hub puts its composer below (D154).
     var composes = true
+    /// The Hub's «Cite in…» on each reply (D155); none in the live view.
+    var cite: ((ChatMessage) -> Void)? = nil
 
     @State private var draft = ""
     @State private var windowState = WindowState()
@@ -205,7 +207,13 @@ struct LiveChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
-                        ForEach(model.messages) { MessageBubble(message: $0) }
+                        ForEach(model.messages) { message in
+                            if let cite, message.role == .assistant {
+                                CitableBubble(message: message, cite: cite)
+                            } else {
+                                MessageBubble(message: message)
+                            }
+                        }
                         Color.clear.frame(height: 1).id("end")
                     }
                     .padding(.horizontal, 18)
@@ -264,5 +272,27 @@ struct LiveChatView: View {
         guard !text.isEmpty, model.canSend else { return }
         // Kept when it could not go: a message is never lost to a closed terminal.
         if send(text) { draft = "" }
+    }
+}
+
+/// A reply with «Cite in…» at its corner while the pointer is over it, and in
+/// its menu (the proposal's `.cite`).
+private struct CitableBubble: View {
+    let message: ChatMessage
+    let cite: (ChatMessage) -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        MessageBubble(message: message)
+            .overlay(alignment: .topTrailing) {
+                if hovering {
+                    Button("Cite in…") { cite(message) }
+                        .font(.system(size: 11))
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .padding(4)
+                }
+            }
+            .onHover { hovering = $0 }
+            .contextMenu { Button("Cite in…") { cite(message) } }
     }
 }
