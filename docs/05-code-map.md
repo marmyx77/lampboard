@@ -1,14 +1,14 @@
 # Code map
 
-~82,900 lines of Swift across five targets. For each file: what it contains, why
+~81,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,292 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    32,614 lines · 177 files   shell: AppKit, network, windows
-  LampBoardTests/  18,795 lines · 130 files   1365 cases, instantaneous
-  LampBoardE2E/    5,783 lines · 24 files   202 cases, the real binary
+  LampBoardCore/  24,951 lines · 193 files  pure logic, zero AppKit
+  LampBoardApp/    31,760 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  18,576 lines · 128 files   1344 cases, instantaneous
+  LampBoardE2E/    5,435 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1697,21 +1697,9 @@ escaping of titles inside a script.
 ## `Hub/`
 
 The rules of the Hub (D149), the window of columns that took the Plancia's place:
-what it may write into a session, what it may read of a project, what a quote
-carries, what its command bar means. The App's `Hub/` draws them.
-
-### `HubWrite.swift` · 158
-How the Hub writes to a session (D154): one verdict that every control that sends
-asks, so none decides on its own. The way in — the mod's signed `$.prompt.submit`
-(D152), which waits for a running turn and a dialog and leaves a draft in the box
-alone; Claude Code's message box (D81), taken into a running turn; a paste into
-the session's tmux pane behind D147's gate; or none, read only —, what Send does
-(Interrupt, Queue, Message now), and whether it asks first: over the person's own
-draft in the session's box, or with quotes into a session that acts without asking.
-A box LampBoard cannot see, VS Code's or the app's, only queues.
-
-> **Touching here** is changing who writes into a conversation: a control that
-> chose its own way in would be a second writer (D147).
+what it may read of a project, and what a file dropped on a session becomes. The
+session itself is its own terminal at the Hub's centre (D162). The App's `Hub/`
+draws them.
 
 ### `ProjectAccess.swift` · 215
 The Hub's look into a session's project (D156): a tree, a file, what git says, a
@@ -1723,20 +1711,11 @@ where it is read, here by the app and there by the script. Also how a file is
 shown: code with its highlighter's language, Markdown as Code or Preview, an image
 or an archive not as text.
 
-### `Citation.swift` · 93
-A passage of one session quoted into another (D155, amending D62): only by the
-person's click, only as the panel read it from the transcript, and only inside a
-fixed frame that says it is data, not an instruction. The text loses its control
-and format characters, which can hide words or move a terminal's cursor, is cut to
-a bound, and cannot close the frame early. The frame is the whole defence the
-other session gets: it acts with the person's tools.
-
-### `HubBar.swift` · 129
-The command bar's rules apart from its controls (D157): a slash line is a command
-only when the session lists that name — a path starts with a slash too —; Claude
-Code's permission modes as its footer names them, and how many Shift+Tab reach one
-from another (measured with 2.1.296); when a model change needs its warning over a
-warm cache; an attachment's name.
+### `ProjectAttachments.swift` · 40
+A file dropped on a session whose folder is on another machine, where a path of
+this Mac means nothing (P11): a plain name of its own in the project's
+attachments, out of git, never hidden and never one already there, and the
+`@path` that cites it.
 
 ### `MarkdownBlocks.swift` · 197
 A Markdown file cut into the blocks the Hub's preview draws (D161): headings,
@@ -1881,10 +1860,12 @@ The frame: the theme's backdrop, a header with the session's lamp, name and stat
 and the rounded card the terminal sits on, the card's colour being the terminal's
 background. «Open again» appears when the attach has ended.
 
-### `LiveWindowController.swift` · 484
-One window per background session, never two: two attaches of different sizes
-garble each other. Opens, starts (`claude --bg` off the main thread, then the
-attach), reattaches in the same window, closes (which detaches), and answers
+### `LiveWindowController.swift` · 608
+One terminal per session, never two: two attaches of different sizes garble each
+other. A terminal sits in a window of its own or at the Hub's centre (D162), and
+moves between them without a second attach; the Hub keeps its last four chosen
+attached and leaves the rest. Opens, starts (`claude --bg` off the main thread,
+then the attach), reattaches in place, closes (which detaches), and answers
 `GET /live`. Its snapshot composes the frame and the terminal, drawn separately:
 drawn together, the terminal's text was clipped away.
 
@@ -1948,54 +1929,25 @@ icons, their widths and what is shown kept by macOS between launches. Opens on a
 named session, redraws the sidebar when the panel changes — an order, a name, a
 mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 98
-Builds the Hub and wires it to the panel, the mod's reports and the Dock.
+### `HubSetup.swift` · 72
+Builds the Hub and wires it to the panel, the live view and the Dock.
 
-### `HubModel.swift` · 326
+### `HubModel.swift` · 172
 What the Hub needs from the rest of the app, handed in once (`HubDependencies`):
 the panel's view, where a transcript is read, the session's project and machine,
-what is known of a session when Send is pressed, a signed command (D152), the send
-through the route `HubWrite` chose. Then its state: the open conversation, which
-sessions take signed commands, what Send does, LampMaster's row (D151). The reply
-arriving for the open session (D153) lives in `HubLiveTail`, apart: published with
-the rest, a piece every 150 ms redrew the whole conversation (P1).
+the terminal that reaches a session and the live view that holds it, Move to
+LampBoard. Then its state: the chosen session, and what the centre shows (D162) —
+its terminal, a note while that terminal is in a window of its own, its transcript
+read when LampBoard has no terminal into it, or LampMaster (D151). Once a second it
+follows a session that becomes reachable, its tmux pane learnt or a move ended.
 
-### `HubModelBar.swift` · 124
-The command bar's actions (D157): a slash line the session knows run as its
-command, the model or the effort for this session alone — asked twice over a warm
-cache, which another model reads again at full price —, Plan by its command and
-any other mode by Shift+Tab where LampBoard shows the session's terminal. Each
-goes through the session's mod or that terminal; none writes Claude Code's
-settings, which would change every session (measured, M0).
-
-### `HubViews.swift` · 360
+### `HubViews.swift` · 314
 The first two columns: LampMaster's row (D151) — its lamp working while a round
 runs and green while cards wait, its count, the time of its last round — above the
-panel's own rows (D150); the open conversation with its waiting card, the line
-saying what the session's own box holds, the reply as it is written in a bubble of
-fixed height so nothing around it moves (D153), «Cite in…» choosing where a quote
-goes (D155), and the four lines shown the first time the Hub opens.
-
-### `HubAskCard.swift` · 81
-What the open session asks, in its thread: a permission the panel holds with Allow,
-Deny and the time it has left, a question with its options, or, when the panel
-holds nothing, a line saying it asks in its own window. One card, the first that
-waits for that session.
-
-### `HubComposer.swift` · 301
-The Hub's message box (D154): one draft per session; a question before sending
-over the person's own draft in the session's box; a sent message kept in sight
-until the transcript has it, and back in the box with its quotes if it did not go;
-the quotes waiting for the next message (D155). An AppKit text view, so a file
-dropped from the tree lands as `@path` where it falls (D157). Apart from
-`HubModel`, so typing redraws the box and nothing else.
-
-### `HubBarView.swift` · 209
-The bar under the box (D157): attach and the session's commands, the context and
-the time, Remote Control, the agents, the model and the mode, each a list that
-opens in place. `HubBarState` holds what the bar knows of the open session — its
-commands, its mode, the model and effort chosen for it, a model change waiting for
-its second click — apart from `HubModel`, so the bar redraws alone.
+panel's own rows (D150); then the centre: a header with the session's lamp, name,
+folder and machine, and its terminal, seated by `HubTerminalHost` once a session
+and given the keys; or the transcript read, with Move to LampBoard and the way to
+its own window; and the three lines shown the first time the Hub opens.
 
 ### `HubFilesModel.swift` · 216
 The open session's project as the Hub shows it (D156): its tree, what git and the
@@ -2263,7 +2215,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `WaitingCardView.swift` | 153 | one waiting card, drawn at the top of a session's Plancia: a card dimmed until it is armed and outlined while selected with the keyboard; a held permission's Deny and Allow with what the call would do beside them (D87), a held question's options, inert until it arms, its line cut in the middle and whole in a tooltip; VoiceOver reads the kind, the project and the ask |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 193 | where a click goes, which is a different question for every surface; a background session's to its Plancia (D103), or to the live view when Settings says so (D130) |
-| `PanelLive.swift` | 90 | «Open here» and «New conversation in LampBoard» from a row, and what the live view says when it cannot open (D130) |
+| `PanelLive.swift` | 127 | «Open here» and «New conversation in LampBoard» from a row, in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 178 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; the time the window runs out in place of the reset, in orange, when that is first (D111) |
@@ -2321,7 +2273,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1365 cases
+## `LampBoardTests/` — 1344 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2436,7 +2388,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 202 cases
+## `LampBoardE2E/` — 186 cases
 
 | Suite | Covers |
 |---|---|

@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // What each session's tools did, with or without a panel on screen: the
         // radar (§4.4) answers from it either way.
-        mod.onReport = { [weak self, activity, askDesk] report, at in
+        mod.onReport = { [activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)
         }

@@ -5895,3 +5895,59 @@ Now, in a release build, the worst is opening the heaviest conversation (about
 300 ms, once). `hub-look.sh` photographs what is drawn; an end-to-end case
 checks the text is in sight, inside its window and as wide as its column when it
 wraps, each of which failed once while the numbers looked fine.
+
+## D162 · The session's own terminal at the Hub's centre
+
+**Decided** (11 October 2026, after 2.0.1). The Hub's centre is the chosen
+session's own terminal: LampBoard's terminal (D129) attached to its tmux, here or
+over ssh (D132), or to its background job (D130). The chat rebuilt from the
+transcript, its composer, its command bar and sending through the mod are gone
+from the Hub. This amends D147's chat for the Hub and replaces D153, D154 and
+D157.
+
+**Why.** 2.0 rebuilt Claude Code's interface beside a session and wrote into it
+through the mod. It was fragile where it mattered:
+- after every restart of LampBoard no session took a command until its mod spoke
+  again;
+- a send that did not arrive had no deadline;
+- the slash list was often empty;
+- every model, mode and dialog was an imitation to keep up with.
+
+D129 had measured the answer before 2.0: only a terminal gives a session's whole
+interface. Whoever holds the terminal holds the session.
+
+**How.**
+- One terminal per session, shared by the Hub and the live view's windows, which
+  move between them without a second attach.
+- The Hub keeps its last four chosen sessions attached, so going back is instant,
+  and leaves the rest. Closing the Hub detaches; the sessions go on.
+- A session LampBoard has no terminal into (VS Code's panel, the Claude app) is
+  read from its transcript, with Move to LampBoard (D135) and the way to its own
+  window. It is never written to.
+- Open here, a new session and Move to LampBoard open in the Hub when it takes
+  them.
+- A file dropped on a session keeps its own type (`ProjectAttachments`) for a
+  session on another machine, where a path of this Mac means nothing.
+
+**Measured on the test Mac, with real keys and clicks** (`term-hands.sh`,
+`hub-term.sh`, posted to the window server): Claude Code in this terminal passes
+29 steps:
+- typing, accented letters and Option characters of an Italian keyboard;
+- `/` with its completion, `/model`, Shift-Tab round the modes;
+- ⌘V, `@file`, a second line, Esc stopping a turn;
+- a permission answered in the terminal, an image pasted with Ctrl-V;
+- the wheel, a selection copied, a resize reaching tmux;
+- a restart of LampBoard reattaching to the screen it left.
+
+In the Hub, 23 steps pass with two real sessions and one from VS Code:
+- the keys follow the chosen session, and each session has one tmux client;
+- out to a window and back;
+- closing detaches both sessions and both go on.
+
+The main thread's longest wait was 184 ms. At rest the CPU was about 1% with the
+terminal open and about 2% with the Hub open.
+
+SwiftTerm's vendored patch 3 came out of that run. Option-arrows and
+Option-Delete move and delete a word, and Command-arrows and Command-Delete
+reach the line's ends, as Terminal sends them. Option itself still types
+characters (D138).
