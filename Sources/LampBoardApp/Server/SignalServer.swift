@@ -87,10 +87,8 @@ final class SignalServer {
     /// The Hub's report and opening it, for the tests (fake home only).
     var onHubReport: (() -> Data?)?
     var onHubOpen: ((String?, String?) -> Bool)?
-    /// `sent`, `confirm` (a draft waits in the session's box) or `refused`.
     /// Indexes `host`'s conversations and searches them (fake home only, M7).
     var onRemoteIndex: ((_ host: String, _ query: String) async -> [String: Any])?
-    var onHubCompose: ((_ text: String, _ confirm: Bool) -> String?)?
     var onHubFiles: ((Data) -> Bool)?
     /// A piece of a reply as it arrives (D153): session, turn, text, done.
     var onModStream: ((String, String, String, Bool) -> Void)?
@@ -387,7 +385,7 @@ final class SignalServer {
         case AppConfig.hubRemoteCheckPath:
             return handleHubRemoteCheck(request)
 
-        case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubComposePath, AppConfig.hubFilesPath:
+        case AppConfig.hubPath, AppConfig.hubOpenPath, AppConfig.hubFilesPath:
             return handleHubTest(request)
 
         case AppConfig.healthPath:

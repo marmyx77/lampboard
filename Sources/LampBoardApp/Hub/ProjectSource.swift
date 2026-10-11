@@ -73,7 +73,7 @@ struct ProjectSource: Sendable, Equatable {
         var names: [String] = []
         for file in files {
             guard let data = try? Data(contentsOf: file, options: .mappedIfSafe), data.count <= Self.mostAttached else { continue }
-            let name = HubBar.attachmentName(file.lastPathComponent, taken: taken)
+            let name = ProjectAttachments.attachmentName(file.lastPathComponent, taken: taken)
             guard let script = RemoteProject.attach(root: root, name: name) else { continue }
             let done = host != nil ? await Self.ssh(host!, script, input: data) : await Self.run("/bin/sh", ["-c", script], input: data)
             guard done != nil else { continue }

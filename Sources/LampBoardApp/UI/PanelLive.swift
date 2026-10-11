@@ -6,7 +6,7 @@ extension PanelController {
 
     /// «Open here» on a row the live view can open.
     func openHere(_ target: LiveTarget) {
-        guard live?.open(target) != true else { return }
+        guard live?.show(target) != true else { return }
         switch target {
         case .job: liveRefused("LampBoard could not open this session: Claude Code was not found on this Mac.")
         case .tmux(nil, _, _): liveRefused("LampBoard could not open this session: tmux was not found on this Mac.")
@@ -28,10 +28,47 @@ extension PanelController {
         }
         // Free names are the other machine's to pick: it knows all of its own.
         let tmuxName = NewSession.tmuxName(for: "/" + (name ?? (folder as NSString).lastPathComponent), taken: [])
-        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName), live?.open(target) == true else {
+        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName), live?.show(target) == true else {
             liveRefused("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")
             return
         }
+    }
+
+    /// The Hub's way to `target`: the session it reaches, chosen there. A
+    /// background job just started is not a row yet: its session is waited
+    /// for, a few seconds, as its hooks arrive.
+    func showInHub(_ target: LiveTarget) -> Bool {
+        // A terminal in a window of its own stays there: its window comes forward.
+        guard let openHub, live?.isInWindow(target) != true else { return false }
+        switch target {
+        case .tmux(_, _, let id):
+            openHub(id)
+            return true
+        case .job(let job):
+            waitForJob(job, tries: 24) { [weak self] id in
+                if let id { openHub(id) } else { self?.live?.open(target) }
+            }
+            return true
+        case .newTmux:
+            return false
+        }
+    }
+
+    private func waitForJob(_ job: String, tries: Int, then: @escaping (String?) -> Void) {
+        if let session = store.state.sessions.values.first(where: { $0.backgroundJob?.id == job }) { return then(session.id) }
+        guard tries > 0 else { return then(nil) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else { return }
+            self.waitForJob(job, tries: tries - 1, then: then)
+        }
+    }
+
+    /// The row «Move to LampBoard…» would move for `sessionId`, when it can
+    /// move now: for the Hub's reading of a VS Code session.
+    func movableRow(_ sessionId: String) -> ColumnRow? {
+        guard let session = store.state.sessions[sessionId], MoveHere.isMovable(session),
+              live?.isMoving(sessionId) != true else { return nil }
+        return ColumnRow(id: session.id, workspace: session.workspace, sessions: [session])
     }
 
     /// «Move to LampBoard…» (D135): every check first, then the editor's

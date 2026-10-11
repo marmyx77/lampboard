@@ -1858,11 +1858,22 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
             } else {
                 send (EscapeSequences.cmdPageDown)
             }
-        case #selector(moveToLeftEndOfLine(_:)):
-            // Apple sends the Emacs back-word commands
+        // Vendored patch 3: the Mac's text keys, as Terminal and iTerm send them.
+        // Option-arrows move a word and Option-Delete deletes one; Command-arrows
+        // go to the line's ends and Command-Delete deletes to its start. Upstream
+        // left the word moves unhandled and sent Command-arrows as word moves.
+        case #selector(moveWordLeft(_:)):
             send (EscapeSequences.emacsBack)
-        case #selector(moveToRightEndOfLine(_:)):
+        case #selector(moveWordRight(_:)):
             send (EscapeSequences.emacsForward)
+        case #selector(deleteWordBackward(_:)):
+            send ([0x1b, 0x7f])
+        case #selector(moveToLeftEndOfLine(_:)):
+            send ([0x01])
+        case #selector(moveToRightEndOfLine(_:)):
+            send ([0x05])
+        case #selector(deleteToBeginningOfLine(_:)):
+            send ([0x15])
         default:
             print ("Unhandle selector \(selector)")
         }

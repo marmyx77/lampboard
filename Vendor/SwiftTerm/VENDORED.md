@@ -52,6 +52,14 @@ Each one is marked in the source with `Vendored patch <n>`.
    `lineSpacing` and applied the same way, in `computeFontDimensions`. It lets a
    fixed-width font be set tighter, closer to a proportional one (LampBoard D146).
    At 1, the default, nothing changes.
+3. `MacTerminalView.swift`, `doCommand(by:)`: the Mac's text keys as Terminal and
+   iTerm send them. With Option typing characters (LampBoard D138), Option-← and
+   Option-→ came as `moveWordLeft:` and `moveWordRight:`, which upstream left
+   unhandled, and Command-← and Command-→ were sent as word moves. Now:
+   - Option-←/→ send `ESC b` and `ESC f`;
+   - Option-Delete sends `ESC DEL`;
+   - Command-←/→ send Ctrl-A and Ctrl-E;
+   - Command-Delete sends Ctrl-U.
 
 ## Updating
 

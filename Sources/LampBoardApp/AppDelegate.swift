@@ -138,7 +138,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mod.onReport = { [weak self, activity, askDesk] report, at in
             activity.record(report, at: at)
             askDesk.heard(report)
-            Task { @MainActor in self?.hub?.model.heard(report) }
         }
 
         if !headless {
@@ -339,7 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         panelController = controller
         // The Hub (D149), where the Plancia was.
-        hub = HubSetup.make(store: store, panel: controller, live: live, hubDesk: { [weak self] in self?.hubDesk })
+        hub = HubSetup.make(store: store, panel: controller, live: live)
 
         startNotifier(for: controller)
         startPresence()

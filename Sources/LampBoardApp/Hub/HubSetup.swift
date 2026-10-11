@@ -8,10 +8,8 @@ import SwiftUI
 enum HubSetup {
 
     static func make(
-        store: StateStore, panel: PanelController, live: LiveWindowController,
-        hubDesk: @escaping () -> HubCommandDesk?
+        store: StateStore, panel: PanelController, live: LiveWindowController
     ) -> HubWindowController {
-        weak var weakModel: HubModel?
         let deps = HubDependencies(
             store: store,
             queue: panel.queue,
@@ -19,32 +17,6 @@ enum HubSetup {
             lampMasterActions: panel.lampMaster.map { panel.lampMasterActions(for: $0) },
             sidebar: { [weak panel] select in panel?.hubSidebar(select: select) ?? AnyView(EmptyView()) },
             chatSource: { id in chatSource(for: id, store: store) },
-            situation: { id in
-                let session = store.state.session(named: id)
-                let local = session?.workspace.isRemote == false
-                return HubWrite.Situation(
-                    commands: weakModel?.commandable.contains(id) ?? false,
-                    box: local && PeerSender().hasBox(sessionId: id),
-                    paste: live.canPaste(into: id),
-                    busy: session.map { $0.status == .working || $0.status == .waiting } ?? false,
-                    asking: session?.status == .awaiting,
-                    presence: HubWrite.presence(surface: weakModel?.surfaces[id], entrypoint: session?.entrypoint,
-                                                draft: weakModel?.drafts[id])
-                )
-            },
-            send: { id, text, route, mode in
-                switch route {
-                case .mod:
-                    return hubDesk()?.send(session: id, op: "submit", args: HubWrite.submitArgs(text: text, mode: mode)) ?? false
-                case .box:
-                    if case .success = PeerSender().send(text, to: id) { return true }
-                    return false
-                case .paste:
-                    return live.submit(text, toSession: id)
-                case .none:
-                    return false
-                }
-            },
             openRealWindow: { [weak panel] id in
                 guard let panel, let session = store.state.session(named: id) else { return }
                 panel.activate(session: session)
@@ -55,24 +27,26 @@ enum HubSetup {
                 let cwd = store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd ?? session.workspace.path
                 return (cwd, host)
             },
-            command: { id, op, args in hubDesk()?.send(session: id, op: op, args: args) ?? false },
             tools: { [weak panel] id in
                 (panel?.activity?.logs[id]?.entries ?? []).compactMap { entry in
                     if case .tool(let name, let detail) = entry.kind { return (name, detail) }
                     return nil
                 }
             },
-            canShiftTab: { id in live.canPaste(into: id) },
-            shiftTab: { id in live.shiftTab(session: id) },
-            mode: { id in
-                if let shown = live.screenMode(session: id) { return (shown, Date()) }
-                return (store.permissionModes[id].flatMap(HubBar.mode(permission:)), store.permissionModesHeardAt[id])
+            target: { [weak panel] id in
+                guard let panel, let session = store.state.session(named: id) else { return nil }
+                return panel.liveTarget(session)
+            },
+            live: live,
+            move: { [weak panel] id in
+                guard let panel, let row = panel.movableRow(id) else { return nil }
+                return { [weak panel] in panel?.moveHere(row) }
             }
         )
         let model = HubModel(deps: deps)
-        weakModel = model
         let hub = HubWindowController(model: model)
         panel.openHub = { [weak hub] id in hub?.show(session: id) }
+        live.openInHub = { [weak panel] target in panel?.showInHub(target) ?? false }
         panel.hubIsOpen = { [weak hub] in hub?.isOpen ?? false }
         panel.hubIsKey = { [weak hub] in hub?.isKey ?? false }
         panel.closeHub = { [weak hub] in hub?.close() }

@@ -5,10 +5,10 @@ import LampBoardCore
 import SwiftUI
 
 /// The Hub (D149): a window of columns, the last depth of ⌘⇧L where the Plancia
-/// was. The sessions on the left are the panel's own rows; the conversation is
-/// beside them; the files, the preview and the project's terminal come and go
-/// with the toolbar's icons. Columns are an `NSSplitView`: the widths and what
-/// is shown are kept by macOS between launches.
+/// was. The sessions on the left are the panel's own rows; the chosen session's
+/// own terminal is beside them (hub-terminale); the files, the preview and the
+/// project's shell come and go with the toolbar's icons. Columns are an
+/// `NSSplitView`: the widths and what is shown are kept by macOS between launches.
 @MainActor
 final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
@@ -61,36 +61,26 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     /// What the Hub shows, for the tests (fake home only).
     func report() -> Data? {
         let session = model.session
+        var centre = "none", target: Any = NSNull(), left = false
+        switch model.centre {
+        case .none: break
+        case .lampMaster: centre = "lampMaster"
+        case .terminal(let shown): centre = "terminal"; target = shown.key; left = model.hasLeft(shown)
+        case .inWindow(let shown): centre = "inWindow"; target = shown.key
+        case .reading: centre = "reading"
+        }
         let body: [String: Any] = [
             "open": isOpen,
             "selected": model.selected ?? NSNull(),
             "sessionsShown": !(split?.splitViewItems.first?.isCollapsed ?? true),
             "lampMasterRow": model.deps.lampMaster?.snapshot.enabled ?? false,
-            "mode": model.mode.rawValue,
-            "route": model.route.rawValue,
-            "chatMessages": model.chat?.messages.count ?? 0,
+            "centre": centre,
+            "target": target,
+            "terminalLeft": left,
+            "readerMessages": model.reader?.messages.count ?? 0,
             "status": session?.status.rawValue ?? NSNull(),
             "windowNumber": window?.windowNumber ?? 0,
-            "notice": model.notice ?? NSNull(),
-            "followed": model.followed ?? NSNull(),
-            "liveText": model.live?.text ?? NSNull(),
-            "composerText": model.composer.text,
-            "pending": model.composer.pending?.text ?? NSNull(),
-            "confirming": model.composer.confirming,
-            "draft": model.selected.flatMap { model.drafts[$0] } ?? NSNull(),
-            "band": model.composer.band ?? NSNull(),
-            "effectiveMode": model.verdict.mode.rawValue,
-            "commands": model.bar.commands.map(\.name),
-            "sessionMode": model.bar.mode?.rawValue ?? NSNull(),
-            "reaching": model.bar.reaching?.rawValue ?? NSNull(),
-            "remote": model.bar.remote,
-            "chosenModel": model.bar.model ?? NSNull(),
-            "chosenEffort": model.bar.effort ?? NSNull(),
-            "barWarning": model.bar.warning ?? NSNull(),
-            "cacheWarm": HubBar.cacheWarm(session?.context, now: Date()),
-            "quotes": model.composer.quotes.map(\.text),
             "guide": model.guideShown,
-            "question": model.composer.question ?? NSNull(),
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,
@@ -182,7 +172,6 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         window.toolbar = toolbar
         window.toolbarStyle = .unifiedCompact
         self.window = window
-        model.showFiles = { [weak self] in self?.setColumns(files: true, last: nil) }
         return window
     }
 
@@ -248,36 +237,20 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         refreshToolbar()
     }
 
-    /// `POST /hub/files` (fake home only): `{"files", "last", "open", "query", "preview"}`.
+    /// `POST /hub/files` (fake home only): `{"files", "last", "open", "query", "preview",
+    /// "popOut", "bringBack", "close", "guide", "hideLast", "resetWatch"}`.
     func applyTest(_ body: Data) -> Bool {
         guard let wish = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return false }
         setColumns(files: wish["files"] as? Bool, last: (wish["last"] as? String).flatMap(HubFilesModel.LastColumn.init(rawValue:)))
         if let folder = wish["expand"] as? String { model.files.toggle(folder) }
         if let path = wish["open"] as? String { model.files.openFile(path) }
         if let query = wish["query"] as? String { model.files.query = query }
-        if wish["stop"] as? Bool == true { model.stop() }
         if wish["resetWatch"] as? Bool == true { MainThreadWatch.shared.reset() }
         if wish["close"] as? Bool == true { close() }
-        // The bar (D157), as its controls call it.
-        if let text = wish["composer"] as? String { model.composer.text = text }
-        if let path = wish["drop"] as? String { model.composer.insert(citation: path, at: wish["at"] as? Int) }
-        if let value = wish["model"] as? String { model.choose(model: value.isEmpty ? nil : value) }
-        if let value = wish["effort"] as? String { model.choose(effort: value.isEmpty ? nil : value) }
-        if let value = wish["mode"] as? String, let mode = HubBar.Mode(rawValue: value) { model.choose(mode: mode) }
-        if wish["remote"] as? Bool == true { model.toggleRemoteControl() }
         if wish["guide"] as? Bool == false { model.dismissGuide() }
         if wish["hideLast"] as? Bool == true { setLast(model.files.lastColumn, shown: false) }
-        // «Cite in…» on the n-th reply of the open conversation: the text is
-        // always the transcript's; a "text" in the wish is never read (E29).
-        if let index = wish["cite"] as? Int, let target = wish["into"] as? String,
-           let replies = model.chat?.messages.filter({ $0.role == .assistant }), replies.indices.contains(index) {
-            model.cite(replies[index])
-            model.cite(into: target)
-        }
-        if let paths = wish["attach"] as? [String] {
-            let urls = paths.map { URL(fileURLWithPath: $0) }
-            Task { @MainActor in await self.model.attach(urls) }
-        }
+        if wish["popOut"] as? Bool == true { model.popOut() }
+        if wish["bringBack"] as? Bool == true { model.bringBack() }
         if let preview = wish["preview"] as? Bool, let active = model.files.active {
             if preview { model.files.previews.insert(active) } else { model.files.previews.remove(active) }
         }

@@ -85,7 +85,7 @@ struct HubSidebarView: View {
 /// says what the session's own box holds, and the composer with its bar.
 struct HubConversationView: View {
     @ObservedObject var model: HubModel
-    /// The rows' state: the lamp, the ring and the time follow the session.
+    /// The rows' state: the lamp and the time follow the session.
     @ObservedObject var store: StateStore
 
     var body: some View {
@@ -96,21 +96,34 @@ struct HubConversationView: View {
         .frame(minWidth: 320, minHeight: 360)
         .background(HubPalette.panel)
         .foregroundStyle(HubPalette.ink)
-        .sheet(item: $model.citing) { quote in
-            HubCiteSheet(quote: quote, sessions: store.sessions.filter { $0.id != quote.session },
-                         pick: { model.cite(into: $0) }, cancel: { model.citing = nil })
-        }
     }
 
     @ViewBuilder private var content: some View {
-        Group {
-            if model.selected == HubModel.lampMasterId {
-                lampMaster
-            } else if let session = model.session {
-                conversation(session)
-            } else {
-                empty("Choose a session on the left to open its conversation.")
+        switch model.centre {
+        case .lampMaster:
+            lampMaster
+        case .terminal(let target):
+            if let session = model.session {
+                header(session) { terminalButtons(target) }
+                HubTerminalHost(model: model, target: target)
+                    .accessibilityIdentifier("hub.terminal.session")
             }
+        case .inWindow:
+            if let session = model.session {
+                header(session) { EmptyView() }
+                VStack(spacing: 12) {
+                    Spacer()
+                    Text("This session is open in a window of its own.").foregroundStyle(HubPalette.muted)
+                    Button("Bring it here") { model.bringBack() }.buttonStyle(HubButtonStyle(kind: .primary))
+                        .accessibilityIdentifier("hub.bringBack")
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            }
+        case .reading:
+            if let session = model.session { reading(session) }
+        case .none:
+            empty("Choose a session on the left: it opens here, in its own terminal.")
         }
     }
 
@@ -122,113 +135,103 @@ struct HubConversationView: View {
         }
     }
 
-    private func conversation(_ session: SessionState) -> some View {
+    /// A session LampBoard has no terminal into: its transcript, read, and the
+    /// ways to reach it.
+    private func reading(_ session: SessionState) -> some View {
         VStack(spacing: 0) {
-            header(session)
+            header(session) {
+                if let move = model.deps.move(session.id) {
+                    Button("Move to LampBoard…", action: move).buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
+                        .help("Its VS Code tab stops, and the conversation goes on here, in its own terminal.")
+                        .accessibilityIdentifier("hub.move")
+                }
+                Button(Self.openTitle(session)) { model.deps.openRealWindow(session.id) }
+                    .buttonStyle(HubButtonStyle()).fixedSize()
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .accessibilityIdentifier("hub.openReal")
+            }
+            Text(Self.readingLine(session))
+                .font(.system(size: 11)).foregroundStyle(HubPalette.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14).padding(.vertical, 6)
+                .background(HubPalette.soft)
+                .accessibilityIdentifier("hub.readingLine")
             line
-            if let chat = model.chat {
-                LiveChatView(model: chat, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) }, composes: false,
-                             cite: { model.cite($0) })
-                    // Another session's conversation starts from its first page.
-                    .id(ObjectIdentifier(chat))
-                HubLiveBubble(tail: model.liveTail)
-                HubAskCard(queue: model.deps.queue, sessionId: session.id, asking: session.status == .awaiting,
-                           openRealWindow: { model.deps.openRealWindow(session.id) })
-                    .padding(.horizontal, 14).padding(.bottom, 10)
+            if let reader = model.reader {
+                LiveChatView(model: reader, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) },
+                             composes: false, cite: { _ in })
+                    .id(ObjectIdentifier(reader))
             } else {
                 empty("No transcript to read for this session yet.")
             }
-            HubPresenceLine(composer: model.composer, model: model)
-            VStack(alignment: .leading, spacing: 8) {
-                HubComposerView(composer: model.composer, submit: { model.submit() }, canWrite: model.route != .none)
-                HubBarView(bar: model.bar, composer: model.composer, model: model, session: session)
-                buttons(session)
+        }
+    }
+
+    private func terminalButtons(_ target: LiveTarget) -> some View {
+        HStack(spacing: 8) {
+            if model.hasLeft(target) {
+                Button("Open again") { model.reattach(target) }.buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
+                    .accessibilityIdentifier("hub.reattach")
             }
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .overlay(alignment: .top) { line }
+            Button {
+                model.popOut()
+            } label: {
+                Image(systemName: "macwindow.on.rectangle")
+            }
+            .buttonStyle(HubButtonStyle()).fixedSize()
+            .help("In a window of its own; the same terminal, the session goes on")
+            .accessibilityIdentifier("hub.popOut")
         }
     }
 
     private var line: some View { Rectangle().fill(HubPalette.line).frame(height: 1) }
 
-    private func header(_ session: SessionState) -> some View {
-        HStack(spacing: 10) {
-            HubLamp(color: StatusPalette.color(for: session.status))
-            Text(session.displayName).font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)
-            Text(meta(session)).font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1).truncationMode(.tail)
-            Spacer(minLength: 8)
-            Button("Open the real window ⌘↩") { model.deps.openRealWindow(session.id) }
-                .buttonStyle(HubButtonStyle()).fixedSize()
-                .keyboardShortcut(.return, modifiers: .command)
-                .accessibilityIdentifier("hub.openReal")
+    private func header<Trailing: View>(_ session: SessionState, @ViewBuilder trailing: () -> Trailing) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                HubLamp(color: StatusPalette.color(for: session.status))
+                Text(session.displayName).font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)
+                Text(meta(session)).font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 8)
+                trailing()
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            line
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
-    /// Where it runs, how it was opened, its mode and its model's letter.
+    /// Where it runs, how it was opened, and its model's letter.
     private func meta(_ session: SessionState) -> String {
-        var parts = [session.workspace.host ?? "This Mac"]
-        switch session.entrypoint {
-        case "claude-vscode": parts.append("VS Code")
-        case "claude-desktop": parts.append("Desktop")
-        default: parts.append(session.origin == .background ? "background" : "Terminal")
-        }
-        if let mode = model.bar.mode { parts.append("mode \(mode.title.lowercased())") }
+        var parts = [session.workspace.name, session.workspace.host ?? "This Mac"]
+        parts.append(Self.surface(session))
         if let letter = session.context?.modelInitial, !letter.isEmpty { parts.append(letter) }
         return parts.joined(separator: " · ")
     }
 
-    /// Send in the chosen mode, its menu for the other two (Marco's Hermes
-    /// choice), Message now, Stop, and the way it goes.
-    private func buttons(_ session: SessionState) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { sendButtons(session); Spacer(minLength: 8); routeText }
-            HubFlow(spacing: 8) { sendButtons(session); routeText }
+    static func surface(_ session: SessionState) -> String {
+        switch session.entrypoint {
+        case "claude-vscode": return "VS Code"
+        case "claude-desktop": return "Claude app"
+        default: return session.origin == .background ? "background" : "terminal"
         }
     }
 
-    private var routeText: some View {
-        Text(model.notice ?? routeLine).font(.system(size: 11))
-            .foregroundStyle(model.notice == nil ? HubPalette.muted : HubPalette.amber).lineLimit(1)
-    }
-
-    @ViewBuilder private func sendButtons(_ session: SessionState) -> some View {
-            // Marco's choice (10 October): the button does the mode set, its menu
-            // holds the other two; choosing one there sets it and sends.
-            Menu {
-                ForEach(HubWrite.Mode.allCases.filter { $0 != model.mode }, id: \.self) { mode in
-                    Button(Self.title(mode)) { model.mode = mode; model.submit() }
-                }
-            } label: {
-                Text(Self.title(model.mode))
-            } primaryAction: {
-                model.submit()
-            }
-            .menuStyle(.button).menuIndicator(.visible).fixedSize().layoutPriority(3)
-            .buttonStyle(HubButtonStyle(kind: .primary))
-            .disabled(model.route == .none)
-            .accessibilityIdentifier("hub.send")
-            Button("Stop") { model.stop() }
-                .buttonStyle(HubButtonStyle(kind: .danger)).fixedSize().layoutPriority(3)
-                .disabled(!(session.status == .working || session.status == .waiting))
-                .help("Stops the turn. Commands it started in the background keep running.")
-                .accessibilityIdentifier("hub.stop")
-    }
-
-    static func title(_ mode: HubWrite.Mode) -> String {
-        switch mode {
-        case .queue: return "Queue"
-        case .interrupt: return "Interrupt and send"
-        case .steer: return "Message now"
+    static func openTitle(_ session: SessionState) -> String {
+        switch session.entrypoint {
+        case "claude-vscode": return "Show in VS Code ⌘↩"
+        case "claude-desktop": return "Show in the Claude app ⌘↩"
+        default: return "Show its window ⌘↩"
         }
     }
 
-    private var routeLine: String {
-        switch model.route {
-        case .mod: return "\(Self.title(model.verdict.mode)) → the session's helper, as your words"
-        case .box: return "Into the session's message box"
-        case .paste: return "Typed into the session's terminal"
-        case .none: return "Read only from here: open the session's window to write"
+    static func readingLine(_ session: SessionState) -> String {
+        switch session.entrypoint {
+        case "claude-vscode":
+            return "This session runs in VS Code's panel: LampBoard reads it. Move it here to write to it in its own terminal."
+        case "claude-desktop":
+            return "This session runs in the Claude app: LampBoard reads it. Write to it there."
+        default:
+            return "LampBoard has no terminal into this session (not in tmux, not in the background): it reads it."
         }
     }
 
@@ -239,96 +242,48 @@ struct HubConversationView: View {
     }
 }
 
-/// The line above the composer (the proposal's `.presence`): what the
-/// session's own box holds, amber when it matters for Send.
-struct HubPresenceLine: View {
-    @ObservedObject var composer: HubComposer
-    @ObservedObject var model: HubModel
+/// The session's terminal in the centre: the live view's frame, seated here,
+/// and the keys given to it whenever the session changes.
+struct HubTerminalHost: NSViewRepresentable {
+    let model: HubModel
+    let target: LiveTarget
 
-    var body: some View {
-        let warn = composer.band != nil || composer.boxHasDraft
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(warn ? HubPalette.ink : HubPalette.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14).padding(.vertical, 6)
-            .background(warn ? HubPalette.amberSoft : HubPalette.soft)
-            .overlay(alignment: .top) { Rectangle().fill(HubPalette.line).frame(height: 1) }
-            .accessibilityIdentifier("hub.presence")
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+        seat(in: container, context: context)
+        return container
     }
 
-    private var text: String {
-        if let band = composer.band { return band }
-        guard let id = model.selected else { return "" }
-        if composer.boxHasDraft { return "Something is typed in the session's own box: Send asks first, and what is typed there stays." }
-        if model.commandable.contains(id) { return "Nothing typed in the session's own box." }
-        return "Without LampBoard's helper in this session the Hub cannot see its box."
+    func updateNSView(_ container: NSView, context: Context) {
+        seat(in: container, context: context)
     }
-}
 
-/// The reply as it is written, apart from the conversation so that a piece
-/// redraws this and nothing else: a fixed height, the last lines at the bottom,
-/// so nothing around it moves.
-struct HubLiveBubble: View {
-    @ObservedObject var tail: HubLiveTail
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
-    var body: some View {
-        if !tail.text.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Writing…").font(.system(size: 10, weight: .semibold)).foregroundStyle(HubPalette.muted)
-                Text(tail.text + " ▍").font(.system(size: 13).italic()).foregroundStyle(HubPalette.muted)
-                    .lineLimit(HubLiveTail.lines)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-            }
-            .padding(.horizontal, 18).padding(.vertical, 8)
-            .frame(height: 170)
-            .clipped()
-            .accessibilityIdentifier("hub.live")
+    final class Coordinator { var seated: LiveTarget? }
+
+    private func seat(in container: NSView, context: Context) {
+        // Once a target: `hosted` attaches, or takes a terminal back from its
+        // window, so it is asked only when the session changes. A terminal that
+        // left for a window of its own is not called back by a redraw.
+        guard context.coordinator.seated != target else { return }
+        guard let frame = model.terminalView(for: target) else { return }
+        context.coordinator.seated = target
+        container.subviews.forEach { $0.removeFromSuperview() }
+        frame.removeFromSuperview()
+        frame.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(frame)
+        NSLayoutConstraint.activate([
+            frame.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            frame.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            frame.topAnchor.constraint(equalTo: container.topAnchor),
+            frame.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        let target = self.target
+        DispatchQueue.main.async { [weak model] in
+            guard let terminal = model?.terminal(for: target) else { return }
+            terminal.window?.makeFirstResponder(terminal)
         }
-    }
-}
-
-/// «Cite in…»: where the quote goes (the proposal's dialog). The text is the
-/// panel's, from the transcript; it goes only with the person's Send.
-struct HubCiteSheet: View {
-    let quote: Citation.Source
-    let sessions: [SessionState]
-    let pick: (String) -> Void
-    let cancel: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Cite in…").font(.system(size: 15, weight: .bold))
-            Text("«\(String(Citation.clean(quote.text).prefix(140)))…»").font(.system(size: 12)).foregroundStyle(HubPalette.muted)
-                .lineLimit(3)
-            Text("The panel takes the text from \(quote.sessionName)'s transcript, framed as data that is not an instruction. It goes only when you send.")
-                .font(.system(size: 11)).foregroundStyle(HubPalette.muted).fixedSize(horizontal: false, vertical: true)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(sessions) { target in
-                        Button { pick(target.id) } label: {
-                            HStack(spacing: 8) {
-                                HubLamp(color: StatusPalette.color(for: target.status), size: 9)
-                                Text(target.displayName).font(.system(size: 13))
-                                Spacer()
-                                Text(target.workspace.host ?? "This Mac").font(.system(size: 11)).foregroundStyle(HubPalette.muted)
-                            }
-                            .padding(.horizontal, 8).padding(.vertical, 5)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("hub.cite.\(target.id)")
-                    }
-                }
-            }
-            .frame(maxHeight: 260)
-            HStack { Spacer(); Button("Cancel", action: cancel).buttonStyle(HubButtonStyle()).keyboardShortcut(.cancelAction) }
-        }
-        .padding(18)
-        .frame(width: 420)
-        .background(HubPalette.panel)
-        .foregroundStyle(HubPalette.ink)
-        .environment(\.colorScheme, .dark)
     }
 }
 
@@ -342,10 +297,9 @@ struct HubGuideBand: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("This is the Hub").font(.system(size: 13, weight: .semibold))
                 Group {
-                    Text("Your sessions on the left, the panel's rows in your order. Read and answer here; the real window is ⌘↩ away.")
-                    Text("Send does the mode you chose; its menu interrupts the turn or reaches into it. Stop ends the turn.")
+                    Text("Your sessions on the left, the panel's rows in your order. The one you choose opens here, in its own terminal: Claude Code itself, with / for commands, Shift-Tab for the mode and Esc to stop.")
+                    Text("A session in VS Code's panel is read here; Move to LampBoard brings it into a terminal of its own.")
                     Text("Files, the open file and a shell in the project come and go with the icons at the top right.")
-                    Text("Cite a reply into another session from its corner; it goes framed, and only when you send.")
                 }
                 .font(.system(size: 12)).foregroundStyle(HubPalette.muted)
             }

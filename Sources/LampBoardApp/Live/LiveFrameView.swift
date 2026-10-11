@@ -34,7 +34,12 @@ final class LiveFrameView: NSView {
     var chatView: NSView? { chat }
     private var cardBesideFiles: NSLayoutConstraint!
     private var cardAlone: NSLayoutConstraint!
+    private var cardBelowHeader: NSLayoutConstraint!
+    private var cardAtTop: NSLayoutConstraint!
     private var knownFolder: String?
+    /// In the Hub's centre (hub-terminale R1): the Hub's own header says what
+    /// the session is, and its columns hold the files; here only the card.
+    private(set) var inHub = false
 
     init(theme: LiveTheme, terminal: NSView) {
         self.theme = theme
@@ -92,10 +97,12 @@ final class LiveFrameView: NSView {
             files.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
             files.widthAnchor.constraint(equalToConstant: 300),
 
-            card.topAnchor.constraint(equalTo: topAnchor, constant: 40),
             card.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             card.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
         ])
+        cardBelowHeader = card.topAnchor.constraint(equalTo: topAnchor, constant: 40)
+        cardAtTop = card.topAnchor.constraint(equalTo: topAnchor, constant: 4)
+        cardBelowHeader.isActive = true
         cardAlone = card.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14)
         cardBesideFiles = card.leadingAnchor.constraint(equalTo: files.trailingAnchor, constant: 10)
         cardAlone.isActive = true
@@ -104,6 +111,22 @@ final class LiveFrameView: NSView {
     }
 
     @objc private func switchView() { show(chat: viewSwitch.selectedSegment == 1) }
+
+    /// Into the Hub's centre, or back into a window of its own.
+    func setInHub(_ wanted: Bool) {
+        guard wanted != inHub else { return }
+        inHub = wanted
+        if wanted {
+            if !files.isHidden { toggleFiles() }
+            if showsChat { show(chat: false) }
+        }
+        for view in [lamp, title, detail, hint, viewSwitch] as [NSView] { view.isHidden = wanted }
+        filesButton.isHidden = wanted || knownFolder == nil
+        hint.isHidden = wanted || !reattach.isHidden
+        cardBelowHeader.isActive = !wanted
+        cardAtTop.isActive = wanted
+        needsDisplay = true
+    }
 
     /// The chat over the terminal, or the terminal alone. The terminal keeps
     /// running either way: it is the session's one writer.
@@ -179,21 +202,23 @@ final class LiveFrameView: NSView {
         detail.stringValue = ended ? "left · the session goes on in the background" : header.detail
         lamp.color = header.status.map(StatusPalette.nsColor(for:)) ?? NSColor(white: 0.5, alpha: 1)
         lamp.hollow = header.status == .idle || header.status == nil
-        reattach.isHidden = !ended
-        hint.isHidden = ended
+        reattach.isHidden = !ended || inHub
+        hint.isHidden = ended || inHub
         // Files for a session whose folder is on this Mac. A heading without a
         // folder for a moment (its row being read again) keeps the one it had:
         // a window's session does not change folders.
         if let folder = header.folder ?? knownFolder {
             knownFolder = folder
-            filesButton.isHidden = false
-            files.update(folder: folder, following: header.following)
+            filesButton.isHidden = inHub
+            if !inHub { files.update(folder: folder, following: header.following) }
         } else {
             filesButton.isHidden = true
         }
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        // In the Hub, the Hub's own surface around the card.
+        if inHub { HubPalette.nsWindow.setFill(); bounds.fill(); return }
         NSGradient(starting: NSColor(liveHex: theme.backdropTop), ending: NSColor(liveHex: theme.backdropBottom))?
             .draw(in: bounds, angle: -70)
     }

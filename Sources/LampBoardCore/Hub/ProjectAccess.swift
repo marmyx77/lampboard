@@ -159,8 +159,8 @@ public enum RemoteProject {
     /// plain one not there yet, `.lampboard/` written once into git's exclude.
     /// The same script runs here with `/bin/sh` and there through ssh.
     public static func attach(root: String, name: String) -> String? {
-        guard !name.isEmpty, name == HubBar.attachmentName(name, taken: []) else { return nil }
-        let folder = quote(HubBar.attachmentFolder)
+        guard !name.isEmpty, name == ProjectAttachments.attachmentName(name, taken: []) else { return nil }
+        let folder = quote(ProjectAttachments.folder)
         let file = "\"$d\"/" + quote(name)
         return "cd -- \(quote(root)) && r=$(pwd -P) && [ ! -L .lampboard ] && [ ! -L \(folder) ] && mkdir -p -- \(folder) && d=$(cd -- \(folder) && pwd -P) "
             + "&& case \"$d/\" in \"$r\"/*) ;; *) exit 3 ;; esac && [ ! -e \(file) ] && [ ! -L \(file) ] && cat > \(file) "
@@ -169,7 +169,7 @@ public enum RemoteProject {
 
     /// The names already in the attachments folder, one per line.
     public static func attachments(root: String) -> String {
-        "cd -- \(quote(root)) && [ -d \(quote(HubBar.attachmentFolder)) ] && ls -1A -- \(quote(HubBar.attachmentFolder)) || true"
+        "cd -- \(quote(root)) && [ -d \(quote(ProjectAttachments.folder)) ] && ls -1A -- \(quote(ProjectAttachments.folder)) || true"
     }
 
 }

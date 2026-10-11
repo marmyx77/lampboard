@@ -15,13 +15,16 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     private final class Live {
         let target: LiveTarget
         var job: String { target.key }
-        let window: NSWindow
+        /// `nil` while it sits in the Hub's centre (hub-terminale R1).
+        var window: NSWindow?
         let surface: LiveSurface
+        /// What attaches it, kept for the first start.
+        var command: LiveCommand!
         let frame: LiveFrameView
         var ended = false
         /// The chat, once it has been shown (D147).
         var chat: LiveChatModel?
-        init(target: LiveTarget, window: NSWindow, surface: LiveSurface, frame: LiveFrameView) {
+        init(target: LiveTarget, window: NSWindow?, surface: LiveSurface, frame: LiveFrameView) {
             self.target = target; self.window = window; self.surface = surface; self.frame = frame
         }
     }
@@ -58,15 +61,127 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let job = target.key
         if let live = lives[job] {
             if live.ended { attach(live) }
-            bringToFront(live.window)
+            if live.window == nil {
+                // In the Hub: out of it and into a window of its own, the same attach.
+                live.frame.removeFromSuperview()
+                live.frame.setInHub(false)
+                live.window = makeWindow(content: live.frame, target: target)
+                hubRecent.removeAll { $0 == job }
+                updateDockPresence()
+            }
+            if let window = live.window { bringToFront(window) }
             return true
         }
-        guard let command = command(for: target) else { return false }
+        guard let live = makeLive(target) else { return false }
+        let window = makeWindow(content: live.frame, target: target)
+        live.window = window
+        lives[job] = live
+        updateDockPresence()
+        start(live, live.command)
+        if preferences.liveOpensChat { live.frame.show(chat: true) }
+        bringToFront(window)
+        if !live.frame.showsChat { window.makeFirstResponder(live.surface.view) }
+        startClock()
+        return true
+    }
+
+    // MARK: - The Hub's centre
+
+    /// Where a session LampBoard opens is shown: the Hub, when it takes it
+    /// (hub-terminale R1), else a window of its own.
+    var openInHub: ((LiveTarget) -> Bool)?
+
+    /// `target` in the Hub, or in a window.
+    @discardableResult
+    func show(_ target: LiveTarget) -> Bool {
+        if openInHub?(target) == true { return true }
+        return open(target)
+    }
+
+    /// The Hub's sessions still attached, the most recent last.
+    private var hubRecent: [String] = []
+    /// How many sessions the Hub keeps attached: going back to one of them is
+    /// instant, and every other one is left, its session going on.
+    static let hubKept = 4
+
+    /// `target`'s terminal, for the Hub's centre: the one already open (out of
+    /// its window if it had one, so that one attach serves both), or a new
+    /// attach. `nil` when nothing can open it.
+    func hosted(_ target: LiveTarget) -> NSView? {
+        let job = target.key
+        if let live = lives[job] {
+            if let window = live.window {
+                live.window = nil
+                window.delegate = nil
+                window.contentView = NSView()
+                window.close()
+                updateDockPresence()
+            }
+            live.frame.setInHub(true)
+            if live.ended { attach(live) }
+            keepInHub(job)
+            return lives[job]?.frame
+        }
+        guard let live = makeLive(target) else { return nil }
+        live.frame.setInHub(true)
+        lives[job] = live
+        start(live, live.command)
+        startClock()
+        keepInHub(job)
+        return live.frame
+    }
+
+    /// The Hub's session's terminal, to give it the keys.
+    func hostedTerminal(_ target: LiveTarget) -> NSView? {
+        guard let live = lives[target.key], live.window == nil else { return nil }
+        return live.surface.view
+    }
+
+    /// Whether `target`'s terminal is in a window of its own.
+    func isInWindow(_ target: LiveTarget) -> Bool { lives[target.key]?.window != nil }
+
+    /// Whether the Hub's session has left (its attach ended).
+    func hostedEnded(_ target: LiveTarget) -> Bool { lives[target.key]?.ended ?? false }
+
+    /// Opens the Hub's session again after its attach ended.
+    func reattachHosted(_ target: LiveTarget) {
+        guard let live = lives[target.key], live.ended else { return }
+        attach(live)
+    }
+
+    /// The Hub closed: its attaches end, its sessions go on.
+    func endHosted() {
+        for live in lives.values where live.window == nil { end(live) }
+        hubRecent = []
+    }
+
+    private func keepInHub(_ job: String) {
+        hubRecent.removeAll { $0 == job }
+        hubRecent.append(job)
+        while hubRecent.count > Self.hubKept {
+            let oldest = hubRecent.removeFirst()
+            if let live = lives[oldest], live.window == nil { end(live) }
+        }
+    }
+
+    private func end(_ live: Live) {
+        live.surface.onExit = nil
+        live.surface.end(waiting: false)
+        live.chat?.stop()
+        LiveProcesses.forget(pid: live.surface.pid)
+        lives[live.job] = nil
+        if lives.isEmpty { clock?.invalidate(); clock = nil }
+    }
+
+    /// A surface, its frame and the command that attaches it, not started.
+    private func makeLive(_ target: LiveTarget) -> Live? {
+        let job = target.key
+        guard let command = command(for: target) else { return nil }
         let theme = preferences.liveAppearance.theme
         let surface = makeSurface()
         let frame = LiveFrameView(theme: theme, terminal: surface.view)
-        let window = makeWindow(content: frame, target: target)
-        let live = Live(target: target, window: window, surface: surface, frame: frame)
+        let live = Live(target: target, window: nil, surface: surface, frame: frame)
+        live.command = command
         frame.reattach.target = self
         frame.reattach.action = #selector(reattachPressed(_:))
         frame.reattach.identifier = NSUserInterfaceItemIdentifier(job)
@@ -75,17 +190,10 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         frame.files.cite = { [weak self] text in
             guard let live = self?.lives[job], !live.ended else { NSSound.beep(); return }
             live.surface.paste(text)
-            live.window.makeFirstResponder(live.surface.view)
+            live.surface.view.window?.makeFirstResponder(live.surface.view)
         }
         surface.apply(preferences.liveAppearance)
-        lives[job] = live
-        updateDockPresence()
-        start(live, command)
-        if preferences.liveOpensChat { frame.show(chat: true) }
-        bringToFront(window)
-        if !frame.showsChat { window.makeFirstResponder(surface.view) }
-        startClock()
-        return true
+        return live
     }
 
     /// Starts a new background session in `directory`, then opens it. The start
@@ -107,7 +215,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             let output = result?.output ?? ""
             let job = result?.succeeded == true ? LiveLaunch.jobId(fromBackgroundOutput: output) : nil
             DispatchQueue.main.async {
-                if let job, self?.open(job: job) == true { return }
+                if let job, self?.show(.job(job)) == true { return }
                 failed(LiveLaunch.startFailure(fromOutput: output).message)
             }
         }
@@ -153,7 +261,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             else if let result, !result.succeeded, !output.isEmpty { outcome = .refused(LiveLaunch.startFailure(fromOutput: output).message) }
             else { outcome = .unknown }
             DispatchQueue.main.async {
-                if case .started(let job) = outcome, self?.open(job: job) == true { finish(nil); return }
+                if case .started(let job) = outcome, self?.show(.job(job)) == true { finish(nil); return }
                 if case .refused = outcome {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(MoveHere.fallback(sessionId: process.sessionId, folder: process.cwd), forType: .string)
@@ -200,7 +308,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let views = lives.values.sorted { $0.job < $1.job }.map { live -> [String: Any] in
             var view: [String: Any] = ["job": live.job, "pid": Int(live.surface.pid),
                                        "dock": NSApp.activationPolicy() == .regular, "keys": AppMenu.keys, "keyRouted": keyRouted,
-                                       "running": live.surface.isRunning && !live.ended, "title": live.window.title]
+                                       "running": live.surface.isRunning && !live.ended,
+                                       "title": live.window?.title ?? describe(live.target).title, "inHub": live.window == nil]
             if includingText {
                 view["text"] = live.surface.screenText(lines: 40)
                 if let folder = describe(live.target).folder { view["folder"] = folder }
@@ -228,9 +337,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// clipped them away while keeping the cell backgrounds (measured).
     func snapshot(to path: String) {
         for live in lives.values {
-            guard let view = live.window.contentView else { continue }
+            guard let view = live.window?.contentView ?? (live.frame.superview == nil ? nil : live.frame) else { continue }
             view.wantsLayer = true
-            let scale = live.window.backingScaleFactor
+            let scale = view.window?.backingScaleFactor ?? 2
             // With the chat shown, the chat is what the picture must show.
             let terminal = live.frame.showsChat ? (live.frame.chatView ?? live.surface.view) : live.surface.view
             guard let layer = view.layer,
@@ -330,7 +439,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         replacement.surface.apply(preferences.liveAppearance)
         lives[live.job] = replacement
         start(replacement, command)
-        live.window.makeFirstResponder(replacement.surface.view)
+        replacement.surface.view.window?.makeFirstResponder(replacement.surface.view)
     }
 
     @objc private func reattachPressed(_ sender: NSButton) {
@@ -353,7 +462,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         // the next ones cascade from the last.
         let name = "lampboard-live-\(job)"
         if !window.setFrameUsingName(name) {
-            if let last = lives.values.map(\.window).last { window.cascadeTopLeft(from: NSPoint(x: last.frame.minX + 24, y: last.frame.maxY - 24)) }
+            if let last = lives.values.compactMap(\.window).last { window.cascadeTopLeft(from: NSPoint(x: last.frame.minX + 24, y: last.frame.maxY - 24)) }
             else { window.center() }
         }
         window.setFrameAutosaveName(name)
@@ -375,7 +484,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     func refreshDockPresence() { updateDockPresence() }
 
     private func updateDockPresence() {
-        let policy: NSApplication.ActivationPolicy = lives.isEmpty && !keepsDock() ? .accessory : .regular
+        let windows = lives.values.contains { $0.window != nil }
+        let policy: NSApplication.ActivationPolicy = !windows && !keepsDock() ? .accessory : .regular
         guard NSApp.activationPolicy() != policy else { return }
         NSApp.setActivationPolicy(policy)
         if policy == .regular { NSApp.activate(ignoringOtherApps: true) }
@@ -394,13 +504,14 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        bringToFront(live.window)
-        live.window.makeFirstResponder(live.surface.view)
+        guard let window = live.surface.view.window else { return }
+        bringToFront(window)
+        window.makeFirstResponder(live.surface.view)
         guard let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
-                                           windowNumber: live.window.windowNumber, context: nil, characters: "v",
+                                           windowNumber: window.windowNumber, context: nil, characters: "v",
                                            charactersIgnoringModifiers: "v", isARepeat: false, keyCode: 9) else { return }
         keyRouted = NSApp.mainMenu?.performKeyEquivalent(with: event) == true
-        if !live.window.isKeyWindow, keyRouted,
+        if !window.isKeyWindow, keyRouted,
            let item = NSApp.mainMenu?.items.flatMap({ $0.submenu?.items ?? [] }).first(where: { $0.keyEquivalent == "v" }),
            let action = item.action {
             NSApp.sendAction(action, to: live.surface.view, from: item)
@@ -418,45 +529,11 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         _ = live.surface.submit(text)
     }
 
-    /// The Hub's paste route (D154): a live window shows `sessionId` and its
-    /// terminal may be typed into now, by the chat's own gate (Claude there,
-    /// asking nothing).
-    func canPaste(into sessionId: String) -> Bool {
-        guard let live = live(showing: sessionId) else { return false }
-        let status = describe(live.target).status
-        return status != nil && status != .awaiting && !live.ended && live.surface.isRunning
-    }
-
-    /// Types `text` into that window's terminal and presses Enter.
-    func submit(_ text: String, toSession sessionId: String) -> Bool {
-        guard canPaste(into: sessionId), let live = live(showing: sessionId) else { return false }
-        return live.surface.submit(text)
-    }
-
-    /// Shift+Tab into the window showing `sessionId`, by the same gate.
-    func shiftTab(session sessionId: String) -> Bool {
-        guard canPaste(into: sessionId), let live = live(showing: sessionId) else { return false }
-        return live.surface.shiftTab()
-    }
-
-    /// The mode the footer of the window showing `sessionId` shows, if any.
-    func screenMode(session sessionId: String) -> HubBar.Mode? {
-        guard let live = live(showing: sessionId), live.surface.isRunning else { return nil }
-        return HubBar.mode(screen: live.surface.screenText(lines: 12))
-    }
-
-    private func live(showing sessionId: String) -> Live? {
-        lives.values.first { live in
-            if case .tmux(_, _, let id) = live.target { return id == sessionId }
-            return false
-        }
-    }
-
     /// Every live window forward, the Dock icon's click; `false` with none open.
     func bringAllForward() -> Bool {
-        guard !lives.isEmpty else { return false }
+        guard lives.values.contains(where: { $0.window != nil }) else { return false }
         NSApp.activate(ignoringOtherApps: true)
-        for live in lives.values { live.window.makeKeyAndOrderFront(nil) }
+        for live in lives.values { live.window?.makeKeyAndOrderFront(nil) }
         return true
     }
 
@@ -483,7 +560,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         live.frame.onSwitch = { [weak self, weak model] chat in
             guard let live = self?.lives[job] else { return }
             // The keys go to what is shown: the chat's box, or the terminal.
-            if chat { model?.requestFocus() } else { live.window.makeFirstResponder(live.surface.view) }
+            if chat { model?.requestFocus() } else { live.surface.view.window?.makeFirstResponder(live.surface.view) }
         }
         return NSHostingView(rootView: LiveChatView(
             model: model,
@@ -504,7 +581,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             live.chat?.update(asking: status == .awaiting,
                               sendable: status != nil && status != .awaiting && !live.ended && live.surface.isRunning)
             live.frame.show(header, ended: live.ended)
-            if live.window.title != header.title { live.window.title = header.title }
+            if let window = live.window, window.title != header.title { window.title = header.title }
         }
     }
 

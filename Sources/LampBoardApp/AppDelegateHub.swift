@@ -5,28 +5,17 @@ import LampBoardCore
 /// conversations for ⌘K (M7), apart from the delegate's start.
 extension AppDelegate {
 
-    /// The Hub's routes on the server: what it shows, opening it, Send, the
-    /// files column, a reply as it arrives, and the remote index probe.
+    /// The Hub's routes on the server: what it shows, opening it, the files
+    /// column, and the remote index probe.
     func wireHub(_ server: SignalServer) {
         server.onHubReport = { [weak self] in Self.onMain(timeout: 2) { self?.hub?.report() } }
-        server.onHubOpen = { [weak self] id, mode in
+        server.onHubOpen = { [weak self] id, _ in
             Self.onMain(timeout: 2) {
                 self?.hub.map { hub in
-                    if let mode = mode.flatMap(HubWrite.Mode.init(rawValue:)) { hub.model.mode = mode }
                     hub.show(session: id)
                     return true
                 }
             } ?? false
-        }
-        server.onHubCompose = { [weak self] text, confirm in
-            Self.onMain(timeout: 2) { () -> String? in
-                guard let model = self?.hub?.model else { return nil }
-                // As the person would: type it, Send; Send again to answer the question.
-                if model.composer.text != text { model.composer.text = text }
-                var outcome = model.submit()
-                if outcome == .confirm, confirm { outcome = model.submit() }
-                return outcome.rawValue
-            } ?? nil
         }
         server.onRemoteIndex = { [searchIndex] host, query in
             // One small pass: the newest few transcripts are enough to prove the way,
@@ -34,9 +23,6 @@ extension AppDelegate {
             await AppDelegate.indexRemote(host: host, into: searchIndex, budgetFiles: 5, budgetBytes: 4 << 20)
             let hits = searchIndex.search(query, limit: 20)
             return ["hits": hits.map { ["session": $0.sessionId, "host": $0.host ?? "this Mac"] }]
-        }
-        server.onModStream = { [weak self] session, turn, text, done in
-            DispatchQueue.main.async { self?.hub?.model.heard(stream: text, turn: turn, done: done, session: session) }
         }
         server.onHubFiles = { [weak self] body in Self.onMain(timeout: 2) { self?.hub?.applyTest(body) } ?? false }
     }
