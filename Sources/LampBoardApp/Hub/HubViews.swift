@@ -289,7 +289,7 @@ struct HubTerminalHost: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator { var seated: String? }
+    @MainActor final class Coordinator { var seated: String? }
 
     private func seat(in container: NSView, context: Context) {
         // Once a terminal: `hosted` attaches, or takes a terminal back from its
@@ -298,9 +298,25 @@ struct HubTerminalHost: NSViewRepresentable {
         // terminal, and seating it again dropped the keys typed meanwhile (T4).
         // A terminal that left for a window of its own is not called back by a redraw.
         guard context.coordinator.seated != target.key else { return }
-        guard let frame = model.terminalView(for: target) else { return }
-        Diagnostics.log("hub: terminal seated \(target.key) (was \(context.coordinator.seated ?? "-"))")
+        // Out of SwiftUI's update: `hosted` may close a window, start a process
+        // and leave another session's attach.
+        let was = context.coordinator.seated
         context.coordinator.seated = target.key
+        let model = self.model, target = self.target, coordinator = context.coordinator
+        DispatchQueue.main.async { [weak container] in
+            guard let container else { return }
+            // Nothing could open it: asked again at the next redraw.
+            guard HubTerminalHost.place(model: model, target: target, in: container) else {
+                if coordinator.seated == target.key { coordinator.seated = nil }
+                return
+            }
+            Diagnostics.log("hub: terminal seated \(target.key) (was \(was ?? "-"))")
+        }
+    }
+
+    @discardableResult
+    private static func place(model: HubModel, target: LiveTarget, in container: NSView) -> Bool {
+        guard let frame = model.terminalView(for: target) else { return false }
         container.subviews.forEach { $0.removeFromSuperview() }
         frame.removeFromSuperview()
         frame.translatesAutoresizingMaskIntoConstraints = false
@@ -311,11 +327,11 @@ struct HubTerminalHost: NSViewRepresentable {
             frame.topAnchor.constraint(equalTo: container.topAnchor),
             frame.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
-        let target = self.target
         DispatchQueue.main.async { [weak model] in
             guard let terminal = model?.terminal(for: target) else { return }
             terminal.window?.makeFirstResponder(terminal)
         }
+        return true
     }
 }
 

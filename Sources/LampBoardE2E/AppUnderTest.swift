@@ -128,7 +128,11 @@ final class AppUnderTest {
             process.terminate()
             let deadline = Date().addingTimeInterval(1)
             while process.isRunning && Date() < deadline { usleep(20_000) }
-            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+                // Killed is not yet gone: reaped, so `isRunning` says so.
+                process.waitUntilExit()
+            }
         }
     }
 
@@ -144,7 +148,11 @@ final class AppUnderTest {
             while process.isRunning && Date() < deadline {
                 usleep(20_000)
             }
-            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+                // Killed is not yet gone: reaped, so `isRunning` says so.
+                process.waitUntilExit()
+            }
         }
         try? FileManager.default.removeItem(at: home)
     }

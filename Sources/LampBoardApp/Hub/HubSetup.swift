@@ -66,7 +66,7 @@ enum HubSetup {
         }
         // Move to LampBoard ends in tmux, in the Hub (hub-terminale R6).
         live.resumeInTmux = { folder, id, name, failed in
-            launcher.launch(folder: folder, host: nil, start: .resume(sessionId: id), name: name, failed: failed)
+            launcher.launch(folder: folder, host: nil, start: .resume(sessionId: id), name: name) { if let reason = $0 { failed(reason) } }
             return true
         }
         live.openInHub = { [weak panel] target in panel?.showInHub(target) ?? false }

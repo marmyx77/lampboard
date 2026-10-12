@@ -1,5 +1,6 @@
 import Foundation
 import LampBoardCore
+import Security
 
 /// LampMaster as a Claude Code session LampBoard hosts (hub-terminale R10–R13):
 /// started, or taken up again, in tmux in its own folder, shown in the Hub's
@@ -36,20 +37,29 @@ final class LampMasterConductor {
 
     /// Starts LampMaster, or takes its conversation up again; shows it.
     func start(failed: @escaping (String) -> Void) {
+        let folder = Self.folder.path
+        // Running, or starting: it is shown, never started twice, and its folder
+        // (its key) is left as its server read it.
+        if let id = sessionId, launcher.isStarting(id) || SessionLauncher.busy(id, host: nil, store: store) != nil { return }
         do { try prepare() } catch {
             return failed("LampBoard could not prepare LampMaster's folder: \(error.localizedDescription)")
         }
-        let folder = Self.folder.path
-        // Running already: it is shown, never started twice.
-        if let id = sessionId, SessionLauncher.busy(id, host: nil, store: store) != nil { return }
         let resumable = sessionId.flatMap { id in
             FileManager.default.fileExists(atPath: TranscriptLocator.candidateURL(sessionId: id, cwd: folder).path) ? id : nil
         }
         let start: NewSession.Start = resumable.map { .resume(sessionId: $0) } ?? .new(sessionId: SessionLauncher.newSessionId())
         Preferences.sharedDefaults.set(start.sessionId, forKey: Self.sessionKey)
         // Not revealed as a session of its own: the Hub shows it on LampMaster's row.
-        launcher.launch(folder: folder, host: nil, start: start, name: "LampMaster", reveal: false, failed: failed)
+        launcher.launch(folder: folder, host: nil, start: start, name: "LampMaster", reveal: false) { if let reason = $0 { failed(reason) } }
     }
+
+    /// The key of this start of LampMaster, given to its server alone through
+    /// its folder's `.mcp.json` (owner-only); the hands answer nothing without it.
+    /// Kept in an owner-only file too: LampBoard may restart while LampMaster runs.
+    private lazy var key: String? = (try? String(contentsOf: Self.keyFile, encoding: .utf8))?
+        .trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+
+    static var keyFile: URL { AppConfig.supportDirectory.appendingPathComponent("lampmaster.key") }
 
     /// What LampMaster's folder holds: who it is, its server, its settings.
     /// The person's own `CLAUDE.local.md` beside them is never touched.
@@ -59,8 +69,17 @@ final class LampMasterConductor {
         try FileManager.default.createDirectory(at: settings, withIntermediateDirectories: true)
         try Data(LampMasterHome.instructions.utf8).write(to: folder.appendingPathComponent("CLAUDE.md"), options: .atomic)
         let executable = Bundle.main.executablePath ?? CommandLine.arguments[0]
-        try LampMasterHome.mcpConfig(executable: executable, port: port, defaultPort: AppConfig.listenPort)
-            .write(to: folder.appendingPathComponent(".mcp.json"), options: .atomic)
+        var bytes = [UInt8](repeating: 0, count: 32)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+            throw CocoaError(.featureUnsupported)
+        }
+        let key = bytes.map { String(format: "%02x", $0) }.joined()
+        let config = folder.appendingPathComponent(".mcp.json")
+        try LampMasterHome.mcpConfig(executable: executable, port: port, defaultPort: AppConfig.listenPort, key: key)
+            .write(to: config, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: config.path)
+        FileManager.default.createFile(atPath: Self.keyFile.path, contents: Data(key.utf8), attributes: [.posixPermissions: 0o600])
+        self.key = key
         try LampMasterHome.settings().write(to: settings.appendingPathComponent("settings.json"), options: .atomic)
     }
 
@@ -89,9 +108,10 @@ final class LampMasterConductor {
         guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
               let name = object["tool"] as? String, let tool = LampMasterHands.Tool(rawValue: name)
         else { return ("Unknown tool.", true) }
-        // Only LampMaster's own session: the server is in its folder alone, and
-        // a session elsewhere that named it would still be refused here.
-        guard let me = sessionId, (object["session"] as? String) == me else {
+        // Only LampMaster's own session: the server is in its folder alone and
+        // carries the key of this start; a session id is no secret (it is in `ps`).
+        guard let me = sessionId, (object["session"] as? String) == me, let key,
+              let given = object["key"] as? String, Self.same(given, key) else {
             return ("These tools belong to LampMaster's own session, started by LampBoard.", true)
         }
         let arguments = object["arguments"] as? [String: Any] ?? [:]
@@ -116,9 +136,10 @@ final class LampMasterConductor {
             let folder = string("folder"), host = string("host").nilIfEmpty, resume = string("resume").nilIfEmpty
             guard ProjectList.isValid(path: folder, host: host) else { return ("A folder is an absolute path, on this Mac or a machine in Settings › Other Macs.", true) }
             let start: NewSession.Start = resume.map { .resume(sessionId: $0) } ?? .new(sessionId: SessionLauncher.newSessionId())
-            var refusal: String?
-            launcher.launch(folder: folder, host: host, start: start, name: nil, reveal: false) { refusal = $0 }
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            // Its outcome, not a guess: a start here takes tmux's word, one there ssh's.
+            let refusal: String? = await withCheckedContinuation { continuation in
+                launcher.launch(folder: folder, host: host, start: start, name: nil, reveal: false) { continuation.resume(returning: $0) }
+            }
             if let refusal { return (refusal, true) }
             return ("Started in \((folder as NSString).lastPathComponent)\(host.map { " on \($0)" } ?? ""), id \(start.sessionId.prefix(8)).", false)
         case .openInHub:
@@ -126,6 +147,13 @@ final class LampMasterConductor {
             openInHub(found.id)
             return ("\(found.name) is open in the Hub.", false)
         }
+    }
+
+    /// Compares in constant time: how much of a key matched is never told by when.
+    nonisolated static func same(_ a: String, _ b: String) -> Bool {
+        let x = Array(a.utf8), y = Array(b.utf8)
+        guard x.count == y.count else { return false }
+        return zip(x, y).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
     }
 
     private func unknown(_ query: String) -> String {
@@ -177,25 +205,35 @@ final class LampMasterConductor {
             }.value
         }
         guard let tail else { return "LampBoard could not read \(session.name)'s transcript." }
-        return "\(session.name) (\(session.id.prefix(8))):\n" + LampMasterHands.digest(tail: tail, messages: messages)
+        // Decoded away from the main actor: a quarter of a megabyte of JSON lines.
+        let digest = await Task.detached(priority: .userInitiated) { LampMasterHands.digest(tail: tail, messages: messages) }.value
+        return "\(session.name) (\(session.id.prefix(8))):\n" + digest
     }
 
     private func send(_ text: String, to session: LampMasterHands.Facts) async -> (text: String, isError: Bool) {
         if case .refuse(let why) = LampMasterHands.canSend(session, promptEmpty: true) { return (why, true) }
         guard let place = place(session.id) else { return ("LampBoard has no terminal into \(session.name).", true) }
-        // Its prompt, read now: nothing the person typed is mixed into.
-        let look = await run(HandsScript.look(target: place.target), on: place.host).flatMap(HandsScript.parseLook)
-        let empty = look.map { PromptLine.isEmpty(lines: $0.lines, cursorX: $0.x, cursorY: $0.y) }
+        // Its prompt, read now: nothing the person typed is mixed into, and
+        // nothing goes into a shell Claude Code left behind.
+        guard let look = await run(HandsScript.look(target: place.target), on: place.host).flatMap(HandsScript.parseLook) else {
+            return ("LampBoard could not read \(session.name)'s terminal.", true)
+        }
+        guard !HandsScript.isShell(look.command) else { return ("Claude Code is no longer running in \(session.name)'s terminal.", true) }
+        let empty = PromptLine.isEmpty(lines: look.lines, cursorX: look.x, cursorY: look.y)
         if case .refuse(let why) = LampMasterHands.canSend(session, promptEmpty: empty) { return (why, true) }
-        guard await run(HandsScript.send(target: place.target), on: place.host, input: Data(text.utf8)) != nil else {
-            return ("tmux did not take the message.", true)
+        // The same cursor is checked again by the script that pastes, at once.
+        let buffer = String(UUID().uuidString.lowercased().prefix(8))
+        guard let script = HandsScript.send(target: place.target, cursorX: look.x, cursorY: look.y, buffer: buffer),
+              await run(script, on: place.host, input: Data(text.utf8)) != nil else {
+            return ("\(session.name)'s prompt changed just before sending: nothing was sent.", true)
         }
         return ("Sent to \(session.name).", false)
     }
 
     /// A tmux script here, or on `host` through the panel's ssh.
     private func run(_ script: String, on host: String?, input: Data? = nil) async -> String? {
-        if let host { return await ProjectSource.ssh(host, script, input: input) }
+        // Under `sh`, whatever login shell the other machine has (D133).
+        if let host { return await ProjectSource.ssh(host, NewSession.posix(script), input: input) }
         guard let tmux = LocalTmuxPlaces.executable() else { return nil }
         let path = (tmux as NSString).deletingLastPathComponent + ":/usr/bin:/bin"
         return await ProjectSource.run("/usr/bin/env", ["PATH=\(path)", "/bin/sh", "-c", script], input: input)

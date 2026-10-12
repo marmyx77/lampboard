@@ -120,7 +120,9 @@ public enum NewSession {
     /// own shell, interactive so that its startup files put `claude` on PATH,
     /// running `claude` and staying open when it ends. One command string for
     /// tmux, which a tmux older than 3.0 needs.
-    public static func remoteCommand(folder: String, name: String, launch: String, start: Start? = nil) -> String {
+    /// `attach: false` makes the session and leaves (hub-terminale R11: a start
+    /// LampMaster asked for, which nobody watches yet).
+    public static func remoteCommand(folder: String, name: String, launch: String, start: Start? = nil, attach: Bool = true) -> String {
         let quoted = shellQuoted(name)
         let folder = shellQuoted(folder)
         let pane = pane(start.flatMap(claudeLine) ?? "claude")
@@ -135,7 +137,7 @@ public enum NewSession {
             "  tmux set-option -t \"=$n:\" @lampboard \"$l\"",
             "  tmux set-option -t \"=$n:\" status off",
             "fi",
-            "exec tmux attach-session -t \"=$n:\"",
+            attach ? "exec tmux attach-session -t \"=$n:\"" : "echo \"$n\"",
         ].joined(separator: "\n")
     }
 }

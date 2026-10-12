@@ -79,16 +79,23 @@ enum LampMasterHandsSuite {
             t.expect(!PromptLine.isEmpty(lines: ["❯ first", "  second"], cursorX: 8, cursorY: 1), "a second line")
             t.expect(!PromptLine.isEmpty(lines: ["Do you want to proceed?"], cursorX: 2, cursorY: 0), "not the prompt")
             t.expect(!PromptLine.isEmpty(lines: [], cursorX: 0, cursorY: 3), "no screen")
-            let look = HandsScript.parseLook("2 1\n─────\n❯ \n─────")
+            let look = HandsScript.parseLook("2 1 2.1.296\n─────\n❯ \n─────")
             t.expectEqual(look?.x, 2)
+            t.expectEqual(look?.command, "2.1.296")
             t.expect(look.map { PromptLine.isEmpty(lines: $0.lines, cursorX: $0.x, cursorY: $0.y) } == true, "parsed back, empty")
+            t.expect(HandsScript.isShell("-zsh") && HandsScript.isShell("bash") && !HandsScript.isShell("2.1.296") && !HandsScript.isShell("claude"),
+                     "Claude Code gone, its shell left: nothing is pasted into a shell")
         },
 
         TestCase("The text goes by standard input, as one bracketed paste, then Enter; every target quoted") { t in
-            let send = HandsScript.send(target: "=web's:0.0")
-            t.expect(send.hasPrefix("tmux load-buffer -b lampmaster - && tmux paste-buffer -p -d -b lampmaster"), send)
+            let send = HandsScript.send(target: "=web's:0.0", cursorX: 2, cursorY: 30, buffer: "a1b2") ?? ""
+            t.expect(send.contains("= '2 30' ] || { echo 'the prompt changed'; exit 3; }"),
+                     "the cursor checked again in the same script, just before the paste: \(send)")
+            t.expect(send.contains("tmux load-buffer -b lampmaster-a1b2 - && tmux paste-buffer -p -d -b lampmaster-a1b2"), send)
             t.expect(send.contains(#"-t '=web'\''s:0.0'"#), send)
             t.expect(send.hasSuffix("Enter"), send)
+            t.expect(send.hasPrefix(#"export PATH="$PATH:/opt/homebrew/bin"#), "Homebrew's tmux over ssh")
+            t.expectNil(HandsScript.send(target: "=web:0.0", cursorX: 2, cursorY: 3, buffer: "x; rm"), "a buffer name is plain")
             t.expect(HandsScript.stop(target: "=web:0.0").hasSuffix("Escape"), "Esc")
             let look = HandsScript.look(target: "=web:0.0")
             t.expect(look.contains("tmux -u display-message") && look.contains("tmux -u capture-pane"),
@@ -107,8 +114,10 @@ enum LampMasterHandsSuite {
         },
 
         TestCase("Its folder: the server only there, only the tools that read allowed ahead") { t in
-            let mcp = String(decoding: LampMasterHome.mcpConfig(executable: "/Applications/LampBoard.app/x", port: 9900, defaultPort: 9876), as: UTF8.self)
+            let mcp = String(decoding: LampMasterHome.mcpConfig(executable: "/Applications/LampBoard.app/x", port: 9900, defaultPort: 9876,
+                                                                key: "k3y"), as: UTF8.self)
             t.expect(mcp.contains(#""args" : ["#) && mcp.contains(#""--hands""#) && mcp.contains(#""9900""#), mcp)
+            t.expect(mcp.contains(#""LAMPBOARD_HANDS_KEY" : "k3y""#), "the key of this start, for its server alone: \(mcp)")
             let settings = (try? JSONSerialization.jsonObject(with: LampMasterHome.settings()) as? [String: Any]) ?? [:]
             t.expectEqual(settings["enabledMcpjsonServers"] as? [String], ["lampboard"])
             let permissions = settings["permissions"] as? [String: Any]
@@ -117,6 +126,7 @@ enum LampMasterHandsSuite {
                                                              "mcp__lampboard__start_session", "mcp__lampboard__open_in_hub"],
                           "every action asked about, whatever the mode")
             t.expectEqual(permissions?["defaultMode"] as? String, "default")
+            t.expectEqual(permissions?["disableBypassPermissionsMode"] as? String, "disable")
         },
     ])
 }

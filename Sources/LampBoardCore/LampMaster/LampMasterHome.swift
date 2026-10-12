@@ -25,10 +25,16 @@ public enum LampMasterHome {
         - Be brief. Name sessions by their name and the first eight characters of their id.
         """
 
-    /// The project's MCP servers: LampBoard's hands, only here.
-    public static func mcpConfig(executable: String, port: UInt16, defaultPort: UInt16) -> Data {
+    /// The variable that carries the key of this start of LampMaster to its server.
+    public static let keyVariable = "LAMPBOARD_HANDS_KEY"
+
+    /// The project's MCP servers: LampBoard's hands, only here, with the key of
+    /// this start. The panel answers the hands only with that key: a session id
+    /// is no secret (it is in `ps`), the key is in this folder alone.
+    public static func mcpConfig(executable: String, port: UInt16, defaultPort: UInt16, key: String) -> Data {
         let arguments = ["mcp", "--hands"] + (port == defaultPort ? [] : ["--port", String(port)])
-        let object: [String: Any] = ["mcpServers": [LampMasterHands.serverName: ["command": executable, "args": arguments]]]
+        let server: [String: Any] = ["command": executable, "args": arguments, "env": [keyVariable: key]]
+        let object: [String: Any] = ["mcpServers": [LampMasterHands.serverName: server]]
         return (try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])) ?? Data()
     }
 
@@ -45,6 +51,8 @@ public enum LampMasterHome {
                 "allow": LampMasterHands.Tool.allCases.filter { !$0.acts }.map(name),
                 "ask": LampMasterHands.Tool.allCases.filter(\.acts).map(name),
                 "defaultMode": "default",
+                // Shift-Tab in its terminal cannot reach the mode that asks nothing.
+                "disableBypassPermissionsMode": "disable",
             ] as [String: Any],
         ]
         return (try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])) ?? Data()

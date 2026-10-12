@@ -131,10 +131,12 @@ public enum LampMasterHands {
     public static func list(_ sessions: [Facts]) -> String {
         let others = sessions.filter { !$0.isLampMaster }
         guard !others.isEmpty else { return "No other session is running." }
+        // A name is another session's word: on one line, so it cannot forge one.
+        func line(_ text: String) -> String { text.components(separatedBy: .newlines).joined(separator: " ") }
         return others.map { s in
-            let place = s.host ?? "this Mac"
+            let place = line(s.host ?? "this Mac")
             let writable = canSend(s, promptEmpty: true) == .send ? "writable" : "read only"
-            return "\(s.id.prefix(8)) · \(s.name) · \(s.project) on \(place) · \(s.surface.rawValue) · \(s.status.rawValue) "
+            return "\(s.id.prefix(8)) · \(line(s.name)) · \(line(s.project)) on \(place) · \(s.surface.rawValue) · \(s.status.rawValue) "
                 + "\(s.minutes) min ago · \(writable)"
         }
         .joined(separator: "\n")
@@ -235,31 +237,56 @@ public enum PromptLine {
 /// quoted, the text goes by standard input, never as an argument.
 public enum HandsScript {
 
-    /// The pane's cursor, then its screen.
+    /// What a non-interactive ssh lacks on a Mac: Homebrew's tmux.
+    static let path = #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin""#
+
+    /// The pane's cursor and what runs in its foreground, then its screen.
     public static func look(target: String) -> String {
         let t = NewSession.shellQuoted(target)
         // `-u`: without a locale tmux writes `❯` and every other non-ASCII character as `_`.
-        return "tmux -u display-message -p -t \(t) '#{cursor_x} #{cursor_y}' && tmux -u capture-pane -p -t \(t)"
+        return "\(path); tmux -u display-message -p -t \(t) '#{cursor_x} #{cursor_y} #{pane_current_command}' && tmux -u capture-pane -p -t \(t)"
     }
 
-    /// The cursor and the screen, read back.
-    public static func parseLook(_ output: String) -> (lines: [String], x: Int, y: Int)? {
+    public struct Look: Equatable, Sendable {
+        public let lines: [String]
+        public let x: Int
+        public let y: Int
+        /// The pane's foreground process: Claude Code, or a shell it left behind.
+        public let command: String
+    }
+
+    /// The cursor, the foreground process and the screen, read back.
+    public static func parseLook(_ output: String) -> Look? {
         var lines = output.components(separatedBy: "\n")
         guard let first = lines.first else { return nil }
-        let numbers = first.split(separator: " ").compactMap { Int($0) }
-        guard numbers.count == 2 else { return nil }
+        let fields = first.split(separator: " ", maxSplits: 2).map(String.init)
+        guard fields.count >= 2, let x = Int(fields[0]), let y = Int(fields[1]) else { return nil }
         lines.removeFirst()
-        return (lines, numbers[0], numbers[1])
+        return Look(lines: lines, x: x, y: y, command: fields.count == 3 ? fields[2] : "")
+    }
+
+    /// Whether the pane's foreground process is a shell: Claude Code has ended
+    /// there, and what is pasted would run as commands.
+    public static func isShell(_ command: String) -> Bool {
+        let name = command.hasPrefix("-") ? String(command.dropFirst()) : command
+        return ["sh", "bash", "zsh", "fish", "dash", "ksh", "tcsh", "csh", "nu", "login", ""].contains(name)
     }
 
     /// Standard input pasted into the pane as one paste (bracketed, so a line
-    /// break does not send early), then Enter.
-    public static func send(target: String) -> String {
+    /// break does not send early), then Enter; only if the cursor is still where
+    /// it was when the prompt was read empty, checked in the same script, so a
+    /// person who started typing in between is never mixed into. The buffer's
+    /// name is the call's own: two sends never cross.
+    public static func send(target: String, cursorX: Int, cursorY: Int, buffer: String) -> String? {
+        guard buffer.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") }), !buffer.isEmpty else { return nil }
         let t = NewSession.shellQuoted(target)
-        return "tmux load-buffer -b lampmaster - && tmux paste-buffer -p -d -b lampmaster -t \(t) && sleep 0.3 && tmux send-keys -t \(t) Enter"
+        let b = "lampmaster-" + buffer
+        return "\(path); [ \"$(tmux -u display-message -p -t \(t) '#{cursor_x} #{cursor_y}')\" = '\(cursorX) \(cursorY)' ] "
+            + "|| { echo 'the prompt changed'; exit 3; }; "
+            + "tmux load-buffer -b \(b) - && tmux paste-buffer -p -d -b \(b) -t \(t) && sleep 0.3 && tmux send-keys -t \(t) Enter"
     }
 
     public static func stop(target: String) -> String {
-        "tmux send-keys -t \(NewSession.shellQuoted(target)) Escape"
+        "\(path); tmux send-keys -t \(NewSession.shellQuoted(target)) Escape"
     }
 }

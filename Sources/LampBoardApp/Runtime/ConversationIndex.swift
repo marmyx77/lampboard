@@ -42,7 +42,11 @@ final class ConversationIndex {
     /// rule below is about processes nobody asked for; these somebody did.
     private var expected: Set<String> = []
 
-    func expect(_ sessionId: String) { expected.insert(sessionId) }
+    func expect(_ sessionId: String) {
+        // Bounded: a start that never spoke is no reason to keep its id for ever.
+        if expected.count > 500 { expected.removeAll() }
+        expected.insert(sessionId)
+    }
 
     private let fileManager = FileManager.default
 

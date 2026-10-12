@@ -151,7 +151,8 @@ enum HubE2ESuite {
                 a.expect(wait(4) { live().isEmpty }, "closed, no terminal left: \(live())")
                 a.expectEqual(open(resting), 204)
                 a.expect(wait(6) { report()["centre"] as? String == "terminal" && live().count == 1 }, "opened again: \(live())")
-                a.expectEqual(attaches(), before + 1, "a new attach after closing")
+                // The attach is a process: its fake writes its call a moment after it starts.
+                a.expect(wait(4) { attaches() == before + 1 }, "a new attach after closing: \(attaches()) for \(before + 1)")
             },
 
             TestCase("a project attached, and a session started there in tmux under the id LampBoard chose, shown at once") { a in

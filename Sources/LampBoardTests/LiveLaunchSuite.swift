@@ -422,6 +422,8 @@ enum NewSessionSuite {
             t.expectNil(NewSession.claudeLine(.resume(sessionId: "-p")))
             let script = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef", start: .resume(sessionId: id))
             t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude --resume \#(id); exec "$SHELL" -l'"#)), script)
+            let detached = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef", start: .new(sessionId: id), attach: false)
+            t.expect(!detached.contains("attach-session") && detached.hasSuffix(#"echo "$n""#), "made, and left: \(detached)")
         },
 
         TestCase("On this Mac a session is born in tmux too, its status line off, and says where it sits") { t in

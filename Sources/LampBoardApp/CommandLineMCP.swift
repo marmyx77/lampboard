@@ -36,11 +36,13 @@ enum LampMasterBridge {
     /// the session it started as LampMaster.
     static func runHands(port: UInt16) -> Int32 {
         let session = ProcessInfo.processInfo.environment["CLAUDE_CODE_SESSION_ID"] ?? ""
+        // The key of this start of LampMaster, from its folder's `.mcp.json`.
+        let key = ProcessInfo.processInfo.environment[LampMasterHome.keyVariable] ?? ""
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
         while let line = readLine(strippingNewline: true) {
             guard !line.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
             let answer = LampMasterHands.respond(to: line, version: version) { tool, arguments in
-                let call: [String: Any] = ["tool": tool.rawValue, "arguments": arguments, "session": session]
+                let call: [String: Any] = ["tool": tool.rawValue, "arguments": arguments, "session": session, "key": key]
                 guard let body = try? JSONSerialization.data(withJSONObject: call) else { return ("Unreadable arguments.", true) }
                 switch LocalClient.lampMasterHands(body, port: port) {
                 case .failure(let error):

@@ -6000,11 +6000,23 @@ with six tools:
 - `sessions` and `read_session` read;
 - `send_to_session`, `stop_session`, `start_session` and `open_in_hub` act.
 
-The panel answers them only for the session it started as LampMaster. Every tool
-that acts is left out of the folder's allowed tools, so Claude Code asks the
-person each time: the click stays theirs, as D61 wanted. A message goes only into
-a session in tmux, at rest, with an empty prompt (told by tmux's cursor, which a
-grey suggestion does not move). It arrives marked as LampMaster's.
+The panel answers them only for the session it started as LampMaster, and only
+with the key of that start, which LampBoard writes into the folder's `.mcp.json`
+(owner-only): a session id is no secret, it is in `ps`. Every tool that acts is an
+`ask` rule in the folder's settings, so Claude Code asks the person each time,
+whatever the mode. Its auto mode ran one without asking (measured, 12 October
+2026), and the folder also turns off the mode that asks nothing. The click stays
+theirs, as D61 wanted.
+
+A message goes only into a session in tmux, at rest, with an empty prompt, and
+only while Claude Code, not a shell it left behind, is the pane's foreground. An
+empty prompt is told by tmux's cursor, which a grey suggestion does not move.
+The cursor is checked again by the script that pastes, at once, so a person who
+starts typing in between is never mixed into. The message arrives marked as
+LampMaster's.
+
+**Starts, once.** A conversation being started is refused a second start for up
+to ninety seconds, until it speaks: before that, no process shows it.
 
 **The person's own memory.** LampMaster is Claude Code with the person's own
 setup: their MCP servers and plugins are there as in any session. Nothing in

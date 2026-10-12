@@ -88,7 +88,9 @@ final class HubModel: ObservableObject {
     init(deps: HubDependencies) {
         self.deps = deps
         files.tools = deps.tools
-        $selected.removeDuplicates().sink { [weak self] id in self?.open(id) }.store(in: &cancellables)
+        // A turn of the run loop later: `$selected` speaks before the value is
+        // stored, and the centre is worked out from the stored one.
+        $selected.removeDuplicates().receive(on: RunLoop.main).sink { [weak self] id in self?.open(id) }.store(in: &cancellables)
         // A session can become reachable after it is chosen (its tmux pane is
         // learnt every ten seconds, a move ends in a background job), or stop
         // being so: the centre follows, once a second.
@@ -161,13 +163,20 @@ final class HubModel: ObservableObject {
         guard shown else { return }
         let next: Centre
         // Started sessions nobody chose are dropped once their row has come.
-        let arrived = pending.keys.filter { $0 != selected && deps.store.state.sessions[$0] != nil && deps.target($0) != nil }
+        // And those that never came, after ten minutes.
+        let old = Date().addingTimeInterval(-600)
+        let arrived = pending.filter { id, started in
+            id != selected && (started.at < old || (deps.store.state.sessions[id] != nil && deps.target(id) != nil))
+        }.keys
         if !arrived.isEmpty { arrived.forEach { pending[$0] = nil } }
         if selected == Self.lampMasterId {
             // Its terminal while its conversation runs, or while it is starting.
             let id = conductor?.sessionId
             let starting = id.map { pending[$0] != nil } ?? false
-            let running = id.map { SessionLauncher.busy($0, host: nil, store: deps.store) != nil } ?? false
+            // Running: its row has a terminal, which only a live session is given
+            // (the panes are read off the main thread). Asking the processes here,
+            // once a second, would be work on the main thread (D161).
+            let running = id.map { deps.store.state.sessions[$0] != nil && deps.target($0) != nil } ?? false
             next = .lampMaster(running || starting ? id.flatMap { deps.target($0) ?? pending[$0]?.target } : nil)
         } else if let id = selected {
             // The row's own terminal once it has one; until then the one the
@@ -248,7 +257,7 @@ final class HubModel: ObservableObject {
     func startSession(folder: String, host: String?, name: String? = nil) {
         failure = nil
         launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name) { [weak self] reason in
-            self?.failed("The session did not start", reason)
+            if let reason { self?.failed("The session did not start", reason) }
         }
     }
 
@@ -256,7 +265,7 @@ final class HubModel: ObservableObject {
     func resumeSession(_ id: String, folder: String, host: String?) {
         failure = nil
         launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id), name: nil) { [weak self] reason in
-            self?.failed("The conversation was not taken up", reason)
+            if let reason { self?.failed("The conversation was not taken up", reason) }
         }
     }
 

@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,464 lines · 197 files  pure logic, zero AppKit
-  LampBoardApp/    32,618 lines · 177 files   shell: AppKit, network, windows
-  LampBoardTests/  18,817 lines · 131 files   1360 cases, instantaneous
-  LampBoardE2E/    5,467 lines · 23 files   188 cases, the real binary
+  LampBoardCore/  25,501 lines · 197 files  pure logic, zero AppKit
+  LampBoardApp/    32,739 lines · 177 files   shell: AppKit, network, windows
+  LampBoardTests/  18,829 lines · 131 files   1360 cases, instantaneous
+  LampBoardE2E/    5,476 lines · 23 files   188 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1935,7 +1935,7 @@ The **New session…** window: where, which folder (the recent ones, a typed pat
 or the folder picker on this Mac) and what name, then Start: in tmux, in the Hub
 (D163).
 
-### `SessionLauncher.swift` · 111
+### `SessionLauncher.swift` · 158
 Starts a session in a project (D163): a new conversation or a past one, in tmux on
 this Mac (the script run off the main thread, its last line read back as where the
 session sits) or on another machine (the ssh terminal itself runs the script). The
@@ -1988,7 +1988,7 @@ its terminal, a note while that terminal is in a window of its own, its transcri
 read when LampBoard has no terminal into it, or LampMaster (D151). Once a second it
 follows a session that becomes reachable, its tmux pane learnt or a move ended.
 
-### `HubViews.swift` · 314
+### `HubViews.swift` · 362
 The first two columns: LampMaster's row (D151) — its lamp working while a round
 runs and green while cards wait, its count, the time of its last round — above the
 panel's own rows (D150); then the centre: a header with the session's lamp, name,

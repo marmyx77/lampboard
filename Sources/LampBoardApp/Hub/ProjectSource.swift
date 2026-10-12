@@ -139,8 +139,11 @@ struct ProjectSource: Sendable, Equatable {
                 if let feed, let input {
                     // Written apart from the reading below: a large file and a full
                     // output pipe would otherwise wait on each other.
+                    // A tool that exits before reading it all must not take the
+                    // app with it: no SIGPIPE, and the throwing write (as `Command`).
+                    _ = fcntl(feed.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
                     DispatchQueue.global(qos: .userInitiated).async {
-                        feed.fileHandleForWriting.write(input)
+                        try? feed.fileHandleForWriting.write(contentsOf: input)
                         try? feed.fileHandleForWriting.close()
                     }
                 }

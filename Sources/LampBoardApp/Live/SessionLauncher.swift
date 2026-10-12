@@ -22,6 +22,8 @@ final class SessionLauncher {
         /// Chosen in the Hub at once; `false` for a start LampMaster asked for,
         /// which leaves the Hub on LampMaster's conversation.
         var reveal = true
+        /// When it was started: one whose row never comes is dropped in time.
+        var at = Date()
     }
 
     private let store: StateStore
@@ -35,17 +37,61 @@ final class SessionLauncher {
     /// A fresh id for a new conversation.
     static func newSessionId() -> String { UUID().uuidString.lowercased() }
 
-    /// Starts `start` in `folder`, on `host` or this Mac; `failed` says why not.
+    /// Conversations being started now, and since when. A process takes a
+    /// second or more to show in `~/.claude/sessions`, and another machine's
+    /// probe longer: until then a second start of the same id would be a second
+    /// writer (a review finding, 12 October 2026).
+    private var starting: [String: Date] = [:]
+    static let startingFor: TimeInterval = 90
+
+    /// Whether `id` is being started now.
+    /// It stops being so the moment the session speaks: its row moves after the
+    /// start (then a process holds it, or has let it go).
+    func isStarting(_ id: String, now: Date = Date()) -> Bool {
+        guard let since = starting[id] else { return false }
+        if let row = store.state.sessions[id], row.updatedAt > since {
+            starting[id] = nil
+            return false
+        }
+        return now.timeIntervalSince(since) < Self.startingFor
+    }
+
+    /// Starts `start` in `folder`, on `host` or this Mac; `done` is told `nil`
+    /// once it is started, or why not.
     func launch(folder: String, host: String?, start: NewSession.Start, name: String?, reveal: Bool = true,
-                failed: @escaping (String) -> Void) {
-        if case .resume(let id) = start, let reason = Self.busy(id, host: host, store: store) { return failed(reason) }
+                done: @escaping (String?) -> Void) {
+        let id = start.sessionId
+        guard !isStarting(id) else { return done("This conversation is being started already.") }
+        if case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }
+        for old in Array(starting.keys) where !isStarting(old) { starting[old] = nil }
+        starting[id] = Date()
         let label = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? (folder as NSString).lastPathComponent
         let tmuxName = NewSession.tmuxName(for: "/" + label, taken: [])
-        guard let host else { return launchHere(folder: folder, name: tmuxName, label: label, start: start, reveal: reveal, failed: failed) }
-        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName, start: start) else {
-            return failed("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")
+        let finish: (String?) -> Void = { [weak self] reason in
+            if reason != nil { self?.starting[id] = nil }
+            done(reason)
         }
-        show(Pending(sessionId: start.sessionId, target: target, name: label, folder: folder, host: host, reveal: reveal))
+        guard let host else {
+            return launchHere(folder: folder, name: tmuxName, label: label, start: start, reveal: reveal, done: finish)
+        }
+        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName, start: start),
+              case .newTmux(_, _, _, let launch, _) = target else {
+            return finish("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")
+        }
+        let pending = Pending(sessionId: id, target: target, name: label, folder: folder, host: host, reveal: reveal)
+        // Shown: its terminal runs the script that makes it, then attaches.
+        guard !reveal else {
+            show(pending)
+            return finish(nil)
+        }
+        // Not shown: made over ssh now, detached; attaching later finds it by its tag.
+        let script = NewSession.posix(NewSession.remoteCommand(folder: folder, name: tmuxName, launch: launch, start: start, attach: false))
+        Task { @MainActor [weak self] in
+            let made = await ProjectSource.ssh(host, script)
+            guard made?.isEmpty == false else { return finish("\(host) did not start the session in \(folder).") }
+            self?.show(pending)
+            finish(nil)
+        }
     }
 
     /// Why `id` cannot be taken up now, if it cannot.
@@ -66,7 +112,7 @@ final class SessionLauncher {
     }
 
     private func launchHere(folder: String, name: String, label: String, start: NewSession.Start, reveal: Bool,
-                            failed: @escaping (String) -> Void) {
+                            done failed: @escaping (String?) -> Void) {
         guard let tmux = LocalTmuxPlaces.executable() else {
             return failed("tmux was not found on this Mac. Install it (brew install tmux) to start sessions from LampBoard.")
         }
@@ -95,6 +141,7 @@ final class SessionLauncher {
                 store.conversations.expect(start.sessionId)
                 show(Pending(sessionId: start.sessionId, target: .tmux(host: nil, place: place, sessionId: start.sessionId),
                              name: label, folder: folder, host: nil, reveal: reveal))
+                failed(nil)
             }
         }
     }

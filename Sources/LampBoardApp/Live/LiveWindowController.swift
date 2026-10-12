@@ -59,8 +59,10 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     @discardableResult
     func open(_ target: LiveTarget) -> Bool {
         let job = target.key
-        if let live = lives[job] {
-            if live.ended { attach(live) }
+        if let found = lives[job] {
+            if found.ended { attach(found) }
+            // `attach` puts a new one in its place: the window goes to that one.
+            let live = lives[job] ?? found
             if live.window == nil {
                 // In the Hub: out of it and into a window of its own, the same attach.
                 live.frame.removeFromSuperview()
