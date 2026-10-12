@@ -404,6 +404,8 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         setupProgressBar()
         setupFocusNotification()
         setupTextBlinking()
+        // Vendored patch 4: drops, as Terminal takes them.
+        registerForDraggedTypes([.fileURL, .string])
     }
 
 #if canImport(MetalKit)
@@ -2739,6 +2741,36 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         insertText(text ?? "", replacementRange: NSRange(location: 0, length: 0), isPaste: true)
     }
     
+    // Vendored patch 4: a file dropped on the terminal is typed as its path,
+    // escaped as Terminal escapes it (Claude Code takes a dropped image's path
+    // as the image); text dropped is typed as it is. Both go as a paste, so a
+    // program in bracketed-paste mode reads them as one, and nothing is run.
+    open override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        Self.droppedText(sender.draggingPasteboard) == nil ? [] : .copy
+    }
+
+    open override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let text = Self.droppedText(sender.draggingPasteboard) else { return false }
+        insertText(text, replacementRange: NSRange(location: 0, length: 0), isPaste: true)
+        window?.makeFirstResponder(self)
+        return true
+    }
+
+    static func droppedText(_ pasteboard: NSPasteboard) -> String? {
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           !urls.isEmpty {
+            return urls.map { escapedPath($0.path) }.joined(separator: " ") + " "
+        }
+        return pasteboard.string(forType: .string).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// A path for a shell: every character a shell would read as its own,
+    /// escaped with a backslash.
+    public static func escapedPath(_ path: String) -> String {
+        let special = Set(" \t\n\\'\"`$&|;<>()[]{}*?!#~=%^")
+        return String(path.flatMap { special.contains($0) ? ["\\", $0] : [$0] })
+    }
+
     @objc
     open func copy(_ sender: Any)
     {

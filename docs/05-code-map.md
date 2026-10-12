@@ -6,9 +6,9 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  25,501 lines · 197 files  pure logic, zero AppKit
-  LampBoardApp/    32,739 lines · 177 files   shell: AppKit, network, windows
+  LampBoardApp/    32,789 lines · 178 files   shell: AppKit, network, windows
   LampBoardTests/  18,829 lines · 131 files   1360 cases, instantaneous
-  LampBoardE2E/    5,476 lines · 23 files   188 cases, the real binary
+  LampBoardE2E/    5,491 lines · 23 files   189 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -2025,6 +2025,11 @@ a past conversation to resume, kept in or taken off the list —, the sheet that
 attaches a folder here or on another machine, and the one that lists what can be
 resumed, read off the main thread.
 
+### `HubTestDrop.swift` · 45
+A drop on the Hub's terminal as AppKit hands one, made by hand for the end-to-end
+suite on a fake home: its own pasteboard, files or text, and a dragging info that
+carries it.
+
 ### `ProjectStore.swift` · 45
 The attached projects in `~/.lampboard/projects.json`, published for the Hub.
 
@@ -2446,7 +2451,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 188 cases
+## `LampBoardE2E/` — 189 cases
 
 | Suite | Covers |
 |---|---|

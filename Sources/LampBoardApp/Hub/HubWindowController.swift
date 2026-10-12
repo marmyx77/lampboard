@@ -266,6 +266,11 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if wish["hideLast"] as? Bool == true { setLast(model.files.lastColumn, shown: false) }
         if wish["popOut"] as? Bool == true { model.popOut() }
         if wish["startLampMaster"] as? Bool == true { model.startLampMaster() }
+        // A drop on the centre's terminal: `{"drop": {"files": [...]}}` or `{"drop": {"text": "..."}}`.
+        if let drop = wish["drop"] as? [String: Any] {
+            guard case .terminal(let target) = model.centre, let terminal = model.terminal(for: target) else { return false }
+            return HubTestDrop.drop(on: terminal, files: drop["files"] as? [String] ?? [], text: drop["text"] as? String)
+        }
         // Projects (hub-terminale R3–R5), as the projects' menu calls them.
         if let add = wish["addProject"] as? [String: String], let path = add["path"] { model.deps.projects.add(path: path, host: add["host"]) }
         if let start = wish["start"] as? [String: String], let folder = start["folder"] { model.startSession(folder: folder, host: start["host"]) }

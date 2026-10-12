@@ -5947,6 +5947,10 @@ In the Hub, 23 steps pass with two real sessions and one from VS Code:
 The main thread's longest wait was 184 ms. At rest the CPU was about 1% with the
 terminal open and about 2% with the Hub open.
 
+A file dropped on the terminal is typed as its escaped path, and text dropped
+(`@path` from the Hub's tree) as it is, both as one paste (vendored patch 4):
+SwiftTerm took no drops, and Terminal's users drop images into Claude Code.
+
 SwiftTerm's vendored patch 3 came out of that run. Option-arrows and
 Option-Delete move and delete a word, and Command-arrows and Command-Delete
 reach the line's ends, as Terminal sends them. Option itself still types

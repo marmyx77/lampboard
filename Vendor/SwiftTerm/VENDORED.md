@@ -60,6 +60,11 @@ Each one is marked in the source with `Vendored patch <n>`.
    - Option-Delete sends `ESC DEL`;
    - Command-←/→ send Ctrl-A and Ctrl-E;
    - Command-Delete sends Ctrl-U.
+4. `MacTerminalView.swift`: drops. Upstream took none. A file dropped on the
+   terminal is typed as its path, escaped as Terminal escapes it, so Claude Code
+   takes a dropped image as the image. Text dropped, such as `@path` from the
+   Hub's file tree, is typed as it is. Both go as a paste, so nothing runs until
+   Enter.
 
 ## Updating
 

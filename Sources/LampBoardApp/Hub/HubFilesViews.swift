@@ -83,7 +83,7 @@ struct HubFilesView: View {
         }
         .buttonStyle(.plain)
         .onDrag { NSItemProvider(object: "@\(path)" as NSString) }
-        .help(entry.isFolder ? path : "\(path) · click to open, drag into the message to cite it")
+        .help(entry.isFolder ? path : "\(path) · click to open, drag into the session's terminal to cite it")
         .accessibilityIdentifier("hub.file.\(path)")
     }
 
@@ -116,7 +116,7 @@ struct HubFilesView: View {
                 dot(HubPalette.amber, "written")
                 dot(HubPalette.green, "in a commit")
             }
-            Text("Click: opens on the right · drag into the message: cites it")
+            Text("Click: opens on the right · drag into the terminal: cites it")
             Text(remote ? "Read through LampBoard's ssh, inside the project only" : "Read from this Mac's disk")
         }
         .font(.system(size: 10)).foregroundStyle(HubPalette.muted)

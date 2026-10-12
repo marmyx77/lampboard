@@ -26,7 +26,7 @@ enum HubE2ESuite {
             [ "$1" = "-u" ] && shift
             case "$1" in
               list-panes) cat "$here/panes.txt" 2>/dev/null ;;
-              attach-session) exec /bin/sleep 120 ;;
+              attach-session) printf '\\033[?2004h'; stty raw -echo 2>/dev/null; exec dd bs=1 of="$here/typed.txt" 2>/dev/null ;;
               has-session) exit 1 ;;
               display-message) t="$4"; t="${t#=}"; printf '%s:0.0\\n' "${t%:}" ;;
             esac
@@ -133,6 +133,21 @@ enum HubE2ESuite {
                 a.expect(wait(4) { report()["centre"] as? String == "terminal" }, "back")
                 Thread.sleep(forTimeInterval: 1)
                 a.expectEqual(attaches(), 1, "back on it, the same attach")
+            },
+
+            TestCase("a file dropped on the terminal is typed as its escaped path, a cited one as @path, as one paste") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(open(resting), 204)
+                a.expect(wait(14) { report()["centre"] as? String == "terminal" }, "the terminal")
+                func typed() -> String {
+                    (try? String(contentsOf: bin.appendingPathComponent("typed.txt"), encoding: .utf8)) ?? ""
+                }
+                a.expect(wait(6) { files(#"{"drop":{"files":["/tmp/lb drop/shot (1).png"]}}"#) == 204 && !typed().isEmpty }, "dropped")
+                a.expect(wait(4) { typed().contains(#"/tmp/lb\ drop/shot\ \(1\).png "#) }, "the path, escaped as Terminal does: \(typed())")
+                a.expect(typed().contains("\u{1b}[200~"), "as a paste, so nothing runs before Enter: \(typed().debugDescription)")
+                a.expectEqual(files(#"{"drop":{"text":"@src/a.swift"}}"#), 204)
+                a.expect(wait(4) { typed().contains("@src/a.swift") }, "a file from the tree, cited: \(typed())")
+                a.expect(!typed().contains("\r"), "no Enter: the person sends it")
             },
 
             TestCase("out to a window of its own and back, the same attach; closing the Hub ends it") { a in
