@@ -338,7 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         panelController = controller
         // The Hub (D149), where the Plancia was.
-        hub = HubSetup.make(store: store, panel: controller, live: live)
+        hub = HubSetup.make(store: store, panel: controller, live: live, server: server, port: port)
 
         startNotifier(for: controller)
         startPresence()

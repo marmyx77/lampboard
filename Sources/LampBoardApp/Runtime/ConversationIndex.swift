@@ -37,6 +37,13 @@ final class ConversationIndex {
     /// hot path for the worktree case.
     private var proven: Set<String> = []
 
+    /// Sessions LampBoard started itself, under an id it chose (hub-terminale
+    /// R4): a row from their first word, before their transcript exists. The
+    /// rule below is about processes nobody asked for; these somebody did.
+    private var expected: Set<String> = []
+
+    func expect(_ sessionId: String) { expected.insert(sessionId) }
+
     private let fileManager = FileManager.default
 
     /// - Parameters:
@@ -87,7 +94,7 @@ final class ConversationIndex {
     /// reads as a fault; a row that has not appeared yet reads as a rule, and it
     /// is one that can be said in a sentence: a row stands for a conversation.
     func startIsWorthARow(_ signal: HookSignal, alreadyKnown: Bool) -> Bool {
-        guard signal.event == .sessionStart, !alreadyKnown else { return true }
+        guard signal.event == .sessionStart, !alreadyKnown, !expected.contains(signal.sessionId) else { return true }
         // Local only: a host's sessions are confirmed by its own probe, and the
         // transcript this would look for is on the other machine.
         guard signal.host == nil else { return true }

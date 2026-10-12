@@ -61,7 +61,7 @@ public enum RemoteProbeScript {
         tmux = shutil.which("tmux") or next((p for p in ("/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux")
                                              if os.access(p, os.X_OK)), None)
         listing = subprocess.run(
-            [tmux, "list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{@lampboard}"],
+            [tmux, "-u", "list-panes", "-a", "-F", "#{pane_pid}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{@lampboard}"],
             capture_output=True, text=True, timeout=3).stdout if tmux else ""
         for line in listing.splitlines():
             fields = line.split("\t")

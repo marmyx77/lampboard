@@ -56,6 +56,10 @@ final class SignalServer {
     private let onLampMaster: () -> Data
     private let onLampMasterRound: () -> Bool
     private let onLampMasterTool: (Data) -> Data
+    /// LampMaster's hands; set once the Hub is built.
+    var onLampMasterHands: (Data) -> Data = { _ in
+        Data(#"{"text":"LampBoard's Hub is not ready.","isError":true}"#.utf8)
+    }
     private let onMod: (ModReport) -> Void
     private let onWatch: (WatchReport) -> Void
     private let onCheck: (Data, String?, String?, String) -> String
@@ -283,6 +287,9 @@ final class SignalServer {
         case AppConfig.lampMasterToolPath:
             return handleLampMasterTool(request)
 
+        case AppConfig.lampMasterHandsPath:
+            return handleLampMasterHands(request)
+
         case AppConfig.modPath:
             return handleMod(request)
 
@@ -496,6 +503,18 @@ final class SignalServer {
         return HTTPRequestParser.response(
             status: 200, reason: "OK", body: onLampMasterTool(request.body), contentType: "application/json"
         )
+    }
+
+    /// `POST /lampmaster/hands` — one of LampMaster's hands (hub-terminale R11),
+    /// forwarded by the `lampboard` MCP server of LampMaster's folder. Behind the
+    /// token like a tool call; who may use it is decided by the answer.
+    private func handleLampMasterHands(_ request: HTTPRequest) -> Data {
+        guard request.method == "POST" else { return HTTPRequestParser.response(status: 405, reason: "Method Not Allowed") }
+        guard let token else { return HTTPRequestParser.response(status: 503, reason: "Service Unavailable") }
+        guard AccessToken.matches(request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName), expected: token) else {
+            return HTTPRequestParser.response(status: 401, reason: "Unauthorized")
+        }
+        return HTTPRequestParser.response(status: 200, reason: "OK", body: onLampMasterHands(request.body), contentType: "application/json")
     }
 
     /// `POST /mod` — what the companion mod reports from inside a session.

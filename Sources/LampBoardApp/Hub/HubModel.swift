@@ -27,6 +27,14 @@ struct HubDependencies {
     let live: LiveWindowController
     /// «Move to LampBoard» for a session in VS Code (D135); `nil` when it cannot move.
     let move: (String) -> (() -> Void)?
+    /// The projects attached to the Hub (hub-terminale R3).
+    let projects: ProjectStore
+    /// The machines in Settings › Other Macs.
+    let hosts: () -> [String]
+    /// A new background session in a folder of this Mac (D133), shown here.
+    let startBackground: (String) -> Void
+    /// The sessions another machine's probe says are running there.
+    let liveOn: (String) -> Set<String>
 }
 
 /// The Hub's state: which session is open, and what its centre shows.
@@ -44,7 +52,8 @@ final class HubModel: ObservableObject {
 
     enum Centre: Equatable {
         case none
-        case lampMaster
+        /// LampMaster's row: its own terminal when its session runs (R10).
+        case lampMaster(LiveTarget?)
         /// The session's terminal.
         case terminal(LiveTarget)
         /// Its terminal is in a window of its own, until brought back.
@@ -55,6 +64,8 @@ final class HubModel: ObservableObject {
 
     @Published var selected: String?
     @Published private(set) var centre: Centre = .none
+    /// Sessions LampBoard just started, shown before their row exists.
+    @Published private(set) var pending: [String: SessionLauncher.Pending] = [:]
     /// The transcript of a session read in the centre.
     @Published private(set) var reader: LiveChatModel?
     /// The first-run guide, until the person has read it (Marco's choice).
@@ -91,6 +102,25 @@ final class HubModel: ObservableObject {
         return deps.store.state.session(named: selected)
     }
 
+    /// A session LampBoard started, chosen and shown at once (hub-terminale R4).
+    func show(_ started: SessionLauncher.Pending) {
+        pending[started.sessionId] = started
+        guard started.reveal else { return }
+        if selected == started.sessionId { open(started.sessionId) } else { selected = started.sessionId }
+    }
+
+    /// What the centre's header says: the row's, or the start's until the row comes.
+    var heading: (status: SessionStatus?, name: String, meta: String)? {
+        if let session {
+            var parts = [session.workspace.name, session.workspace.host ?? "This Mac", HubConversationView.surface(session)]
+            if let letter = session.context?.modelInitial, !letter.isEmpty { parts.append(letter) }
+            return (session.status, session.displayName, parts.joined(separator: " · "))
+        }
+        guard let id = selected, let started = pending[id] else { return nil }
+        return (nil, started.name, [(started.folder as NSString).lastPathComponent, started.host ?? "This Mac", "starting"]
+            .joined(separator: " · "))
+    }
+
     /// The terminal shown, if any: the frame to seat, the attach made once.
     func terminalView(for target: LiveTarget) -> NSView? { deps.live.hosted(target) }
 
@@ -115,28 +145,65 @@ final class HubModel: ObservableObject {
     }
 
     private func open(_ id: String?) {
-        let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) }
-        files.show(session: id, root: project?.root, host: project?.host)
+        showFiles(id)
         refreshCentre()
+    }
+
+    /// The project beside the session: its row's, or the folder it was started
+    /// in while it has no row yet.
+    private func showFiles(_ id: String?) {
+        let started = id.flatMap { pending[$0] }.map { (root: $0.folder, host: $0.host) }
+        let project = id.flatMap { $0 == Self.lampMasterId ? nil : deps.project($0) } ?? started
+        files.show(session: id, root: project?.root, host: project?.host)
     }
 
     private func refreshCentre() {
         guard shown else { return }
         let next: Centre
+        // Started sessions nobody chose are dropped once their row has come.
+        let arrived = pending.keys.filter { $0 != selected && deps.store.state.sessions[$0] != nil && deps.target($0) != nil }
+        if !arrived.isEmpty { arrived.forEach { pending[$0] = nil } }
         if selected == Self.lampMasterId {
-            next = .lampMaster
-        } else if let session {
-            if let target = deps.target(session.id) {
-                next = deps.live.isInWindow(target) ? .inWindow(target) : .terminal(target)
+            // Its terminal while its conversation runs, or while it is starting.
+            let id = conductor?.sessionId
+            let starting = id.map { pending[$0] != nil } ?? false
+            let running = id.map { SessionLauncher.busy($0, host: nil, store: deps.store) != nil } ?? false
+            next = .lampMaster(running || starting ? id.flatMap { deps.target($0) ?? pending[$0]?.target } : nil)
+        } else if let id = selected {
+            // The row's own terminal once it has one; until then the one the
+            // start made; else, a row without a terminal is read.
+            let target: LiveTarget?
+            if let session, let reached = deps.target(session.id) {
+                // Published: set only when it changes, not once a second.
+                if pending[id] != nil { pending[id] = nil }
+                target = reached
             } else {
+                target = pending[id]?.target
+            }
+            if let target {
+                next = deps.live.isInWindow(target) ? .inWindow(target) : .terminal(target)
+            } else if let session {
                 next = .reading(session.id)
+            } else {
+                next = .none
             }
         } else {
             next = .none
         }
         guard next != centre else { return }
+        Diagnostics.log("hub: centre \(Self.describe(centre)) → \(Self.describe(next))")
         centre = next
         if case .reading(let id) = next { read(id) } else { read(nil) }
+    }
+
+    static func describe(_ centre: Centre) -> String {
+        switch centre {
+        case .none: return "none"
+        case .lampMaster(let target): return "lampMaster(\(target?.key ?? "-"))"
+        case .terminal(let target): return "terminal(\(target.key))"
+        case .inWindow(let target): return "inWindow(\(target.key))"
+        case .reading(let id): return "reading(\(id.prefix(8)))"
+        }
     }
 
     private func read(_ id: String?) {
@@ -157,6 +224,58 @@ final class HubModel: ObservableObject {
         shown = true
         centre = .none
         open(selected)
+    }
+
+    /// Starts sessions in projects; set once the Hub is built.
+    var launcher: SessionLauncher?
+    /// LampMaster as a session (R10); set once the Hub is built.
+    var conductor: LampMasterConductor?
+    /// LampMaster's cards shown instead of its conversation.
+    @Published var lampMasterCards = false
+
+    /// Starts LampMaster's session, or takes it up again, on its row.
+    func startLampMaster() {
+        failure = nil
+        conductor?.start { [weak self] reason in self?.failed("LampMaster did not start", reason) }
+        lampMasterCards = false
+        if selected == Self.lampMasterId { refreshCentre() } else { selected = Self.lampMasterId }
+    }
+
+    /// Why the last start did not happen, for the tests' report.
+    @Published private(set) var failure: String?
+
+    /// A new conversation in tmux, in `folder` here or on `host` (R4).
+    func startSession(folder: String, host: String?, name: String? = nil) {
+        failure = nil
+        launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name) { [weak self] reason in
+            self?.failed("The session did not start", reason)
+        }
+    }
+
+    /// A past conversation taken up in tmux (R5).
+    func resumeSession(_ id: String, folder: String, host: String?) {
+        failure = nil
+        launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id), name: nil) { [weak self] reason in
+            self?.failed("The conversation was not taken up", reason)
+        }
+    }
+
+    private func failed(_ title: String, _ reason: String) {
+        failure = reason
+        // A fake home is a test's: a modal dialog would hold its main thread.
+        guard !AppConfig.isUsingHomeOverride else { return Diagnostics.log("hub: \(title): \(reason)") }
+        Alerts.tell(title: title, message: reason)
+    }
+
+    func startInBackground(folder: String) { deps.startBackground(folder) }
+
+    /// What `entry` offers to take up, read off the main thread.
+    func pastConversations(_ entry: ProjectList.Entry) async -> [PastConversations.Item] {
+        guard let host = entry.host else {
+            let folder = entry.path
+            return await Task.detached(priority: .userInitiated) { PastConversationReader.local(folder: folder) }.value
+        }
+        return await PastConversationReader.remote(folder: entry.path, host: host, live: deps.liveOn(host))
     }
 
     func close() {

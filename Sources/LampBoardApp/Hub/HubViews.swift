@@ -63,13 +63,16 @@ struct HubSidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let service = model.deps.lampMaster, service.snapshot.enabled {
+            // Its row whether or not its hourly round runs: it can always be talked to.
+            if let service = model.deps.lampMaster {
                 HubLampMasterRow(service: service, selected: model.selected == HubModel.lampMasterId) {
                     model.selected = HubModel.lampMasterId
                 }
                 .padding(.horizontal, 4).padding(.vertical, 4)
                 Rectangle().fill(HubPalette.line).frame(height: 1)
             }
+            HubProjectsSection(model: model, projects: model.deps.projects, store: model.deps.store)
+            Rectangle().fill(HubPalette.line).frame(height: 1)
             ScrollView(.vertical) {
                 panel.environment(\.columnFillsWidth, true).environment(\.hubSelection, model.selected)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -100,17 +103,21 @@ struct HubConversationView: View {
 
     @ViewBuilder private var content: some View {
         switch model.centre {
-        case .lampMaster:
-            lampMaster
-        case .terminal(let target):
-            if let session = model.session {
-                header(session) { terminalButtons(target) }
+        case .lampMaster(let target):
+            lampMasterHeader(running: target != nil)
+            if let target, !model.lampMasterCards {
                 HubTerminalHost(model: model, target: target)
-                    .accessibilityIdentifier("hub.terminal.session")
+                    .accessibilityIdentifier("hub.terminal.lampmaster")
+            } else {
+                lampMaster
             }
+        case .terminal(let target):
+            header { terminalButtons(target) }
+            HubTerminalHost(model: model, target: target)
+                .accessibilityIdentifier("hub.terminal.session")
         case .inWindow:
-            if let session = model.session {
-                header(session) { EmptyView() }
+            if model.heading != nil {
+                header { EmptyView() }
                 VStack(spacing: 12) {
                     Spacer()
                     Text("This session is open in a window of its own.").foregroundStyle(HubPalette.muted)
@@ -127,6 +134,35 @@ struct HubConversationView: View {
         }
     }
 
+    /// LampMaster's line: talk to it in its own terminal (R10), or read its
+    /// round's cards (R13).
+    private func lampMasterHeader(running: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkle").font(.system(size: 12, weight: .semibold)).foregroundStyle(StatusPalette.lampMasterTint)
+                Text("LampMaster").font(.system(size: 15, weight: .bold))
+                Text(running ? "your conductor across the sessions" : "not running")
+                    .font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1)
+                Spacer(minLength: 8)
+                if running {
+                    Picker("", selection: $model.lampMasterCards) {
+                        Text("Conversation").tag(false)
+                        Text("Cards").tag(true)
+                    }
+                    .pickerStyle(.segmented).fixedSize()
+                    .accessibilityIdentifier("hub.lampmaster.view")
+                } else {
+                    Button("Talk to LampMaster") { model.startLampMaster() }
+                        .buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
+                        .help("Starts LampMaster as a Claude Code session in its own terminal: it reads your sessions, and acts on them when you ask.")
+                        .accessibilityIdentifier("hub.lampmaster.start")
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            line
+        }
+    }
+
     @ViewBuilder private var lampMaster: some View {
         if let service = model.deps.lampMaster, let actions = model.deps.lampMasterActions {
             LampMasterPlanciaContent(service: service, actions: actions)
@@ -139,7 +175,7 @@ struct HubConversationView: View {
     /// ways to reach it.
     private func reading(_ session: SessionState) -> some View {
         VStack(spacing: 0) {
-            header(session) {
+            header {
                 if let move = model.deps.move(session.id) {
                     Button("Move to LampBoard…", action: move).buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
                         .help("Its VS Code tab stops, and the conversation goes on here, in its own terminal.")
@@ -186,26 +222,19 @@ struct HubConversationView: View {
 
     private var line: some View { Rectangle().fill(HubPalette.line).frame(height: 1) }
 
-    private func header<Trailing: View>(_ session: SessionState, @ViewBuilder trailing: () -> Trailing) -> some View {
-        VStack(spacing: 0) {
+    private func header<Trailing: View>(@ViewBuilder trailing: () -> Trailing) -> some View {
+        let heading = model.heading
+        return VStack(spacing: 0) {
             HStack(spacing: 10) {
-                HubLamp(color: StatusPalette.color(for: session.status))
-                Text(session.displayName).font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)
-                Text(meta(session)).font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1).truncationMode(.tail)
+                HubLamp(color: heading?.status.map(StatusPalette.color(for:)) ?? HubPalette.muted)
+                Text(heading?.name ?? "").font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)
+                Text(heading?.meta ?? "").font(.system(size: 12)).foregroundStyle(HubPalette.muted).lineLimit(1).truncationMode(.tail)
                 Spacer(minLength: 8)
                 trailing()
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
             line
         }
-    }
-
-    /// Where it runs, how it was opened, and its model's letter.
-    private func meta(_ session: SessionState) -> String {
-        var parts = [session.workspace.name, session.workspace.host ?? "This Mac"]
-        parts.append(Self.surface(session))
-        if let letter = session.context?.modelInitial, !letter.isEmpty { parts.append(letter) }
-        return parts.joined(separator: " · ")
     }
 
     static func surface(_ session: SessionState) -> String {
@@ -260,15 +289,18 @@ struct HubTerminalHost: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator { var seated: LiveTarget? }
+    final class Coordinator { var seated: String? }
 
     private func seat(in container: NSView, context: Context) {
-        // Once a target: `hosted` attaches, or takes a terminal back from its
-        // window, so it is asked only when the session changes. A terminal that
-        // left for a window of its own is not called back by a redraw.
-        guard context.coordinator.seated != target else { return }
+        // Once a terminal: `hosted` attaches, or takes a terminal back from its
+        // window, so it is asked only when the terminal changes. Its key, not the
+        // target: a session just started becomes its row's target, the same
+        // terminal, and seating it again dropped the keys typed meanwhile (T4).
+        // A terminal that left for a window of its own is not called back by a redraw.
+        guard context.coordinator.seated != target.key else { return }
         guard let frame = model.terminalView(for: target) else { return }
-        context.coordinator.seated = target
+        Diagnostics.log("hub: terminal seated \(target.key) (was \(context.coordinator.seated ?? "-"))")
+        context.coordinator.seated = target.key
         container.subviews.forEach { $0.removeFromSuperview() }
         frame.removeFromSuperview()
         frame.translatesAutoresizingMaskIntoConstraints = false

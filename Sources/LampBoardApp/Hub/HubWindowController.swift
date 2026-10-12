@@ -50,6 +50,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Opens the Hub on a session LampBoard just started.
+    func show(_ started: SessionLauncher.Pending) {
+        guard started.reveal else { return model.show(started) }
+        show()
+        model.show(started)
+    }
+
     func close() { window?.performClose(nil) }
 
     /// The panel changed (an order, a name, a mute): the sidebar redraws as it does.
@@ -64,7 +71,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         var centre = "none", target: Any = NSNull(), left = false
         switch model.centre {
         case .none: break
-        case .lampMaster: centre = "lampMaster"
+        case .lampMaster(let shown): centre = "lampMaster"; target = shown?.key ?? NSNull()
         case .terminal(let shown): centre = "terminal"; target = shown.key; left = model.hasLeft(shown)
         case .inWindow(let shown): centre = "inWindow"; target = shown.key
         case .reading: centre = "reading"
@@ -81,6 +88,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "status": session?.status.rawValue ?? NSNull(),
             "windowNumber": window?.windowNumber ?? 0,
             "guide": model.guideShown,
+            "heading": model.heading?.name ?? NSNull(),
+            "pending": Array(model.pending.keys).sorted(),
+            "failure": model.failure ?? NSNull(),
+            "lampMasterSession": model.conductor?.sessionId ?? NSNull(),
+            "targets": Dictionary(uniqueKeysWithValues: model.deps.store.sessions.map { ($0.id, model.deps.target($0.id)?.key ?? "-") }),
+            "projects": ProjectList.entries(attached: model.deps.projects.attached, state: model.deps.store.state)
+                .map { ($0.attached ? "+" : "") + $0.name + ($0.host.map { "@" + $0 } ?? "") },
             "filesShown": !(split.map { $0.splitViewItems.count > 2 ? $0.splitViewItems[2].isCollapsed : true } ?? true),
             "lastShown": !(split.map { $0.splitViewItems.count > 3 ? $0.splitViewItems[3].isCollapsed : true } ?? true),
             "lastColumn": model.files.lastColumn.rawValue,
@@ -238,7 +252,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     }
 
     /// `POST /hub/files` (fake home only): `{"files", "last", "open", "query", "preview",
-    /// "popOut", "bringBack", "close", "guide", "hideLast", "resetWatch"}`.
+    /// "popOut", "bringBack", "close", "guide", "hideLast", "resetWatch",
+    /// "addProject": {path, host}, "start": {folder, host}, "resume": {id, folder, host}}`.
     func applyTest(_ body: Data) -> Bool {
         guard let wish = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return false }
         setColumns(files: wish["files"] as? Bool, last: (wish["last"] as? String).flatMap(HubFilesModel.LastColumn.init(rawValue:)))
@@ -250,6 +265,13 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if wish["guide"] as? Bool == false { model.dismissGuide() }
         if wish["hideLast"] as? Bool == true { setLast(model.files.lastColumn, shown: false) }
         if wish["popOut"] as? Bool == true { model.popOut() }
+        if wish["startLampMaster"] as? Bool == true { model.startLampMaster() }
+        // Projects (hub-terminale R3–R5), as the projects' menu calls them.
+        if let add = wish["addProject"] as? [String: String], let path = add["path"] { model.deps.projects.add(path: path, host: add["host"]) }
+        if let start = wish["start"] as? [String: String], let folder = start["folder"] { model.startSession(folder: folder, host: start["host"]) }
+        if let resume = wish["resume"] as? [String: String], let id = resume["id"], let folder = resume["folder"] {
+            model.resumeSession(id, folder: folder, host: resume["host"])
+        }
         if wish["bringBack"] as? Bool == true { model.bringBack() }
         if let preview = wish["preview"] as? Bool, let active = model.files.active {
             if preview { model.files.previews.insert(active) } else { model.files.previews.remove(active) }

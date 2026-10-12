@@ -76,16 +76,18 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
     /// `host` is `nil` for tmux on this Mac.
     case tmux(host: String?, place: TmuxPlace, sessionId: String)
     /// A new session being started inside tmux on another machine (D133),
-    /// tagged `launch` there.
-    case newTmux(host: String, folder: String, name: String, launch: String)
+    /// tagged `launch` there; `start` is the conversation it begins or takes up
+    /// (hub-terminale R4, R5), `nil` for a plain `claude`.
+    case newTmux(host: String, folder: String, name: String, launch: String, start: NewSession.Start? = nil)
 
     /// A new session in `folder` on `host`, under a name tmux can take; `nil` for
     /// a folder that is not absolute or a host ssh could read as an option.
     public static func starting(host: String, folder: String, name: String,
-                                launch: String = NewSession.newLaunchTag()) -> LiveTarget? {
+                                launch: String = NewSession.newLaunchTag(), start: NewSession.Start? = nil) -> LiveTarget? {
         guard folder.hasPrefix("/"), RemoteHostList.isUsable(host), !host.hasPrefix("-"),
-              TmuxPlace(session: name, window: 0, pane: 0) != nil, NewSession.isLaunchTag(launch) else { return nil }
-        return .newTmux(host: host, folder: folder, name: name, launch: launch)
+              TmuxPlace(session: name, window: 0, pane: 0) != nil, NewSession.isLaunchTag(launch),
+              start.map({ NewSession.claudeLine($0) != nil }) ?? true else { return nil }
+        return .newTmux(host: host, folder: folder, name: name, launch: launch, start: start)
     }
 
     /// The window's key, and what the ledger and `GET /live` call it.
@@ -99,7 +101,7 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .tmux(let host, let place, _):
             if let launch = place.launch { return "tmux:\(host ?? ""):launch:\(launch)" }
             return "tmux:\(host ?? ""):\(place.session):\(place.window).\(place.pane)"
-        case .newTmux(let host, _, _, let launch): return "tmux:\(host):launch:\(launch)"
+        case .newTmux(let host, _, _, let launch, _): return "tmux:\(host):launch:\(launch)"
         }
     }
 
@@ -109,8 +111,8 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .job(let id): return "claude attach \(id)"
         case .tmux(let host?, let place, _): return "ssh -t \(host) \"tmux attach -t \(place.quotedTarget)\""
         case .tmux(nil, let place, _): return "tmux attach -t \(place.quotedTarget)"
-        case .newTmux(let host, let folder, let name, let launch):
-            return "ssh -t \(host) \(NewSession.shellQuoted(NewSession.posix(NewSession.remoteCommand(folder: folder, name: name, launch: launch))))"
+        case .newTmux(let host, let folder, let name, let launch, let start):
+            return "ssh -t \(host) \(NewSession.shellQuoted(NewSession.posix(NewSession.remoteCommand(folder: folder, name: name, launch: launch, start: start))))"
         }
     }
 
@@ -165,9 +167,9 @@ extension LiveLaunch {
             guard let tmux else { return nil }
             return LiveCommand(executable: tmux, arguments: ["attach-session", "-t", place.target], directory: nil,
                                environment: environment(base: base, home: home))
-        case .newTmux(let host, let folder, let name, let launch):
+        case .newTmux(let host, let folder, let name, let launch, let start):
             guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
-            let script = NewSession.remoteCommand(folder: folder, name: name, launch: launch)
+            let script = NewSession.remoteCommand(folder: folder, name: name, launch: launch, start: start)
             return LiveCommand(executable: "/usr/bin/ssh",
                                arguments: SSHHardening.options + ["-t", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=10",
                                                                   "--", host, NewSession.posix(script)],

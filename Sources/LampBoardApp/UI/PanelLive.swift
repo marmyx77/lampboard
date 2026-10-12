@@ -21,11 +21,11 @@ extension PanelController {
     }
 
     /// Starts a session and opens it: what «New session…» and a row both do.
+    /// In tmux, in the Hub, when the Hub takes it (hub-terminale R4); else in
+    /// the background here, or in tmux on the row's machine (D133).
     func startSession(host: String?, folder: String, name: String?) {
-        guard let host else {
-            live?.start(directory: folder, name: name) { [weak self] message in self?.liveRefused(message) }
-            return
-        }
+        if startInHub?(host, folder, name) == true { return }
+        guard let host else { return startInBackground(folder: folder, name: name) }
         // Free names are the other machine's to pick: it knows all of its own.
         let tmuxName = NewSession.tmuxName(for: "/" + (name ?? (folder as NSString).lastPathComponent), taken: [])
         guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName), live?.show(target) == true else {
@@ -71,6 +71,11 @@ extension PanelController {
         return ColumnRow(id: session.id, workspace: session.workspace, sessions: [session])
     }
 
+    /// A background session here (D130), whatever the Hub would do.
+    func startInBackground(folder: String, name: String?) {
+        live?.start(directory: folder, name: name) { [weak self] message in self?.liveRefused(message) }
+    }
+
     /// «Move to LampBoard…» (D135): every check first, then the editor's
     /// process is asked to end and the conversation goes on in the background.
     func moveHere(_ row: ColumnRow) {
@@ -79,8 +84,8 @@ extension PanelController {
         let name = row.alias ?? session.title?.nilIfEmpty ?? row.workspace.name
         guard Alerts.confirm(
             title: "Move \u{201C}\(name)\u{201D} to LampBoard?",
-            message: "Its VS Code tab stops, and the conversation goes on in a LampBoard window with everything it "
-                + "remembers, as a background session: it keeps running when the window is closed.\n\n"
+            message: "Its VS Code tab stops, and the conversation goes on in LampBoard with everything it remembers, "
+                + "in tmux, in its own terminal in the Hub: it keeps running when the Hub is closed.\n\n"
                 + "Close its tab in VS Code afterwards: a message typed there would be refused.",
             confirmTitle: "Move"
         ) else { return }

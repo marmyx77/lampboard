@@ -49,6 +49,8 @@ public enum AppConfig {
     /// What the `lampmaster` MCP server forwards a session's tool call to.
     /// Behind the token: the lookups read every session's card.
     public static let lampMasterToolPath = "/lampmaster/tool"
+    /// LampMaster's hands across the sessions (hub-terminale R11), for its own session only.
+    public static let lampMasterHandsPath = "/lampmaster/hands"
     /// A handoff a session wrote with `/handoff <name>` (5.4, T2).
     public static let handoffPath = "/handoff"
 
@@ -317,6 +319,11 @@ public enum AppConfig {
     public static var supportDirectory: URL {
         homeDirectory
             .appendingPathComponent(".lampboard", isDirectory: true)
+    }
+
+    /// The projects attached to the Hub (hub-terminale R3).
+    public static var projectsFile: URL {
+        supportDirectory.appendingPathComponent("projects.json")
     }
 
     /// The governor's plan (G3).

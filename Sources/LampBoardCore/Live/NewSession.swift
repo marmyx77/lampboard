@@ -58,6 +58,60 @@ public enum NewSession {
         (16...32).contains(tag.count) && tag.allSatisfy { ("0"..."9").contains($0) || ("a"..."f").contains($0) }
     }
 
+    /// What a session LampBoard starts runs (hub-terminale R4, R5): a new
+    /// conversation under an id LampBoard chose, so its row and its terminal are
+    /// known before it says anything, or a past one taken up again.
+    public enum Start: Equatable, Hashable, Sendable {
+        case new(sessionId: String)
+        case resume(sessionId: String)
+
+        public var sessionId: String {
+            switch self { case .new(let id), .resume(let id): return id }
+        }
+    }
+
+    /// The `claude` line for `start`; `nil` for an id that is not one.
+    public static func claudeLine(_ start: Start) -> String? {
+        let id = start.sessionId.lowercased()
+        guard ModReport.isSessionId(id), id.count == 36 else { return nil }
+        switch start {
+        case .new: return "claude --session-id \(id)"
+        case .resume: return "claude --resume \(id)"
+        }
+    }
+
+    /// What the pane runs: the person's own shell, interactive so that its
+    /// startup files put `claude` on PATH, running `line` and staying open when
+    /// it ends. One word for tmux.
+    static func pane(_ line: String) -> String {
+        shellQuoted(#""$SHELL" -ilc '"# + line + #"; exec "$SHELL" -l'"#)
+    }
+
+    /// What this Mac runs, under `sh`, to start a session in tmux here
+    /// (hub-terminale R4): as on another machine (D133), a session tagged
+    /// `launch` is found again rather than started twice, and a tmux session of
+    /// the person's is never joined. The tmux status line is off in it: the Hub
+    /// says what the session is. It prints where the session sits,
+    /// `name:window.pane`, and attaches nothing: the Hub does.
+    public static func localCommand(folder: String, name: String, launch: String, start: Start) -> String? {
+        guard folder.hasPrefix("/"), isLaunchTag(launch), let line = claudeLine(start) else { return nil }
+        let quoted = shellQuoted(name)
+        let folder = shellQuoted(folder)
+        return [
+            #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin""#,
+            "l=\(launch)",
+            #"n=$(tmux list-sessions -F '#{@lampboard} #{session_name}' 2>/dev/null | sed -n "s/^$l //p" | head -n 1)"#,
+            "if [ -z \"$n\" ]; then",
+            "  test -d \(folder) || { echo \"There is no folder \"\(folder)\" on this Mac.\"; exit 1; }",
+            "  n=\(quoted); i=2; while tmux has-session -t \"=$n\" 2>/dev/null; do n=\(quoted)-$i; i=$((i+1)); done",
+            "  tmux new-session -d -s \"$n\" -c \(folder) \(pane(line)) || exit 1",
+            "  tmux set-option -t \"=$n:\" @lampboard \"$l\"",
+            "  tmux set-option -t \"=$n:\" status off",
+            "fi",
+            #"tmux display-message -p -t "=$n:" '#{session_name}:#{window_index}.#{pane_index}'"#,
+        ].joined(separator: "\n")
+    }
+
     /// What the other machine runs, under `sh` (D133). If a tmux session there
     /// already carries `launch`, it attaches to it: a reattach never starts a
     /// second one. Otherwise, in an existing `folder`, a new session named
@@ -66,10 +120,10 @@ public enum NewSession {
     /// own shell, interactive so that its startup files put `claude` on PATH,
     /// running `claude` and staying open when it ends. One command string for
     /// tmux, which a tmux older than 3.0 needs.
-    public static func remoteCommand(folder: String, name: String, launch: String) -> String {
+    public static func remoteCommand(folder: String, name: String, launch: String, start: Start? = nil) -> String {
         let quoted = shellQuoted(name)
         let folder = shellQuoted(folder)
-        let pane = shellQuoted(#""$SHELL" -ilc 'claude; exec "$SHELL" -l'"#)
+        let pane = pane(start.flatMap(claudeLine) ?? "claude")
         return [
             #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin""#,
             "l=\(launch)",
@@ -79,6 +133,7 @@ public enum NewSession {
             "  n=\(quoted); i=2; while tmux has-session -t \"=$n\" 2>/dev/null; do n=\(quoted)-$i; i=$((i+1)); done",
             "  tmux new-session -d -s \"$n\" -c \(folder) \(pane) || exit 1",
             "  tmux set-option -t \"=$n:\" @lampboard \"$l\"",
+            "  tmux set-option -t \"=$n:\" status off",
             "fi",
             "exec tmux attach-session -t \"=$n:\"",
         ].joined(separator: "\n")

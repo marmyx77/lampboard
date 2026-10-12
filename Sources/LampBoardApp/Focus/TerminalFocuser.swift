@@ -259,7 +259,7 @@ enum TerminalFocuser {
     /// chain ends in a terminal tab, raised the usual way.
     private static func raiseTmux(paneTTY: String) -> VSCodeFocuser.FocusResult {
         guard let tmux = executable(named: "tmux") else { return .failed(.scriptFailed("tmux not found")) }
-        let panes = TmuxListing.panes(output(of: tmux, ["list-panes", "-a", "-F", TmuxListing.paneFormat]))
+        let panes = TmuxListing.panes(output(of: tmux, ["-u", "list-panes", "-a", "-F", TmuxListing.paneFormat]))
         guard let pane = panes.first(where: { $0.tty == paneTTY }) else {
             return .failed(.windowNotFound("a tmux pane on \(paneTTY)"))
         }

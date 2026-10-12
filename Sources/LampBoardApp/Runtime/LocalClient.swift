@@ -97,6 +97,12 @@ enum LocalClient {
                 timeout: LampMasterAsk.timeout + 20)
     }
 
+    /// One of LampMaster's hands, forwarded for the `lampboard` MCP server: a
+    /// start may wait for ssh, nothing else waits long.
+    static func lampMasterHands(_ body: Data, port: UInt16) -> Result<Data, ClientError> {
+        request(method: "POST", path: AppConfig.lampMasterHandsPath, port: port, body: body, timeout: 60)
+    }
+
     /// `lampboard watch` telling the panel a command started or ended.
     static func watch(_ report: WatchReport, port: UInt16) -> Result<Data, ClientError> {
         request(method: "POST", path: AppConfig.watchPath, port: port, body: report.encoded())

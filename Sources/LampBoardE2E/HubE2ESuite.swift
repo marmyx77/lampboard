@@ -23,13 +23,20 @@ enum HubE2ESuite {
             #!/bin/sh
             here="$(dirname "$0")"
             printf '%s\\n' "$*" >> "$here/tmux-calls.txt"
+            [ "$1" = "-u" ] && shift
             case "$1" in
               list-panes) cat "$here/panes.txt" 2>/dev/null ;;
               attach-session) exec /bin/sleep 120 ;;
+              has-session) exit 1 ;;
+              display-message) t="$4"; t="${t#=}"; printf '%s:0.0\\n' "${t%:}" ;;
             esac
             """
             try? tmux.write(to: bin.appendingPathComponent("tmux"), atomically: true, encoding: .utf8)
             try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bin.appendingPathComponent("tmux").path)
+        }
+        /// Every call the Hub made to tmux, one a line.
+        func tmuxCalls() -> String {
+            (try? String(contentsOf: bin.appendingPathComponent("tmux-calls.txt"), encoding: .utf8)) ?? ""
         }
         /// How many times the Hub attached to the tmux session.
         func attaches() -> Int {
@@ -145,6 +152,29 @@ enum HubE2ESuite {
                 a.expectEqual(open(resting), 204)
                 a.expect(wait(6) { report()["centre"] as? String == "terminal" && live().count == 1 }, "opened again: \(live())")
                 a.expectEqual(attaches(), before + 1, "a new attach after closing")
+            },
+
+            TestCase("a project attached, and a session started there in tmux under the id LampBoard chose, shown at once") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"addProject":{"path":"\#(project)"}}"#), 204)
+                a.expect((report()["projects"] as? [String] ?? []).contains("+atlas-api"), "attached: \(report()["projects"] ?? "none")")
+                a.expectEqual(files(#"{"start":{"folder":"\#(project)"}}"#), 204)
+                a.expect(wait(8) { (report()["pending"] as? [String])?.count == 1 && report()["centre"] as? String == "terminal" },
+                         "its terminal at once: \(report())")
+                let id = (report()["pending"] as? [String])?.first ?? "none"
+                a.expectEqual(report()["heading"] as? String, "atlas-api")
+                let calls = tmuxCalls()
+                a.expect(calls.contains("new-session -d -s atlas-api -c \(project) "), "a new tmux session in the project: \(calls)")
+                a.expect(calls.contains("claude --session-id \(id)"), "under the id LampBoard chose: \(calls)")
+                a.expect(calls.contains("set-option -t =atlas-api: status off"), "the status line off")
+                a.expect(wait(4) { tmuxCalls().contains("attach-session -t =atlas-api:0.0") }, "attached: \(tmuxCalls())")
+            },
+
+            TestCase("a conversation a process holds is not taken up again: one writer") { a in
+                guard ready() else { return a.fail("no instance") }
+                a.expectEqual(files(#"{"resume":{"id":"\#(working)","folder":"\#(project)"}}"#), 204)
+                a.expect(wait(4) { (report()["failure"] as? String)?.contains("open on this Mac") == true }, "refused: \(report()["failure"] ?? "none")")
+                a.expect(!tmuxCalls().contains("--resume \(working)"), "nothing started")
             },
 
             TestCase("the project's tree and what git says of each file are beside the conversation") { a in

@@ -8,7 +8,7 @@ import SwiftUI
 enum HubSetup {
 
     static func make(
-        store: StateStore, panel: PanelController, live: LiveWindowController
+        store: StateStore, panel: PanelController, live: LiveWindowController, server: SignalServer?, port: UInt16
     ) -> HubWindowController {
         let deps = HubDependencies(
             store: store,
@@ -41,11 +41,34 @@ enum HubSetup {
             move: { [weak panel] id in
                 guard let panel, let row = panel.movableRow(id) else { return nil }
                 return { [weak panel] in panel?.moveHere(row) }
-            }
+            },
+            projects: ProjectStore(),
+            hosts: { store.remoteHosts },
+            startBackground: { [weak panel] folder in panel?.startInBackground(folder: folder, name: nil) },
+            liveOn: { host in Set((store.remoteSessions[host] ?? []).map(\.sessionId)) }
         )
         let model = HubModel(deps: deps)
         let hub = HubWindowController(model: model)
         panel.openHub = { [weak hub] id in hub?.show(session: id) }
+        let launcher = SessionLauncher(store: store) { [weak hub] started in hub?.show(started) }
+        model.launcher = launcher
+        let conductor = LampMasterConductor(
+            store: store, launcher: launcher, port: port,
+            target: { [weak panel] id in store.state.sessions[id].flatMap { panel?.liveTarget($0) } },
+            openInHub: { [weak hub] id in hub?.show(session: id) })
+        model.conductor = conductor
+        // From the server's queue; the conductor answers on the main actor itself.
+        server?.onLampMasterHands = { body in conductor.answer(body) }
+        panel.startInHub = { [weak model] host, folder, name in
+            guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
+            model.startSession(folder: folder, host: host, name: name)
+            return true
+        }
+        // Move to LampBoard ends in tmux, in the Hub (hub-terminale R6).
+        live.resumeInTmux = { folder, id, name, failed in
+            launcher.launch(folder: folder, host: nil, start: .resume(sessionId: id), name: name, failed: failed)
+            return true
+        }
         live.openInHub = { [weak panel] target in panel?.showInHub(target) ?? false }
         panel.hubIsOpen = { [weak hub] in hub?.isOpen ?? false }
         panel.hubIsKey = { [weak hub] in hub?.isKey ?? false }

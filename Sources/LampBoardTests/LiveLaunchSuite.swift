@@ -414,6 +414,34 @@ enum NewSessionSuite {
             t.expect(target.command.hasPrefix("ssh -t box 'sh -c '"), target.command)
         },
 
+        TestCase("A session LampBoard starts gets the id LampBoard chose, or takes up a past one by its id") { t in
+            let id = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
+            t.expectEqual(NewSession.claudeLine(.new(sessionId: id)), "claude --session-id \(id)")
+            t.expectEqual(NewSession.claudeLine(.resume(sessionId: id.uppercased())), "claude --resume \(id)")
+            t.expectNil(NewSession.claudeLine(.new(sessionId: "x; rm -rf ~")), "only an id is ever written into the script")
+            t.expectNil(NewSession.claudeLine(.resume(sessionId: "-p")))
+            let script = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef", start: .resume(sessionId: id))
+            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude --resume \#(id); exec "$SHELL" -l'"#)), script)
+        },
+
+        TestCase("On this Mac a session is born in tmux too, its status line off, and says where it sits") { t in
+            let id = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
+            guard let script = NewSession.localCommand(folder: "/Users/dev/my web", name: "my-web", launch: "0123456789abcdef",
+                                                       start: .new(sessionId: id)) else { return t.fail("no script") }
+            let lines = script.split(separator: "\n").map(String.init)
+            let look = lines.firstIndex { $0.contains("#{@lampboard} #{session_name}") } ?? -1
+            let create = lines.firstIndex { $0.contains("tmux new-session -d -s \"$n\" -c '/Users/dev/my web' ") } ?? -1
+            t.expect(look >= 0 && look < create, "the tag is looked for before anything is created: \(script)")
+            t.expect(script.contains("n='my-web'; i=2; while tmux has-session -t \"=$n\""), "a name already there is never joined")
+            t.expect(script.contains("claude --session-id \(id); exec"), "the id LampBoard chose")
+            t.expect(lines.contains("  tmux set-option -t \"=$n:\" status off"), "the Hub says what the session is")
+            t.expect(!script.contains("attach"), "nothing attached here: the Hub does")
+            t.expect(lines.last?.hasPrefix("tmux display-message -p -t \"=$n:\"") == true, "it says where: \(lines.last ?? "")")
+            t.expectNil(NewSession.localCommand(folder: "relative", name: "x", launch: "0123456789abcdef", start: .new(sessionId: id)))
+            t.expectNil(NewSession.localCommand(folder: "/x", name: "x", launch: "nothex", start: .new(sessionId: id)))
+            t.expectNil(NewSession.localCommand(folder: "/x", name: "x", launch: "0123456789abcdef", start: .new(sessionId: "nope")))
+        },
+
         TestCase("Only a usable start: an absolute folder, a host that is not an option, a tag of hex") { t in
             t.expectNil(LiveTarget.starting(host: "box", folder: "relative/path", name: "x"), "an absolute folder only")
             t.expectNil(LiveTarget.starting(host: "-oProxyCommand=x", folder: "/x", name: "x"))

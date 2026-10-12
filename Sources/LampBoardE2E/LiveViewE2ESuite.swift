@@ -85,6 +85,7 @@ enum LiveViewE2ESuite {
             #!/bin/sh
             here="$(dirname "$0")"
             printf '%s\\n' "$*" >> "$here/tmux-calls.txt"
+            [ "$1" = "-u" ] && shift
             case "$1" in
               list-panes) cat "$here/panes.txt" ;;
               attach-session) printf 'TMUX ATTACHED %s TMUX=%s\\r\\n' "$3" "${TMUX:-none}"; exec /bin/sleep 30 ;;
@@ -126,6 +127,7 @@ enum LiveViewE2ESuite {
             let tmux = """
             #!/bin/sh
             here="$(dirname "$0")"
+            [ "$1" = "-u" ] && shift
             case "$1" in
               list-panes) cat "$here/panes.txt" ;;
               attach-session) stty raw -echo 2>/dev/null; exec dd bs=1 of="$here/typed.txt" 2>/dev/null ;;

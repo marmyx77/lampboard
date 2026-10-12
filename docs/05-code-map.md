@@ -1,14 +1,14 @@
 # Code map
 
-~81,100 lines of Swift across five targets. For each file: what it contains, why
+~82,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  24,951 lines · 193 files  pure logic, zero AppKit
-  LampBoardApp/    31,760 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  18,576 lines · 128 files   1344 cases, instantaneous
-  LampBoardE2E/    5,435 lines · 23 files   186 cases, the real binary
+  LampBoardCore/  25,464 lines · 197 files  pure logic, zero AppKit
+  LampBoardApp/    32,618 lines · 177 files   shell: AppKit, network, windows
+  LampBoardTests/  18,817 lines · 131 files   1360 cases, instantaneous
+  LampBoardE2E/    5,467 lines · 23 files   188 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -894,6 +894,30 @@ answered "method not found" and the conversation carries on. The tools'
 descriptions are written for the calling model, which decides by itself when to
 call them.
 
+### `LampMasterHands.swift`
+LampMaster's hands across the sessions (D164), as the `lampboard` server of its
+own folder offers them: `sessions` and `read_session`, which read, then
+`send_to_session`, `stop_session`, `start_session` and `open_in_hub`, which act
+and are never allowed ahead, so Claude Code asks the person every time. The
+rules:
+- a message goes only into a session in tmux, at rest, whose prompt is empty;
+- it arrives marked as LampMaster's, without control or format characters;
+- a session is named by its id or a unique start of it.
+
+`PromptLine` tells an empty prompt by tmux's cursor, which a grey suggestion does
+not move and typed text does. `HandsScript` gives the tmux scripts, where the
+text goes by standard input as one bracketed paste.
+
+> **Touching here** is deciding what one session may do to another. Every action
+> stays a tool Claude Code asks about, and nothing typed by the person is ever
+> mixed into.
+
+### `LampMasterHome.swift`
+LampMaster's own folder (D164): its role in `CLAUDE.md`, the `lampboard` server in
+`.mcp.json`, and project settings that approve that server and allow ahead only
+the tools that read. Claude Code brings the rest of the person's own setup, their
+servers and plugins included.
+
 ### `LampMasterLookup.swift`
 `overlaps`, `who_knows`, `precedents`: what a session can ask without a model
 running. They answer with facts about sessions — id, project, title, state, files,
@@ -1612,10 +1636,25 @@ citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
 on (a file tool's whole path inside the folder), the lines a selection covers,
 and what the preview shows of a file.
 
-### `NewSession.swift` · 86
-Starting a session from LampBoard (D133): the folders a machine's sessions worked
-in, a tmux name made from a folder's, and the command that starts Claude Code in
-a new tmux session on another machine, picking a free name there.
+### `NewSession.swift` · 141
+Starting a session from LampBoard (D133, D163): the folders a machine's sessions
+worked in, a tmux name made from a folder's, and the commands that start Claude
+Code in a new tmux session, on this Mac or on another machine, picking a free
+name there and turning tmux's status line off. A new conversation gets an id
+LampBoard chose (`--session-id`), a past one is taken up by its own
+(`--resume`); only an id is ever written into the script.
+
+### `ProjectList.swift` · 98
+The projects attached to the Hub (D163): a folder on this Mac or on another
+machine, kept with or without a session; only an absolute folder on a machine
+ssh can be given. The list the Hub shows: the attached ones in their order, then
+the folders the sessions are in, the latest first, each with its sessions. Its
+file read back keeps only what is valid.
+
+### `PastConversations.swift` · 44
+What a project offers to take up again (D163): its transcripts, the latest first,
+never one a process holds now, which would make a second writer, and on another
+machine only the ones of that folder.
 
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
@@ -1812,7 +1851,7 @@ was, `1` when nothing worked, and **`2` when one agent was set up and another
 failed** — which used to be `0`, telling a script that had half-installed the
 hooks that it was finished.
 
-### `CommandLineMCP.swift` · 75
+### `CommandLineMCP.swift` · 101
 `lampboard mcp`, the `lampmaster` MCP server Claude Code starts for a session. It
 holds nothing: each line is answered by `LampMasterMCP`, each tool call is
 forwarded to the running panel with the token, as the hooks do, carrying
@@ -1893,7 +1932,15 @@ when it changes on disk; ⌘L and Cite, which paste the citation into the sessio
 
 ### `NewSessionWindow.swift` · 165
 The **New session…** window: where, which folder (the recent ones, a typed path,
-or the folder picker on this Mac) and what name, then Start.
+or the folder picker on this Mac) and what name, then Start: in tmux, in the Hub
+(D163).
+
+### `SessionLauncher.swift` · 111
+Starts a session in a project (D163): a new conversation or a past one, in tmux on
+this Mac (the script run off the main thread, its last line read back as where the
+session sits) or on another machine (the ssh terminal itself runs the script). The
+Hub shows the session's terminal at once, before its row. A past conversation is
+taken up only when no process holds it, by either way of knowing: one writer.
 
 ### `LiveFonts.swift` · 25
 The fixed-pitch font families on this Mac, the only ones a live window may use
@@ -1929,10 +1976,10 @@ icons, their widths and what is shown kept by macOS between launches. Opens on a
 named session, redraws the sidebar when the panel changes — an order, a name, a
 mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 72
+### `HubSetup.swift` · 95
 Builds the Hub and wires it to the panel, the live view and the Dock.
 
-### `HubModel.swift` · 172
+### `HubModel.swift` · 280
 What the Hub needs from the rest of the app, handed in once (`HubDependencies`):
 the panel's view, where a transcript is read, the session's project and machine,
 the terminal that reaches a session and the live view that holds it, Move to
@@ -1970,6 +2017,16 @@ AppKit text view that lays out only what is in sight. Lines numbered in a margin
 the text view draws itself (AppKit's ruler floats over the content since macOS
 14), code kept whole and wrapped past 2,000 characters, the place kept when the
 file is read again. What is drawn is reported for the tests.
+
+### `HubProjects.swift` · 250
+The projects in the Hub's first column (D163): attached ones and the folders the
+sessions are in, each a menu — a new session in tmux, one in the background here,
+a past conversation to resume, kept in or taken off the list —, the sheet that
+attaches a folder here or on another machine, and the one that lists what can be
+resumed, read off the main thread.
+
+### `ProjectStore.swift` · 45
+The attached projects in `~/.lampboard/projects.json`, published for the Hub.
 
 ### `HubShell.swift` · 96
 The project's shell in the last column (D156): the person's own shell in the
@@ -2019,6 +2076,7 @@ and a live window sets its own (`LiveChatTheme`).
 | `GlobalHotKey.swift` | 49 | one shortcut that works from any application, through Carbon's hot keys: no permission, where a global key monitor would need Accessibility and see every key typed; a combination another app holds is logged, and the panel's own `⌘K` still works |
 | `WaitingQueueModel.swift` | 226 | what waits, between refreshes (D74): the cards, the selection (the most urgent until `J` or `K` moves it, then following its card), when each card was first shown, a redraw when one arms, the asks answered elsewhere for a second; since 1.1 nothing is drawn as cards (U2): the held asks by session for the lines under their rows, the sessions J and K are on for the ring, the bar's count; a local key monitor that takes `J K O E`, `A D` for an ask the panel holds, a digit for a held question's option, and answers the rest of `A S D R 1–9` with a beep until the panel can act in a session (D73) |
 | `LampMasterService.swift` | 376 | LampMaster's round from the panel's rows to the suggestions on screen: the five-minute tick, the quick round a turn's end or a failed tool looks for (D72), the kinds passed over switched off (D95), the frame with the allowance strip's quota and the nodes' sessions — one ssh per node, on threads of their own, while LampMaster is on (D94) —, the skip — a tight allowance among the reasons (D93) —, the run — its precedents searched in the index only then, off the main actor (D92) —, the validator, the files, the state the server hands out. Every decision is in Core; this reads, runs and keeps. One round at a time, and one daily ceiling shared by the rounds and the questions |
+| `LampMasterConductor.swift` | 230 | LampMaster as a session (D164): its folder prepared, its conversation started or taken up in tmux (never twice while it runs), shown on its row; and its hands answered, only for the session LampBoard started as LampMaster: the sessions as facts, a transcript's tail read here or through ssh, a message pasted after its prompt is read empty, Esc, a start that leaves the Hub where it is |
 | `LampMasterQuestions.swift` | 209 | what a session asks through the `lampmaster` MCP server: the lookups at once from the cards, `who_knows` and `precedents` naming the index's earlier conversations too (D89, D92), a question through the round's isolated `claude` with Sonnet. A question is **booked** in `asks.jsonl` before it runs, so questions arriving during its minute and a half count it; two at most at once. The session id a call carries is the caller's own word, a label for the per-session limit; the hourly total is the bound |
 | `LampMasterRunner.swift` | 94 | finds and runs `claude` for a round or a question — only in the fake home under `LAMPBOARD_HOME`, so a test that forgot its fake fails instead of spending the real one; the pids in flight, held only while they run, so quitting stops them; the box the server reads the state from |
 | `LampMasterCards.swift` | 182 | a card for every conversation LampMaster may look at: the panel's rows, and the transcripts closed in the last week. Followed by byte offset like the chat window — the tail first, then only what was appended, again from the start if the file shrank. An `actor`, so the reads stay off the thread that draws. The nodes' transcripts are followed the same way by host and path, from what one ssh per node brought (D94) |
@@ -2273,7 +2331,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1344 cases
+## `LampBoardTests/` — 1360 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about dictation and the rewake
@@ -2388,7 +2446,7 @@ the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
 
-## `LampBoardE2E/` — 186 cases
+## `LampBoardE2E/` — 188 cases
 
 | Suite | Covers |
 |---|---|

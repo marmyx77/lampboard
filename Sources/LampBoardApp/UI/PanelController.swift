@@ -72,6 +72,8 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
     var openHub: ((String?) -> Void)?
+    /// Starts a session in tmux and shows it in the Hub; `false` when it cannot.
+    var startInHub: ((_ host: String?, _ folder: String, _ name: String?) -> Bool)?
     /// Whether the Hub is open, or has the keys; and closing it: ⌘⇧L's round ends there.
     var hubIsOpen: (() -> Bool)?
     var hubIsKey: (() -> Bool)?
@@ -299,7 +301,8 @@ final class PanelController {
         ColumnOptions(
             onlyWaiting: preferences.showsOnlyWaiting,
             order: preferences.rowOrder,
-            hidden: preferences.hiddenWorkspaces,
+            // LampMaster's own session has its own row in the Hub (hub-terminale R10).
+            hidden: preferences.hiddenWorkspaces.union([Workspace(path: LampMasterConductor.folder.path).key]),
             names: preferences.rowNames,
             conversationOrder: preferences.conversationOrder,
             showsResting: preferences.showsResting

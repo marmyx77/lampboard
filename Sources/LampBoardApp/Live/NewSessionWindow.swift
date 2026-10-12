@@ -3,8 +3,8 @@ import LampBoardCore
 import SwiftUI
 
 /// «New session…» (D133): a machine, a folder, a name, and the session opens in
-/// the live view. On this Mac it starts in the background; on another machine it
-/// starts inside tmux, where it outlives the window.
+/// the Hub (hub-terminale R4). It starts inside tmux, on this Mac or on another
+/// machine, where it outlives the window; on this Mac without tmux, in the background.
 @MainActor
 final class NewSessionWindowController: NSObject, NSWindowDelegate {
 
@@ -114,8 +114,8 @@ struct NewSessionView: View {
             }
             .pickerStyle(.menu)
             Text(model.isRemote
-                 ? "It starts inside tmux on \(model.host): it keeps running when you close the window, and any terminal can attach to it."
-                 : "It starts in the background on this Mac: it keeps running when you close the window.")
+                 ? "It starts inside tmux on \(model.host), in its own terminal in the Hub: it keeps running when you close it, and any terminal can attach to it."
+                 : "It starts inside tmux on this Mac, in its own terminal in the Hub: it keeps running when you close it.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
             Text("Folder").font(.headline)

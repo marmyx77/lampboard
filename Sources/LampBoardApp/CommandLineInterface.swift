@@ -19,6 +19,7 @@ enum CommandLineInterface {
         /// The `lampmaster` MCP server: Claude Code starts it, it talks JSON-RPC
         /// on standard input and output and asks the running panel.
         case mcp(port: UInt16)
+        case mcpHands(port: UInt16)
         /// `mcp install`, `mcp uninstall`, `mcp status`: the server's entry in
         /// Claude Code's user settings.
         case mcpSetup(verb: String, port: UInt16)
@@ -84,6 +85,8 @@ enum CommandLineInterface {
             if let verb = args.dropFirst().first, ["install", "uninstall", "status"].contains(verb) {
                 return .mcpSetup(verb: verb, port: port)
             }
+            // LampMaster's hands, loaded only in LampMaster's own folder (hub-terminale R11).
+            if args.contains("--hands") { return .mcpHands(port: port) }
             return .mcp(port: port)
         case "mod":
             return .modSetup(verb: args.dropFirst().first ?? "status")
@@ -178,6 +181,8 @@ enum CommandLineInterface {
 
         case .mcp(let port):
             return LampMasterBridge.run(port: port)
+        case .mcpHands(let port):
+            return LampMasterBridge.runHands(port: port)
 
         case .mcpSetup(let verb, let port):
             return LampMasterBridge.setup(verb, port: port)

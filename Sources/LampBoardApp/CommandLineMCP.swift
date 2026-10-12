@@ -31,6 +31,32 @@ enum LampMasterBridge {
         return 0
     }
 
+    /// `lampboard mcp --hands`: the `lampboard` server of LampMaster's own folder
+    /// (hub-terminale R11), the same way to the panel, which answers it only for
+    /// the session it started as LampMaster.
+    static func runHands(port: UInt16) -> Int32 {
+        let session = ProcessInfo.processInfo.environment["CLAUDE_CODE_SESSION_ID"] ?? ""
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+        while let line = readLine(strippingNewline: true) {
+            guard !line.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+            let answer = LampMasterHands.respond(to: line, version: version) { tool, arguments in
+                let call: [String: Any] = ["tool": tool.rawValue, "arguments": arguments, "session": session]
+                guard let body = try? JSONSerialization.data(withJSONObject: call) else { return ("Unreadable arguments.", true) }
+                switch LocalClient.lampMasterHands(body, port: port) {
+                case .failure(let error):
+                    return ("LampBoard could not be asked: " + (error.errorDescription ?? "unknown error"), true)
+                case .success(let data):
+                    guard let reply = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let text = reply["text"] as? String
+                    else { return ("LampBoard answered something unreadable.", true) }
+                    return (text, reply["isError"] as? Bool ?? false)
+                }
+            }
+            if let answer { FileHandle.standardOutput.write(Data((answer + "\n").utf8)) }
+        }
+        return 0
+    }
+
     /// One tool call, to the running panel and back. Every failure becomes a
     /// tool error the calling model can read and say, never a dead server.
     static func forward(

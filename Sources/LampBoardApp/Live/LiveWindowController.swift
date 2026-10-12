@@ -224,9 +224,15 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// Ends the editor's process of a conversation and takes it up as a
     /// background session here (D135). Off the main thread: the process gets
     /// ten seconds to save what it holds before the new one starts.
+    /// Where a moved conversation goes on when tmux is there (hub-terminale R6):
+    /// taken up in tmux, its terminal in the Hub. `false` when it cannot, and the
+    /// move goes on in the background as before.
+    var resumeInTmux: ((_ folder: String, _ sessionId: String, _ name: String, _ failed: @escaping (String) -> Void) -> Bool)?
+
     func move(_ process: SessionProcess, name: String, failed: @escaping (String) -> Void) {
         // One move per conversation at a time: a second would start a second writer.
         guard !moving.contains(process.sessionId) else { return }
+        let inTmux = resumeInTmux != nil && LocalTmuxPlaces.executable() != nil
         guard let claude = LampMasterRunner.executable(),
               let command = LiveLaunch.start(directory: process.cwd, name: name, resume: process.sessionId, claude: claude,
                                              environment: ProcessInfo.processInfo.environment,
@@ -250,6 +256,13 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             while SessionTerminator.isStillRunning(process), Date() < deadline { Thread.sleep(forTimeInterval: 0.2) }
             guard !SessionTerminator.isStillRunning(process) else {
                 DispatchQueue.main.async { finish("The VS Code process is still running after ten seconds. Nothing was started, so the conversation has one writer.") }
+                return
+            }
+            if inTmux {
+                DispatchQueue.main.async {
+                    if self?.resumeInTmux?(process.cwd, process.sessionId, name, { finish($0) }) == true { finish(nil) }
+                    else { finish("tmux could not take the conversation up. Nothing was started, so it has one writer: resume it yourself with claude --resume \(process.sessionId).") }
+                }
                 return
             }
             let result = try? Command.run(command.executable, command.arguments, deadline: 60,

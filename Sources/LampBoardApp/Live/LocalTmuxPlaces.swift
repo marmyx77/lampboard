@@ -55,7 +55,9 @@ final class LocalTmuxPlaces {
 
     /// `nil` when tmux did not answer; no panes is an answer, and no places.
     nonisolated private static func ask(_ tmux: String) -> [String: TmuxPlace]? {
-        guard let result = try? Command.run(tmux, ["list-panes", "-a", "-F", TmuxPlace.paneFormat], deadline: 2,
+        // `-u`: a Mac app started from the Dock has no locale, and a tmux client
+        // without UTF-8 writes the format's tabs as `_` (measured, 12 October 2026).
+        guard let result = try? Command.run(tmux, ["-u", "list-panes", "-a", "-F", TmuxPlace.paneFormat], deadline: 2,
                                             capturingStandardError: false, environment: ["TMUX": nil])
         else { return nil }
         let panes = TmuxPlace.panes(result.output)

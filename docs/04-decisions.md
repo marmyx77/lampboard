@@ -5951,3 +5951,61 @@ SwiftTerm's vendored patch 3 came out of that run. Option-arrows and
 Option-Delete move and delete a word, and Command-arrows and Command-Delete
 reach the line's ends, as Terminal sends them. Option itself still types
 characters (D138).
+
+## D163 · Projects, and sessions started from LampBoard
+
+**Decided** (11 October 2026). The Hub keeps a list of projects:
+- the ones the person attached, a folder on this Mac or on a machine of Settings ›
+  Other Macs, with or without a session (`~/.lampboard/projects.json`);
+- then the folders the sessions are in.
+
+From a project, LampBoard starts a session in tmux, takes a past conversation up
+there, or starts a background session on this Mac. New session (⌘N) and Move to
+LampBoard end in tmux too. Without tmux on this Mac they go to the background, as
+before. Starting a session no longer needs another terminal or VS Code.
+
+**How.**
+- LampBoard chooses a new conversation's id (`claude --session-id`), so its
+  terminal is at the Hub's centre at once and its row comes at its first word,
+  before any transcript. The rule that a process with no conversation earns no row
+  stays for the processes nobody asked for.
+- On this Mac a script makes the tmux session, under a tag found again rather than
+  started twice, and prints where it sits; on another machine D133's script does
+  the same through the ssh terminal itself.
+- tmux's status line is off in the sessions LampBoard makes: the Hub says what
+  the session is.
+- **One writer.** A past conversation is taken up only when no process holds it,
+  by either way of knowing:
+  - its session file;
+  - a running process's start time.
+
+  A conversation open in VS Code is refused, not forked.
+
+**Measured on the test Mac** (`hub-projects.sh`, a real session):
+1. A project attached, a session started there: its terminal at once, its row
+   before its transcript, a turn in the transcript of the chosen id.
+2. Taking it up while it ran was refused.
+3. Ended, then taken up: it showed the conversation so far, and the next turn went
+   into the same transcript, one file, no fork.
+
+## D164 · LampMaster as a session, with hands
+
+**Decided** (11 October 2026). LampMaster is talked to, not only read: it is a
+Claude Code session LampBoard starts in tmux, in its own folder
+(`~/.lampboard/lampmaster`), and shows on its row in the Hub. Its conversation is
+there, with its hourly cards a click away.
+
+**Hands.** Its folder's `.mcp.json` gives it a server only it loads, `lampboard`,
+with six tools:
+- `sessions` and `read_session` read;
+- `send_to_session`, `stop_session`, `start_session` and `open_in_hub` act.
+
+The panel answers them only for the session it started as LampMaster. Every tool
+that acts is left out of the folder's allowed tools, so Claude Code asks the
+person each time: the click stays theirs, as D61 wanted. A message goes only into
+a session in tmux, at rest, with an empty prompt (told by tmux's cursor, which a
+grey suggestion does not move). It arrives marked as LampMaster's.
+
+**The person's own memory.** LampMaster is Claude Code with the person's own
+setup: their MCP servers and plugins are there as in any session. Nothing in
+LampBoard names one.
