@@ -273,14 +273,14 @@ struct PanelRootView: View {
                     // what the strip can hold without them touching.
                     // Three glyphs at eleven points: the Hub has a door here
                     // too, not only ⌘⇧L (12 October 2026).
-                    HStack(spacing: 0) {
+                    HStack(spacing: 1) {
                         FooterButton(symbol: "arrow.up.left.and.arrow.down.right.circle",
                                      help: "Widen the panel: names, times, context and the drag handles",
-                                     width: 11, action: actions.toggleCompact)
-                        hubButton(width: 11)
+                                     width: 11, glyph: 10, action: actions.toggleCompact)
+                        hubButton(width: 11, glyph: 10)
                         FooterButton(symbol: "ellipsis.circle",
                                      help: "Options and Settings: the same menu as a right-click on the panel's edge",
-                                     width: 11, action: openMenuUnderPointer)
+                                     width: 11, glyph: 10, action: openMenuUnderPointer)
                     }
                     .frame(maxWidth: .infinity)
                 } else {
@@ -335,11 +335,12 @@ struct PanelRootView: View {
 
     /// The door to the Hub (D149, D162): the sessions with their own terminals,
     /// the projects and LampMaster. Three columns, as the Hub is drawn.
-    private func hubButton(width: CGFloat = 15) -> some View {
+    private func hubButton(width: CGFloat = 15, glyph: CGFloat = Layout.footerGlyph) -> some View {
         FooterButton(
             symbol: "rectangle.split.3x1",
             help: "Open the Hub: your sessions in their own terminals, your projects, LampMaster (⌘⇧L)",
             width: width,
+            glyph: glyph,
             action: actions.openHub
         )
         .accessibilityIdentifier("panel.openHub")
@@ -441,6 +442,8 @@ private struct FooterButton: View {
     /// separated by the spacing and nothing else. The width control passes the
     /// width of a light instead, so it centres in the lights' column.
     var width: CGFloat = 15
+    /// The glyph's size: smaller where three share the narrow column's foot.
+    var glyph: CGFloat = Layout.footerGlyph
     let action: () -> Void
 
     @State private var hovering = false
@@ -448,7 +451,7 @@ private struct FooterButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: Layout.footerGlyph, weight: .regular))
+                .font(.system(size: glyph, weight: .regular))
                 .foregroundStyle(hovering ? Color.primary.opacity(0.95) : StatusPalette.timeColor)
                 // The pill is wider than the layout box and overflows it evenly,
                 // so the glyph keeps its column while the highlight gets room to
