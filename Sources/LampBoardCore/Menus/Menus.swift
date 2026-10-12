@@ -19,14 +19,17 @@ public enum MenuEntry: Equatable, Sendable {
 /// What a menu entry does. The App maps each one to its action.
 public enum MenuCommand: Equatable, Sendable {
     // The panel's ⋯ and the lamp
+    /// `openConversations` opens the Hub (D165).
     case openConversations, newSession, legend, capabilities, onlyWaiting, muteForAnHour, resumeAlerts, away, showHidden, settings, quit
     case openPanel, toggleHome
     // A row
-    case open, read, sessionView, newConversation, rename, hide
+    /// `sessionView` is «Open in the Hub» (D162); `open` shows the session where
+    /// it runs, VS Code or the Claude app.
+    case open, sessionView, newConversation, rename, hide
     case dontAlert, dontBlink, focus
     case peek, markUnread, moveUp, moveDown, revealInFinder, pinDecision, unpinDecision(Int), copyAttach, toggleModel
     // The live view (D130)
-    case openHere, startHere, moveHere
+    case startHere, moveHere
 }
 
 /// What the panel's ⋯ needs to know.
@@ -83,11 +86,14 @@ public struct RowMenuState: Equatable, Sendable {
     public let modelOffer: String?
     /// A conversation open in VS Code that can go on in LampBoard (D135).
     public let canMoveHere: Bool
+    /// Where the session runs when that is outside LampBoard («VS Code», «the
+    /// Claude app»), for «Show in …»; `nil` for one LampBoard has a terminal into.
+    public let elsewhere: String?
 
     public init(isRemote: Bool, compact: Bool, alias: String?, folder: String, status: SessionStatus,
                 isHidden: Bool, isCalm: Bool, isMuted: Bool, isFocused: Bool, notificationsEnabled: Bool,
                 hostsNewConversation: Bool, repository: String?, pinned: [String], attachCommand: String?,
-                modelOffer: String?, canMoveHere: Bool = false) {
+                modelOffer: String?, canMoveHere: Bool = false, elsewhere: String? = nil) {
         self.isRemote = isRemote
         self.compact = compact
         self.alias = alias
@@ -104,6 +110,7 @@ public struct RowMenuState: Equatable, Sendable {
         self.attachCommand = attachCommand
         self.modelOffer = modelOffer
         self.canMoveHere = canMoveHere
+        self.elsewhere = elsewhere
     }
 }
 
@@ -114,7 +121,7 @@ public enum Menus {
     /// entries, a ninth while some projects are hidden.
     public static func panel(_ state: PanelMenuState, time: (Date) -> String) -> [MenuEntry] {
         var entries: [MenuEntry] = [
-            .item(.openConversations, "Open the conversations…"),
+            .item(.openConversations, "Open the Hub"),
             .item(.newSession, "New session…", shortcut: "n"),
             .item(.legend, "What the lights mean…"),
             .item(.capabilities, "What LampBoard can do…"),
@@ -138,7 +145,7 @@ public enum Menus {
             .heading(summary(wanting: state.wanting, working: state.working)),
             .divider,
             .item(.openPanel, "Open the panel"),
-            .item(.openConversations, "Open the conversations…"),
+            .item(.openConversations, "Open the Hub"),
             .divider,
             quiet(mutedUntil: state.mutedUntil, time: time),
             .item(.away, SettingsCatalog.item(.away).label, checked: state.isAway),
@@ -149,23 +156,19 @@ public enum Menus {
         ]
     }
 
-    /// A row's menu: eight entries, nine for a background session (Open here);
-    /// the ways of keeping it quiet under Quiet, the rarer things under More.
+    /// A row's menu (D165): the Hub first, for every row, here or on another
+    /// machine; then where else the session lives, and what can be started in
+    /// its folder; the ways of keeping it quiet under Quiet, the rarer things
+    /// under More. Each says where it leads: «Open here», «Read the
+    /// conversation» and «Open in Session view» were three names for the Hub
+    /// and one for a window 2.1 no longer has (12 October 2026).
     public static func row(_ state: RowMenuState) -> [MenuEntry] {
-        let local = !state.isRemote
-        var entries: [MenuEntry] = [.item(.open, "Open")]
-        // Only a session the live view can open with one writer: a background
-        // one, or one in tmux (D130, D132); `LiveTarget` decides, and the row says
-        // so by having a command. An editor's session would be a second writer.
-        if state.attachCommand != nil { entries.append(.item(.openHere, "Open here")) }
-        // A conversation in VS Code goes on in LampBoard instead (D135): its
-        // Open still jumps to the editor until then.
+        var entries: [MenuEntry] = [.item(.sessionView, "Open in the Hub")]
+        if let elsewhere = state.elsewhere { entries.append(.item(.open, "Show in \(elsewhere)")) }
+        // A conversation in VS Code goes on in LampBoard instead (D135).
         if state.canMoveHere { entries.append(.item(.moveHere, "Move to LampBoard…")) }
-        // The transcript and a new conversation are on this Mac: a row that lives
-        // elsewhere is not offered either.
-        if local { entries.append(.item(.read, "Read the conversation")) }
-        if local, !state.compact { entries.append(.item(.sessionView, "Open in Session view")) }
-        if state.hostsNewConversation { entries.append(.item(.newConversation, "New conversation here")) }
+        entries.append(.item(.startHere, "Start a new session in this folder"))
+        if state.hostsNewConversation { entries.append(.item(.newConversation, "New conversation in VS Code")) }
         entries.append(.divider)
         entries.append(.item(.rename, state.alias == nil ? "Rename…" : "Rename… (“\(state.folder)” underneath)"))
         entries.append(.item(.hide, "Hide", checked: state.isHidden))
@@ -198,7 +201,6 @@ public enum Menus {
 
     private static func moreEntries(_ state: RowMenuState) -> [MenuEntry] {
         var entries: [MenuEntry] = []
-        entries.append(.item(.startHere, "New conversation in LampBoard"))
         entries.append(.item(.peek, "Open without marking as read"))
         if state.status == .idle { entries.append(.item(.markUnread, "Mark as unread")) }
         entries += [.item(.moveUp, "Move up"), .item(.moveDown, "Move down")]

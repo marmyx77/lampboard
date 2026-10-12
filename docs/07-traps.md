@@ -559,7 +559,7 @@ an `if`: while `shouldBlink && !calm` the row shows a pulsing circle; the moment
 that stops holding, the view is removed and a steady one takes its place. A
 removed view takes its animations with it — that is the entire mechanism, and it
 does not depend on how SwiftUI reconciles a running animation with an unanimated
-change. The dictation button had the same shape and got the same fix.
+change. The dictation button (removed in 2.1, D165) had the same shape and got the same fix.
 
 **Verified in reverse.** With the new build running, a throwaway session in the
 same folder was sent a synthetic `permission_prompt`: four window-id screenshots
@@ -999,8 +999,8 @@ than from looking at it, is a guess wearing a comment's clothes.
 
 ## The conversation that began in the middle
 
-**Symptom.** None reported — found by comparison, not by use. The chat window keeps
-the last 300 entries and silently drops the rest, so a long conversation opens
+**Symptom.** None reported — found by comparison, not by use. The extended window (removed in 2.1, D165) kept
+the last 300 entries and silently dropped the rest, so a long conversation opened
 part-way through a sentence with nothing to say it had been cut.
 
 **Cause.** `trimmed(to:)` returned the tail and threw the count away.
@@ -1123,7 +1123,7 @@ appeared.
 ## The window that read the whole file
 
 **Symptom.** ⌘+click on a row — or `lampboard chat n` — showed the beachball
-for ten to thirty seconds before the extended view opened. It had been
+for ten to thirty seconds before the extended view (removed in 2.1, D165) opened. It had been
 instantaneous; the defect had been there for two days, and nobody had changed
 the chat code in those two days.
 

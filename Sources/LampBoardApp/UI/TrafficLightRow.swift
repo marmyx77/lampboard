@@ -18,8 +18,6 @@ struct RowActions {
     let toggleMuted: (ColumnRow) -> Void
     let toggleCalmBlink: (ColumnRow) -> Void
     let newConversation: (ColumnRow) -> Void
-    /// Opens the conversation in a window of its own, without touching VS Code.
-    let openChat: (ColumnRow) -> Void
     /// Gives the row the name the user wants to read, by folder.
     let rename: (ColumnRow) -> Void
     /// Opens or closes the block: what a click on a project holding several
@@ -37,8 +35,11 @@ struct RowActions {
     let moveSession: (ColumnRow, RowSession, Int) -> Void
     /// Opens the folder the session is working in, in the Finder.
     let revealInFinder: (ColumnRow) -> Void
-    /// Opens the row's session in the Plancia, beside the list (D79).
+    /// Opens the row's session in the Hub (D165).
     var openPlancia: (ColumnRow) -> Void = { _ in }
+    /// «Show in VS Code» and the like: the session where it runs, whatever a
+    /// click does in the Hub's sidebar.
+    var showElsewhere: (ColumnRow) -> Void = { _ in }
     /// The decision board of the row's repository (D105): pin one, take one off
     /// by its number, and the ones pinned now, for the menu.
     var pinDecision: (String) -> Void = { _ in }
@@ -51,8 +52,7 @@ struct RowActions {
     var toggleFocus: (ColumnRow) -> Void = { _ in }
     /// What the live view could open for a session, if anything (D130, D132).
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
-    /// Opens it in the live view, and starts a new session there (D130).
-    var openHere: (LiveTarget) -> Void = { _ in }
+    /// Starts a new session in the row's folder, in tmux, in the Hub (D133, D163).
     var startHere: (ColumnRow) -> Void = { _ in }
     /// A conversation in VS Code, moved to the live view (D135).
     var canMoveHere: (SessionState) -> Bool = { _ in false }
@@ -415,8 +415,9 @@ struct TrafficLightRow: View {
             return
         }
 
-        if modifiers.contains(.command), !row.workspace.isRemote {
-            activateChat()
+        if modifiers.contains(.command) {
+            // ⌘+click opens the session in the Hub (D165), here or on another machine.
+            actions.openPlancia(row)
         } else if modifiers.contains(.option) {
             actions.peek(row)
         } else if modifiers.contains(.shift), !row.workspace.isRemote {
@@ -429,13 +430,13 @@ struct TrafficLightRow: View {
         }
     }
 
-    /// ⌘+click opens the extended window on this conversation.
-    ///
-    /// The modifier and the menu entry both exist for the same reason alt+click
-    /// does: the gesture is the fast path for people who know it, the menu is how
-    /// anybody finds out it is there.
-    private func activateChat() {
-        actions.openChat(row)
+    /// Where a session LampBoard has no terminal into runs, for «Show in …».
+    static func elsewhere(_ session: SessionState) -> String {
+        switch session.entrypoint {
+        case "claude-vscode": return "VS Code"
+        case "claude-desktop": return "the Claude app"
+        default: return "its terminal"
+        }
     }
 
     /// The row's menu (U3): eight entries, the ways of keeping it quiet under
@@ -463,12 +464,12 @@ struct TrafficLightRow: View {
             isFocused: flags.isFocused, notificationsEnabled: flags.notificationsEnabled,
             hostsNewConversation: row.hostsNewConversation, repository: repository,
             pinned: repository.map(actions.decisions) ?? [], attachCommand: target?.command,
-            modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary)
+            modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary),
+            elsewhere: target == nil ? Self.elsewhere(row.primary) : nil
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
             switch command {
-            case .open: actions.open(row)
-            case .read: actions.openChat(row)
+            case .open: actions.showElsewhere(row)
             case .sessionView: actions.openPlancia(row)
             case .newConversation: actions.newConversation(row)
             case .rename: actions.rename(row)
@@ -484,7 +485,6 @@ struct TrafficLightRow: View {
             case .pinDecision: if let repository { actions.pinDecision(repository) }
             case .unpinDecision(let number): if let repository { actions.unpinDecision(repository, number) }
             case .copyAttach: if let target { actions.copyCommand(target.command) }
-            case .openHere: if let target { actions.openHere(target) }
             case .startHere: actions.startHere(row)
             case .moveHere: actions.moveHere(row)
             case .toggleModel: actions.toggleModel(row)

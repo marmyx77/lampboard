@@ -58,18 +58,13 @@ extension PanelController {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
             }
-            // Into the Plancia's composer, to read, change and send: LampMaster
-            // proposes, the person sends (D61, D73, D85). A session on another
-            // machine has no Plancia here: raised, with the text copied.
-            guard let text = suggestion.action.question, !member.session.workspace.isRemote else {
+            // Into the session's terminal in the Hub, to read, change and send
+            // with Enter: LampMaster proposes, the person sends (D61, D85, D165).
+            // Where LampBoard has no terminal: raised, with the text copied.
+            guard let text = suggestion.action.question, proposeInHub?(member.session.id, text) == true else {
                 activate(session: member)
                 return true
             }
-            openPlancia(sessionId: member.session.id)
-            // Only into that session's Plancia: one that did not open leaves the
-            // text where the person can see it, on the clipboard.
-            guard plancia.sessionId == member.session.id else { return true }
-            plancia.thread?.proposed = text
             return true
         case .close:
             guard let member = rowSession(id) else { return tellGone(id) }

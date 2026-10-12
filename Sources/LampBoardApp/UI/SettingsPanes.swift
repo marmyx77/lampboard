@@ -109,10 +109,6 @@ struct ClicksPane: View {
                     preferences.liveOpensBackground = value
                     model.refresh()
                 }
-                SettingToggle(id: .liveOpensChat, isOn: preferences.liveOpensChat) { value in
-                    preferences.liveOpensChat = value
-                    model.refresh()
-                }
                 SettingRow(id: .liveTheme) {
                     Picker("", selection: Binding(get: { preferences.liveTheme }, set: { value in
                         preferences.liveTheme = value

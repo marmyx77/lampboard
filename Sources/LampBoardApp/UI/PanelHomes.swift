@@ -162,7 +162,7 @@ extension PanelController {
             let actions = self.makeActions()
             switch command {
             case .openPanel: self.summon()
-            case .openConversations: self.openExtendedWindow()
+            case .openConversations: self.openHub?(nil)
             case .muteForAnHour: actions.muteForAnHour()
             case .resumeAlerts: actions.clearMute()
             case .away: actions.toggleAway()
@@ -292,7 +292,6 @@ extension PanelController {
     /// nobody reads to understand how the panel behaves.
     func makeActions() -> PanelActions {
         PanelActions(
-            openExtended: { [weak self] in self?.openExtendedWindow() },
             openSettings: { [weak self] in self?.onOpenSettings?() },
             openLegend: { [weak self] in self?.onOpenLegend?() },
             openHub: { [weak self] in self?.openHub?(nil) },

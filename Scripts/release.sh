@@ -170,11 +170,6 @@ cat > "$ENTITLEMENTS" <<'PLIST'
          runtime denies every Apple Event and the click does nothing. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
-
-    <!-- Dictation, held down on the button. The Info.plist string explains it
-         to the user; this entitlement is what lets the runtime allow it. -->
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
 </dict>
 </plist>
 PLIST

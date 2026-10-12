@@ -19,12 +19,6 @@ final class LiveChatModel: ObservableObject {
     @Published private(set) var messages: [ChatMessage] = []
     /// Said above the conversation when it cannot be read.
     @Published private(set) var problem: String?
-    /// The session waits for an answer only its own dialog can take.
-    @Published private(set) var asksInTerminal = false
-    /// Whether a message may be sent: Claude runs there and waits on no dialog.
-    @Published private(set) var canSend = false
-    /// Bumped when the chat is shown, for its box to take the keys.
-    @Published private(set) var focusRequest = 0
 
     private let source: Source
     private var buffer = TranscriptLineBuffer()
@@ -53,23 +47,6 @@ final class LiveChatModel: ObservableObject {
         timer = nil
         endFollower()
     }
-
-    /// The terminal was attached again: a remote follower lost with the
-    /// connection starts again too.
-    func restartIfLost() {
-        guard case .remote(let host, let path) = source, follower == nil, !stopped else { return }
-        retries = 0
-        startRemote(host: host, path: path)
-    }
-
-    /// What the window knows of the session, once a second: published only
-    /// when it changes, so the bubbles are not drawn again for nothing.
-    func update(asking: Bool, sendable: Bool) {
-        if asksInTerminal != asking { asksInTerminal = asking }
-        if canSend != sendable { canSend = sendable }
-    }
-
-    func requestFocus() { focusRequest += 1 }
 
     // MARK: - This Mac: the file, read where it was left
 
@@ -206,19 +183,12 @@ final class LiveChatModel: ObservableObject {
     }
 }
 
-/// The chat itself: the conversation, and a box that sends to the session.
+/// A conversation read from its transcript, for a session LampBoard has no
+/// terminal into (D162): its replies, the last page first, nothing to send
+/// (D165: the chat's box went with the old chat).
 struct LiveChatView: View {
     @ObservedObject var model: LiveChatModel
-    /// Sends a message to the session, as if typed and Enter pressed; `false`
-    /// when it could not be.
-    let send: (String) -> Bool
-    let showTerminal: () -> Void
-    /// Whether the chat has its own box; the Hub puts its composer below (D154).
-    var composes = true
-    /// The Hub's «Cite in…» on each reply (D155); none in the live view.
-    var cite: ((ChatMessage) -> Void)? = nil
 
-    @State private var draft = ""
     /// The last messages drawn; the earlier ones a click away, a page at a time.
     /// Twelve: forty replies with tables and code held the main thread a
     /// second on opening, even in a release build (10 October 2026).
@@ -227,7 +197,6 @@ struct LiveChatView: View {
     static let page = 20
     @State private var windowState = WindowState()
     @State private var bridge = ChatBridge()
-    @FocusState private var boxFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -246,11 +215,7 @@ struct LiveChatView: View {
                                 .accessibilityIdentifier("chat.earlier")
                         }
                         ForEach(model.messages.suffix(shown)) { message in
-                            if let cite, message.role == .assistant {
-                                CitableBubble(message: message, cite: cite)
-                            } else {
-                                MessageBubble(message: message)
-                            }
+                            MessageBubble(message: message)
                         }
                         Color.clear.frame(height: 1).id("end")
                     }
@@ -274,17 +239,6 @@ struct LiveChatView: View {
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("end", anchor: .bottom) }
                 }
             }
-            if model.asksInTerminal {
-                HStack {
-                    Text("The session is asking something its own dialog answers.")
-                    Spacer()
-                    Button("Answer in the terminal", action: showTerminal)
-                }
-                .font(.callout)
-                .padding(10)
-                .background(.orange.opacity(0.15))
-            }
-            if composes { composer }
         }
         .background(ClaudeTheme.background)
         .foregroundStyle(ClaudeTheme.textPrimary)
@@ -295,52 +249,5 @@ struct LiveChatView: View {
         .environment(\.openURL, OpenURLAction { url in
             ["http", "https"].contains(url.scheme?.lowercased() ?? "") ? .systemAction : .discarded
         })
-        .onChange(of: model.focusRequest) { _, _ in boxFocused = true }
-        .onAppear { if composes { boxFocused = true } }
-    }
-
-    @ViewBuilder private var composer: some View {
-            Divider()
-            HStack(alignment: .bottom, spacing: 8) {
-                TextField(model.canSend ? "Message the session…" : "Sending waits until Claude is there and asks nothing",
-                          text: $draft, axis: .vertical)
-                    .lineLimit(1...8)
-                    .textFieldStyle(.plain)
-                    .focused($boxFocused)
-                    .onSubmit(submit)
-                Button("Send", action: submit)
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(!model.canSend || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .padding(12)
-    }
-
-    private func submit() {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, model.canSend else { return }
-        // Kept when it could not go: a message is never lost to a closed terminal.
-        if send(text) { draft = "" }
-    }
-}
-
-/// A reply with «Cite in…» at its corner while the pointer is over it, and in
-/// its menu (the proposal's `.cite`).
-private struct CitableBubble: View {
-    let message: ChatMessage
-    let cite: (ChatMessage) -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        MessageBubble(message: message)
-            .overlay(alignment: .topTrailing) {
-                if hovering {
-                    Button("Cite in…") { cite(message) }
-                        .font(.system(size: 11))
-                        .buttonStyle(.bordered).controlSize(.small)
-                        .padding(4)
-                }
-            }
-            .onHover { hovering = $0 }
-            .contextMenu { Button("Cite in…") { cite(message) } }
     }
 }

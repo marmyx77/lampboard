@@ -14,7 +14,7 @@ public enum SettingsCatalog {
         case width, onlyWaiting, terminalSessions, hiddenProjects
         case launchAtLogin
         case accessibility, sessionTab, barShortcut
-        case liveOpensBackground, liveTheme, liveFontSize, liveLook, liveFontFamily, liveLineSpacing, liveLetterSpacing, liveOpensChat, liveCustomColors
+        case liveOpensBackground, liveTheme, liveFontSize, liveLook, liveFontFamily, liveLineSpacing, liveLetterSpacing, liveCustomColors
         case notifications, notifyFinished, speak
         case mute, away, silenced
         case presence
@@ -79,11 +79,10 @@ public enum SettingsCatalog {
                 i(.sessionTab, "Also open the conversation's tab in VS Code", "VS Code asks you to confirm every time."),
                 i(.barShortcut, "Search bar from any app", "Inside the panel ⌘K always works. Off by default: ⌘K alone would take shortcuts VS Code begins with."),
             ]),
-            Group(title: "The live view", items: [
-                i(.liveOpensBackground, "Open here when LampBoard can", "A click on a session in the background, or in tmux on this Mac or another, opens it in a LampBoard window instead of jumping. Sessions in an editor still jump. Closing the window leaves the session running."),
-                i(.liveOpensChat, "Open on the chat", "A live window shows the conversation as a chat, in an ordinary font, with a box to write in; its terminal keeps running under it, a click away."),
+            Group(title: "The Hub's terminal", items: [
+                i(.liveOpensBackground, "A click opens the session in the Hub", "A click on a session LampBoard has a terminal into (in tmux on this Mac or another, or in the background) opens it in the Hub, in its own terminal, instead of jumping. Sessions in VS Code or the Claude app still jump. Closing the Hub leaves the session running."),
                 i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside, except with the VS Code themes; Like my VS Code reads the colours of the VS Code on this Mac."),
-                i(.liveFontSize, "Text size", "The size of the session's text, in every live window at once."),
+                i(.liveFontSize, "Text size", "The size of the session's text, in the Hub and in every window of its own at once."),
                 i(.liveCustomColors, "Colours", "With Look set to Custom: the background and the text, picked freely; the frame and the chat follow them."),
                 i(.liveFontFamily, "Font", "Any fixed-width font on this Mac: Claude Code draws on a grid, which a proportional font would break."),
                 i(.liveLetterSpacing, "Letter spacing", "Tighter letters read more like an ordinary font; below 85% the wide ones touch."),
@@ -117,7 +116,7 @@ public enum SettingsCatalog {
         ]),
         Section(title: "Acting from the panel", warns: true, groups: [
             Group(title: "These act on your sessions", items: [
-                i(.sendMessages, "Send messages to sessions", "Write to a session from ⌘K or its Session view. Anything running as you could then start a turn in your name: asks before it turns on."),
+                i(.sendMessages, "Send messages to sessions", "Write to a session from ⌘K (@name message): it waits in its terminal in the Hub, or goes into its own box. Anything running as you could then start a turn in your name: asks before it turns on."),
                 i(.answerPrompts, "Answer permission prompts and questions", "Needs the helper. Up to 55 seconds for a permission, 20 for a question, then the session asks as usual."),
                 i(.safetyCatch, "Safety catch while I'm away", "With the helper, a command that deletes recursively, force-pushes, discards changes or runs as root waits for you. A fixed list of spellings, not a sandbox."),
             ]),

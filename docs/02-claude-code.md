@@ -98,8 +98,7 @@ One optional one, behind `--with-tool-events`:
 |---|---|
 | `PreToolUse` | **one more process per tool call**, and it cannot release a pending question |
 
-A second optional registration, behind the chat window's *answer from the
-panel* switch: a separate `Stop` entry pointing at `~/.lampboard/rewake.sh`
+A second optional registration, behind the *Send messages to sessions* switch: a separate `Stop` entry pointing at `~/.lampboard/rewake.sh`
 with `asyncRewake: true` and deliberately **no** `timeout` — it waits, for
 minutes if need be, for a message left in the mailbox and hands it to the
 session as its next turn (Contracts, `rewake.mechanism`). `install-hooks` adds
@@ -430,5 +429,5 @@ window of `lampboard-old`.
 | **`PermissionRequest` hook** | it exists and can decide the outcome, but it **blocks the turn** until it answers: if the panel has crashed, every permission request hangs |
 | **The extension's MCP server** (WebSocket, 12 tools) | it would give control over the editor, far beyond what a traffic light needs |
 | **`windowId` in the deep links** | routing between windows turned out to be non-deterministic |
-| **`transcript_path`** | **not** for the state — the hooks decide the colour — but read for what the hooks cannot say: the chat window's content, the conversation title, the preview line and the row clock (D14, D17, D19) |
+| **`transcript_path`** | **not** for the state — the hooks decide the colour — but read for what the hooks cannot say: the conversation's content, the conversation title, the preview line and the row clock (D14, D17, D19) |
 | **Hooks inside Claude Desktop** | there is nowhere to put them. A session there runs with a `CLAUDE_CONFIG_DIR` of its own, created when the session is, so the hooks registered on this machine are not its hooks. For cloud sessions it is worse and not ours to fix: [anthropics/claude-code#40495](https://github.com/anthropics/claude-code/issues/40495) documents three separate reasons the sandbox never loads them. The colour there is derived from the transcript instead, and the row says so (D35) |

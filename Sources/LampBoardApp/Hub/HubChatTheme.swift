@@ -4,9 +4,8 @@ import SwiftUI
 
 /// The conversation in the Hub's colours (the proposal's dark palette): the
 /// person's messages in a soft blue bubble on the right, the replies as plain
-/// text, tools in thin outlined lines. Clarc's palette is one for the app, so
-/// the Hub sets it when its window comes forward, and a live window sets its
-/// own when it does (LiveChatTheme).
+/// text, tools in thin outlined lines. Clarc's palette is one for the app: the
+/// Hub sets it when its window comes forward.
 @MainActor
 enum HubChatTheme {
 

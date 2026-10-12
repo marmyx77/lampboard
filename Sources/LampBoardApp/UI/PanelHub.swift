@@ -28,14 +28,8 @@ extension PanelController {
             rowActions: rowActions,
             allowance: allowance,
             lampMaster: lampMaster, openLampMaster: { select(HubModel.lampMasterId) },
-            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), samples: samples, tips: tips,
-            queue: queue, bar: nil,
-            plancia: nil, planciaLeading: false, activity: activity,
-            openInEditor: { [weak self] id in
-                guard let self, let session = self.store.state.sessions[id] else { return }
-                self.activate(session: session)
-            },
-            closePlancia: {}
+            samples: samples, tips: tips,
+            queue: queue, bar: nil, activity: activity
         )
         return AnyView(root)
     }

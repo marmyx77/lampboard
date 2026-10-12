@@ -2,36 +2,14 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// The Plancia's logic (UX §1, §5): how deep the panel is, and what a focused
-/// session has been doing.
-enum PlanciaSuite {
+/// A session found by its name, and what it has been doing: its tools and its
+/// turns, for the file conflicts, the radar and the Hub's file marks.
+enum SessionActivitySuite {
 
     private static let t0 = Date(timeIntervalSince1970: 1_800_000_000)
     private static func at(_ s: Double) -> Date { t0.addingTimeInterval(s) }
 
-    static let suite = TestSuite("The Plancia and the panel's depths", [
-
-        TestCase("⌘⇧L cycles the three depths; Esc goes down one and stops at the column") { t in
-            t.expectEqual(PanelDepth.column.next, .panel)
-            t.expectEqual(PanelDepth.panel.next, .plancia)
-            t.expectEqual(PanelDepth.plancia.next, .column)
-            t.expectEqual(PanelDepth.plancia.down, .panel)
-            t.expectEqual(PanelDepth.panel.down, .column)
-            t.expectEqual(PanelDepth.column.down, .column)
-        },
-
-        TestCase("The widths are the UX's") { t in
-            t.expectEqual(PanelDepth.column.width, 44)
-            t.expectEqual(PanelDepth.panel.width, 340)
-            t.expectEqual(PanelDepth.plancia.width, 780)
-        },
-
-        TestCase("The Plancia closes by itself only when nothing waits, the pointer is away, and it is not pinned") { t in
-            t.expect(PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 4, pinned: false), "four seconds away")
-            t.expect(!PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 3.9, pinned: false), "not yet")
-            t.expect(!PanelDepth.closesPlancia(queueEmpty: false, pointerAwayFor: 60, pinned: false), "something waits")
-            t.expect(!PanelDepth.closesPlancia(queueEmpty: true, pointerAwayFor: 60, pinned: true), "pinned")
-        },
+    static let suite = TestSuite("Sessions by name, and what they have been doing", [
 
         TestCase("A session is found by its id, or by LampMaster's eight characters when they name one") { t in
             func session(_ id: String) -> SessionState {

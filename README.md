@@ -480,21 +480,21 @@ read it.
 
 ## What to show and what not to
 
-Right-click **on a row**: eight entries, the ways of keeping it quiet under
+Right-click **on a row**: the Hub first, then where the session lives and what can
+start beside it, then the ways of keeping it quiet under
 *Quiet* and the rarer things under *More*.
 
 | Entry | What it does |
 |---|---|
-| Open | same as the click |
-| Open here | a background session, or one in tmux here or on another machine: its real interface in a LampBoard window (the live view, below) |
+| Open in the Hub | the session in the Hub, its terminal at the centre; ⌘+click does the same ([D165](docs/04-decisions.md#d165--one-place-for-a-session-the-hub-the-windows-before-it-are-gone)) |
+| Show in VS Code, or Show in the Claude app | for a session LampBoard has no terminal into: where it lives |
 | Move to LampBoard… | a conversation in VS Code goes on in a LampBoard window, with its memory, so VS Code can stay closed ([D135](docs/04-decisions.md#d135--move-to-lampboard)) |
-| Read the conversation | the extended view on this conversation (same as ⌘+click); not offered for a session on another machine |
-| Open in Session view | the session close up, beside the list |
-| New conversation here | opens a new Claude tab in the project |
+| Start a new session in this folder | a new session in the row's folder, on the row's machine |
+| New conversation in VS Code | a new conversation in the editor's window for that folder |
 | Rename… | the name you want to read; the session, its window and its folder keep theirs — leave it empty to go back |
 | Hide | the row is collected into the summary |
 | Quiet ▸ | *Don't alert me* silences the notifications, *Don't blink* the movement — **not** the colour —, *Focus on this session* puts it in front |
-| More ▸ | a new conversation in the live view, open without marking as read (alt+click), mark as unread, move up or down (the drag, in words), show in Finder, pin a decision, copy the attach command of a background session, a lighter model until the window resets |
+| More ▸ | open without marking as read (alt+click), mark as unread, move up or down (the drag, in words), show in Finder, pin a decision, copy the attach command of a background session, a lighter model until the window resets |
 
 One click is enough, even when you are working in another window: the panel
 makes itself key before the click is dispatched, so the first click is delivered
@@ -558,8 +558,7 @@ changes or run as root waits for you, even where your settings would let it run 
 its own. The session shows why, and the dialog is there when you come back
 ([D116](docs/04-decisions.md#d116--away-a-destructive-command-waits-for-the-person)).
 
-**One session in focus.** *Focus on this session*, in a row's menu or as a button in
-its Session view, puts that session in the foreground and marks its row with a pin.
+**One session in focus.** *Focus on this session*, in a row's Quiet menu, puts that session in the foreground and marks its row with a pin.
 While it is there, the other sessions' notifications wait. Their rows still change
 colour; they just do not interrupt you. When you take the focus off, one
 notification says what waited: "While you were focused: 1 waiting for you (api), 2
@@ -587,7 +586,7 @@ The actions, though, do exist:
 lampboard next       # raise the next waiting session
 lampboard open 3     # raise whatever holds slot 3
 lampboard new 3      # open a new conversation in slot 3's project
-lampboard chat 3     # open the extended view on slot 3
+lampboard chat 3     # open the Hub on the row in slot 3
 lampboard open       # list what the slots address
 ```
 
@@ -633,45 +632,31 @@ blind has to tell them apart:
 It never opens the neighboring row when a slot is empty. For a key you press
 without looking, opening the wrong project is the worst thing it could do.
 
-## The extended view
+## The Hub
 
-It opens on the **tail** of the conversation — the last three hundred entries,
-read from the last few megabytes of a transcript that can be half a gigabyte —
-and a note at the top says when the beginning was left on disk. Opening it takes
-well under a second whatever the file's size (07-traps, *The window that read the
-whole file*).
+The Hub is where a session is read and driven now. Open it from the panel's menu
+(**Open the Hub**), from a row (**Open in the Hub**, or **⌘+click** on it), or with
+`lampboard chat 3`, which opens it on the row in slot 3. It is one dark window in
+four columns: the sessions, which are the panel's own rows, with LampMaster's row
+above them; the session's own terminal at the centre ([D162](docs/04-decisions.md));
+and beside it the project's files and a shell. A session LampBoard has no terminal
+into is shown as its conversation, read only, with **Move to LampBoard…** where
+that is possible.
 
-The panel is the resting state: a column of traffic lights that never takes focus.
-When you want to read and answer, open the **extended window** — conversations on
-the left, the selected one on the right. Close it and you are back to the lights.
-
-Three ways in: the panel menu → **Open the conversations…**, **⌘+click** on a row
-(which lands on that conversation), or:
-
-```bash
-lampboard chat 3
-```
-
-The list shows, for each project, its light, its slot, and **the last thing
-actually said** — yours or Claude's, read from the transcript rather than from the
-hooks, because the hook value is only ever Claude's side and on an interrupted
-turn it holds the error text.
-
-Answers are drawn as they were written: headings, lists, tables, quotes, and code
-blocks that **scroll sideways instead of wrapping** — a wrapped command line
-cannot be copied and pasted, and copying things out of this window is most of why
-it stays open.
+The extended window, the Plancia, the chat tab of the live window and dictation
+were removed in favour of the Hub ([D165](docs/04-decisions.md#d165--one-place-for-a-session-the-hub-the-windows-before-it-are-gone)).
 
 ### Writing back
 
 **Off by default.** Turn on *Send messages to sessions* in Settings › Acting from the
-panel. Until you do, the window reads and nothing else — no listener, no
-mailbox, nothing that can start a turn in your name. The dialog says why before
-you agree to it.
+panel. Until you do, the Hub reads and nothing else — no listener, nothing that can
+start a turn in your name. The dialog says why before you agree to it.
 
-With it on, there is a composer — in this window and in the Session view — and it
-writes into the session you are looking at, the real one you have been talking to
-all along.
+Text is never sent for you. A handoff, a LampMaster card's question and `@name message`
+from `⌘K` wait in the session's terminal in the Hub, to read, change and send with Enter
+([D85](docs/04-decisions.md)). Where LampBoard has no terminal into a session, a handoff
+and a card are copied to paste where they go, and `@name message` goes into the session's
+own message box instead, when it has one, with sending on.
 
 **Through Claude Code's own message box**, when the session has one (Claude Code
 2.1.224 or later, on this Mac): every session listens on a socket named in its
@@ -682,9 +667,10 @@ message came from another program, not typed in its own terminal, and holds it t
 the session's own permissions: it can ask for work, never grant itself more. It
 appears in the conversation as yours.
 
-**From the bar**, with sending on and without opening anything first: `⌘K`, then `@name` and the
-message — `@api run the tests` — and `⏎`. The Session view opens on that session and the
-message goes through its composer, so you see it arrive and the answer come back.
+**From the bar**, with sending on and without opening anything first: `⌘K`, then `@name`
+and the message — `@api run the tests` — and `⏎`. The Hub opens on that session with the
+message waiting in its terminal, unsent, or, where there is no terminal, it goes into the
+session's own box.
 
 **Asking without disturbing**: `@name ?question` asks the session a quick question
 and shows the answer right there in the bar. The session's LampBoard helper (1.5.0)
@@ -698,7 +684,7 @@ question costs the session's account the conversation read again from cache —
 some tens of thousands of cached tokens on a long session.
 
 **Asking LampMaster**: `?question` in the bar, or the box on *Today* in
-LampMaster's Session view, asks it about all your sessions at once: "which conversation
+LampMaster's view in the Hub, asks it about all your sessions at once: "which conversation
 renamed slots?". The box keeps a conversation: a follow-up, "and what did it keep
 for the old name?", is read against the last three answers, until *New
 conversation*. Asked from the panel, LampMaster also gets what the search index
@@ -709,62 +695,14 @@ Sonnet, under the same switch, hourly limits and daily tokens as a session's
 
 **Handing over**: `/handoff @from @to` asks the first session, the same way and
 without a turn, for what the second needs — what it understood, decided and left,
-the files it touched — and puts it in the second session's composer, to read, change
+the files it touched — and proposes it into the second session's terminal in the Hub, to read, change
 and send. It is never sent by itself; to a session on another machine it is copied
 ([D91](docs/04-decisions.md)). From inside a session, `/handoff <name>` (helper 1.9.0)
 does the same in the other direction: this session writes its own handoff and it
-waits in the named session's composer.
+waits in the named session's terminal in the Hub.
 
-**Through the mailbox** for a session without a box:
-
-```
-you type  →  a file in ~/.lampboard/inbox
-          →  a second `Stop` hook, spawned detached, picks it up
-          →  its stdout is the message, its exit code 2 is the send
-          →  a full turn starts: reasoning, tools, answer
-```
-
-Measured end to end: **one second** from writing to the turn starting.
-
-Three things you should know about the mailbox, all of which the window tells
-you as well:
-
-- **It is not instant when Claude is working.** The message waits on disk until
-  the current turn ends. That is deliberate — it is what lets you type *while* a
-  session is busy, which a socket could not.
-- **A dormant session hears nothing at first.** A listener can only be born at the
-  end of a turn, so a conversation that is doing nothing has nobody waiting. The window says *"this conversation is asleep — a message will wait for it, not
-vanish"* rather than spinning. Anything you do in
-  that session fixes it.
-- **The mechanism is undocumented.** `asyncRewake` is `@internal` in Claude Code
-  and can be renamed without warning — at which point delivery stops **in
-  silence**. `./Scripts/check-contract.sh` greps the shipped binary for it on every
-  run. Run it after every Claude Code update.
-
-Your messages appear as your own in this window. Inside the VS Code panel they
-will look like system turns, because that is the envelope they arrive in, and
-there is no way round it.
-
-### Dictating
-
-There is a microphone in the composer. Press, talk, press again: what was heard
-lands **in the box**, not in the session — dictation mishears, and a sentence you
-can still edit is a different thing from one already sent.
-
-It runs entirely on the device (`SpeechTranscriber`, macOS 26), so no audio leaves
-the Mac. The first press asks for the microphone and downloads the language model,
-and the button says which of the two it is doing.
-
-If the language you speak has no model, it says so rather than falling back to
-English: the recognizer transcribes everything as the locale it is given, and the
-wrong one produces fluent nonsense nothing downstream can detect.
-
-macOS also has its own dictation, which works in this box like it does in any text
-field and needs no permission from us at all. If it suits you, use it — turn it on
-in System Settings › Keyboard › Dictation.
-
-See [D14](docs/04-decisions.md), [D15](docs/04-decisions.md),
-[D18](docs/04-decisions.md) and [Contracts/assumptions.md](Contracts/assumptions.md).
+The Hub's terminal is the live view's terminal, moved rather than attached again, so a
+session open in a window of its own and in the Hub is one attach, not two.
 
 **Skip Claude Code's phone pushes while I'm at this Mac** (Settings › Alerts). Claude Code skips
 the push notifications if the file named by `CLAUDE_CLIENT_PRESENCE_FILE` exists;
@@ -809,7 +747,8 @@ finds no window (D51). The card says which machine, in words: the name
 of the host was on every row of that node and left `AWeve…isforum` where a project
 name should be. Clicking the row raises the **Remote-SSH** window of that
 folder here, if one is open (`… — folder [SSH: host]`); otherwise the menu says
-where the session is. The chat window cannot open a remote transcript.
+where the session is. The Hub reads a remote session's transcript over ssh, read only where LampBoard has no
+terminal into it.
 
 **The hooks over there are kept current by the panel, not by you.** Every time it
 connects to a node it reads what is registered there and, when the hooks carry no
@@ -886,8 +825,8 @@ A session started with `claude --bg`, the kind the Agent View runs with nobody
 at a terminal, is a row of its own whether terminal sessions are shown or not
 ([D103](docs/04-decisions.md#d103--a-background-session-is-a-row-of-its-own)).
 It sits in no window, even when an editor has its folder open. The row is named by
-its conversation, its second line starts with "background", and a click opens its
-Session view, where you can type to it like any other session. A background session
+its conversation, its second line starts with "background", and a click opens it in the
+Hub, where its terminal is and you can type to it like any other session. A background session
 started before the panel was running is found from its live file, just as a terminal one is.
 
 Claude Code keeps a one-line summary of each background session, along with what
@@ -899,7 +838,7 @@ still copies `claude attach <id>`, for a terminal of your own.
 
 ### The live view
 
-**Open here** opens a session in a window of LampBoard's: a background session of
+A **live window** shows a session's own terminal in a window of LampBoard's: a background session of
 this Mac, or a session that runs in tmux, on this Mac or on any machine under
 Settings › Other Macs ([D132](docs/04-decisions.md#d132--sessions-in-tmux-here-and-on-other-machines)).
 tmux keeps one process however many screens look at it, so your own terminal,
@@ -910,7 +849,7 @@ terminal that does not look like one
 lamp, name and state; the window around the card takes a theme (Night, Lagoon,
 Ember, Paper) and a text size from Settings › Clicks & keys, and Claude Code keeps
 its own colours inside. **VS Code Light** and **VS Code Dark** bring VS Code's own
-terminal colours too, so the window reads like the editor's chat; any fixed-width
+terminal colours too, so the window reads like the editor's own terminal; any fixed-width
 font and a little line spacing can be chosen beside them
 ([D142](docs/04-decisions.md#d142--vs-codes-colours-in-the-live-view)). **Like my
 VS Code** reads the colours of the VS Code on this Mac instead, its profile and
@@ -924,7 +863,8 @@ theme, and the fixed-width sibling of its chat font when there is one
   as anywhere else ([D138](docs/04-decisions.md#d138--keys-and-a-way-back-to-the-live-window)).
   Quitting LampBoard detaches every window the same way.
 - **One window per session.** Two attaches of different sizes draw over each
-  other, so a second Open here brings the first window forward.
+  other, so a second window brings the first one forward. The Hub's centre shows the same
+  terminal, moved rather than attached again (D162).
 - **Only sessions with one writer.** A background session, or one in tmux. A
   session open in an editor or a plain terminal has a writer already: a second one
   would fork its conversation without a word (measured). Its click still goes where
@@ -935,29 +875,13 @@ theme, and the fixed-width sibling of its chat font when there is one
   refused, with what to do. On another machine it starts Claude Code inside a new
   tmux session there, which outlives the window
   ([D133](docs/04-decisions.md#d133--a-new-session-from-lampboard)).
-- **New conversation in LampBoard** (a row's More ▸) does the same in the row's
+- **Start a new session in this folder** (a row's menu) does the same in the row's
   folder, on the row's machine.
 - **Move to LampBoard…**, on a row whose conversation is open in VS Code (or
   Cursor, or Windsurf), ends that editor's process and takes the conversation up
   here as a background session, with its memory. It is offered only between
   turns, and only for a folder Claude Code trusts, so nothing is left without a
   process. Close the tab in VS Code afterwards.
-- **Open here when LampBoard can**, in Settings, makes the live view what a click
-  on such a row does.
-
-**Files**, in the header of a session of this Mac, opens its folder beside the
-terminal. The tree follows the agent: a line at the top names the file it is
-reading or editing, and a click shows it. The preview reads a file again when
-the agent changes it. **⌘L** cites the file, or the lines you selected, in the
-session's prompt as `@path#L3-7`, ready to send and not sent
-([D136](docs/04-decisions.md#d136--the-files-beside-the-session)).
-
-**Terminal | Chat**, in a window's header, switches to the conversation shown as
-a chat: your messages in bubbles, the replies in an ordinary font with their
-markdown, each tool call a row, and a box to write in that sends to the session
-through its terminal. Dialogs stay in the terminal. *Open on the chat* in Settings
-makes it the default; *Custom* in Look picks the colours freely
-([D147](docs/04-decisions.md#d147--the-chat), [D148](docs/04-decisions.md#d148--custom-colours)).
 
 The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), vendored
 ([D129](docs/04-decisions.md#d129--a-terminal-of-our-own-vendored)).
@@ -1182,8 +1106,7 @@ Claude Code's hooks, and Codex's too if you have it.
 > and **says nothing when it declines** — the file is right, the events never
 > fire, and there is no error anywhere to explain it.
 
-To build it yourself instead, you need macOS 14 or later — **macOS 26 for
-dictation**, which uses the on-device Speech framework that arrived there — and
+To build it yourself instead, you need macOS 14 or later, and
 Xcode's Command Line Tools (`xcode-select --install`), which ship the Swift 6.2
 toolchain. Full Xcode is not required.
 
@@ -1253,7 +1176,6 @@ what the app does is a permission you have no reason to grant.
 | **Accessibility** | macOS calls it "controlling your computer". It is used for one thing: bringing the editor window of the row you clicked to the front. | The click still activates the editor, but cannot choose which window — you land wherever you were last. |
 | **Automation** | Reading window titles, to tell your projects apart. One entry per application it has to ask: System Events for editors, plus a terminal application for its own tabs. | Same as above: the application comes forward, the right window does not. |
 | **Notifications** *(optional)* | Alerting you when a session blocks while you are elsewhere. | The panel still shows it; nothing pops up. |
-| **Microphone and speech** *(optional)* | Dictation, only while you hold the button. Transcribed on this Mac by the on-device model. | The dictation button does nothing. |
 
 Everything stays on this Mac. The panel's server listens on `127.0.0.1` and is
 never exposed, and it refuses anything a web page in your browser could send it —
@@ -1367,9 +1289,8 @@ sends the tag to the mirror, runs the release on that account over ssh, and
 brings the four files back into `dist/`; nothing secret crosses the connection
 ([D106](docs/04-decisions.md#d106--releases-are-signed-on-the-test-mac-in-a-keychain-of-their-own)).
 Notarization is what forces the **hardened runtime**, which by default takes
-away exactly the two things this app does for a living — Apple Events and the
-microphone — so the script signs it with the two entitlements that give them
-back, and nothing else.
+away the thing this app does for a living — Apple Events — so the script signs it
+with the entitlement that gives it back, and nothing else.
 
 > If the click stops working, the first thing to check isn't the permission: it is
 > **how long the app has been running**. A new bundle does not replace the process
@@ -1639,7 +1560,7 @@ accepts a request with no token, everything arriving on it is treated as untrust
 it carries is opened for reading, so it is accepted only under `~/.claude`, where
 Claude Code actually writes transcripts — `..` resolved first, and a sibling
 directory whose name merely starts the same refused. Before that rule a forged
-signal naming any file produced a row holding it, and the extended window would
+signal naming any file produced a row holding it, and the Hub would
 have read it. A row itself still cannot be conjured out of nothing: it needs an
 editor window open on that folder, or a live session file.
 
@@ -1664,7 +1585,7 @@ lampboard next                     raise the next waiting session
 lampboard open <n>                 raise the project bound to slot n
 lampboard open                     list what the slots address
 lampboard new <n>                  open a new conversation in slot n's project
-lampboard chat <n>                 open the extended view on slot n
+lampboard chat <n>                 open the Hub on the row in slot n
 lampboard focus <workspace>        reproduce the click and explain what happens
 lampboard focus <workspace> --dry-run    diagnose without activating anything
 lampboard mod install|uninstall|status   the helper (the companion mod) in every Claude Code session
@@ -1765,8 +1686,7 @@ Sources/
     Workspace/        IDE locks, live sessions, window title matching, remote hosts
     Seat/             where a session's process lives: chains, terminals, tty, procStart
     Transcript/       reading what was said: records, the tail, the window, the title
-    Chat/             the mailbox files and the dictation locale
-    Markdown/         parsing of the answers the extended view draws
+    Chat/             the mailbox files
     Config/           AppConfig — ports, paths, thresholds
   LampBoardApp/      AppKit/SwiftUI shell — panel, server, focus, seats, notifications
   LampBoardTests/    domain suite, instantaneous
@@ -1776,8 +1696,8 @@ Sources/
 
 ```bash
 ./Scripts/test.sh                      # both suites, then the documentation
-swift run LampBoardTests              # 1361 domain tests, instantaneous
-swift run LampBoardE2E                # 189 end-to-end tests, ~1 minute
+swift run LampBoardTests              # 1333 domain tests, instantaneous
+swift run LampBoardE2E                # 186 end-to-end tests, ~1 minute
 swift run LampBoardTests "Subagents"  # filter by suite or case
 ./Scripts/check-docs.sh                # the figures the docs state are still true
 ./Scripts/check-contract.sh            # the assumptions about Claude Code still hold
@@ -1846,7 +1766,7 @@ and every local change. The licences also travel inside the app.
 - [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT), the terminal
   emulator behind the live view, in `Vendor/SwiftTerm` (D129).
 - Part of [Clarc](https://github.com/ttnear/Clarc) (Apache 2.0), its message
-  views and transcript reader, behind the live view's chat, in `Vendor/Clarc`
+  views and transcript reader, behind the Hub's transcript, in `Vendor/Clarc`
   (D147). Every line under `Sources/` was written for this project, the test
 framework included.
 

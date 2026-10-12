@@ -41,8 +41,7 @@ public enum Capabilities {
         Group(title: "Answer sooner", items: [
             item("Quick answers", "Allow or Deny a permission from the panel, without changing window.", helper: true, setting: .answerPrompts),
             item("Quick question", "Ask a session something without interrupting it: @name ?question in ⌘K.", helper: true, tryIt: .bar("@")),
-            item("Write to a session", "A message from ⌘K, into its own box, as you would type it.", setting: .sendMessages, tryIt: .bar("@")),
-            item("Dictation", "Answer by voice in a session's view.", place: "A row's menu › Open in Session view, then the microphone"),
+            item("Write to a session", "@name message in ⌘K: it waits in the session's terminal in the Hub, for you to send.", setting: .sendMessages, tryIt: .bar("@")),
         ]),
         Group(title: "Stay out of trouble", items: [
             item("Safety catch", "While you are away, commands that delete, force-push or discard wait for you.", helper: true, setting: .safetyCatch),
@@ -62,9 +61,11 @@ public enum Capabilities {
             item("Project rules", "One decision, and every session in the repository keeps to it.", helper: true,
                  place: "A row's menu › More › Add a project rule"),
             item("Hand over", "Pass what one session knows to another.", tryIt: .bar("/handoff @")),
-            item("Live view", "A background or tmux session in a LampBoard window, its real interface. Closing it leaves it running.",
-                 setting: .liveOpensBackground, place: "The row's menu › Open here"),
-            item("New session", "Starts Claude Code in a folder, on this Mac or on another machine in tmux, and opens it here.",
+            item("The Hub", "Each session in its own terminal, Claude Code itself; the project's files beside it; the sessions in VS Code read.",
+                 setting: .liveOpensBackground, place: "The Hub button at the panel's foot, ⌘⇧L, or a row's menu › Open in the Hub"),
+            item("Projects", "A folder here or on another machine, kept in the Hub: start a session there, or take up a past one.",
+                 place: "The Hub › Projects › +"),
+            item("New session", "Starts Claude Code in a folder, in tmux, on this Mac or on another machine, and opens it in the Hub.",
                  place: "The panel's ⋯ › New session…"),
         ]),
         Group(title: "Step away", items: [

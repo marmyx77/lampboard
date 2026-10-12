@@ -183,7 +183,7 @@ public enum CommandBar {
         let can = from.sessionId.map(askable.contains) == true
         let detail = !can ? askNeedsMod : !sendingEnabled ? sendingOff
             : "\(from.title) writes it from its conversation, with no turn; "
-                + (host.map { "copied for \(to.title) on \($0)" } ?? "you send it from \(to.title)'s Session view")
+                + (host.map { "copied for \(to.title) on \($0)" } ?? "it waits in \(to.title)'s terminal in the Hub, for you to send")
         return [Result(id: "handoff:\(from.id):\(to.id)", kind: .handoff, title: "Hand \(from.title) over to \(to.title)",
                        detail: detail, sessionId: can && sendingEnabled ? from.sessionId : nil, action: nil,
                        status: from.status, targetId: to.sessionId)]

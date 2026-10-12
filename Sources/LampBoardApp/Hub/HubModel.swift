@@ -221,7 +221,6 @@ final class HubModel: ObservableObject {
         guard let id, let source = deps.chatSource(id) else { return }
         let model = LiveChatModel(source: source)
         model.start()
-        model.update(asking: false, sendable: false)
         reader = model
     }
 
@@ -274,6 +273,23 @@ final class HubModel: ObservableObject {
         Alerts.tell(title: title, message: reason)
     }
 
+
+    /// Text proposed to a session (a handoff, a LampMaster card, `@name …`):
+    /// the Hub opens on it and the text waits in its terminal's prompt, for the
+    /// person to read, change and send with Enter (D85, D165). `false` when
+    /// LampBoard has no terminal into it.
+    func propose(_ text: String, to id: String) -> Bool {
+        guard let target = deps.target(id) else { return false }
+        selected = id
+        refreshCentre()
+        // The attach may still be starting: the paste waits for Claude Code's prompt.
+        let key = target.key
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.deps.live.hosted(target)
+            self?.deps.live.pasteWhenReady(text, into: key)
+        }
+        return true
+    }
 
     /// One level of another machine's folders, through the panel's ssh.
     func browse(host: String, path: String?) async -> RemoteFolders.Listing? {

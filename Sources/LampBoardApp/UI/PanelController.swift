@@ -34,26 +34,12 @@ final class PanelController {
     var barKeys: Any?
     /// The bar's shortcut from any application, when one is chosen (D77).
     var barHotKey: GlobalHotKey?
-    /// The Plancia: a session open beside the list (D79). Wired in `PanelPlancia.swift`.
-    let plancia = PlanciaModel()
-    var planciaKeys: Any?
-    var planciaAwaySince: Date?
-    /// For the next change of width only: which edge stays put, when the
-    /// Plancia opens or closes on a side already chosen.
-    var widthKeepsRight: Bool?
+    /// The `⌘⇧L` monitor (`PanelRound.swift`).
+    var roundKeys: Any?
     var home: PanelHome
 
     /// Holds the click a missing permission interrupted, until it can be finished.
     private let permissions = PermissionWatcher()
-
-    /// The extended window: the conversation list plus the selected conversation.
-    /// Opened on request; the panel is the resting state.
-    private lazy var chats = ChatWindowController(
-        store: store,
-        preferences: preferences
-    ) { [weak self] session in
-        self?.activate(session: session)
-    }
 
     /// The live view's windows (D130), owned by the app: they open headless too.
     var live: LiveWindowController?
@@ -72,6 +58,9 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
     var openHub: ((String?) -> Void)?
+    /// Text proposed to a session, waiting in its terminal in the Hub for Enter;
+    /// `false` when LampBoard has no terminal into it (D165).
+    var proposeInHub: ((_ sessionId: String, _ text: String) -> Bool)?
     /// Starts a session in tmux and shows it in the Hub; `false` when it cannot.
     var startInHub: ((_ host: String?, _ folder: String, _ name: String?) -> Bool)?
     /// Whether the Hub is open, or has the keys; and closing it: ⌘⇧L's round ends there.
@@ -94,7 +83,7 @@ final class PanelController {
     var governor: GovernorService?
     /// "I'm away" (A1).
     var away: AwayMonitor?
-    var onOpenLampMaster: (() -> Void)?
+
     /// The focus moved (G1): the notifier says what waited.
     var onFocusChanged: ((String?) -> Void)?
     /// The three sample rows, while they are in the panel (U4).
@@ -125,12 +114,6 @@ final class PanelController {
     // MARK: - Lifecycle
 
     func show() {
-        // Before anything else. No chat window can be open at this instant, so
-        // every marker on disk belongs to a previous run, and every message
-        // listener still waiting on one is holding a process for a window that
-        // died with it. Left unreaped they accumulate one per crash per session.
-        chats.reapStaleMailboxes()
-
         wireLamp()
         // Whatever the switch was left on last time. Off is the default and costs
         // nothing; on has to resume by itself, or the feature would look like it
@@ -149,14 +132,12 @@ final class PanelController {
         // person typing in it.
         samples.onChange = { [weak self] in guard let self else { return }; self.resizeToFit(self.store.state) }
         wireTips()
-        wirePlancia()
+        wireRound()
         observeLampMaster()
         observePanelMoves()
     }
 
     func close() {
-        plancia.close()
-        chats.close()
         lamp.hide()
         panel.close()
     }
@@ -165,7 +146,8 @@ final class PanelController {
     /// target that has been released is an entry that quietly does nothing.
     var menuTargets: [MenuAction] = []
 
-    /// Opens the chat window for the project bound to a slot, for `chat <n>`.
+    /// Opens the Hub on the project bound to a slot, for `chat <n>` (D165: the
+    /// Hub is where a conversation is read and written).
     ///
     /// - Returns: what it opened, or `nil` when the slot holds nothing — the same
     ///   answer `open <n>` gives, for the same reason.
@@ -173,8 +155,14 @@ final class PanelController {
     func openChatInSlot(_ slot: Int) -> String? {
         let rendering = ColumnLayout.render(store.state, options: columnOptions)
         guard let row = rendering.row(inSlot: slot) else { return nil }
-        openChat(in: row)
+        openInHub(row)
         return "\(row.displayName): \(row.status.label)"
+    }
+
+    /// The row's session in the Hub, marked as seen as a click marks it.
+    func openInHub(_ row: ColumnRow) {
+        for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
+        if let openHub { openHub(row.primary.id) } else { activate(row, markSeen: true) }
     }
 
     /// `true` when the panel really is under the user's eyes.
@@ -332,15 +320,9 @@ final class PanelController {
             actions: makeActions(),
             rowActions: makeRowActions(),
             allowance: allowance,
-            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.openLampMasterPlancia() },
-            lampMasterActions: lampMaster.map { lampMasterActions(for: $0) }, planciaActions: planciaActions(), samples: samples, tips: tips,
-            queue: compact ? nil : queue, bar: compact ? nil : bar,
-            plancia: plancia.isOpen ? plancia : nil, planciaLeading: plancia.leading, activity: activity,
-            openInEditor: { [weak self] id in
-                guard let self, let session = self.store.state.sessions[id] else { return }
-                self.activate(session: session)
-            },
-            closePlancia: { [weak self] in self?.closePlancia() }
+            lampMaster: lampMaster, openLampMaster: { [weak self] in self?.openLampMasterInHub() },
+            samples: samples, tips: tips,
+            queue: compact ? nil : queue, bar: compact ? nil : bar, activity: activity
         )
         panel.contentView = NSHostingView(rootView: root)
         onRebuilt?()
@@ -400,8 +382,8 @@ final class PanelController {
         }
 
         let wanted = NSSize(
-            width: plancia.isOpen ? PanelDepth.plancia.width : Layout.width(compact: compact),
-            height: planciaHeight(Layout.height(
+            width: Layout.width(compact: compact),
+            height: (Layout.height(
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
                 allowanceLines: allowance.reports.filter { AllowanceLines.shown(in: $0) != nil }.count,
                 showsLampMaster: compact && showsLampMaster, bandLines: (samples.isOn || TrialStage.mode != nil ? 1 : 0) + (tips.current == nil ? 0 : (compact ? 1 : TipBand.lines)),
@@ -504,7 +486,6 @@ final class PanelController {
                 rebuildContent()
             },
             newConversation: { [weak self] row in self?.newConversation(in: row) },
-            openChat: { [weak self] row in self?.openChat(in: row) },
             rename: { [weak self] row in self?.rename(row) },
             toggleExpansion: { [weak self] row in self?.toggleExpansion(row) },
             openSession: { [weak self] member in self?.activate(session: member) },
@@ -515,9 +496,8 @@ final class PanelController {
                 self?.move(member, in: row, by: offset)
             },
             revealInFinder: { row in FinderReveal.open(row.workspace.path) },
-            openPlancia: { [weak self] row in
-                if let openHub = self?.openHub { openHub(row.primary.id) } else { self?.openPlancia(sessionId: row.primary.id) }
-            },
+            openPlancia: { [weak self] row in self?.openInHub(row) },
+            showElsewhere: { [weak self] row in self?.activate(row, markSeen: true) },
             pinDecision: { [weak self] repository in self?.pinDecision(in: repository) },
             unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
             decisions: { [weak self] repository in
@@ -535,7 +515,6 @@ final class PanelController {
                 self.toggleFocus(sessionId: held?.id ?? row.primary.id)
             },
             liveTarget: { [weak self] session in self?.liveTarget(session) },
-            openHere: { [weak self] target in self?.openHere(target) },
             startHere: { [weak self] row in self?.startHere(row) },
             canMoveHere: { [weak self] session in
                 guard let live = self?.live else { return false }
@@ -558,25 +537,6 @@ final class PanelController {
     /// projects and moving one must not move the other. See `Workspace.key`.
     private func visibleKeys() -> [String] {
         ColumnLayout.render(store.state, options: columnOptions).rows.map(\.workspace.key)
-    }
-
-    /// Opens the row's conversation in a window of its own.
-    ///
-    /// It marks the row as seen exactly like a click on the editor would: reading
-    /// the answer here is reading it. Leaving the row green because the reading
-    /// happened in the wrong window would be a distinction only the code cares
-    /// about.
-    ///
-    /// It opens the same session a click opens — `primary`, the most urgent one —
-    /// so the two gestures never disagree about which conversation this row is.
-    func openChat(in row: ColumnRow) {
-        for id in row.sessionIdsToClear { store.markSeen(sessionId: id) }
-        chats.show(selecting: row.primary.id)
-    }
-
-    /// Opens the extended window without choosing a conversation, for the menu.
-    func openExtendedWindow() {
-        chats.show()
     }
 
     /// Brings the window to the front and, if asked, clears the unread state.
@@ -684,7 +644,7 @@ final class PanelController {
                 row.isTerminal
                     ? "\u{201C}\(row.displayName)\u{201D} runs in a terminal: start the new conversation there."
                     : row.primary.origin == .background
-                    ? "\u{201C}\(row.displayName)\u{201D} runs in the background: open it in its Session view, or start one with claude --bg."
+                    ? "\u{201C}\(row.displayName)\u{201D} runs in the background: open it in the Hub, or start a new session in its folder."
                     : "\u{201C}\(row.displayName)\u{201D} does not host Claude Code conversations."
             )
             return
@@ -765,7 +725,6 @@ final class PanelController {
     // MARK: - Panel actions
 
     func toggleCompact() {
-        if plancia.isOpen { closePlancia() }
         compact.toggle()
         preferences.isCompact = compact
         rebuildContent()

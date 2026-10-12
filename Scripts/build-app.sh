@@ -111,10 +111,6 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
 
     <!-- Required to drive System Events and bring the VS Code window to the
          front. Without this key macOS blocks the AppleScript. -->
-    <key>NSMicrophoneUsageDescription</key>
-    <string>lampboard uses the microphone only while you hold the dictation button, to turn what you say into the message you are writing. Nothing is recorded and nothing leaves the Mac.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>lampboard transcribes your dictation on this Mac, using the on-device speech model. No audio is sent anywhere.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>lampboard uses system events to bring the Visual Studio Code window matching the traffic light you clicked to the front.</string>
 

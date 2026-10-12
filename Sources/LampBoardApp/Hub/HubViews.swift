@@ -194,8 +194,7 @@ struct HubConversationView: View {
                 .accessibilityIdentifier("hub.readingLine")
             line
             if let reader = model.reader {
-                LiveChatView(model: reader, send: { _ in false }, showTerminal: { model.deps.openRealWindow(session.id) },
-                             composes: false, cite: { _ in })
+                LiveChatView(model: reader)
                     .id(ObjectIdentifier(reader))
             } else {
                 empty("No transcript to read for this session yet.")

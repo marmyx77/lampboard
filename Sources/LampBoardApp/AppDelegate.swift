@@ -31,28 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var live = LiveWindowController(preferences: preferences) { [store] target in
         LiveHeading.of(store.placed(target), in: store.state)
     }
-    /// Where a live window's session keeps its transcript, for its chat (D147):
-    /// a file here, or a path on the machine it runs on.
-    private func chatSource(for target: LiveTarget) -> LiveChatModel.Source? {
-        func local(_ session: SessionState) -> LiveChatModel.Source {
-            .local(session.transcriptPath.map { URL(fileURLWithPath: $0) }
-                ?? TranscriptLocator.candidateURL(sessionId: session.id, cwd: session.workspace.path))
-        }
-        switch store.placed(target) {
-        case .job(let job):
-            return store.state.sessions.values.first { $0.backgroundJob?.id == job }.map(local)
-        case .tmux(nil, _, let id):
-            return store.state.sessions[id].map(local)
-        case .tmux(let host?, _, let id):
-            // The session file's own folder: a row's may have moved to its window's.
-            guard let cwd = store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd
-                ?? store.state.sessions[id]?.workspace.path else { return nil }
-            return .remote(host: host, path: LiveChatSource.remotePath(sessionId: id, cwd: cwd))
-        case .newTmux:
-            return nil
-        }
-    }
-
     /// Where this Mac's sessions sit in tmux, for Open here (D132).
     private let localTmux = LocalTmuxPlaces()
     /// The remote machines: their tunnels and their hooks. Started in every mode,
@@ -144,7 +122,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startInterface()
         }
         localTmux.start()
-        live.chatSource = { [weak self] target in self?.chatSource(for: target) }
 
         // `--live <job>` opens a background session in the live view (D130): for
         // the pictures, and for the end-to-end suite, which cannot click. Against
@@ -170,27 +147,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            CommandLine.arguments.indices.contains(index + 1) {
             let path = CommandLine.arguments[index + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.live.snapshot(to: path) }
-        }
-        // `--live-chat-send <text>`, against a fake home: a message sent from the
-        // chat of the session `--live-session` opens (D147).
-        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-chat-send"),
-           CommandLine.arguments.indices.contains(index + 1),
-           let sessionIndex = CommandLine.arguments.firstIndex(of: "--live-session"),
-           CommandLine.arguments.indices.contains(sessionIndex + 1) {
-            let session = CommandLine.arguments[sessionIndex + 1]
-            let text = CommandLine.arguments[index + 1]
-            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
-                guard let self, let target = self.localTmux.places[session].map({ LiveTarget.tmux(host: nil, place: $0, sessionId: session) })
-                else { return }
-                self.live.sendFromChat(text, into: target.key)
-            }
-        }
-        // `--live-files <path>`, against a fake home: the files beside every window,
-        // that file in the preview (D136).
-        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--live-files"),
-           CommandLine.arguments.indices.contains(index + 1) {
-            let relative = CommandLine.arguments[index + 1]
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.live.showFiles(opening: relative) }
         }
         // `--live-session <id>`, against a fake home: a session of this Mac's tmux,
         // opened as soon as its pane is known (the end-to-end suite's way in).
@@ -263,8 +219,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             lampMaster.scripted = { _ in DemoScript.standard.lampMasterAnswer }
             stageTrialPermission()
         }
-        // In the panel, beside the list (UX §4): no window of its own.
-        controller.onOpenLampMaster = { [weak controller] in controller?.openLampMasterPlancia() }
         let legend = LegendWindowController(
             store: store,
             rendering: { [weak controller] in controller?.currentRendering ?? .empty }
@@ -294,35 +248,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The three sample rows at launch: for pictures, and for a check on a Mac
         // nobody can click (U4).
         if CommandLine.arguments.contains("--samples") { controller.startSamples() }
-        // LampMaster's Plancia on one of its sheets (D96): `--lampmaster today`.
-        if let index = CommandLine.arguments.firstIndex(of: "--lampmaster"), CommandLine.arguments.indices.contains(index + 1),
-           let sheet = LampMasterPlanciaContent.Sheet(rawValue: CommandLine.arguments[index + 1].capitalized) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak controller] in controller?.openLampMasterPlancia(sheet: sheet) }
-        }
-        // And a conversation in it, as if typed, one question after the other's
-        // answer (D118) — only against a fake home: `--lampmaster-ask "q1 | q2"`.
-        if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--lampmaster-ask"),
-           CommandLine.arguments.indices.contains(index + 1) {
-            let questions = CommandLine.arguments[index + 1].components(separatedBy: " | ")
-            // After the search index's first pass, which starts ten seconds in.
-            Task { @MainActor [lampMaster] in
-                try? await Task.sleep(for: .seconds(20))
-                for question in questions {
-                    lampMaster.converse(question)
-                    while lampMaster.conversing != nil { try? await Task.sleep(for: .milliseconds(500)) }
-                }
-            }
-        }
-        // The Plancia on the most urgent session, once the first rows are in.
-        if CommandLine.arguments.contains("--plancia") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak controller] in controller?.cycleDepth() }
-            // And a message through its composer, as if typed — only against a
-            // fake home: the test Mac's way to try the box (D81) without hands.
-            if AppConfig.isUsingHomeOverride, let index = CommandLine.arguments.firstIndex(of: "--plancia-send"),
-               CommandLine.arguments.indices.contains(index + 1) {
-                let text = CommandLine.arguments[index + 1]
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.sendFromPlancia(text) }
-            }
+        // LampMaster in the Hub, its session and its cards (D164): `--lampmaster`.
+        if CommandLine.arguments.contains("--lampmaster") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak controller] in controller?.openLampMasterInHub() }
         }
         // What the bar does when typed in: only against a fake home, the test
         // Mac's way to try `@name message` (D81) without hands.

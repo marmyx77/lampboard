@@ -33,8 +33,8 @@ extension PanelController {
             guard let lampMaster = self?.lampMaster else { return "LampMaster is not available." }
             return await lampMaster.askFromPanel(question).text
         }
-        // Through the Plancia's composer, opened on that session: the same
-        // switch, the same box or mailbox, and the message seen as it goes.
+        // Into the session's terminal in the Hub, waiting for Enter (D165);
+        // where LampBoard has no terminal, into the session's own box (D81).
         bar.onSend = { [weak self] id, message in
             guard let self, let session = self.session(named: id) else {
                 Diagnostics.log("bar: send to \(id) refused, no such session")
@@ -50,12 +50,12 @@ extension PanelController {
                 case .failure(let error): return "Not sent to \(host): \(error.short)"
                 }
             }
-            self.openPlancia(sessionId: id)
-            guard let thread = self.plancia.thread, thread.sessionId == id else {
-                Diagnostics.log("bar: send to \(id) refused, its Plancia did not open")
-                return "Its Session view did not open."
+            let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            if self.proposeInHub?(id, text) == true { return "In \(session.displayName)'s terminal in the Hub: press Enter to send." }
+            switch PeerSender().send(text, to: id) {
+            case .success: return "Sent to \(session.displayName): it answers in its own window."
+            case .failure: return "Not sent: \(session.displayName) has no way in from here. Open it in the Hub, or Move it to LampBoard."
             }
-            return thread.send(message) ? nil : (thread.sendError ?? "It did not go.")
         }
         // The baton (5.4): the first session writes the handoff without a turn,
         // and it waits in the second's composer to be read and sent — never
@@ -202,8 +202,6 @@ extension PanelController {
         }
         Diagnostics.log("bar-type: \(bar.shownResults[0].title)")
         bar.submit()
-        // Pinned, so the Plancia stays to be photographed.
-        plancia.pinned = true
     }
 
     func refreshBar() {

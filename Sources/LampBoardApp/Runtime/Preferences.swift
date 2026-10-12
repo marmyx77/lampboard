@@ -63,7 +63,6 @@ struct Preferences {
         static let liveLineSpacing = "live.lineSpacing"
         static let liveLetterSpacing = "live.letterSpacing"
         static let liveOpensBackground = "live.opensBackground"
-        static let liveOpensChat = "live.opensChat"
         static let liveCustomBackground = "live.customBackground"
         static let liveCustomText = "live.customText"
         static let liveLook = "live.look"
@@ -412,12 +411,6 @@ struct Preferences {
                               lineSpacing: liveLineSpacing, letterSpacing: liveLetterSpacing)
     }
 
-    /// A live window opens on its chat rather than its terminal (D147). Off by
-    /// default: the terminal is what 1.2 to 1.4 opened, and it stays.
-    var liveOpensChat: Bool {
-        get { defaults.bool(forKey: Key.liveOpensChat) }
-        nonmutating set { defaults.set(newValue, forKey: Key.liveOpensChat) }
-    }
 
     /// A click on a background session's row opens it in the live view rather
     /// than jumping elsewhere (D130). Off by default: the jump is what 1.1 did.

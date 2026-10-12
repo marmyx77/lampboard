@@ -3,8 +3,6 @@ import SwiftUI
 
 /// Actions offered by the panel's context menu.
 struct PanelActions {
-    /// Opens the extended window — the conversation list plus a conversation.
-    let openExtended: () -> Void
     /// Opens the Settings window: what does not fit in this menu.
     let openSettings: () -> Void
     /// Opens the legend: what the six colours and the two rings mean, with a
@@ -99,10 +97,6 @@ struct PanelRootView: View {
     /// LampMaster's line draws itself only while it is switched on.
     let lampMaster: LampMasterService?
     let openLampMaster: () -> Void
-    /// What LampMaster's cards do, for its Plancia.
-    var lampMasterActions: LampMasterActions? = nil
-    /// What the Plancia header's buttons do.
-    var planciaActions: PlanciaActions? = nil
     /// The three sample rows, while they are in the panel (U4).
     @ObservedObject var samples: SampleStage
     /// The tip at the top, when one is due (U5).
@@ -111,32 +105,14 @@ struct PanelRootView: View {
     var queue: WaitingQueueModel? = nil
     /// The bar at the top; nil in the narrow panel.
     var bar: CommandBarModel? = nil
-    /// The Plancia, while a session is open in it (D79), on the side toward the
-    /// middle of the screen.
-    var plancia: PlanciaModel? = nil
-    var planciaLeading = false
+    /// What each session's tools did: two sessions writing the same file (D108).
     var activity: ActivityRecorder? = nil
-    var openInEditor: (String) -> Void = { _ in }
-    var closePlancia: () -> Void = {}
 
     @Environment(\.columnFillsWidth) private var inHub
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            if let plancia, planciaLeading { planciaColumn(plancia) }
-            column
-            if let plancia, !planciaLeading { planciaColumn(plancia) }
-        }
-        .modifier(PanelChrome(inHub: inHub))
-    }
-
-    private func planciaColumn(_ model: PlanciaModel) -> some View {
-        HStack(spacing: 0) {
-            if !planciaLeading { Divider() }
-            PlanciaView(model: model, store: store, activity: activity, openInEditor: openInEditor, close: closePlancia,
-                        lampMaster: lampMaster, lampMasterActions: lampMasterActions, actions: planciaActions, queue: queue)
-            if planciaLeading { Divider() }
-        }
+        column
+            .modifier(PanelChrome(inHub: inHub))
     }
 
     private var column: some View {
@@ -430,7 +406,7 @@ struct PanelRootView: View {
 
     private func perform(_ command: MenuCommand) {
         switch command {
-        case .openConversations: actions.openExtended()
+        case .openConversations: actions.openHub()
         case .newSession: actions.newSession()
         case .legend: actions.openLegend()
         case .capabilities: CapabilitiesWindowController.shared.show()

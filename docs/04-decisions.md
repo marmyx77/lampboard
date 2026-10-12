@@ -6030,3 +6030,61 @@ to ninety seconds, until it speaks: before that, no process shows it.
 **The person's own memory.** LampMaster is Claude Code with the person's own
 setup: their MCP servers and plugins are there as in any session. Nothing in
 LampBoard names one.
+
+## D165 · One place for a session: the Hub; the windows before it are gone
+
+**Decided** (12 October 2026, after 2.1.1). Every way into a conversation now
+leads to the Hub (D162), and the surfaces that came before it are gone:
+- the extended chat window, with its composer and the mailbox it wrote to;
+- the Plancia (D79) with its Thread, Activity and Cost tabs;
+- the live window's Chat tab (D147) and its Files pane (D136);
+- dictation, which lived in those composers.
+
+**Why.** Marco, using 2.1.1 from the Hub, found «Open here» opening a chat
+interface that made no sense any more, next to «Read the conversation»,
+«Open in Session view» and «New conversation in LampBoard»: four names, three of them
+for the Hub and one for a window 2.1 had no reason to keep. A row's menu said
+where it led in words that meant nothing any more.
+
+**How.**
+- **A row's menu** starts with **Open in the Hub**, for every row, here or on
+  another machine. Below it, in this order:
+  - **Show in VS Code** or **Show in the Claude app**, for a session LampBoard
+    has no terminal into;
+  - **Move to LampBoard…**;
+  - **Start a new session in this folder**;
+  - **New conversation in VS Code**.
+
+  ⌘+click opens the Hub. The ⋯ menu and the lamp's say **Open the Hub**.
+  `lampboard chat <n>` opens the Hub on that row.
+- **Text proposed to a session** waits in its terminal in the Hub, never sent,
+  for the person to read, change and send with Enter (D85):
+  - a handoff;
+  - a LampMaster card's question;
+  - `@name message` from ⌘K.
+
+  Where LampBoard has no terminal into the session, a handoff and a card are
+  copied, and `@name message` goes into the session's own box (D81).
+- **LampMaster's star** opens LampMaster in the Hub (D164).
+- **A project's menu** starts sessions one way, in tmux. Its two entries are
+  **Start a new session** and **Resume a past conversation…**: «in the
+  background» read as nothing.
+- **Attaching a project on another machine** browses that machine's folders
+  over ssh.
+- **The panel's foot** has a Hub button.
+
+**What is lost.** Dictation (system dictation into the terminal is untried),
+the Plancia's per-turn cost and tool timeline, citing a range of lines from the
+live window's files, and writing from a chat box to a session in VS Code. The
+Hub reads such a session and offers Move to LampBoard.
+
+**Also fixed in this round.**
+- **The usage bars.** A session on another machine reports its own default
+  account, which is that machine's: its rate-limit windows had replaced this
+  Mac's account's bars, and the two accounts' bars showed the same figures. Now
+  only this Mac's sessions speak for this Mac's account.
+- **The run-out forecast** reads «out 19:41»: «~19:41», in red, read as a
+  negative countdown.
+- **A file dropped on a session on another machine** is copied into the
+  project's attachments there and cited, since a path of this Mac means nothing
+  over there (SwiftTerm patch 4's drop handler).

@@ -2,7 +2,7 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// LampMaster in conversation (D118): the person asks from its Plancia, follows
+/// LampMaster in conversation (D118): the person asks from the Hub, follows
 /// up, and sees who asked what today.
 enum LampMasterChatSuite {
     typealias F = LampMasterFixtures

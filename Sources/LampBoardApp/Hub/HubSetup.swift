@@ -58,6 +58,11 @@ enum HubSetup {
         model.conductor = conductor
         // From the server's queue; the conductor answers on the main actor itself.
         server?.onLampMasterHands = { body in conductor.answer(body) }
+        panel.proposeInHub = { [weak hub] id, text in
+            guard let hub else { return false }
+            hub.show()
+            return hub.model.propose(text, to: id)
+        }
         panel.startInHub = { [weak model] host, folder, name in
             guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
             model.startSession(folder: folder, host: host, name: name)

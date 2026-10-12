@@ -118,11 +118,11 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1361 cases, instantaneous. They verify Core.
+1333 cases, instantaneous. They verify Core.
 
 ### `LampBoardE2E` — the real chain
 
-189 cases. They launch **the production binary** against a fake home and talk to
+186 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.
@@ -376,7 +376,7 @@ slot routes below: they are the routes that act outside the process.
 
 `POST /open`, `POST /new`, `POST /chat` — slot-addressed (the slot number is the
 body, 1–9): raise the slot's window, open a new conversation in its project, or
-open its chat window. **With a token**, for the same reason as `/next`.
+open it in the Hub. **With a token**, for the same reason as `/next`.
 
 `GET /health` — free, it only tells you whether the app is alive.
 

@@ -31,7 +31,7 @@ enum HandoffSuite {
             t.expectEqual(found.first?.title, "Hand events over to api")
             t.expectEqual(found.first?.sessionId, "id-events")
             t.expectEqual(found.first?.targetId, "id-api")
-            t.expectEqual(found.first?.detail, "events writes it from its conversation, with no turn; you send it from api's Session view")
+            t.expectEqual(found.first?.detail, "events writes it from its conversation, with no turn; it waits in api's terminal in the Hub, for you to send")
             t.expectEqual(results("/handoff events api").first?.targetId, "id-api", "the @ is optional")
         },
 
@@ -55,7 +55,7 @@ enum HandoffSuite {
             t.expectEqual(off?.detail, "Turn on \"Send messages to sessions\" in Settings › Acting from the panel first")
         },
 
-        TestCase("To a session on another machine the handoff is copied, since it has no Plancia here") { t in
+        TestCase("To a session on another machine the handoff is copied") { t in
             t.expectEqual(results("/handoff @events @nodeapp").first?.detail,
                           "events writes it from its conversation, with no turn; copied for nodeapp on node")
             t.expectEqual(results("/handoff @nodeapp @api").first?.sessionId, "id-nodeapp", "from a node it is asked there")
