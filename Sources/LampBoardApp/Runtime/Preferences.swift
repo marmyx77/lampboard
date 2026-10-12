@@ -412,10 +412,11 @@ struct Preferences {
     }
 
 
-    /// A click on a background session's row opens it in the live view rather
-    /// than jumping elsewhere (D130). Off by default: the jump is what 1.1 did.
+    /// A click on the row of a session LampBoard has a terminal into opens it in
+    /// the Hub rather than jumping elsewhere (D130, D165). On by default since
+    /// 2.2: the Hub is where a session is worked with.
     var liveOpensBackground: Bool {
-        get { defaults.bool(forKey: Key.liveOpensBackground) }
+        get { defaults.object(forKey: Key.liveOpensBackground) as? Bool ?? true }
         nonmutating set { defaults.set(newValue, forKey: Key.liveOpensBackground) }
     }
 

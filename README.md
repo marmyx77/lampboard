@@ -488,7 +488,7 @@ start beside it, then the ways of keeping it quiet under
 |---|---|
 | Open in the Hub | the session in the Hub, its terminal at the centre; ⌘+click does the same ([D165](docs/04-decisions.md#d165--one-place-for-a-session-the-hub-the-windows-before-it-are-gone)) |
 | Show in VS Code, or Show in the Claude app | for a session LampBoard has no terminal into: where it lives |
-| Move to LampBoard… | a conversation in VS Code goes on in a LampBoard window, with its memory, so VS Code can stay closed ([D135](docs/04-decisions.md#d135--move-to-lampboard)) |
+| Move to LampBoard… | a conversation in VS Code goes on in tmux, in its own terminal in the Hub, with its memory, so VS Code can stay closed ([D135](docs/04-decisions.md#d135--move-to-lampboard)) |
 | Start a new session in this folder | a new session in the row's folder, on the row's machine |
 | New conversation in VS Code | a new conversation in the editor's window for that folder |
 | Rename… | the name you want to read; the session, its window and its folder keep theirs — leave it empty to go back |
@@ -879,7 +879,8 @@ theme, and the fixed-width sibling of its chat font when there is one
   folder, on the row's machine.
 - **Move to LampBoard…**, on a row whose conversation is open in VS Code (or
   Cursor, or Windsurf), ends that editor's process and takes the conversation up
-  here as a background session, with its memory. It is offered only between
+  here in tmux, in its own terminal in the Hub, with its memory (in the
+  background where tmux is not installed). It is offered only between
   turns, and only for a folder Claude Code trusts, so nothing is left without a
   process. Close the tab in VS Code afterwards.
 
