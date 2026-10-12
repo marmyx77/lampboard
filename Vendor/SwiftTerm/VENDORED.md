@@ -65,7 +65,9 @@ Each one is marked in the source with `Vendored patch <n>`.
    takes a dropped image as the image. Text dropped, such as `@path` from the
    Hub's file tree, is typed as it is. Both go as a paste, so nothing runs until
    Enter. The drop takes the operation its source allows, which for a drag from
-   a SwiftUI list in the same app may not be a copy.
+   a SwiftUI list in the same app may not be a copy. Files are first offered to
+   `fileDropHandler`, so the app can copy them to a session on another machine,
+   where a path of this Mac means nothing.
 
 ## Updating
 

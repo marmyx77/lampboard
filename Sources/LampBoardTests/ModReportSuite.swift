@@ -283,8 +283,8 @@ enum ModLedgerSuite {
                 .applying(measure(b, cost: nil, limits: [new]), now: t0.addingTimeInterval(120))
                 .applying(measure(a, cost: nil, limits: [old]), now: t0)
                 .applying(measure(a, cost: 0.3), now: t0.addingTimeInterval(300))
-            t.expectEqual(ledger.latestRateLimits?.limits, [new])
-            t.expectEqual(ledger.latestRateLimits?.at, t0.addingTimeInterval(120))
+            t.expectEqual(ledger.latestRateLimits(local: { _ in true })?.limits, [new])
+            t.expectEqual(ledger.latestRateLimits(local: { _ in true })?.at, t0.addingTimeInterval(120))
         },
 
         TestCase("Only the default account's windows are the strip's") { t in
@@ -292,7 +292,17 @@ enum ModLedgerSuite {
                 tokens: 1, window: 1, model: nil, rateLimits: [.init(kind: "five_hour", percent: 90, resetsAt: nil)],
                 costUSD: nil, defaultAccount: false))
             let ledger = ModLedger().applying(other, now: t0)
-            t.expectNil(ledger.latestRateLimits, "a session with a config of its own may be another account")
+            t.expectNil(ledger.latestRateLimits(local: { _ in true }), "a session with a config of its own may be another account")
+        },
+
+        TestCase("Another machine's default account is not this Mac's: its windows stay out of this Mac's bars") { t in
+            let here = ModReport.RateLimit(kind: "five_hour", percent: 20, resetsAt: nil)
+            let there = ModReport.RateLimit(kind: "five_hour", percent: 70, resetsAt: nil)
+            let ledger = ModLedger()
+                .applying(measure(a, cost: nil, limits: [here]), now: t0)
+                .applying(measure(b, cost: nil, limits: [there]), now: t0.addingTimeInterval(60))
+            t.expectEqual(ledger.latestRateLimits(local: { $0 == a })?.limits, [here], "the node's newer figures are not ours")
+            t.expectNil(ledger.latestRateLimits(local: { _ in false }), "no session here, no figures")
         },
 
         TestCase("A restart clears the end, and the sessions gone from the column are dropped") { t in

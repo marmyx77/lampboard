@@ -98,6 +98,15 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         return .newTmux(host: host, folder: folder, name: name, launch: launch, start: start)
     }
 
+    /// The machine it is on; `nil` for this Mac.
+    public var host: String? {
+        switch self {
+        case .job: return nil
+        case .tmux(let host, _, _): return host
+        case .newTmux(let host, _, _, _, _): return host
+        }
+    }
+
     /// The window's key, and what the ledger and `GET /live` call it.
     public var key: String {
         switch self {

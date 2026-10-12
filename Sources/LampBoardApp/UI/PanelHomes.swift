@@ -295,6 +295,7 @@ extension PanelController {
             openExtended: { [weak self] in self?.openExtendedWindow() },
             openSettings: { [weak self] in self?.onOpenSettings?() },
             openLegend: { [weak self] in self?.onOpenLegend?() },
+            openHub: { [weak self] in self?.openHub?(nil) },
             toggleCompact: { [weak self] in self?.toggleCompact() },
             toggleHome: { [weak self] in self?.toggleHome() },
             toggleMenuBarIcon: { [weak self] in self?.toggleMenuBarIcon() },

@@ -41,7 +41,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     /// Opens the Hub, on `session` when one is named.
     func show(session: String? = nil) {
         let window = self.window ?? makeWindow()
-        if let session { model.selected = session }
+        // Opened with nothing named and nothing chosen yet: the first row.
+        if let session { model.selected = session } else if model.selected == nil { model.selected = model.deps.store.sessions.first?.id }
         model.resume()
         HubChatTheme.apply()
         window.makeKeyAndOrderFront(nil)

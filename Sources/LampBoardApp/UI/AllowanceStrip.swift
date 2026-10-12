@@ -120,7 +120,9 @@ struct AllowanceStrip: View {
                     // colour, and the sentence is a hover away (G2).
                     if limit.span == .session, let warning = forecasts[report.label],
                        let clock = warning.split(separator: ",").first?.split(separator: " ").last {
-                        Text(String(clock))
+                        // Said in a word: «~19:41» alone, in red, read as a
+                        // negative countdown (12 October 2026).
+                        Text("out " + clock.trimmingCharacters(in: CharacterSet(charactersIn: "~")))
                             .font(Self.face.monospacedDigit())
                             .foregroundStyle(StatusPalette.warningTint)
                             .frame(width: Self.timeWidth, alignment: .trailing)
@@ -152,7 +154,7 @@ struct AllowanceStrip: View {
 
     /// One width for the last column, whether it says when the window resets or
     /// when it runs out: two widths made the lines of one strip two ragged columns.
-    private static let timeWidth: CGFloat = 44
+    private static let timeWidth: CGFloat = 62
 
     /// How long until this limit starts again, in the column's own shorthand.
     private func reset(_ limit: AccountLimits.Limit) -> String {

@@ -2760,7 +2760,18 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         return .copy
     }
 
+    /// Files dropped, offered first to the host app: a session on another
+    /// machine needs them copied there, where a path of this Mac means nothing.
+    /// `true` when it took them; otherwise their paths are typed as below.
+    public var fileDropHandler: (([URL]) -> Bool)?
+
     open override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let handler = fileDropHandler,
+           let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           !urls.isEmpty, handler(urls) {
+            window?.makeFirstResponder(self)
+            return true
+        }
         guard let text = Self.droppedText(sender.draggingPasteboard) else { return false }
         insertText(text, replacementRange: NSRange(location: 0, length: 0), isPaste: true)
         window?.makeFirstResponder(self)

@@ -31,8 +31,6 @@ struct HubDependencies {
     let projects: ProjectStore
     /// The machines in Settings › Other Macs.
     let hosts: () -> [String]
-    /// A new background session in a folder of this Mac (D133), shown here.
-    let startBackground: (String) -> Void
     /// The sessions another machine's probe says are running there.
     let liveOn: (String) -> Set<String>
 }
@@ -276,7 +274,13 @@ final class HubModel: ObservableObject {
         Alerts.tell(title: title, message: reason)
     }
 
-    func startInBackground(folder: String) { deps.startBackground(folder) }
+
+    /// One level of another machine's folders, through the panel's ssh.
+    func browse(host: String, path: String?) async -> RemoteFolders.Listing? {
+        guard let script = RemoteFolders.list(path),
+              let answer = await ProjectSource.ssh(host, NewSession.posix(script)) else { return nil }
+        return RemoteFolders.parse(answer)
+    }
 
     /// What `entry` offers to take up, read off the main thread.
     func pastConversations(_ entry: ProjectList.Entry) async -> [PastConversations.Item] {

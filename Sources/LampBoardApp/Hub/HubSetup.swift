@@ -44,7 +44,6 @@ enum HubSetup {
             },
             projects: ProjectStore(),
             hosts: { store.remoteHosts },
-            startBackground: { [weak panel] folder in panel?.startInBackground(folder: folder, name: nil) },
             liveOn: { host in Set((store.remoteSessions[host] ?? []).map(\.sessionId)) }
         )
         let model = HubModel(deps: deps)
@@ -68,6 +67,15 @@ enum HubSetup {
         live.resumeInTmux = { folder, id, name, failed in
             launcher.launch(folder: folder, host: nil, start: .resume(sessionId: id), name: name) { if let reason = $0 { failed(reason) } }
             return true
+        }
+        live.remoteFolder = { target in
+            switch target {
+            case .newTmux(let host, let folder, _, _, _): return (host, folder)
+            case .tmux(let host?, _, let id):
+                guard let session = store.state.sessions[id] else { return nil }
+                return (host, store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd ?? session.workspace.path)
+            default: return nil
+            }
         }
         live.openInHub = { [weak panel] target in panel?.showInHub(target) ?? false }
         panel.hubIsOpen = { [weak hub] in hub?.isOpen ?? false }

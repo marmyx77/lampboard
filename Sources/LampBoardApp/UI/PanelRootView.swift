@@ -10,6 +10,8 @@ struct PanelActions {
     /// Opens the legend: what the six colours and the two rings mean, with a
     /// live count of each beside it.
     let openLegend: () -> Void
+    /// The Hub, on the session most worth seeing.
+    let openHub: () -> Void
     let toggleCompact: () -> Void
     /// Moves the panel between its own window and the menu bar.
     let toggleHome: () -> Void
@@ -293,9 +295,16 @@ struct PanelRootView: View {
                     // Thirty-five points wide: there is no left and no right down
                     // there, only a middle. The legend stays out — two glyphs is
                     // what the strip can hold without them touching.
-                    HStack(spacing: 3) {
-                        sizeButton
-                        menuButton
+                    // Three glyphs at eleven points: the Hub has a door here
+                    // too, not only ⌘⇧L (12 October 2026).
+                    HStack(spacing: 0) {
+                        FooterButton(symbol: "arrow.up.left.and.arrow.down.right.circle",
+                                     help: "Widen the panel: names, times, context and the drag handles",
+                                     width: 11, action: actions.toggleCompact)
+                        hubButton(width: 11)
+                        FooterButton(symbol: "ellipsis.circle",
+                                     help: "Options and Settings: the same menu as a right-click on the panel's edge",
+                                     width: 11, action: openMenuUnderPointer)
                     }
                     .frame(maxWidth: .infinity)
                 } else {
@@ -305,6 +314,7 @@ struct PanelRootView: View {
                         sizeButton
                         homeButton
                         Spacer(minLength: 0)
+                        hubButton()
                         legendButton
                         menuButton
                     }
@@ -345,6 +355,18 @@ struct PanelRootView: View {
             help: flags.home.moveAwayVerb,
             action: actions.toggleHome
         )
+    }
+
+    /// The door to the Hub (D149, D162): the sessions with their own terminals,
+    /// the projects and LampMaster. Three columns, as the Hub is drawn.
+    private func hubButton(width: CGFloat = 15) -> some View {
+        FooterButton(
+            symbol: "rectangle.split.3x1",
+            help: "Open the Hub: your sessions in their own terminals, your projects, LampMaster (⌘⇧L)",
+            width: width,
+            action: actions.openHub
+        )
+        .accessibilityIdentifier("panel.openHub")
     }
 
     /// The door to the legend, and it is a question mark because that is the

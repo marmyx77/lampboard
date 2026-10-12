@@ -76,7 +76,8 @@ struct HubProjectsSection: View {
             }
         }
         .sheet(isPresented: $adding) {
-            HubAddProjectSheet(hosts: model.deps.hosts(), done: { path, host, start in
+            HubAddProjectSheet(hosts: model.deps.hosts(), recent: { host in NewSession.recentFolders(in: store.state, host: host) },
+                               browse: { host, path in await model.browse(host: host, path: path) }, done: { path, host, start in
                 adding = false
                 guard projects.add(path: path, host: host) else {
                     return Alerts.tell(title: "This folder cannot be attached", message: "A project is an absolute folder, on this Mac or on a machine in Settings › Other Macs.")
@@ -94,16 +95,17 @@ struct HubProjectsSection: View {
 
     private func row(_ entry: ProjectList.Entry) -> some View {
         Menu {
-            Button(entry.host.map { "New session on \($0)" } ?? "New session") { model.startSession(folder: entry.path, host: entry.host) }
-            if entry.host == nil {
-                Button("New session in the background") { model.startInBackground(folder: entry.path) }
+            // One way to start, and it says where it runs: «background» meant
+            // Claude Code's own supervisor, and read as nothing (12 October 2026).
+            Button("Start a new session" + (entry.host.map { " on \($0)" } ?? "")) {
+                model.startSession(folder: entry.path, host: entry.host)
             }
-            Button("Resume a conversation…") { resuming = entry }
+            Button("Resume a past conversation…") { resuming = entry }
             Divider()
             if entry.attached {
-                Button("Remove from the list") { projects.remove(entry.id) }
+                Button("Remove from Projects") { projects.remove(entry.id) }
             } else {
-                Button("Keep in the list") { projects.add(path: entry.path, host: entry.host) }
+                Button("Keep in Projects") { projects.add(path: entry.path, host: entry.host) }
             }
         } label: {
             HStack(spacing: 6) {
@@ -130,11 +132,18 @@ struct HubProjectsSection: View {
 /// «+»: a folder on this Mac, chosen or typed, or a path on another machine.
 struct HubAddProjectSheet: View {
     let hosts: [String]
+    /// The folders a machine's sessions worked in, the most recent first.
+    let recent: (_ host: String?) -> [String]
+    /// One level of another machine's folders; `nil` when it cannot be read.
+    let browse: (_ host: String, _ path: String?) async -> RemoteFolders.Listing?
     let done: (_ path: String, _ host: String?, _ start: Bool) -> Void
     let cancel: () -> Void
     @State private var host = ""
     @State private var path = ""
     @State private var start = true
+    @State private var listing: RemoteFolders.Listing?
+    @State private var browsing = false
+    @State private var unreachable = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -143,27 +152,101 @@ struct HubAddProjectSheet: View {
                 Text("This Mac").tag("")
                 ForEach(hosts, id: \.self) { Text($0).tag($0) }
             }
+            .onChange(of: host) { _, _ in path = ""; listing = nil; unreachable = false }
             HStack {
                 TextField(host.isEmpty ? "/Users/you/project" : "/home/you/project", text: $path)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("hub.addProject.path")
-                if host.isEmpty { Button("Choose…", action: choose) }
+                if host.isEmpty {
+                    Button("Choose…", action: choose)
+                } else {
+                    Button("Browse…") { open(path.hasPrefix("/") ? path : nil) }
+                        .accessibilityIdentifier("hub.addProject.browse")
+                }
             }
-            Toggle("Start a session there", isOn: $start)
+            if !host.isEmpty, browsing || listing != nil || unreachable { browser }
+            let folders = recent(host.isEmpty ? nil : host)
+            if !folders.isEmpty, listing == nil {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Folders its sessions worked in").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                    ForEach(folders.prefix(5), id: \.self) { folder in
+                        Button(folder) { path = folder }.buttonStyle(.link).font(.system(size: 12))
+                    }
+                }
+            }
+            Toggle("Start a session there now", isOn: $start)
             Text(host.isEmpty
-                 ? "Sessions start in tmux on this Mac, in their own terminal in the Hub."
-                 : "Sessions start in tmux on \(host), reached over ssh, in their own terminal in the Hub.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                 ? "Its sessions run in tmux on this Mac and open in the Hub, in their own terminal. They keep running when the Hub is closed."
+                 : "Its sessions run in tmux on \(host), reached over ssh, and open in the Hub, in their own terminal. They keep running when the Hub is closed.")
+                .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
                 Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
                 Button("Attach") { done(path.trimmingCharacters(in: .whitespaces), host.isEmpty ? nil : host, start) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!path.trimmingCharacters(in: .whitespaces).hasPrefix("/"))
+                    .accessibilityIdentifier("hub.addProject.attach")
             }
         }
         .padding(18)
-        .frame(width: 440)
+        .frame(width: 480)
+    }
+
+    /// One level of the other machine: up, the folders here, and «use this one».
+    @ViewBuilder private var browser: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if unreachable {
+                Text("\(host) did not answer, or that folder is not there.").font(.system(size: 11)).foregroundStyle(.orange)
+            } else if let listing {
+                HStack {
+                    Text(listing.path).font(.system(size: 11, design: .monospaced)).lineLimit(1).truncationMode(.head)
+                    Spacer()
+                    Button("Use this folder") { path = listing.path }
+                        .accessibilityIdentifier("hub.addProject.useFolder")
+                }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let parent = listing.parent {
+                            folderRow("..", symbol: "arrow.turn.left.up") { open(parent) }
+                        }
+                        ForEach(listing.folders, id: \.self) { name in
+                            folderRow(name, symbol: "folder") { open(listing.child(name)) }
+                        }
+                    }
+                }
+                .frame(height: 180)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+    }
+
+    private func folderRow(_ name: String, symbol: String, open: @escaping () -> Void) -> some View {
+        Button(action: open) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(name).font(.system(size: 12)).lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("hub.addProject.folder.\(name)")
+    }
+
+    private func open(_ folder: String?) {
+        let machine = host
+        browsing = true
+        unreachable = false
+        Task {
+            let answer = await browse(machine, folder)
+            guard machine == host else { return }
+            listing = answer ?? listing
+            unreachable = answer == nil
+            if let answer { path = answer.path }
+        }
     }
 
     private func choose() {

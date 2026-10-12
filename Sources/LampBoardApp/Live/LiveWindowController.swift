@@ -195,7 +195,34 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             live.surface.view.window?.makeFirstResponder(live.surface.view)
         }
         surface.apply(preferences.liveAppearance)
+        // A session on another machine: a file dropped is copied there, into the
+        // project's attachments, and cited (D165); a path of this Mac means nothing there.
+        if target.host != nil {
+            surface.onFileDrop = { [weak self] urls in self?.dropElsewhere(urls, on: target) ?? false }
+        }
         return live
+    }
+
+    /// Where a session on another machine works: its machine and folder.
+    var remoteFolder: (LiveTarget) -> (host: String, folder: String)? = { _ in nil }
+
+    /// Copies `urls` to `target`'s machine and types their citations; `false`
+    /// when its folder there is not known, and the paths are typed instead.
+    private func dropElsewhere(_ urls: [URL], on target: LiveTarget) -> Bool {
+        guard let place = remoteFolder(target) else { return false }
+        let job = target.key
+        let source = ProjectSource(root: place.folder, host: place.host)
+        Task { [weak self] in
+            let names = await source.attach(urls)
+            guard let self, let live = self.lives[job], !live.ended else { return }
+            guard !names.isEmpty else {
+                NSSound.beep()
+                Diagnostics.log("drop: nothing could be copied to \(place.host):\(place.folder)")
+                return
+            }
+            live.surface.paste(names.map(ProjectAttachments.citation(of:)).joined(separator: " ") + " ")
+        }
+        return true
     }
 
     /// Starts a new background session in `directory`, then opens it. The start

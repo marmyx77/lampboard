@@ -137,8 +137,13 @@ public struct ModLedger: Equatable, Sendable {
 
     /// The newest rate-limit figures any session on this Mac's default account
     /// reported, with when. Only those: the strip they join is that account's.
-    public var latestRateLimits: (limits: [ModReport.RateLimit], at: Date)? {
-        sessions.values
+    /// `local` says which sessions run on this Mac: a session on another machine
+    /// reports its own default account, which is that machine's, not this one's
+    /// (12 October 2026: the Mac's bars showed the node's account).
+    public func latestRateLimits(local: (String) -> Bool) -> (limits: [ModReport.RateLimit], at: Date)? {
+        sessions
+            .filter { local($0.key) }
+            .map(\.value)
             .filter(\.defaultAccount)
             .compactMap { facts in facts.rateLimitsAt.map { (facts.rateLimits, $0) } }
             .max { $0.1 < $1.1 }

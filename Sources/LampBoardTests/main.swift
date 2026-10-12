@@ -173,6 +173,7 @@ let suites: [TestSuite] = [
     ProjectAttachmentsSuite.suite,
     ProjectListSuite.suite,
     PastConversationsSuite.suite,
+    RemoteFoldersSuite.suite,
     LampMasterHandsSuite.suite,
     MarkdownBlocksSuite.suite,
     RemoteTranscriptsSuite.suite,

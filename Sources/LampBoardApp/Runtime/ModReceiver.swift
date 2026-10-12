@@ -35,8 +35,13 @@ final class ModReceiver {
         // A measure for a row the hooks have not announced yet is dropped: the
         // reducer only annotates rows that exist, and the next response brings
         // a fresh one. The mod never creates a row.
-        if case .measure(_, let measure) = report, measure.defaultAccount, !measure.rateLimits.isEmpty {
-            onWindows(ledger.latestRateLimits)
+        // Only this Mac's sessions speak for this Mac's account: one on another
+        // machine reports that machine's default account. A session with no row
+        // yet is not known to be here.
+        if case .measure(let id, let measure) = report, measure.defaultAccount, !measure.rateLimits.isEmpty,
+           store.state.sessions[id]?.workspace.host == nil, store.state.sessions[id] != nil {
+            let sessions = store.state.sessions
+            onWindows(ledger.latestRateLimits { sessions[$0].map { $0.workspace.host == nil } ?? false })
         }
         if case .tool(let id, _) = report {
             let start = store.state.sessions[id].map { $0.status == .working ? $0.statusSince : now } ?? now

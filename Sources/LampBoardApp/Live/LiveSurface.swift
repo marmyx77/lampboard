@@ -35,6 +35,9 @@ protocol LiveSurface: AnyObject {
     /// Ends the child and its process group; idempotent. `waiting` holds the
     /// caller until it is gone, as quitting must: nothing escalates after exit.
     func end(waiting: Bool)
+    /// Files dropped on the terminal, before their paths are typed; `true`
+    /// when taken (copied to another machine, D165).
+    var onFileDrop: (([URL]) -> Bool)? { get set }
 }
 
 /// The SwiftTerm implementation.
@@ -60,6 +63,11 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
     }
 
     var view: NSView { terminal }
+
+    var onFileDrop: (([URL]) -> Bool)? {
+        get { terminal.fileDropHandler }
+        set { terminal.fileDropHandler = newValue }
+    }
     var pid: pid_t { terminal.process?.shellPid ?? 0 }
     var isRunning: Bool { terminal.process?.running ?? false }
 
