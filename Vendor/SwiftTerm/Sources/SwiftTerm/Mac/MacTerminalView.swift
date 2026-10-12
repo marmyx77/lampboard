@@ -2746,7 +2746,18 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     // as the image); text dropped is typed as it is. Both go as a paste, so a
     // program in bracketed-paste mode reads them as one, and nothing is run.
     open override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        Self.droppedText(sender.draggingPasteboard) == nil ? [] : .copy
+        Self.droppedText(sender.draggingPasteboard) == nil ? [] : Self.operation(sender.draggingSourceOperationMask)
+    }
+
+    open override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    /// What the source allows: a drag from a SwiftUI list in this same app may
+    /// offer no copy, and a drop it does not allow is never performed.
+    static func operation(_ allowed: NSDragOperation) -> NSDragOperation {
+        for wanted in [NSDragOperation.copy, .generic, .move, .link] where allowed.contains(wanted) { return wanted }
+        return .copy
     }
 
     open override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {

@@ -62,42 +62,41 @@ struct HubFilesView: View {
         })
     }
 
+    /// A row is a view with a tap and a drag, not a button: on a Mac a button
+    /// keeps the mouse for its click, and a drag from it never started (a person
+    /// tried it on 2.1.0, 12 October 2026).
     private func row(_ entry: ProjectSource.Entry, path: String, depth: Int) -> some View {
-        Button {
-            if entry.isFolder { files.toggle(path) } else { files.openFile(path) }
-        } label: {
-            HStack(spacing: 5) {
-                Text(entry.isFolder ? (files.expanded.contains(path) ? "▾" : "▸") : "·")
-                    .font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted).frame(width: 9)
-                Text(entry.isFolder ? entry.name + "/" : entry.name).font(HubPalette.mono).lineLimit(1)
-                    .foregroundStyle(color(of: path))
-                Spacer(minLength: 4)
-                if let code = files.git[path] {
-                    Text(code).font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
-                }
+        HStack(spacing: 5) {
+            Text(entry.isFolder ? (files.expanded.contains(path) ? "▾" : "▸") : "·")
+                .font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted).frame(width: 9)
+            Text(entry.isFolder ? entry.name + "/" : entry.name).font(HubPalette.mono).lineLimit(1)
+                .foregroundStyle(color(of: path))
+            Spacer(minLength: 4)
+            if let code = files.git[path] {
+                Text(code).font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
             }
-            .padding(.leading, CGFloat(depth) * 10 + 2)
-            .padding(.vertical, 2).padding(.trailing, 4)
-            .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 4).fill(files.active == path ? HubPalette.accentSoft : .clear))
         }
-        .buttonStyle(.plain)
+        .padding(.leading, CGFloat(depth) * 10 + 2)
+        .padding(.vertical, 2).padding(.trailing, 4)
+        .contentShape(Rectangle())
+        .background(RoundedRectangle(cornerRadius: 4).fill(files.active == path ? HubPalette.accentSoft : .clear))
+        .onTapGesture { if entry.isFolder { files.toggle(path) } else { files.openFile(path) } }
         .onDrag { NSItemProvider(object: "@\(path)" as NSString) }
+        .accessibilityAddTraits(.isButton)
         .help(entry.isFolder ? path : "\(path) · click to open, drag into the session's terminal to cite it")
         .accessibilityIdentifier("hub.file.\(path)")
     }
 
     private func hitRow(_ hit: SearchHits.Hit) -> some View {
-        Button { files.openFile(hit.path) } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(hit.path):\(hit.line)").font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
-                Text(hit.text).font(HubPalette.monoSmall).lineLimit(1)
-            }
-            .padding(.vertical, 2)
-            .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 1) {
+            Text("\(hit.path):\(hit.line)").font(HubPalette.monoSmall).foregroundStyle(HubPalette.muted)
+            Text(hit.text).font(HubPalette.monoSmall).lineLimit(1)
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onTapGesture { files.openFile(hit.path) }
         .onDrag { NSItemProvider(object: "@\(hit.path)" as NSString) }
+        .accessibilityAddTraits(.isButton)
     }
 
     private func color(of path: String) -> Color {

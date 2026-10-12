@@ -5978,6 +5978,11 @@ before. Starting a session no longer needs another terminal or VS Code.
   the same through the ssh terminal itself.
 - tmux's status line is off in the sessions LampBoard makes: the Hub says what
   the session is.
+- A session whose process runs inside tmux keeps its own folder, whatever editor
+  window contains it (amends D25 for them). tmux's server is among its
+  ancestors, and no editor is. On 2.1.0 a VS Code window open on the home folder
+  claimed a project started from the Hub: its row, its files and its shell were
+  the home folder's.
 - **One writer.** A past conversation is taken up only when no process holds it,
   by either way of knowing:
   - its session file;

@@ -58,6 +58,14 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
         return places
     }
 
+    /// Whether a process runs inside tmux: its server among its ancestors. The
+    /// server leaves the terminal that started it, so a session in tmux has no
+    /// editor among its ancestors, even when tmux was started in an editor's
+    /// terminal; its folder is its own, not the editor window's that contains it.
+    public static func runsInTmux(ancestry: [ProcessAncestor]) -> Bool {
+        ancestry.dropFirst().contains { ($0.executablePath as NSString).lastPathComponent == "tmux" }
+    }
+
     /// The pane whose shell is among a process's ancestors, the process first.
     public static func place(ofAncestry pids: [Int32], in panes: [Int32: TmuxPlace]) -> TmuxPlace? {
         pids.lazy.compactMap { panes[$0] }.first

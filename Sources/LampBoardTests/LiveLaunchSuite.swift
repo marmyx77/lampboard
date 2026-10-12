@@ -444,6 +444,19 @@ enum NewSessionSuite {
             t.expectNil(NewSession.localCommand(folder: "/x", name: "x", launch: "0123456789abcdef", start: .new(sessionId: "nope")))
         },
 
+        TestCase("A session in tmux is in no editor window: tmux's server is among its ancestors, the editor is not") { t in
+            func ancestor(_ pid: Int32, _ path: String) -> ProcessAncestor {
+                ProcessAncestor(pid: pid, ppid: pid - 1, executablePath: path, arguments: [], tty: nil)
+            }
+            let inTmux = [ancestor(900, "/Users/dev/.local/bin/claude"), ancestor(800, "/bin/zsh"),
+                          ancestor(700, "/opt/homebrew/Cellar/tmux/3.5/bin/tmux")]
+            t.expect(TmuxPlace.runsInTmux(ancestry: inTmux), "its pane's shell, then the server")
+            let inEditor = [ancestor(900, "/Users/dev/.local/bin/claude"), ancestor(800, "/bin/zsh"),
+                            ancestor(700, "/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper.app/Contents/MacOS/Code Helper")]
+            t.expect(!TmuxPlace.runsInTmux(ancestry: inEditor), "VS Code's own terminal keeps its window")
+            t.expect(!TmuxPlace.runsInTmux(ancestry: [ancestor(700, "/opt/homebrew/bin/tmux")]), "tmux itself is not in tmux")
+        },
+
         TestCase("Only a usable start: an absolute folder, a host that is not an option, a tag of hex") { t in
             t.expectNil(LiveTarget.starting(host: "box", folder: "relative/path", name: "x"), "an absolute folder only")
             t.expectNil(LiveTarget.starting(host: "-oProxyCommand=x", folder: "/x", name: "x"))
