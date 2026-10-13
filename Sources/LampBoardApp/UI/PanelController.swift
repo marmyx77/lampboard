@@ -58,6 +58,11 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
     var openHub: ((String?) -> Void)?
+    /// Conversations being moved from another machine (D166): one at a time each.
+    var movingElsewhere: Set<String> = []
+    /// Takes a conversation up in tmux on `host`, in the Hub, once its VS Code
+    /// process there has ended (D166).
+    var resumeElsewhere: ((_ host: String, _ folder: String, _ sessionId: String, _ name: String) -> Void)?
     /// Text proposed to a session, waiting in its terminal in the Hub for Enter;
     /// `false` when LampBoard has no terminal into it (D165).
     var proposeInHub: ((_ sessionId: String, _ text: String) -> Bool)?

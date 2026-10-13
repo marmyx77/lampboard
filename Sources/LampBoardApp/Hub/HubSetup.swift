@@ -44,7 +44,11 @@ enum HubSetup {
             },
             projects: ProjectStore(),
             hosts: { store.remoteHosts },
-            liveOn: { host in Set((store.remoteSessions[host] ?? []).map(\.sessionId)) }
+            liveOn: { host in Set((store.remoteSessions[host] ?? []).map(\.sessionId)) },
+            holders: { id in
+                guard let host = store.state.sessions[id]?.workspace.host else { return [] }
+                return store.remoteHolders(sessionId: id, host: host)
+            }
         )
         let model = HubModel(deps: deps)
         let hub = HubWindowController(model: model)
@@ -58,6 +62,11 @@ enum HubSetup {
         model.conductor = conductor
         // From the server's queue; the conductor answers on the main actor itself.
         server?.onLampMasterHands = { body in conductor.answer(body) }
+        panel.resumeElsewhere = { host, folder, id, name in
+            launcher.launch(folder: folder, host: host, start: .resume(sessionId: id), name: name, checkBusy: false) { reason in
+                if let reason { Alerts.tell(title: "The conversation was not taken up", message: reason) }
+            }
+        }
         panel.proposeInHub = { [weak hub] id, text in
             guard let hub else { return false }
             hub.show()

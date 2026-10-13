@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,177 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    29,502 lines · 163 files   shell: AppKit, network, windows
-  LampBoardTests/  18,559 lines · 131 files   1334 cases, instantaneous
+  LampBoardCore/  25,238 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,606 lines · 163 files   shell: AppKit, network, windows
+  LampBoardTests/  18,615 lines · 132 files   1336 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1602,6 +1602,12 @@ The read-only transcript's source (D147, D165): where a session on another machi
 transcript, the `tail -F` that follows it there under `sh`, and a buffer that
 keeps whole lines only, the last 800.
 
+### `RemoteMove.swift` · 60
+«Move to LampBoard…» from another machine (D166): the script piped to `python3`
+over ssh that ends a VS Code process there only while it is still the one its
+session file names — the same pid at the same start, from `/proc` on Linux and
+from `ps` in UTC on a Mac, a zombie counted as ended — and what it answers.
+
 ### `RemoteFolders.swift` · 48
 The folders of another machine, browsed over ssh to attach a project there (D165):
 the listing starts at home or at an absolute path, quoted, and refuses anything else;
@@ -1939,7 +1945,7 @@ the Dock when it was minimised (a panel's click does not activate LampBoard, and
 macOS 14 may not), redraws the sidebar when the panel changes — an order, a name,
 a mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 95
+### `HubSetup.swift` · 117
 Builds the Hub and wires it to the panel, the live view and the Dock.
 
 ### `HubModel.swift` · 320
@@ -2036,7 +2042,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 800 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 300 | where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStoreAdoption.swift` | 341 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -2239,7 +2245,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelBar.swift` | 212 | the bar wired in: sessions open as a click on their row does, `@name message` proposed into that session's terminal in the Hub, or sent into its own box where there is no terminal (D81, D165), or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
-| `PanelLive.swift` | 132 | opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
+| `PanelLive.swift` | 180 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 181 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; when the session window would run out before it resets, an orange ⚠ by its figure and the sentence on hover, the reset staying in its place (D111, D165) |
@@ -2290,7 +2296,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1334 cases
+## `LampBoardTests/` — 1336 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2381,6 +2387,7 @@ script, before it was split. The most important ones:
 | `PlanciaHeaderSuite` | machine, surface and agent, model, context, cost in that order; what is not known left out; Claude's model ids read as names, anything else as it came |
 | `SessionActivitySuite` | a session found by its id, or by LampMaster's eight characters only when they name one; what each session has been doing, tool by tool and turn by turn |
 | `TranscriptPreviewSuite` | the last thing said, read from a transcript's tail (moved here from the Plancia's suite, D165) |
+| `RemoteMoveSuite` | moving a conversation from another machine: only a start time that is one, never init; a process that is not the one named is left alone, the one named is ended |
 | `RemoteFoldersSuite` | another machine's folders: a listing that starts at home or an absolute path, quoted, and refuses anything else; the answer in Finder's order, hidden ones left out |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
 | `RowSummarySuite` | what a row says about itself: the fields and their order, a void reading that must not print its tokens, a help line that promises only what the row can do |

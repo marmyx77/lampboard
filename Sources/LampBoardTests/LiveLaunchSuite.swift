@@ -486,10 +486,10 @@ enum MoveHereSuite {
 
     static let suite = TestSuite("Move to LampBoard", [
 
-        TestCase("Offered for this Mac's conversations in VS Code, and no other") { t in
+        TestCase("Offered for conversations in VS Code, here or on another machine, and no other") { t in
             t.expect(MoveHere.isMovable(session(entrypoint: "claude-vscode")), "VS Code, Cursor, Windsurf")
             t.expect(!MoveHere.isMovable(session(entrypoint: "cli", origin: .terminal)), "a terminal keeps its own")
-            t.expect(!MoveHere.isMovable(session(entrypoint: "claude-vscode", host: "box")), "another machine's")
+            t.expect(MoveHere.isMovable(session(entrypoint: "claude-vscode", host: "box")), "another machine's too: VS Code Remote (D166)")
             t.expect(!MoveHere.isMovable(session(entrypoint: "claude-vscode", origin: .background)), "already in the background")
             t.expect(!MoveHere.isMovable(session(entrypoint: nil)), "an editor that does not say which")
         },

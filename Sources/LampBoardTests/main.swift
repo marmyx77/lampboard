@@ -170,6 +170,7 @@ let suites: [TestSuite] = [
     ProjectListSuite.suite,
     PastConversationsSuite.suite,
     RemoteFoldersSuite.suite,
+    RemoteMoveSuite.suite,
     LampMasterHandsSuite.suite,
     MarkdownBlocksSuite.suite,
     RemoteTranscriptsSuite.suite,

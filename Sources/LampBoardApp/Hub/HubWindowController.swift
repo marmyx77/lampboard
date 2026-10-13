@@ -103,6 +103,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
             "windowNumber": window?.windowNumber ?? 0,
             "guide": model.guideShown,
             "heading": model.heading?.name ?? NSNull(),
+            "twoWriters": model.twoWriters ?? NSNull(),
             "pending": Array(model.pending.keys).sorted(),
             "failure": model.failure ?? NSNull(),
             "lampMasterSession": model.conductor?.sessionId ?? NSNull(),

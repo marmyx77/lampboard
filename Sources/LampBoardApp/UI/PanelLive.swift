@@ -80,6 +80,7 @@ extension PanelController {
     /// process is asked to end and the conversation goes on in the background.
     func moveHere(_ row: ColumnRow) {
         let session = row.primary
+        if let host = session.workspace.host { return moveFromElsewhere(row, host: host) }
         guard MoveHere.isMovable(session), let process = movable(session.id) else { return }
         let name = row.alias ?? session.title?.nilIfEmpty ?? row.workspace.name
         guard Alerts.confirm(
@@ -92,6 +93,53 @@ extension PanelController {
         // The dialog may have stayed open for minutes: everything again, now.
         guard let again = movable(session.id), again == process else { return }
         live?.move(process, name: name) { [weak self] message in self?.liveRefused(message) }
+    }
+
+    /// «Move to LampBoard…» for a conversation in VS Code on another machine
+    /// (D166): its process there ends, checked to be the one its file names,
+    /// and the conversation goes on in tmux over there, in the Hub.
+    private func moveFromElsewhere(_ row: ColumnRow, host: String) {
+        let session = row.primary
+        guard MoveHere.isMovable(session), !movingElsewhere.contains(session.id) else { return }
+        guard MoveHere.isBetweenTurns(session.status) else {
+            return Alerts.tell(title: "Not in the middle of a turn",
+                               message: "This conversation is working, or waiting for an answer. Move it when it has finished.")
+        }
+        func record() -> LiveSession? {
+            store.remoteSessions[host]?.first { $0.sessionId == session.id && $0.entrypoint == MoveHere.editorEntrypoint }
+        }
+        guard let found = record(), let start = found.procStart, RemoteMove.script(pid: Int32(found.pid), procStart: start) != nil else {
+            return Alerts.tell(title: "Nothing to move",
+                               message: "LampBoard cannot find the VS Code process of this conversation on \(host), or cannot be sure it is the same one.")
+        }
+        let name = row.alias ?? session.title?.nilIfEmpty ?? row.workspace.name
+        guard Alerts.confirm(
+            title: "Move \u{201C}\(name)\u{201D} to LampBoard?",
+            message: "Its VS Code tab on \(host) stops, and the conversation goes on in tmux on \(host) with everything it "
+                + "remembers, in its own terminal in the Hub: it keeps running when the Hub is closed.\n\n"
+                + "Close its tab in VS Code afterwards: a message typed there would be refused.",
+            confirmTitle: "Move"
+        ) else { return }
+        // The dialog may have stayed open for minutes: everything again, now.
+        guard let again = record(), again.pid == found.pid, again.procStart == found.procStart,
+              let script = RemoteMove.script(pid: Int32(again.pid), procStart: start) else { return }
+        movingElsewhere.insert(session.id)
+        let id = session.id, folder = again.cwd
+        Task { @MainActor [weak self] in
+            let answer = await ProjectSource.ssh(host, "python3 -", input: Data(script.utf8))
+            guard let self else { return }
+            self.movingElsewhere.remove(id)
+            switch answer.flatMap(RemoteMove.outcome) {
+            case .ended:
+                self.resumeElsewhere?(host, folder, id, name)
+            case .notIt:
+                self.liveRefused("The VS Code process on \(host) had already ended, or is another one now. Nothing was moved.")
+            case .stillRunning:
+                self.liveRefused("The VS Code process on \(host) is still running after ten seconds. Nothing was started, so the conversation has one writer.")
+            case nil:
+                self.liveRefused("LampBoard could not reach \(host) to end the VS Code process. Nothing was moved.")
+            }
+        }
     }
 
     /// The process of a conversation that may move now, every check passed;

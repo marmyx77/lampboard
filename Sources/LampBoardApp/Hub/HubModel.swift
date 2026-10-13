@@ -33,6 +33,9 @@ struct HubDependencies {
     let hosts: () -> [String]
     /// The sessions another machine's probe says are running there.
     let liveOn: (String) -> Set<String>
+    /// Where the processes holding a conversation run, when the probe knows
+    /// them: more than one is two writers.
+    let holders: (String) -> [String]
 }
 
 /// The Hub's state: which session is open, and what its centre shows.
@@ -62,6 +65,8 @@ final class HubModel: ObservableObject {
 
     @Published var selected: String?
     @Published private(set) var centre: Centre = .none
+    /// Said over the centre when two processes hold the chosen conversation.
+    @Published private(set) var twoWriters: String?
     /// Sessions LampBoard just started, shown before their row exists.
     @Published private(set) var pending: [String: SessionLauncher.Pending] = [:]
     /// The transcript of a session read in the centre.
@@ -100,6 +105,14 @@ final class HubModel: ObservableObject {
     var session: SessionState? {
         guard let selected, selected != Self.lampMasterId else { return nil }
         return deps.store.state.session(named: selected)
+    }
+
+    /// The warning for a conversation held by several processes, or `nil`.
+    static func twoWriters(_ holders: [String]) -> String? {
+        guard holders.count > 1 else { return nil }
+        let places = holders.dropLast().joined(separator: ", ") + " and " + (holders.last ?? "")
+        return "This conversation is open \(holders.count == 2 ? "twice" : "\(holders.count) times"): in \(places). "
+            + "Two processes writing one conversation fork it: close the one you are not using."
     }
 
     /// A session LampBoard started, chosen and shown at once (hub-terminale R4).
@@ -197,6 +210,8 @@ final class HubModel: ObservableObject {
         } else {
             next = .none
         }
+        let warning = Self.twoWriters(selected.map(deps.holders) ?? [])
+        if warning != twoWriters { twoWriters = warning }
         guard next != centre else { return }
         Diagnostics.log("hub: centre \(Self.describe(centre)) → \(Self.describe(next))")
         centre = next

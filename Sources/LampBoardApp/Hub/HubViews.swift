@@ -224,6 +224,14 @@ struct HubConversationView: View {
     private func header<Trailing: View>(@ViewBuilder trailing: () -> Trailing) -> some View {
         let heading = model.heading
         return VStack(spacing: 0) {
+            if let warning = model.twoWriters {
+                Text(warning)
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(HubPalette.red)
+                    .accessibilityIdentifier("hub.twoWriters")
+            }
             HStack(spacing: 10) {
                 HubLamp(color: heading?.status.map(StatusPalette.color(for:)) ?? HubPalette.muted)
                 Text(heading?.name ?? "").font(.system(size: 15, weight: .bold)).lineLimit(1).layoutPriority(2)

@@ -6088,3 +6088,36 @@ Hub reads such a session and offers Move to LampBoard.
 - **A file dropped on a session on another machine** is copied into the
   project's attachments there and cited, since a path of this Mac means nothing
   over there (SwiftTerm patch 4's drop handler).
+
+## D166 · Move to LampBoard from another machine; a conversation open twice is said
+
+**Decided** (13 October 2026). **Move to LampBoard…** works for a conversation
+open in VS Code on another machine (VS Code Remote) as it does on this Mac
+(D135). The Hub prefers a conversation's process in tmux when there is another,
+and says so in red when a conversation is open in more than one process.
+
+**Why.** Marco opened Cervello (`~/.hermes`, on the always-on Linux box) from
+the Hub and got its transcript to read, not its terminal. The conversation was
+held twice: by its tmux session since 11 October, and by a VS Code window
+opened on it that morning. The Hub took the VS Code process, which has no
+terminal. Two processes writing one conversation fork it, and nothing said so.
+Wellworld, open only in VS Code on that box, could be read and never moved.
+
+**How.**
+- **The remote move** runs a short script over ssh, piped to `python3` as the
+  probe is (`RemoteMove`). It ends the VS Code process only while it is still
+  the one its session file names: the same pid at the same start, clock ticks
+  from `/proc` on Linux, `ps`'s start time in UTC on a Mac. A process that has
+  ended but is not yet reaped counts as ended. Then the conversation is taken
+  up in tmux on that machine, in the Hub. The probe has not yet seen the
+  process go, so this one start skips the launcher's check for a second writer.
+- It happens only between turns, after the same confirmation as on this Mac, and
+  every check runs again after the dialog.
+- **The Hub's terminal** for a conversation with a process in tmux is that
+  process, whatever else holds it.
+- **A red band** over the Hub's centre names every place a conversation is
+  open, when there is more than one.
+
+**Measured.** The script, against a process of its own: a start time that is not
+its own leaves it running; its own ends it. This was run on the test Mac and on
+the Linux box.

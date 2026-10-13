@@ -310,8 +310,24 @@ extension StateStore {
     }
 
     /// Where a remote session sits in tmux, as its own machine's probe last said (D132).
+    /// The process in tmux when the conversation has another one too (a VS Code
+    /// window opened on it): the Hub's terminal is that one (13 October 2026:
+    /// Cervello, in tmux and in VS Code, was read instead of shown).
     func remoteTmuxPlace(sessionId: String, host: String) -> TmuxPlace? {
-        remoteSessions[host]?.first { $0.sessionId == sessionId }?.tmux
+        remoteSessions[host]?.first { $0.sessionId == sessionId && $0.tmux != nil }?.tmux
+    }
+
+    /// How many processes on `host` hold the conversation: more than one is two
+    /// writers, and the conversation forks.
+    func remoteHolders(sessionId: String, host: String) -> [String] {
+        (remoteSessions[host] ?? []).filter { $0.sessionId == sessionId }.map { live in
+            if let place = live.tmux { return "tmux «\(place.session)»" }
+            switch live.entrypoint {
+            case "claude-vscode": return "VS Code"
+            case "claude-desktop": return "the Claude app"
+            default: return "a terminal"
+            }
+        }
     }
 
     /// A session LampBoard started in tmux, once its machine's probe has found

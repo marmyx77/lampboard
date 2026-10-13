@@ -13,10 +13,11 @@ public enum MoveHere {
     /// Windsurf run too.
     public static let editorEntrypoint = "claude-vscode"
 
-    /// Whether the row's session may be offered the move: this Mac's, in the
-    /// editor extension, and not already in the background.
+    /// Whether the row's session may be offered the move: in the editor
+    /// extension, here or on another machine through VS Code Remote (D166), and
+    /// not already in the background.
     public static func isMovable(_ session: SessionState) -> Bool {
-        !session.workspace.isRemote && session.origin != .background && session.entrypoint == editorEntrypoint
+        session.origin != .background && session.entrypoint == editorEntrypoint
     }
 
     /// Between turns only: a turn under way, or a question waiting for an

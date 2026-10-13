@@ -57,12 +57,14 @@ final class SessionLauncher {
     }
 
     /// Starts `start` in `folder`, on `host` or this Mac; `done` is told `nil`
-    /// once it is started, or why not.
+    /// once it is started, or why not. `checkBusy` is off only right after
+    /// LampBoard ended the one process that held the conversation, checked by
+    /// its start (D166): the probe has not seen it go yet.
     func launch(folder: String, host: String?, start: NewSession.Start, name: String?, reveal: Bool = true,
-                done: @escaping (String?) -> Void) {
+                checkBusy: Bool = true, done: @escaping (String?) -> Void) {
         let id = start.sessionId
         guard !isStarting(id) else { return done("This conversation is being started already.") }
-        if case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }
+        if checkBusy, case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }
         for old in Array(starting.keys) where !isStarting(old) { starting[old] = nil }
         starting[id] = Date()
         let label = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? (folder as NSString).lastPathComponent
