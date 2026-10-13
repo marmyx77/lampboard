@@ -12,14 +12,16 @@ enum PastConversationsSuite {
 
     static let suite = TestSuite("Past conversations to take up", [
 
-        TestCase("The latest first, never one a process holds, never a name that is not an id") { t in
+        TestCase("The latest first; the ones a process holds first of all, marked to open, never a name that is not an id") { t in
             let items = [PastConversations.Item(id: a, modified: t0, title: "Old"),
                          PastConversations.Item(id: b, modified: t0.addingTimeInterval(60), title: "Newer"),
                          PastConversations.Item(id: c, modified: t0.addingTimeInterval(120), title: "Live"),
                          PastConversations.Item(id: "agent-1234", modified: t0.addingTimeInterval(180), title: "A subagent")]
             let picked = PastConversations.pick(items, live: [c])
-            t.expectEqual(picked.map(\.id), [b, a], "the live one would be a second writer")
+            t.expectEqual(picked.map(\.id), [c, b, a], "the live one first: shown, so it is not taken for missing")
+            t.expectEqual(picked.map(\.isLive), [true, false, false], "and marked: opened where it runs, never taken up (a second writer)")
             t.expectEqual(PastConversations.pick(items, live: [], limit: 1).map(\.id), [c])
+            t.expectEqual(PastConversations.pick(items, live: [a], limit: 1).map(\.id), [a, c], "the limit is for the rest")
         },
 
         TestCase("On another machine, only the transcripts of that folder") { t in

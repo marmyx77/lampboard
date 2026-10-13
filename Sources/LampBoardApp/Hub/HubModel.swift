@@ -258,6 +258,17 @@ final class HubModel: ObservableObject {
         }
     }
 
+    /// A conversation a process holds now, opened where it runs: its row's
+    /// terminal in the Hub, or its reading when LampBoard has no terminal into it.
+    func openRunning(_ id: String) {
+        failure = nil
+        guard deps.store.state.session(named: id) != nil else {
+            return failed("The conversation runs somewhere LampBoard does not see",
+                          "It is open in a process with no row in LampBoard yet: open it where it runs, or end that process first.")
+        }
+        selected = id
+    }
+
     /// A past conversation taken up in tmux (R5).
     func resumeSession(_ id: String, folder: String, host: String?) {
         failure = nil

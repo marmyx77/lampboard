@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,157 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    29,429 lines · 163 files   shell: AppKit, network, windows
-  LampBoardTests/  18,542 lines · 131 files   1333 cases, instantaneous
+  LampBoardCore/  25,165 lines · 194 files  pure logic, zero AppKit
+  LampBoardApp/    29,457 lines · 163 files   shell: AppKit, network, windows
+  LampBoardTests/  18,544 lines · 131 files   1333 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1628,10 +1628,11 @@ ssh can be given. The list the Hub shows: the attached ones in their order, then
 the folders the sessions are in, the latest first, each with its sessions. Its
 file read back keeps only what is valid.
 
-### `PastConversations.swift` · 44
+### `PastConversations.swift` · 42
 What a project offers to take up again (D163): its transcripts, the latest first,
-never one a process holds now, which would make a second writer, and on another
-machine only the ones of that folder.
+and on another machine only the ones of that folder. The ones a process holds now
+come first, marked: they are opened where they run, never taken up again, which
+would make a second writer.
 
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
@@ -1979,7 +1980,7 @@ the text view draws itself (AppKit's ruler floats over the content since macOS
 14), code kept whole and wrapped past 2,000 characters, the place kept when the
 file is read again. What is drawn is reported for the tests.
 
-### `HubProjects.swift` · 306
+### `HubProjects.swift` · 323
 The projects in the Hub's first column (D163): attached ones and the folders the
 sessions are in, each a menu — a new session in tmux, one in the background here,
 a past conversation to resume, kept in or taken off the list —, the sheet that

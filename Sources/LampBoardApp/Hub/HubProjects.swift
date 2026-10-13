@@ -23,7 +23,8 @@ enum PastConversationReader {
                 defer { try? handle.close() }
                 return try? handle.read(upToCount: TranscriptTitleScanner.headLimit)
             }
-            return PastConversations.Item(id: item.id, modified: item.modified, title: head.flatMap(TranscriptTitleScanner.title(in:)))
+            return PastConversations.Item(id: item.id, modified: item.modified, title: head.flatMap(TranscriptTitleScanner.title(in:)),
+                                          isLive: item.isLive)
         }
     }
 
@@ -86,9 +87,13 @@ struct HubProjectsSection: View {
             }, cancel: { adding = false })
         }
         .sheet(item: $resuming) { entry in
-            HubResumeSheet(entry: entry, load: { await model.pastConversations(entry) }, pick: { id in
+            HubResumeSheet(entry: entry, load: { await model.pastConversations(entry) },
+                           name: { id in store.state.sessions[id]?.displayName },
+                           pick: { item in
                 resuming = nil
-                model.resumeSession(id, folder: entry.path, host: entry.host)
+                // A conversation a process holds is opened where it runs: taking
+                // it up again would make a second writer.
+                if item.isLive { model.openRunning(item.id) } else { model.resumeSession(item.id, folder: entry.path, host: entry.host) }
             }, cancel: { resuming = nil })
         }
     }
@@ -99,6 +104,12 @@ struct HubProjectsSection: View {
             // Claude Code's own supervisor, and read as nothing (12 October 2026).
             Button("Start a new session" + (entry.host.map { " on \($0)" } ?? "")) {
                 model.startSession(folder: entry.path, host: entry.host)
+            }
+            // What runs here now, a click away in the Hub.
+            ForEach(entry.sessionIds, id: \.self) { id in
+                if let session = store.state.sessions[id] {
+                    Button("Open “\(session.displayName)”") { model.selected = id }
+                }
             }
             Button("Resume a past conversation…") { resuming = entry }
             Divider()
@@ -263,14 +274,16 @@ struct HubAddProjectSheet: View {
 struct HubResumeSheet: View {
     let entry: ProjectList.Entry
     let load: () async -> [PastConversations.Item]
-    let pick: (String) -> Void
+    /// The row's name of a conversation running now, when there is a row.
+    let name: (String) -> String?
+    let pick: (PastConversations.Item) -> Void
     let cancel: () -> Void
     @State private var items: [PastConversations.Item]?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Resume in \(entry.name)\(entry.host.map { " on \($0)" } ?? "")").font(.system(size: 15, weight: .bold))
-            Text("It goes on in tmux, in its own terminal in the Hub. Conversations open somewhere now are not listed: two writers would fork them.")
+            Text("A past conversation goes on in tmux, in its own terminal in the Hub. One running now opens where it runs: taking it up a second time would fork it.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Group {
                 if let items, items.isEmpty {
@@ -279,11 +292,15 @@ struct HubResumeSheet: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 2) {
                             ForEach(items) { item in
-                                Button { pick(item.id) } label: {
+                                Button { pick(item) } label: {
                                     HStack {
-                                        Text(item.title ?? String(item.id.prefix(8))).lineLimit(1)
+                                        Text(item.title ?? name(item.id) ?? String(item.id.prefix(8))).lineLimit(1)
                                         Spacer()
-                                        Text(RelativeTime.label(for: item.modified, now: Date())).foregroundStyle(.secondary)
+                                        if item.isLive {
+                                            Text("Running now · Open").foregroundStyle(Color.accentColor)
+                                        } else {
+                                            Text(RelativeTime.label(for: item.modified, now: Date())).foregroundStyle(.secondary)
+                                        }
                                     }
                                     .padding(.vertical, 4).contentShape(Rectangle())
                                 }
