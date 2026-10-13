@@ -1,13 +1,13 @@
 # Code map
 
-~79,000 lines of Swift across five targets. For each file: what it contains, why
+~79,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,238 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    29,606 lines · 163 files   shell: AppKit, network, windows
-  LampBoardTests/  18,615 lines · 132 files   1336 cases, instantaneous
+  LampBoardCore/  25,273 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,708 lines · 163 files   shell: AppKit, network, windows
+  LampBoardTests/  18,647 lines · 132 files   1338 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1643,11 +1643,12 @@ would make a second writer.
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
 
-### `LiveTheme.swift` · 132
-The live view's looks: four presets of backdrop, card and text, a font size kept
-between 10 and 24 points, and the contrast every preset is held to. The frame
-takes the theme; the sixteen ANSI colours stay the terminal's, because Claude Code
-paints its syntax and diffs with them.
+### `LiveTheme.swift` · 165
+The terminal's looks: presets of backdrop, card and text, the VS Code ones with
+their sixteen ANSI colours, a font size kept between 10 and 24 points, and the
+contrast every preset is held to. Custom (D148, D167) is every colour picked —
+background, text, cursor, selection and the sixteen, named with what Claude Code
+mostly paints with each; sixteen not picked are VS Code's for that background.
 
 ## `Workspace/`
 
@@ -2274,7 +2275,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `WelcomeWindow.swift` | 212 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
 | `CapabilitiesWindow.swift` | 134 | «What LampBoard can do» (D127): the six groups, a badge for what needs the helper, *Try* doing the gesture in the real panel — the bar opened with its first characters typed, the samples, the legend — and *Turn on…* opening the switch in Settings, installing the helper first when it is the helper's |
 | `PanelTips.swift` | 70 | the tip at the top of the panel (D127): asked when the state changes and every half minute, never in the demo, only while the panel is on screen and the bar not being typed in; gone by itself when its thing is over; two lines and *Got it*, one line with a bulb in the narrow panel; remeasured, never rebuilt; shown tips kept by name with when |
-| `SettingsPanes.swift` | 377 | the sections of Settings (D125): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
+| `SettingsPanes.swift` | 439 | the sections of Settings (D125), and Look › Custom's pickers for every colour of the terminal, the sixteen ANSI colours named with their use (D167): Panel (where it lives, the lamp, its counter, width, the filter, terminal sessions, hidden projects, login), Clicks & keys (Accessibility, the VS Code tab, the bar from anywhere), Alerts (notifications, finished turns, the voice, mute, away, silenced projects with the way back, the phone), Claude Code & Codex (connect or disconnect, the helper, the band), Acting from the panel (sending, answering, the safety catch), Privacy & data (usage, updates, the search index), About & help (version and updates, Getting started, the legend, clearing the list) |
 | `OtherMacsPane.swift` | 126 | Settings › Other Macs: the machines over ssh, their tunnel and connection, Check, Connect… with the alert that says what it writes there, Disconnect, Forget |
 | `MenuEntriesView.swift` | 68 | a menu built in Core drawn as SwiftUI context-menu content — a switch as a check mark before its name, ⌘ and its key where there is one, a submenu as a menu — and as an `NSMenu` for the lamp (D125) |
 | `SettingsWindowController.swift` | 124 | owns the Settings window, 880 by 560, opened on a section by `--settings <section>`; activates the app so it comes up in front. `SettingsModel` reads the panel's flags every second and runs the panel's own actions, so a switch with a dialog first — sending messages, the usage — asks it here too |
@@ -2296,7 +2297,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1336 cases
+## `LampBoardTests/` — 1338 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

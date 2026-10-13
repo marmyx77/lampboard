@@ -124,7 +124,8 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
         terminal.characterSpacing = appearance.letterSpacing
         terminal.nativeBackgroundColor = NSColor(liveHex: theme.card)
         terminal.nativeForegroundColor = NSColor(liveHex: theme.text)
-        terminal.caretColor = NSColor(liveHex: theme.text)
+        terminal.caretColor = NSColor(liveHex: theme.cursor ?? theme.text)
+        if let selection = theme.selection { terminal.selectedTextBackgroundColor = NSColor(liveHex: selection) }
         // The theme's own sixteen, or the terminal's back (D142).
         let palette = theme.ansi?.compactMap(Self.color) ?? []
         terminal.installColors(palette.count == 16 ? palette : Color.defaultInstalledColors)

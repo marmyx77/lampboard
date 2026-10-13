@@ -2,11 +2,11 @@ import Foundation
 
 /// Where a session sits in tmux: the session's name, the window and the pane.
 ///
-/// The name goes to tmux over ssh as one argument of a remote command, so it is
-/// held to what tmux reads as a plain name: letters, digits, dashes and
-/// underscores, starting with a letter or a digit. A name with a dot or a colon
-/// would be read as a window or a pane, one with a space or a semicolon by the
-/// shell over there; such a session is simply not offered.
+/// Any name tmux can give a session: tmux itself takes no dot and no colon in
+/// one, which would read as a window or a pane. Spaces, quotes and emoji are
+/// names too — a notification's 🔔 added to one hid its session's terminal from
+/// the Hub (13 October 2026) — so the name travels as one argument here and
+/// single-quoted over ssh, never read by a shell.
 public struct TmuxPlace: Equatable, Hashable, Sendable {
     public let session: String
     public let window: Int
@@ -16,7 +16,9 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
     public let launch: String?
 
     public init?(session: String, window: Int, pane: Int, launch: String? = nil) {
-        guard BackgroundJobParser.isSafe(id: session), window >= 0, pane >= 0 else { return nil }
+        guard !session.isEmpty, session.count <= 200, !session.contains(":"), !session.contains("."),
+              !session.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
+              window >= 0, pane >= 0 else { return nil }
         self.session = session
         self.window = window
         self.pane = pane
@@ -29,9 +31,9 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
     public var target: String { "=\(session):\(window).\(pane)" }
 
     /// The same, for a shell: zsh, a Mac's default, expands a word that begins
-    /// with `=` into a command's path, so the target travels in single quotes.
-    /// Safe, since a name holds only letters, digits, dashes and underscores.
-    public var quotedTarget: String { "'\(target)'" }
+    /// with `=` into a command's path, so the target travels in single quotes,
+    /// a quote inside the name closed and reopened.
+    public var quotedTarget: String { NewSession.shellQuoted(target) }
 
     /// Whether a live session may be placed in a pane at all: one started in a
     /// terminal. An editor started from a tmux pane hosts its sessions under that

@@ -123,19 +123,21 @@ struct ClicksPane: View {
                 }
                 if preferences.liveTheme == LiveTheme.customId {
                     SettingRow(id: .liveCustomColors) {
-                        HStack(spacing: 14) {
-                            ColorPicker("Background", selection: Binding(get: { Color(nsColor: NSColor(liveHex: preferences.liveCustomBackground)) },
-                                                                         set: { color in
-                                preferences.liveCustomBackground = NSColor(color).liveHex
-                                NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
-                                model.refresh()
-                            }), supportsOpacity: false)
-                            ColorPicker("Text", selection: Binding(get: { Color(nsColor: NSColor(liveHex: preferences.liveCustomText)) },
-                                                                   set: { color in
-                                preferences.liveCustomText = NSColor(color).liveHex
-                                NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
-                                model.refresh()
-                            }), supportsOpacity: false)
+                        LiveCustomColors(preferences: preferences) {
+                            NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                            model.refresh()
+                        }
+                    }
+                } else {
+                    SettingRow(id: .liveCustomColors) {
+                        Menu("Start Custom from this look") {
+                            ForEach(LiveTheme.presets, id: \.id) { preset in
+                                Button(preset.name) {
+                                    preferences.startCustom(from: preset)
+                                    NotificationCenter.default.post(name: .liveAppearanceChanged, object: nil)
+                                    model.refresh()
+                                }
+                            }
                         }
                         .fixedSize()
                     }
@@ -369,5 +371,69 @@ struct AboutPane: View {
             SettingRow(id: .legend) { Button("Open…") { model.run { $0.openLegend() } } }
             SettingRow(id: .clearList) { Button("Clear…") { model.run { $0.clearSessions() } } }
         }
+    }
+}
+
+/// Look › Custom (D148, D167): every colour the terminal draws Claude Code with,
+/// each a picker, the sixteen ANSI colours named with what Claude Code paints
+/// with them; «Start from» fills them all from a preset, to change from there.
+struct LiveCustomColors: View {
+    let preferences: Preferences
+    let changed: () -> Void
+
+    var body: some View {
+        let theme = preferences.liveCustomTheme
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                picker("Background", theme.card) { preferences.liveCustomBackground = $0 }
+                picker("Text", theme.text) { preferences.liveCustomText = $0 }
+                picker("Cursor", theme.cursor ?? theme.text) { preferences.liveCustomCursor = $0 }
+                picker("Selection", theme.selection ?? (theme.isDark ? "#3a3f58" : "#c8d4f0")) { preferences.liveCustomSelection = $0 }
+            }
+            LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)],
+                      alignment: .leading, spacing: 6) {
+                ForEach(0..<16, id: \.self) { index in
+                    let role = LiveTheme.ansiRoles[index]
+                    HStack(spacing: 6) {
+                        ColorPicker("", selection: binding(theme.ansi?[index] ?? "#000000") { hex in
+                            var ansi = preferences.liveCustomTheme.ansi ?? LiveTheme.defaultAnsi(dark: theme.isDark)
+                            ansi[index] = hex
+                            preferences.liveCustomAnsi = ansi
+                        }, supportsOpacity: false).labelsHidden()
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(role.name).font(.system(size: 11, weight: .medium))
+                            Text(role.use).font(.system(size: 10)).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            Text("Claude Code draws only with these sixteen in its «ANSI colors only» themes (/theme in a session); its own themes add colours no terminal can change.")
+                .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Menu("Start from…") {
+                    ForEach(LiveTheme.presets, id: \.id) { preset in
+                        Button(preset.name) { preferences.startCustom(from: preset); changed() }
+                    }
+                }
+                .fixedSize()
+                Button("Reset the sixteen") {
+                    preferences.liveCustomAnsi = nil
+                    preferences.liveCustomCursor = nil
+                    preferences.liveCustomSelection = nil
+                    changed()
+                }
+            }
+        }
+    }
+
+    private func picker(_ title: String, _ hex: String, set: @escaping (String) -> Void) -> some View {
+        ColorPicker(title, selection: binding(hex, set: set), supportsOpacity: false).fixedSize()
+    }
+
+    private func binding(_ hex: String, set: @escaping (String) -> Void) -> Binding<Color> {
+        Binding(get: { Color(nsColor: NSColor(liveHex: hex)) }, set: { color in
+            set(NSColor(color).liveHex)
+            changed()
+        })
     }
 }

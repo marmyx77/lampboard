@@ -6121,3 +6121,31 @@ Wellworld, open only in VS Code on that box, could be read and never moved.
 **Measured.** The script, against a process of its own: a start time that is not
 its own leaves it running; its own ends it. This was run on the test Mac and on
 the Linux box.
+
+## D167 · Every colour of the terminal the person's; any name tmux gives a session
+
+**Decided** (13 October 2026).
+
+**Look › Custom** picks every colour the terminal draws Claude Code with: the
+background, the text, the cursor, the selection and the sixteen ANSI colours.
+Each ANSI colour is named in Settings with what Claude Code mostly paints with
+it. **Start from…** fills them all from a preset, to change from there, and the
+sixteen not yet picked are VS Code's for that background. In Claude Code's
+«ANSI colors only» themes (`/theme`) every colour on screen is one of these;
+its own themes add colours no terminal can change, and Settings says so.
+
+**A tmux session's name is any name tmux gives one.** tmux takes no dot and no
+colon in a name. Anything else is a name: a space, a quote, an emoji. It goes to
+tmux as one argument here, and single-quoted over ssh.
+
+**Why.**
+- Marco wanted to set all of the terminal's colours with colour pickers.
+- His session in tmux on this Mac opened in the Hub as a transcript to read,
+  not as its terminal. The tmux session had been renamed
+  `omni-ai-mcp-3 🔔`, and LampBoard took only letters, digits, dashes and
+  underscores as a name.
+
+**Measured.**
+- The domain suite holds the custom palette and the name rule.
+- A name with a space, a quote, an emoji or `$(…)` reaches tmux whole through a
+  real shell.

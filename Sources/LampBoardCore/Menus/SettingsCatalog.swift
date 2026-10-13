@@ -81,9 +81,9 @@ public enum SettingsCatalog {
             ]),
             Group(title: "The Hub's terminal", items: [
                 i(.liveOpensBackground, "A click opens the session in the Hub", "A click on a session LampBoard has a terminal into (in tmux on this Mac or another, or in the background) opens it in the Hub, in its own terminal, instead of jumping. Sessions in VS Code or the Claude app still jump. Closing the Hub leaves the session running."),
-                i(.liveTheme, "Look", "The window around the session. Claude Code keeps its own colours inside, except with the VS Code themes; Like my VS Code reads the colours of the VS Code on this Mac."),
+                i(.liveTheme, "Look", "The colours around and inside the session. Claude Code keeps its own colours inside, except with the VS Code themes and Custom; Like my VS Code reads the colours of the VS Code on this Mac."),
                 i(.liveFontSize, "Text size", "The size of the session's text, in the Hub and in every window of its own at once."),
-                i(.liveCustomColors, "Colours", "With Look set to Custom: the background and the text, picked freely; the frame and the chat follow them."),
+                i(.liveCustomColors, "Colours", "With Look set to Custom: the background, the text, the cursor, the selection and the sixteen ANSI colours, each picked freely; the frame follows them. Start from a preset to change one colour at a time."),
                 i(.liveFontFamily, "Font", "Any fixed-width font on this Mac: Claude Code draws on a grid, which a proportional font would break."),
                 i(.liveLetterSpacing, "Letter spacing", "Tighter letters read more like an ordinary font; below 85% the wide ones touch."),
                 i(.liveLineSpacing, "Line spacing", "A little air between lines reads like a chat; too much splits Claude Code's boxes."),

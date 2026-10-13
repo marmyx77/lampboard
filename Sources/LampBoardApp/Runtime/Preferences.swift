@@ -65,6 +65,9 @@ struct Preferences {
         static let liveOpensBackground = "live.opensBackground"
         static let liveCustomBackground = "live.customBackground"
         static let liveCustomText = "live.customText"
+        static let liveCustomAnsi = "live.customAnsi"
+        static let liveCustomCursor = "live.customCursor"
+        static let liveCustomSelection = "live.customSelection"
         static let liveLook = "live.look"
     }
 
@@ -389,6 +392,38 @@ struct Preferences {
         get { defaults.string(forKey: Key.liveCustomText).flatMap(VSCodeTheme.hex6) ?? "#22201c" }
         nonmutating set { defaults.set(newValue, forKey: Key.liveCustomText) }
     }
+    /// The custom look's sixteen ANSI colours (D167); `nil` until one is picked.
+    var liveCustomAnsi: [String]? {
+        get {
+            let list = (defaults.stringArray(forKey: Key.liveCustomAnsi) ?? []).compactMap(VSCodeTheme.hex6)
+            return list.count == 16 ? list : nil
+        }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveCustomAnsi) }
+    }
+    var liveCustomCursor: String? {
+        get { defaults.string(forKey: Key.liveCustomCursor).flatMap(VSCodeTheme.hex6) }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveCustomCursor) }
+    }
+    var liveCustomSelection: String? {
+        get { defaults.string(forKey: Key.liveCustomSelection).flatMap(VSCodeTheme.hex6) }
+        nonmutating set { defaults.set(newValue, forKey: Key.liveCustomSelection) }
+    }
+
+    /// The custom look as it is now, every colour filled in.
+    var liveCustomTheme: LiveTheme {
+        LiveTheme.custom(background: liveCustomBackground, text: liveCustomText, ansi: liveCustomAnsi,
+                         cursor: liveCustomCursor, selection: liveCustomSelection)
+    }
+
+    /// Custom, starting from `preset`'s colours, to change from there.
+    func startCustom(from preset: LiveTheme) {
+        liveCustomBackground = preset.card
+        liveCustomText = preset.text
+        liveCustomAnsi = preset.ansi ?? LiveTheme.defaultAnsi(dark: preset.isDark)
+        liveCustomCursor = nil
+        liveCustomSelection = nil
+        liveTheme = LiveTheme.customId
+    }
 
     /// All of it, as a live window's terminal takes it.
     ///
@@ -397,7 +432,7 @@ struct Preferences {
     /// colours picked (D148).
     var liveAppearance: LiveAppearance {
         if liveTheme == LiveTheme.customId {
-            return LiveAppearance(theme: LiveTheme.custom(background: liveCustomBackground, text: liveCustomText),
+            return LiveAppearance(theme: liveCustomTheme,
                                   fontSize: liveFontSize, fontFamily: liveFontFamily, lineSpacing: liveLineSpacing,
                                   letterSpacing: liveLetterSpacing)
         }

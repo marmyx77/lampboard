@@ -30,6 +30,10 @@ public struct LiveTheme: Equatable, Sendable {
     /// The sixteen ANSI colours, black to bright white, when the theme brings
     /// a whole palette tested with Claude Code; `nil` keeps the terminal's.
     public var ansi: [String]? = nil
+    /// The cursor, when not the text's colour.
+    public var cursor: String? = nil
+    /// The background of selected text, when not the terminal's own.
+    public var selection: String? = nil
 
     public static let defaultId = "night"
     /// «Like my VS Code» (D144): a theme read from VS Code at the moment it is
@@ -40,11 +44,40 @@ public struct LiveTheme: Equatable, Sendable {
 
     /// The custom theme: the card the person's background, the window behind it
     /// a shade darker, dark or light by its brightness.
-    public static func custom(background: String, text: String) -> LiveTheme {
-        LiveTheme(id: customId, name: "Custom",
-                  backdropTop: VSCodeTheme.shade(background, by: 0.06), backdropBottom: VSCodeTheme.shade(background, by: 0.11),
-                  card: background, text: text, isDark: VSCodeTheme.luminance(background) < 0.5)
+    /// Every colour of it the person's (13 October 2026): the sixteen ANSI
+    /// colours, the cursor and the selection besides the background and the
+    /// text. Sixteen not given are the VS Code palette for that background.
+    public static func custom(background: String, text: String, ansi: [String]? = nil,
+                              cursor: String? = nil, selection: String? = nil) -> LiveTheme {
+        let dark = VSCodeTheme.luminance(background) < 0.5
+        var theme = LiveTheme(id: customId, name: "Custom",
+                              backdropTop: VSCodeTheme.shade(background, by: 0.06), backdropBottom: VSCodeTheme.shade(background, by: 0.11),
+                              card: background, text: text, isDark: dark)
+        theme.ansi = ansi.flatMap { $0.count == 16 && $0.allSatisfy { rgb($0) != nil } ? $0 : nil } ?? defaultAnsi(dark: dark)
+        theme.cursor = cursor.flatMap { rgb($0) == nil ? nil : $0 }
+        theme.selection = selection.flatMap { rgb($0) == nil ? nil : $0 }
+        return theme
     }
+
+    /// The sixteen a custom theme starts from: VS Code's dark or light terminal's.
+    public static func defaultAnsi(dark: Bool) -> [String] {
+        named(dark ? "vscode-dark" : "vscode-light").ansi ?? []
+    }
+
+    /// The sixteen ANSI colours by name, and what Claude Code paints with each
+    /// in its «ANSI colors only» themes, where every colour it draws is one of
+    /// these. In its own themes it also draws colours of its own, which no
+    /// terminal can change.
+    public static let ansiRoles: [(name: String, use: String)] = [
+        ("Black", "backgrounds of boxes, in a light theme"), ("Red", "errors, removed lines"),
+        ("Green", "success, added lines"), ("Yellow", "warnings, what waits for you"),
+        ("Blue", "links, suggestions"), ("Magenta", "Claude, plan mode"),
+        ("Cyan", "files, tools"), ("White", "text, in a dark theme"),
+        ("Bright black", "dimmed text, hints"), ("Bright red", "errors, bright"),
+        ("Bright green", "success, bright"), ("Bright yellow", "warnings, bright"),
+        ("Bright blue", "links, bright"), ("Bright magenta", "Claude, bright"),
+        ("Bright cyan", "files, bright"), ("Bright white", "the brightest text"),
+    ]
 
     public static let presets: [LiveTheme] = [
         LiveTheme(id: "night", name: "Night", backdropTop: "#141a2e", backdropBottom: "#2a1a3a",

@@ -290,18 +290,36 @@ enum LiveTargetSuite {
         },
 
         TestCase("This Mac's panes are read from tmux, and a session is placed by its ancestry") { t in
-            let panes = TmuxPlace.panes("411\tawevents\t1\t0\n512\tbad name\t0\t0\nnot a line\n613\tdocs\t0\t2\n")
-            t.expectEqual(panes.count, 2, "the line with a space in the name is skipped")
+            let panes = TmuxPlace.panes("411\tawevents\t1\t0\n512\tomni 🔔\t0\t0\n514\ta:b\t0\t0\nnot a line\n613\tdocs\t0\t2\n")
+            t.expectEqual(panes.count, 3, "a name with a space and an emoji is a name; one with a colon is not")
+            t.expectEqual(panes[512]?.session, "omni 🔔")
             t.expectEqual(TmuxPlace.place(ofAncestry: [900, 850, 613, 1], in: panes), TmuxPlace(session: "docs", window: 0, pane: 2))
             t.expectNil(TmuxPlace.place(ofAncestry: [900, 850, 1], in: panes), "not under any pane")
         },
 
-        TestCase("A tmux place is only what tmux would read as one name") { t in
-            t.expectNotNil(TmuxPlace(session: "ai-act-lab", window: 0, pane: 2))
-            for bad in ["", "a b", "x;rm", "a:b", "a.b", "-n", String(repeating: "a", count: 65)] {
+        TestCase("A tmux place is any name tmux gives a session, and none it would read as a window or a pane") { t in
+            for good in ["ai-act-lab", "omni-ai-mcp-3 🔔", "it's mine", "x;rm"] {
+                t.expectNotNil(TmuxPlace(session: good, window: 0, pane: 2), "taken: \(good)")
+            }
+            for bad in ["", "a:b", "a.b", "a\nb", String(repeating: "a", count: 201)] {
                 t.expectNil(TmuxPlace(session: bad, window: 0, pane: 0), "refused: \(bad)")
             }
             t.expectNil(TmuxPlace(session: "ok", window: -1, pane: 0))
+        },
+
+        TestCase("A name with a space, a quote or an emoji reaches tmux whole through a shell") { t in
+            for name in ["omni-ai-mcp-3 🔔", "it's mine", "x;rm -rf ~", "$(reboot)"] {
+                guard let place = TmuxPlace(session: name, window: 1, pane: 0) else { return t.fail("refused: \(name)") }
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/sh")
+                process.arguments = ["-c", "printf %s " + place.quotedTarget]
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                guard (try? process.run()) != nil else { return t.fail("no shell") }
+                let said = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                process.waitUntilExit()
+                t.expectEqual(said, "=\(name):1.0", "one word, as it is")
+            }
         },
 
         TestCase("A host that would read as an option is no target") { t in
@@ -322,10 +340,10 @@ enum LiveTargetSuite {
         },
 
         TestCase("The remote probe's tmux field is read; a damaged one is none") { t in
-            let json = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","kind":"interactive","activityEpoch":1,"tmux":{"session":"awevents","window":1,"pane":0}},{"pid":13,"sessionId":"s2","cwd":"/home/dev/api","tmux":{"session":"a b","window":0,"pane":0}}]}"#
+            let json = #"{"sessions":[{"pid":12,"sessionId":"s1","cwd":"/home/dev/web","kind":"interactive","activityEpoch":1,"tmux":{"session":"awevents","window":1,"pane":0}},{"pid":13,"sessionId":"s2","cwd":"/home/dev/api","tmux":{"session":"a:b","window":0,"pane":0}}]}"#
             let report = try? RemoteSessionsDecoder.report(from: Data(json.utf8), host: "bestia", at: t0)
             t.expectEqual(report?.sessions.first?.tmux, place)
-            t.expectNil(report?.sessions.last?.tmux, "a name tmux could not take back")
+            t.expectNil(report?.sessions.last?.tmux, "a name tmux would read as a window")
         },
 
         TestCase("A tmux session LampBoard started is known by its tag: one window, whatever its name over there") { t in

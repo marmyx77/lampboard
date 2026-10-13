@@ -165,7 +165,7 @@ enum LiveChatFeedSuite {
     ])
 }
 
-/// «Custom» (D148): two colours picked, the rest following them.
+/// «Custom» (D148, D167): every colour of the terminal picked, the frame following them.
 enum CustomThemeSuite {
     static let suite = TestSuite("The custom look", [
         TestCase("The card is the background picked, the window a shade darker, dark or light by it") { t in
@@ -175,7 +175,21 @@ enum CustomThemeSuite {
             t.expect(!light.isDark, "a light background")
             t.expect(VSCodeTheme.luminance(light.backdropBottom) < VSCodeTheme.luminance(light.card), "darker behind")
             t.expect(LiveTheme.custom(background: "#101418", text: "#e0e0e0").isDark, "a dark one")
-            t.expectNil(light.ansi, "the terminal keeps its own sixteen")
+            t.expectEqual(light.ansi, LiveTheme.defaultAnsi(dark: false), "sixteen not picked are VS Code's for that background")
+            t.expectEqual(LiveTheme.custom(background: "#101418", text: "#e0e0e0").ansi, LiveTheme.defaultAnsi(dark: true))
+        },
+
+        TestCase("Every colour Claude Code can be drawn with is the person's: sixteen, the cursor, the selection") { t in
+            var mine = LiveTheme.defaultAnsi(dark: true)
+            mine[1] = "#ff0000"
+            let theme = LiveTheme.custom(background: "#101418", text: "#e0e0e0", ansi: mine, cursor: "#00ff00", selection: "#334455")
+            t.expectEqual(theme.ansi?[1], "#ff0000", "red is the person's")
+            t.expectEqual(theme.cursor, "#00ff00")
+            t.expectEqual(theme.selection, "#334455")
+            t.expectEqual(LiveTheme.custom(background: "#101418", text: "#e0e0e0", ansi: ["#ff0000"]).ansi,
+                          LiveTheme.defaultAnsi(dark: true), "not sixteen: the defaults, never a short palette")
+            t.expectNil(LiveTheme.custom(background: "#101418", text: "#e0e0e0", cursor: "red").cursor, "only a colour")
+            t.expectEqual(LiveTheme.ansiRoles.count, 16, "each of the sixteen has a name and a use")
         },
     ])
 }
