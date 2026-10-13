@@ -44,6 +44,21 @@ enum RemoteTranscriptsSuite {
             t.expectEqual(files.first?.sessionId, id)
         },
 
+        TestCase("A project's own listing has every transcript of its folder, and nothing of another folder or a link") { t in
+            let home = home()
+            defer { try? FileManager.default.removeItem(atPath: home) }
+            let web = home + "/.claude/projects/-srv-dev-web", other = home + "/.claude/projects/-srv-dev-other"
+            for folder in [web, other] { try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true) }
+            try? "{}\n".write(toFile: web + "/\(id).jsonl", atomically: true, encoding: .utf8)
+            try? "{}\n".write(toFile: other + "/22222222-3333-4444-8555-666666666666.jsonl", atomically: true, encoding: .utf8)
+            try? FileManager.default.createSymbolicLink(atPath: web + "/11111111-2222-4333-8444-555555555555.jsonl",
+                                                        withDestinationPath: "/etc/hosts")
+            let files = RemoteTranscripts.parse(sh(RemoteTranscripts.list(folder: "/srv/dev/web"), home: home))
+            t.expectEqual(files.map(\.path), ["./-srv-dev-web/\(id).jsonl"], "its folder only, the link left out")
+            t.expect(!RemoteTranscripts.list(folder: "/srv/dev/web").contains("head"), "no cap: a project's every conversation")
+            t.expectEqual(RemoteTranscripts.parse(sh(RemoteTranscripts.list(folder: "/srv/dev/none"), home: home)), [], "no folder, no transcript")
+        },
+
         TestCase("Only the new bytes are read, and never through a link or out of the projects") { t in
             let home = home()
             defer { try? FileManager.default.removeItem(atPath: home) }

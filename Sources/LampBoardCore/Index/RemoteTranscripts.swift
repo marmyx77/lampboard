@@ -34,6 +34,18 @@ public enum RemoteTranscripts {
             + "m=$(stat -c %Y \"$f\" 2>/dev/null || stat -f %m \"$f\" 2>/dev/null); echo \"$s $m $f\"; done"
     }
 
+    /// The transcripts of one project folder there, every one of them: what its
+    /// Resume list offers (hub-terminale R5). Not `list()` filtered afterwards,
+    /// whose two thousand are whichever the disk gives first: on a machine with
+    /// 4,817 transcripts a project's only conversation was not among them
+    /// (13 October 2026).
+    public static func list(folder: String) -> String {
+        let directory = TranscriptLocator.directoryName(forWorkspace: folder)
+        return "cd \"$HOME/.claude/projects\" 2>/dev/null || exit 0; "
+            + "for f in ./'\(directory)'/*.jsonl; do [ -f \"$f\" ] && [ ! -L \"$f\" ] || continue; s=$(wc -c < \"$f\" | tr -d ' '); "
+            + "m=$(stat -c %Y \"$f\" 2>/dev/null || stat -f %m \"$f\" 2>/dev/null); echo \"$s $m $f\"; done"
+    }
+
     /// The listing read back; a line that is not one is dropped.
     public static func parse(_ output: String) -> [File] {
         output.split(separator: "\n").compactMap { line in

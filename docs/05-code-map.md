@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,165 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    29,501 lines · 163 files   shell: AppKit, network, windows
-  LampBoardTests/  18,544 lines · 131 files   1333 cases, instantaneous
+  LampBoardCore/  25,177 lines · 194 files  pure logic, zero AppKit
+  LampBoardApp/    29,502 lines · 163 files   shell: AppKit, network, windows
+  LampBoardTests/  18,559 lines · 131 files   1334 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -755,7 +755,7 @@ first — and the busiest day, the most recent between equals. Eight projects an
 titles each at most, the rest counted; folders and titles flattened and clipped, since
 another session chose them; dates in English whatever the Mac's language.
 
-### `RemoteTranscripts.swift` · 70
+### `RemoteTranscripts.swift` · 82
 The conversations of another machine for ⌘K (M7), read through the panel's own
 ssh: one `sh -c` script lists the transcripts under `~/.claude/projects` changed
 in the last days — size, time, path, a bounded number —, another reads a
@@ -2290,7 +2290,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1333 cases
+## `LampBoardTests/` — 1334 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

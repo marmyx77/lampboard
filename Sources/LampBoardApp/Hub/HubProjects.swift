@@ -29,7 +29,8 @@ enum PastConversationReader {
     }
 
     nonisolated static func remote(folder: String, host: String, live: Set<String>) async -> [PastConversations.Item] {
-        guard let listing = await ProjectSource.ssh(host, RemoteTranscripts.list()) else { return [] }
+        // Under sh: the other machine's login shell may not be POSIX.
+        guard let listing = await ProjectSource.ssh(host, NewSession.posix(RemoteTranscripts.list(folder: folder))) else { return [] }
         return PastConversations.pick(PastConversations.remote(RemoteTranscripts.parse(listing), folder: folder), live: live)
     }
 }
