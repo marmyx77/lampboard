@@ -506,6 +506,23 @@ enum NewSessionSuite {
             t.expect(!TmuxPlace.runsInTmux(ancestry: [ancestor(700, "/opt/homebrew/bin/tmux")]), "tmux itself is not in tmux")
         },
 
+        TestCase("A session that ends when closed is in no editor window: LampBoard is among its ancestors") { t in
+            func ancestor(_ pid: Int32, _ path: String) -> ProcessAncestor {
+                ProcessAncestor(pid: pid, ppid: pid - 1, executablePath: path, arguments: [], tty: nil)
+            }
+            let lampBoard: Int32 = 500
+            let inLampBoard = [ancestor(900, "/Users/dev/.local/bin/claude"), ancestor(800, "/bin/zsh"),
+                               ancestor(lampBoard, "/Applications/LampBoard.app/Contents/MacOS/LampBoardApp"), ancestor(1, "/sbin/launchd")]
+            t.expect(TmuxPlace.runsInLampBoard(ancestry: inLampBoard, lampBoard: lampBoard), "its shell, then LampBoard")
+            let inEditor = [ancestor(900, "/Users/dev/.local/bin/claude"), ancestor(800, "/bin/zsh"),
+                            ancestor(700, "/Applications/Visual Studio Code.app/Contents/MacOS/Electron")]
+            t.expect(!TmuxPlace.runsInLampBoard(ancestry: inEditor, lampBoard: lampBoard), "VS Code's own terminal keeps its window")
+            t.expect(!TmuxPlace.runsInLampBoard(ancestry: [ancestor(lampBoard, "/x/LampBoardApp")], lampBoard: lampBoard),
+                     "LampBoard itself is not in LampBoard")
+            t.expect(!TmuxPlace.runsInLampBoard(ancestry: inLampBoard + [ancestor(1, "/sbin/launchd")], lampBoard: 1),
+                     "launchd is everyone's ancestor, never LampBoard")
+        },
+
         TestCase("Only a usable start: an absolute folder, a host that is not an option, a tag of hex") { t in
             t.expectNil(LiveTarget.starting(host: "box", folder: "relative/path", name: "x"), "an absolute folder only")
             t.expectNil(LiveTarget.starting(host: "-oProxyCommand=x", folder: "/x", name: "x"))

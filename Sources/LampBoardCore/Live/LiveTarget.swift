@@ -68,6 +68,13 @@ public struct TmuxPlace: Equatable, Hashable, Sendable {
         ancestry.dropFirst().contains { ($0.executablePath as NSString).lastPathComponent == "tmux" }
     }
 
+    /// Whether a process runs in LampBoard's own terminal: a session that ends
+    /// when closed (D168), with LampBoard among its ancestors. Like one in tmux,
+    /// its folder is its own, not an editor window's that contains it.
+    public static func runsInLampBoard(ancestry: [ProcessAncestor], lampBoard: Int32) -> Bool {
+        lampBoard > 1 && ancestry.dropFirst().contains { $0.pid == lampBoard }
+    }
+
     /// The pane whose shell is among a process's ancestors, the process first.
     public static func place(ofAncestry pids: [Int32], in panes: [Int32: TmuxPlace]) -> TmuxPlace? {
         pids.lazy.compactMap { panes[$0] }.first

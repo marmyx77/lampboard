@@ -38,16 +38,21 @@ extension StateStore {
     func liveHome(for signal: HookSignal, claimed: Bool) -> (workspace: Workspace, origin: SessionOrigin)? {
         let live = liveFile(for: signal)
         if let home = backgroundHome(for: signal, live: live) { return (home, .background) }
-        // In tmux, its own folder, whatever editor window contains it: one open on
-        // the home folder claimed every project (a person, on 2.1.0).
-        if let live, Self.runsInTmux(live) { return (Workspace(path: live.cwd), .terminal) }
+        // In tmux or in LampBoard's own terminal, its own folder, whatever editor
+        // window contains it: one open on the home folder claimed every project
+        // (a person, on 2.1.0, and again on 2.2.6 for a session that ends when closed).
+        if let live, Self.hasOwnFolder(live) { return (Workspace(path: live.cwd), .terminal) }
         if !claimed, let home = terminalHome(for: signal, live: live) { return (home, .terminal) }
         return nil
     }
 
-    /// Whether a live session's process runs inside tmux.
-    static func runsInTmux(_ session: LiveSession) -> Bool {
-        session.pid > 1 && TmuxPlace.runsInTmux(ancestry: ProcessTree.ancestry(of: pid_t(session.pid)))
+    /// Whether a live session's process runs in tmux or in LampBoard's own
+    /// terminal: in either, no editor window hosts it.
+    static func hasOwnFolder(_ session: LiveSession) -> Bool {
+        guard session.pid > 1 else { return false }
+        let ancestry = ProcessTree.ancestry(of: pid_t(session.pid))
+        return TmuxPlace.runsInTmux(ancestry: ancestry)
+            || TmuxPlace.runsInLampBoard(ancestry: ancestry, lampBoard: ProcessInfo.processInfo.processIdentifier)
     }
 
     /// The signal's own live file, read once for both questions above: each
@@ -100,8 +105,8 @@ extension StateStore {
             }
             // A background session's place is the panel, whatever window has its
             // folder open (AV1); its file's folder is its row's.
-            // In tmux, no editor window's either: its folder is its own.
-            let inTmux = !session.isBackground && Self.runsInTmux(session)
+            // In tmux or LampBoard's own terminal, no editor window's either: its folder is its own.
+            let inTmux = !session.isBackground && Self.hasOwnFolder(session)
             let resolved = session.isBackground || inTmux ? nil : WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
             // Unclaimed and terminal sessions on: the file's own folder is the
             // row's (D25) — the file is the anchor, so no `cd` can move it.

@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,376 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    29,903 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,686 lines · 132 files   1340 cases, instantaneous
+  LampBoardCore/  25,383 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,908 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  18,703 lines · 132 files   1341 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
-No file exceeds 797 lines. The limit the project sets itself is 800.
+No file exceeds 798 lines. The limit the project sets itself is 800.
 
 Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
 the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
@@ -2300,7 +2300,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1340 cases
+## `LampBoardTests/` — 1341 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

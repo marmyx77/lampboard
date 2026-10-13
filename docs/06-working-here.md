@@ -46,7 +46,7 @@ remote named `hub` pointing at that repository, and nothing else from this one.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 1340 cases, instantaneous
+swift run LampBoardTests              # 1341 cases, instantaneous
 swift run LampBoardE2E                # 186 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
@@ -269,7 +269,7 @@ Every time a decision slipped into the shell, it became invisible to the tests.
 ## Style
 
 - **immutability**: produce new values, don't modify existing ones
-- **small files**: 200–400 lines typical, 800 the limit; the longest today is 797
+- **small files**: 200–400 lines typical, 800 the limit; the longest today is 798
 - **no magic values**: everything goes through `AppConfig`
 - **comments explain the why**, not the what
 
