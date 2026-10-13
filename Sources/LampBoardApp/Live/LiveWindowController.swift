@@ -146,17 +146,35 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         attach(live)
     }
 
-    /// The Hub closed: its attaches end, its sessions go on.
+    /// The Hub closed: its attaches end, its sessions go on. A temporary
+    /// session's terminal is the session (D168): it stays, until it is ended or
+    /// LampBoard quits.
     func endHosted() {
-        for live in lives.values where live.window == nil { end(live) }
-        hubRecent = []
+        for live in lives.values where live.window == nil && live.target.outlivesItsTerminal { end(live) }
+        hubRecent = hubRecent.filter { lives[$0] != nil }
+    }
+
+    /// Ends one session's terminal: a temporary one ends with it (D168).
+    func endHosted(_ target: LiveTarget) {
+        guard let live = lives[target.key] else { return }
+        if let window = live.window { window.delegate = nil; window.close() }
+        hubRecent.removeAll { $0 == target.key }
+        end(live)
+        updateDockPresence()
+    }
+
+    /// The temporary session's target running `sessionId`, if one does here.
+    func directTarget(for sessionId: String) -> LiveTarget? {
+        lives.values.first { if case .direct = $0.target { return $0.target.sessionId == sessionId }; return false }?.target
     }
 
     private func keepInHub(_ job: String) {
         hubRecent.removeAll { $0 == job }
         hubRecent.append(job)
-        while hubRecent.count > Self.hubKept {
-            let oldest = hubRecent.removeFirst()
+        // Only attaches are left: a temporary session's terminal is the session.
+        let detachable = hubRecent.filter { lives[$0]?.target.outlivesItsTerminal ?? true }
+        for oldest in detachable.dropLast(Self.hubKept) {
+            hubRecent.removeAll { $0 == oldest }
             if let live = lives[oldest], live.window == nil { end(live) }
         }
     }

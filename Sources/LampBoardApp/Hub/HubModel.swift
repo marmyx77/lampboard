@@ -36,6 +36,9 @@ struct HubDependencies {
     /// Where the processes holding a conversation run, when the probe knows
     /// them: more than one is two writers.
     let holders: (String) -> [String]
+    /// «End session…» for a session (D168); the tests' wish ends it unasked.
+    let end: (String) -> Void
+    let endConfirmed: (String) -> Void
 }
 
 /// The Hub's state: which session is open, and what its centre shows.
@@ -266,9 +269,10 @@ final class HubModel: ObservableObject {
     @Published private(set) var failure: String?
 
     /// A new conversation in tmux, in `folder` here or on `host` (R4).
-    func startSession(folder: String, host: String?, name: String? = nil) {
+    func startSession(folder: String, host: String?, name: String? = nil, keepsRunning: Bool = true) {
         failure = nil
-        launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name) { [weak self] reason in
+        launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name,
+                         keepsRunning: keepsRunning) { [weak self] reason in
             if let reason { self?.failed("The session did not start", reason) }
         }
     }

@@ -14,7 +14,7 @@ extension PanelController {
     static func startedHere(_ target: LiveTarget) -> Bool {
         switch target {
         case .tmux(_, let place, _): return place.launch != nil
-        case .newTmux: return true
+        case .newTmux, .direct: return true
         case .job: return false
         }
     }

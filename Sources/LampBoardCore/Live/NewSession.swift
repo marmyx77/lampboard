@@ -81,10 +81,12 @@ public enum NewSession {
     }
 
     /// What the pane runs: the person's own shell, interactive so that its
-    /// startup files put `claude` on PATH, running `line` and staying open when
-    /// it ends. One word for tmux.
+    /// startup files put `claude` on PATH, running `line`. When Claude Code
+    /// ends well the pane ends, and the tmux session with it: a shell left in
+    /// every session ever started kept them all alive for good (D168). When it
+    /// fails, a shell stays, to read why. One word for tmux.
     static func pane(_ line: String) -> String {
-        shellQuoted(#""$SHELL" -ilc '"# + line + #"; exec "$SHELL" -l'"#)
+        shellQuoted(#""$SHELL" -ilc '"# + line + #" || exec "$SHELL" -l'"#)
     }
 
     /// What this Mac runs, under `sh`, to start a session in tmux here

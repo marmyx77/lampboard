@@ -35,7 +35,8 @@ enum HubSetup {
             },
             target: { [weak panel] id in
                 guard let panel, let session = store.state.session(named: id) else { return nil }
-                return panel.liveTarget(session)
+                // A temporary session's own terminal first (D168): it has no tmux to be found by.
+                return live.directTarget(for: session.id) ?? panel.liveTarget(session)
             },
             live: live,
             move: { [weak panel] id in
@@ -48,6 +49,14 @@ enum HubSetup {
             holders: { id in
                 guard let host = store.state.sessions[id]?.workspace.host else { return [] }
                 return store.remoteHolders(sessionId: id, host: host)
+            },
+            end: { [weak panel] id in
+                guard let panel, let session = store.state.session(named: id) else { return }
+                panel.endSession(session, name: session.displayName)
+            },
+            endConfirmed: { [weak panel] id in
+                guard let panel, let session = store.state.session(named: id) else { return }
+                panel.endSession(session, name: session.displayName, confirmed: true)
             }
         )
         let model = HubModel(deps: deps)
@@ -62,6 +71,7 @@ enum HubSetup {
         model.conductor = conductor
         // From the server's queue; the conductor answers on the main actor itself.
         server?.onLampMasterHands = { body in conductor.answer(body) }
+        panel.startedTarget = { [weak model] id in model?.pending[id]?.target }
         panel.resumeElsewhere = { host, folder, id, name in
             launcher.launch(folder: folder, host: host, start: .resume(sessionId: id), name: name, checkBusy: false) { reason in
                 if let reason { Alerts.tell(title: "The conversation was not taken up", message: reason) }
@@ -85,6 +95,7 @@ enum HubSetup {
         live.remoteFolder = { target in
             switch target {
             case .newTmux(let host, let folder, _, _, _): return (host, folder)
+            case .direct(let host?, let folder, _): return (host, folder)
             case .tmux(let host?, _, let id):
                 guard let session = store.state.sessions[id] else { return nil }
                 return (host, store.remoteSessions[host]?.first(where: { $0.sessionId == id })?.cwd ?? session.workspace.path)

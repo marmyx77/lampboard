@@ -6149,3 +6149,35 @@ tmux as one argument here, and single-quoted over ssh.
 - The domain suite holds the custom palette and the name rule.
 - A name with a space, a quote, an emoji or `$(…)` reaches tmux whole through a
   real shell.
+
+## D168 · A session that keeps running, or one that ends; and End session
+
+**Decided** (13 October 2026). A project starts a session one of two ways, each
+named for what becomes of it:
+- **Start a session that keeps running** is in tmux, here or on its machine. It
+  outlives the Hub, LampBoard's restarts and updates (D162).
+- **Start a session that ends when closed** is Claude Code in LampBoard's own
+  terminal, with no tmux. It ends with **End session** or when LampBoard quits.
+  Closing the Hub keeps it: its terminal is the session, and it is never
+  detached as an attach is.
+
+**End session…**, in a row's menu and as a button in the Hub's header, ends a
+session wherever it runs:
+- a session in tmux closes its tmux session, Claude Code with it, here or over
+  ssh; one just started is found by LampBoard's tag;
+- a temporary one closes its terminal;
+- one elsewhere on this Mac is asked to stop.
+
+The conversation stays on disk, to resume from its project. A tmux pane
+LampBoard starts now ends with Claude Code and leaves a shell only when Claude
+Code fails, to show why.
+
+**Why.** Marco did not want to find dozens of sessions still running with
+LampBoard off, and asked to choose. There was no way to end a session from the
+Hub. A pane kept a shell after Claude Code ended, so a session in tmux, once
+started, never went away by itself.
+
+**Measured** (`hub-end.sh`, real sessions on the test Mac):
+- a temporary session outlives the Hub's closing and ends with End session;
+- End session closes a session's tmux session and Claude Code with it;
+- `/exit` leaves no shell and no tmux session behind.

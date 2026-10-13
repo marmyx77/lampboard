@@ -101,10 +101,14 @@ struct HubProjectsSection: View {
 
     private func row(_ entry: ProjectList.Entry) -> some View {
         Menu {
-            // One way to start, and it says where it runs: «background» meant
-            // Claude Code's own supervisor, and read as nothing (12 October 2026).
-            Button("Start a new session" + (entry.host.map { " on \($0)" } ?? "")) {
+            // Two ways to start, each saying what becomes of it (D168): one that
+            // keeps running in tmux whatever LampBoard does, and one that ends
+            // when it is closed or LampBoard quits.
+            Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
                 model.startSession(folder: entry.path, host: entry.host)
+            }
+            Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
+                model.startSession(folder: entry.path, host: entry.host, keepsRunning: false)
             }
             // What runs here now, a click away in the Hub.
             ForEach(entry.sessionIds, id: \.self) { id in

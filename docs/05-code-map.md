@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,273 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    29,708 lines · 163 files   shell: AppKit, network, windows
-  LampBoardTests/  18,647 lines · 132 files   1338 cases, instantaneous
+  LampBoardCore/  25,336 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,882 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  18,655 lines · 132 files   1339 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1564,12 +1564,13 @@ window's header, read from the column's state.
 > Code believe it runs inside tmux or an editor. And an attach is the only way to
 > open a session that is already running: anything else is a second writer.
 
-### `LiveTarget.swift` · 183
-What the live view can open (D132): `LiveTarget` is a background job of this Mac
-or a session in tmux, here or on another machine, with the command that opens
-each and the one offered to copy; `TmuxPlace` is a tmux session, window and pane,
-held to names tmux reads back as one, with the pane listing it is read from;
-`SSHHardening` is the options every ssh LampBoard starts carries.
+### `LiveTarget.swift` · 254
+What the live view can open (D132): `LiveTarget` is a background job of this Mac,
+a session in tmux here or on another machine, or a temporary one run in
+LampBoard's own terminal with no tmux (D168), with the command that opens each and
+the one offered to copy; `TmuxPlace` is a tmux session, window and pane, any name
+tmux gives one (D167), with the pane listing it is read from; `SSHHardening` is
+the options every ssh LampBoard starts carries.
 
 > **Touching here** decides what may be attached to. An editor's session is never
 > a target: it would be a second writer.
@@ -2246,6 +2247,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelBar.swift` | 212 | the bar wired in: sessions open as a click on their row does, `@name message` proposed into that session's terminal in the Hub, or sent into its own box where there is no terminal (D81, D165), or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
+| `PanelEnd.swift` | 96 | «End session…» (D168): a session in tmux closes its tmux session, Claude Code with it, here or over ssh, one just started found by LampBoard's tag; a temporary one closes its terminal; one elsewhere on this Mac is asked to stop |
 | `PanelLive.swift` | 180 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
@@ -2297,7 +2299,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1338 cases
+## `LampBoardTests/` — 1339 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

@@ -261,9 +261,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak controller] in controller?.typeIntoBar(text) }
         }
         controller.live = live
-        controller.liveTarget = { [store, localTmux] session in
-            LiveTarget.of(session, place: session.workspace.host.map { store.remoteTmuxPlace(sessionId: session.id, host: $0) }
-                          ?? localTmux.places[session.id])
+        controller.liveTarget = { [store, localTmux, live] session in
+            // A temporary session's own terminal first (D168): no tmux finds it.
+            live.directTarget(for: session.id)
+                ?? LiveTarget.of(session, place: session.workspace.host.map { store.remoteTmuxPlace(sessionId: session.id, host: $0) }
+                                 ?? localTmux.places[session.id])
         }
         panelController = controller
         // The Hub (D149), where the Plancia was.
@@ -613,6 +615,7 @@ extension AppDelegate {
             switch store.placed(target) {
             case .job(let job): return store.state.sessions.values.first { $0.backgroundJob?.id == job }?.id
             case .tmux(_, _, let sessionId): return sessionId
+            case .direct(_, _, let start): return start.sessionId
             case .newTmux: return nil
             }
         })

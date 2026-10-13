@@ -40,6 +40,9 @@ struct RowActions {
     /// «Show in VS Code» and the like: the session where it runs, whatever a
     /// click does in the Hub's sidebar.
     var showElsewhere: (ColumnRow) -> Void = { _ in }
+    /// «End session…» (D168): whether it can be ended from here, and ending it.
+    var canEnd: (SessionState) -> Bool = { _ in false }
+    var endSession: (ColumnRow) -> Void = { _ in }
     /// The decision board of the row's repository (D105): pin one, take one off
     /// by its number, and the ones pinned now, for the menu.
     var pinDecision: (String) -> Void = { _ in }
@@ -467,7 +470,8 @@ struct TrafficLightRow: View {
             hostsNewConversation: row.hostsNewConversation, repository: repository,
             pinned: repository.map(actions.decisions) ?? [], attachCommand: target?.command,
             modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary),
-            elsewhere: target == nil ? Self.elsewhere(row.primary) : nil
+            elsewhere: target == nil ? Self.elsewhere(row.primary) : nil,
+            canEnd: actions.canEnd(row.primary)
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
             switch command {
@@ -489,6 +493,7 @@ struct TrafficLightRow: View {
             case .copyAttach: if let target { actions.copyCommand(target.command) }
             case .startHere: actions.startHere(row)
             case .moveHere: actions.moveHere(row)
+            case .endSession: actions.endSession(row)
             case .toggleModel: actions.toggleModel(row)
             default: break
             }

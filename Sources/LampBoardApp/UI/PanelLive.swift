@@ -11,6 +11,7 @@ extension PanelController {
         case .job: liveRefused("LampBoard could not open this session: Claude Code was not found on this Mac.")
         case .tmux(nil, _, _): liveRefused("LampBoard could not open this session: tmux was not found on this Mac.")
         case .tmux, .newTmux: liveRefused("LampBoard could not open this session: that machine's name is not one ssh can be given.")
+        case .direct: liveRefused("LampBoard could not open this session: Claude Code was not found, or that folder is not there.")
         }
     }
 
@@ -43,6 +44,9 @@ extension PanelController {
         switch target {
         case .tmux(_, _, let id):
             openHub(id)
+            return true
+        case .direct(_, _, let start):
+            openHub(start.sessionId)
             return true
         case .job(let job):
             waitForJob(job, tries: 24) { [weak self] id in

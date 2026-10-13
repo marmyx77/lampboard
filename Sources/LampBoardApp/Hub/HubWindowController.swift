@@ -288,7 +288,11 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         }
         // Projects (hub-terminale R3–R5), as the projects' menu calls them.
         if let add = wish["addProject"] as? [String: String], let path = add["path"] { model.deps.projects.add(path: path, host: add["host"]) }
-        if let start = wish["start"] as? [String: String], let folder = start["folder"] { model.startSession(folder: folder, host: start["host"]) }
+        if let start = wish["start"] as? [String: String], let folder = start["folder"] {
+            model.startSession(folder: folder, host: start["host"], keepsRunning: start["keepsRunning"] != "false")
+        }
+        // «End session…», confirmed as a person's click would (D168).
+        if let id = wish["end"] as? String { model.deps.endConfirmed(id) }
         if let resume = wish["resume"] as? [String: String], let id = resume["id"], let folder = resume["folder"] {
             model.resumeSession(id, folder: folder, host: resume["host"])
         }

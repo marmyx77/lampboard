@@ -231,6 +231,12 @@ public struct LiveHeading: Equatable, Sendable {
         case .newTmux(let host, let folder, let name, _, _):
             // Not placed yet: any other session of that folder would be the wrong one.
             return LiveHeading(title: name, detail: "\((folder as NSString).lastPathComponent) on \(host) · starting", status: nil)
+        case .direct(let host, let folder, let start):
+            held = state.sessions[start.sessionId]
+            if held == nil {
+                let name = (folder as NSString).lastPathComponent
+                return LiveHeading(title: name, detail: "\(name)\(host.map { " on \($0)" } ?? "") · starting", status: nil)
+            }
         }
         guard let session = held else {
             return LiveHeading(title: target.key, detail: target.command, status: nil)

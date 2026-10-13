@@ -58,6 +58,9 @@ final class PanelController {
     var lampMaster: LampMasterService?
     /// The Hub (D149): ⌘⇧L's last depth and a row's "Open in the Hub".
     var openHub: ((String?) -> Void)?
+    /// The target the Hub started a session with, while its tmux pane is not
+    /// learnt yet (D168).
+    var startedTarget: ((String) -> LiveTarget?)?
     /// Conversations being moved from another machine (D166): one at a time each.
     var movingElsewhere: Set<String> = []
     /// Takes a conversation up in tmux on `host`, in the Hub, once its VS Code
@@ -503,6 +506,8 @@ final class PanelController {
             revealInFinder: { row in FinderReveal.open(row.workspace.path) },
             openPlancia: { [weak self] row in self?.openInHub(row) },
             showElsewhere: { [weak self] row in self?.activate(row, markSeen: true) },
+            canEnd: { [weak self] session in self?.canEnd(session) ?? false },
+            endSession: { [weak self] row in self?.endSession(row.primary, name: row.alias ?? row.primary.displayName) },
             pinDecision: { [weak self] repository in self?.pinDecision(in: repository) },
             unpinDecision: { [weak self] repository, number in self?.unpinDecision(number, in: repository) },
             decisions: { [weak self] repository in

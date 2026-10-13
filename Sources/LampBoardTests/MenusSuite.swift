@@ -29,11 +29,12 @@ enum MenusSuite {
 
     private static func row(remote: Bool = false, status: SessionStatus = .ready, repository: String? = "web",
                             pinned: [String] = [], attach: String? = nil, offer: String? = nil,
-                            newConversation: Bool = true, move: Bool = false, elsewhere: String? = nil) -> RowMenuState {
+                            newConversation: Bool = true, move: Bool = false, elsewhere: String? = nil,
+                            canEnd: Bool = false) -> RowMenuState {
         RowMenuState(isRemote: remote, compact: false, alias: nil, folder: "web", status: status,
                      isHidden: false, isCalm: false, isMuted: false, isFocused: false, notificationsEnabled: true,
                      hostsNewConversation: newConversation, repository: repository, pinned: pinned,
-                     attachCommand: attach, modelOffer: offer, canMoveHere: move, elsewhere: elsewhere)
+                     attachCommand: attach, modelOffer: offer, canMoveHere: move, elsewhere: elsewhere, canEnd: canEnd)
     }
 
     static let suite = TestSuite("Menus", [
@@ -88,6 +89,13 @@ enum MenusSuite {
             t.expect(titles(submenu("More", in: Menus.row(row(attach: "claude attach 4b1")))).contains("Copy “claude attach 4b1”"),
                      "the command is still copied")
             t.expect(!titles(Menus.row(row())).contains { $0.hasPrefix("Show in") }, "a session in LampBoard's terminal shows nowhere else")
+        },
+
+        TestCase("A session that can be ended says so, after what starts in its folder and before Rename (D168)") { t in
+            let titles = titles(Menus.row(row(canEnd: true)))
+            t.expectEqual(titles.firstIndex(of: "End session…").map { $0 + 1 }, titles.firstIndex(of: "Rename…"),
+                          "the last of the session's own entries: \(titles)")
+            t.expect(!Self.titles(Menus.row(row())).contains("End session…"), "only where it can be ended")
         },
 
         TestCase("A conversation in VS Code offers to move to LampBoard, right under its place (D135)") { t in

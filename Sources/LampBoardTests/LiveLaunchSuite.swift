@@ -401,12 +401,12 @@ enum NewSessionSuite {
             t.expectEqual(NewSession.shellQuoted("/home/dev/it's here"), #"'/home/dev/it'\''s here'"#)
         },
 
-        TestCase("On another machine a session is born in tmux, in its folder, and keeps a shell when Claude ends") { t in
+        TestCase("On another machine a session is born in tmux, in its folder, and keeps a shell only when Claude fails") { t in
             let script = NewSession.remoteCommand(folder: "/home/dev/my web", name: "my-web", launch: "0123456789abcdef")
             t.expect(script.contains("tmux new-session -d -s \"$n\" -c '/home/dev/my web' "), script)
             t.expect(script.contains("n='my-web'; i=2; while tmux has-session -t \"=$n\""), "a name already there is never joined")
-            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude; exec "$SHELL" -l'"#)),
-                     "the person's shell, interactive so its startup files find claude, then stays: \(script)")
+            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude || exec "$SHELL" -l'"#)),
+                     "the person's shell, interactive so its startup files find claude; a shell only after a failure: \(script)")
             t.expect(script.contains("test -d '/home/dev/my web' ||"), "a folder that is not there is said, not replaced by home")
             t.expect(script.hasPrefix("export PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\"\n"), "Homebrew's tmux found")
             t.expect(script.hasSuffix("exec tmux attach-session -t \"=$n:\""), script)
@@ -439,7 +439,7 @@ enum NewSessionSuite {
             t.expectNil(NewSession.claudeLine(.new(sessionId: "x; rm -rf ~")), "only an id is ever written into the script")
             t.expectNil(NewSession.claudeLine(.resume(sessionId: "-p")))
             let script = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef", start: .resume(sessionId: id))
-            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude --resume \#(id); exec "$SHELL" -l'"#)), script)
+            t.expect(script.contains(NewSession.shellQuoted(#""$SHELL" -ilc 'claude --resume \#(id) || exec "$SHELL" -l'"#)), script)
             let detached = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef", start: .new(sessionId: id), attach: false)
             t.expect(!detached.contains("attach-session") && detached.hasSuffix(#"echo "$n""#), "made, and left: \(detached)")
         },
@@ -453,7 +453,7 @@ enum NewSessionSuite {
             let create = lines.firstIndex { $0.contains("tmux new-session -d -s \"$n\" -c '/Users/dev/my web' ") } ?? -1
             t.expect(look >= 0 && look < create, "the tag is looked for before anything is created: \(script)")
             t.expect(script.contains("n='my-web'; i=2; while tmux has-session -t \"=$n\""), "a name already there is never joined")
-            t.expect(script.contains("claude --session-id \(id); exec"), "the id LampBoard chose")
+            t.expect(script.contains("claude --session-id \(id) || exec"), "the id LampBoard chose")
             t.expect(lines.contains("  tmux set-option -t \"=$n:\" status off"), "the Hub says what the session is")
             t.expect(!script.contains("attach"), "nothing attached here: the Hub does")
             t.expect(lines.last?.hasPrefix("tmux display-message -p -t \"=$n:\"") == true, "it says where: \(lines.last ?? "")")

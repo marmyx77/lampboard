@@ -89,6 +89,34 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
     /// tagged `launch` there; `start` is the conversation it begins or takes up
     /// (hub-terminale R4, R5), `nil` for a plain `claude`.
     case newTmux(host: String, folder: String, name: String, launch: String, start: NewSession.Start? = nil)
+    /// A session that ends when it is closed (D168): Claude Code run in
+    /// LampBoard's own terminal, here or over ssh, with no tmux to keep it. It
+    /// goes when its terminal goes: ended, or LampBoard quitting.
+    case direct(host: String?, folder: String, start: NewSession.Start)
+
+    /// A session that ends when closed, in `folder` on `host` or this Mac;
+    /// `nil` for a folder that is not absolute, a host ssh could read as an
+    /// option, or an id that is not one.
+    public static func temporary(host: String?, folder: String, start: NewSession.Start) -> LiveTarget? {
+        guard folder.hasPrefix("/"), NewSession.claudeLine(start) != nil,
+              host.map({ RemoteHostList.isUsable($0) && !$0.hasPrefix("-") }) ?? true else { return nil }
+        return .direct(host: host, folder: folder, start: start)
+    }
+
+    /// The conversation, when the target names it.
+    public var sessionId: String? {
+        switch self {
+        case .job, .newTmux: return nil
+        case .tmux(_, _, let id): return id
+        case .direct(_, _, let start): return start.sessionId
+        }
+    }
+
+    /// Whether it outlives its terminal: everything but a temporary session.
+    public var outlivesItsTerminal: Bool {
+        if case .direct = self { return false }
+        return true
+    }
 
     /// A new session in `folder` on `host`, under a name tmux can take; `nil` for
     /// a folder that is not absolute or a host ssh could read as an option.
@@ -106,6 +134,7 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .job: return nil
         case .tmux(let host, _, _): return host
         case .newTmux(let host, _, _, _, _): return host
+        case .direct(let host, _, _): return host
         }
     }
 
@@ -121,6 +150,7 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
             if let launch = place.launch { return "tmux:\(host ?? ""):launch:\(launch)" }
             return "tmux:\(host ?? ""):\(place.session):\(place.window).\(place.pane)"
         case .newTmux(let host, _, _, let launch, _): return "tmux:\(host):launch:\(launch)"
+        case .direct(let host, _, let start): return "direct:\(host ?? ""):\(start.sessionId)"
         }
     }
 
@@ -132,6 +162,9 @@ public enum LiveTarget: Equatable, Hashable, Sendable {
         case .tmux(nil, let place, _): return "tmux attach -t \(place.quotedTarget)"
         case .newTmux(let host, let folder, let name, let launch, let start):
             return "ssh -t \(host) \(NewSession.shellQuoted(NewSession.posix(NewSession.remoteCommand(folder: folder, name: name, launch: launch, start: start))))"
+        case .direct(let host, let folder, let start):
+            let here = "cd \(NewSession.shellQuoted(folder)) && \(NewSession.claudeLine(start) ?? "claude")"
+            return host.map { "ssh -t \($0) \(NewSession.shellQuoted(here))" } ?? here
         }
     }
 
@@ -198,6 +231,23 @@ extension LiveLaunch {
             return LiveCommand(executable: "/usr/bin/ssh",
                                arguments: SSHHardening.options + ["-t", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=10",
                                                                   "--", host, NewSession.posix(remoteAttach(place))],
+                               directory: nil, environment: environment(base: base, home: home))
+        case .direct(let host, let folder, let start):
+            guard let line = NewSession.claudeLine(start) else { return nil }
+            // The person's own shell, interactive so that its startup files put
+            // `claude` on PATH, as in a tmux pane LampBoard starts (D133).
+            guard let host else {
+                let shell = base["SHELL"].flatMap { $0.hasPrefix("/") ? $0 : nil } ?? "/bin/zsh"
+                return LiveCommand(executable: shell, arguments: ["-ilc", line], directory: folder,
+                                   environment: environment(base: base, home: home, claude: claude.isEmpty ? nil : claude))
+            }
+            guard RemoteHostList.isUsable(host), !host.hasPrefix("-") else { return nil }
+            let script = "cd -- \(NewSession.shellQuoted(folder)) || exit 1\n"
+                + #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin""# + "\n"
+                + "exec \"$SHELL\" -ilc " + NewSession.shellQuoted(line)
+            return LiveCommand(executable: "/usr/bin/ssh",
+                               arguments: SSHHardening.options + ["-t", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=10",
+                                                                  "--", host, NewSession.posix(script)],
                                directory: nil, environment: environment(base: base, home: home))
         }
     }

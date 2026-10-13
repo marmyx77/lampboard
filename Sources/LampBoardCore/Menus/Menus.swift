@@ -29,7 +29,7 @@ public enum MenuCommand: Equatable, Sendable {
     case dontAlert, dontBlink, focus
     case peek, markUnread, moveUp, moveDown, revealInFinder, pinDecision, unpinDecision(Int), copyAttach, toggleModel
     // The live view (D130)
-    case startHere, moveHere
+    case startHere, moveHere, endSession
 }
 
 /// What the panel's ⋯ needs to know.
@@ -89,11 +89,13 @@ public struct RowMenuState: Equatable, Sendable {
     /// Where the session runs when that is outside LampBoard («VS Code», «the
     /// Claude app»), for «Show in …»; `nil` for one LampBoard has a terminal into.
     public let elsewhere: String?
+    /// Whether the session can be ended from here (D168).
+    public let canEnd: Bool
 
     public init(isRemote: Bool, compact: Bool, alias: String?, folder: String, status: SessionStatus,
                 isHidden: Bool, isCalm: Bool, isMuted: Bool, isFocused: Bool, notificationsEnabled: Bool,
                 hostsNewConversation: Bool, repository: String?, pinned: [String], attachCommand: String?,
-                modelOffer: String?, canMoveHere: Bool = false, elsewhere: String? = nil) {
+                modelOffer: String?, canMoveHere: Bool = false, elsewhere: String? = nil, canEnd: Bool = false) {
         self.isRemote = isRemote
         self.compact = compact
         self.alias = alias
@@ -111,6 +113,7 @@ public struct RowMenuState: Equatable, Sendable {
         self.modelOffer = modelOffer
         self.canMoveHere = canMoveHere
         self.elsewhere = elsewhere
+        self.canEnd = canEnd
     }
 }
 
@@ -169,6 +172,8 @@ public enum Menus {
         if state.canMoveHere { entries.append(.item(.moveHere, "Move to LampBoard…")) }
         entries.append(.item(.startHere, "Start a new session in this folder"))
         if state.hostsNewConversation { entries.append(.item(.newConversation, "New conversation in VS Code")) }
+        // Ended here, wherever it runs: a session in tmux leaves no shell behind (D168).
+        if state.canEnd { entries.append(.item(.endSession, "End session…")) }
         entries.append(.divider)
         entries.append(.item(.rename, state.alias == nil ? "Rename…" : "Rename… (“\(state.folder)” underneath)"))
         entries.append(.item(.hide, "Hide", checked: state.isHidden))

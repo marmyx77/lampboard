@@ -208,6 +208,16 @@ struct HubConversationView: View {
                 Button("Open again") { model.reattach(target) }.buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
                     .accessibilityIdentifier("hub.reattach")
             }
+            if let id = model.selected, model.session != nil {
+                Button {
+                    model.deps.end(id)
+                } label: {
+                    Image(systemName: "power")
+                }
+                .buttonStyle(HubButtonStyle()).fixedSize()
+                .help("End this session: Claude Code stops, and a tmux session closes with it. The conversation is kept.")
+                .accessibilityIdentifier("hub.endSession")
+            }
             Button {
                 model.popOut()
             } label: {

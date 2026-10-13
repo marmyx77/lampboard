@@ -60,8 +60,10 @@ final class SessionLauncher {
     /// once it is started, or why not. `checkBusy` is off only right after
     /// LampBoard ended the one process that held the conversation, checked by
     /// its start (D166): the probe has not seen it go yet.
+    /// `keepsRunning` off starts a temporary session (D168): Claude Code in
+    /// LampBoard's own terminal, no tmux, ended when it is closed or LampBoard quits.
     func launch(folder: String, host: String?, start: NewSession.Start, name: String?, reveal: Bool = true,
-                checkBusy: Bool = true, done: @escaping (String?) -> Void) {
+                checkBusy: Bool = true, keepsRunning: Bool = true, done: @escaping (String?) -> Void) {
         let id = start.sessionId
         guard !isStarting(id) else { return done("This conversation is being started already.") }
         if checkBusy, case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }
@@ -72,6 +74,14 @@ final class SessionLauncher {
         let finish: (String?) -> Void = { [weak self] reason in
             if reason != nil { self?.starting[id] = nil }
             done(reason)
+        }
+        if !keepsRunning {
+            guard let target = LiveTarget.temporary(host: host, folder: folder, start: start) else {
+                return finish("LampBoard could not start a session in \(folder)\(host.map { " on \($0)" } ?? "").")
+            }
+            if host == nil { store.conversations.expect(id) }
+            show(Pending(sessionId: id, target: target, name: label, folder: folder, host: host, reveal: true))
+            return finish(nil)
         }
         guard let host else {
             return launchHere(folder: folder, name: tmuxName, label: label, start: start, reveal: reveal, done: finish)
