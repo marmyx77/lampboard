@@ -35,7 +35,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         self.sidebarContent = model.deps.sidebar
     }
 
-    var isOpen: Bool { window?.isVisible ?? false }
+    /// Open, on screen or minimised to the Dock: either way it is there to come back to.
+    var isOpen: Bool { window.map { $0.isVisible || $0.isMiniaturized } ?? false }
     var isKey: Bool { window?.isKeyWindow ?? false }
 
     /// Opens the Hub, on `session` when one is named.
@@ -45,10 +46,21 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let session { model.selected = session } else if model.selected == nil { model.selected = model.deps.store.sessions.first?.id }
         model.resume()
         HubChatTheme.apply()
-        window.makeKeyAndOrderFront(nil)
         refreshToolbar()
         onVisibilityChange()
-        NSApp.activate(ignoringOtherApps: true)
+        bringForward(window)
+    }
+
+    /// In front of every other application's windows. A click in the panel, which
+    /// never activates LampBoard, is not always enough for macOS 14's cooperative
+    /// activation to bring the app forward: the window is ordered front whatever
+    /// the answer, and taken out of the Dock when it was minimised (13 October
+    /// 2026: «the Hub gets lost among the Mac's windows»).
+    private func bringForward(_ window: NSWindow) {
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        NSApp.activate()
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
     }
 
     /// Opens the Hub on a session LampBoard just started.

@@ -110,30 +110,31 @@ struct AllowanceStrip: View {
                     // Fixed widths, right-aligned, so the two lines make a column
                     // instead of two ragged sentences. Monospaced digits so the
                     // figures do not shuffle sideways as they change.
-                    Text("\(limit.percent)%")
-                        .font(Self.face.monospacedDigit())
-                        .foregroundStyle(Color.primary.opacity(0.70))
-                        .frame(width: 34, alignment: .trailing)
-
                     // At the last hour's pace this window runs out before it resets:
-                    // the time it runs out takes the reset's place, in the warning's
-                    // colour, and the sentence is a hover away (G2).
-                    if limit.span == .session, let warning = forecasts[report.label],
-                       let clock = warning.split(separator: ",").first?.split(separator: " ").last {
-                        // Said in a word: «~19:41» alone, in red, read as a
-                        // negative countdown (12 October 2026).
-                        Text("out " + clock.trimmingCharacters(in: CharacterSet(charactersIn: "~")))
+                    // a warning mark by the figure, in the warning's colour, and
+                    // the sentence a hover away (G2). The reset stays where it is:
+                    // a time of day in its place, «~19:41» and then «out 11:17»,
+                    // read as a negative figure both times (12–13 October 2026).
+                    let warning = limit.span == .session ? forecasts[report.label] : nil
+                    HStack(spacing: 3) {
+                        if warning != nil {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(StatusPalette.warningTint)
+                        }
+                        Text("\(limit.percent)%")
                             .font(Self.face.monospacedDigit())
-                            .foregroundStyle(StatusPalette.warningTint)
-                            .frame(width: Self.timeWidth, alignment: .trailing)
-                            .tooltip(warning)
-                            .accessibilityLabel(warning)
-                    } else {
-                        Text(reset(limit))
-                            .font(Self.face.monospacedDigit())
-                            .foregroundStyle(StatusPalette.timeColor)
-                            .frame(width: Self.timeWidth, alignment: .trailing)
+                            .foregroundStyle(warning == nil ? Color.primary.opacity(0.70) : StatusPalette.warningTint)
                     }
+                    .frame(width: 46, alignment: .trailing)
+                    .tooltip(warning.map { "At this pace it " + $0.replacingOccurrences(of: ", resets", with: ", before it resets at") }
+                             ?? "\(limit.percent)% of this window used")
+                    .accessibilityLabel(warning.map { "\(limit.percent)%. At this pace it \($0)" } ?? "\(limit.percent)%")
+
+                    Text(reset(limit))
+                        .font(Self.face.monospacedDigit())
+                        .foregroundStyle(StatusPalette.timeColor)
+                        .frame(width: Self.timeWidth, alignment: .trailing)
                 }
             }
             .frame(height: Layout.allowanceLine)
@@ -154,7 +155,7 @@ struct AllowanceStrip: View {
 
     /// One width for the last column, whether it says when the window resets or
     /// when it runs out: two widths made the lines of one strip two ragged columns.
-    private static let timeWidth: CGFloat = 62
+    private static let timeWidth: CGFloat = 44
 
     /// How long until this limit starts again, in the column's own shorthand.
     private func reset(_ limit: AccountLimits.Limit) -> String {

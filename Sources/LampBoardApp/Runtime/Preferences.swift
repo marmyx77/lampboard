@@ -415,6 +415,16 @@ struct Preferences {
     /// A click on the row of a session LampBoard has a terminal into opens it in
     /// the Hub rather than jumping elsewhere (D130, D165). On by default since
     /// 2.2: the Hub is where a session is worked with.
+    /// 2.1 and before kept this off for a window of LampBoard's; since 2.2 it
+    /// means the Hub, on by default. An «off» left from then is cleared once
+    /// (13 October 2026), and a choice made after it is kept.
+    func clearLiveOpensBackgroundFromBeforeTheHub() {
+        let migrated = "live.opensBackground.hubDefault"
+        guard !defaults.bool(forKey: migrated) else { return }
+        defaults.set(true, forKey: migrated)
+        if defaults.object(forKey: Key.liveOpensBackground) as? Bool == false { defaults.removeObject(forKey: Key.liveOpensBackground) }
+    }
+
     var liveOpensBackground: Bool {
         get { defaults.object(forKey: Key.liveOpensBackground) as? Bool ?? true }
         nonmutating set { defaults.set(newValue, forKey: Key.liveOpensBackground) }

@@ -10,6 +10,15 @@ import AppKit
 /// down the tunnel and an application that hosts its own chat.
 extension PanelController {
 
+    /// A session LampBoard started in tmux: it carries LampBoard's tag (D133).
+    static func startedHere(_ target: LiveTarget) -> Bool {
+        switch target {
+        case .tmux(_, let place, _): return place.launch != nil
+        case .newTmux: return true
+        case .job: return false
+        }
+    }
+
     func activate(_ row: ColumnRow, markSeen: Bool, opensTab: Bool = true) {
         // A sample has no window behind it: a click reads it, as a click on a
         // real answer would, and that is all (U4).
@@ -40,10 +49,12 @@ extension PanelController {
         // to the project's first real session rather than nowhere.
         guard let session = row.sessions.first(where: { $0.harness != .command }) else { return }
 
-        // A session the live view can open (in the background, or in tmux here
-        // or on another machine): with the live view chosen, a click opens it in
-        // one of LampBoard's windows (D130, D132). An editor's session still jumps.
-        if preferences.liveOpensBackground, let target = liveTarget(session) {
+        // A session LampBoard has a terminal into (in the background, or in tmux
+        // here or on another machine) opens in the Hub (D130, D132, D165): with
+        // the setting on, and always for one LampBoard started, which has no other
+        // window (13 October 2026: the panel raised VS Code's sessions and the
+        // terminals', and not the Hub's). An editor's session still jumps.
+        if let target = liveTarget(session), preferences.liveOpensBackground || Self.startedHere(target) {
             openHere(target)
             return
         }

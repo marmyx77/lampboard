@@ -271,6 +271,8 @@ struct TrafficLightRow: View {
         // light, a ring and two lines, none of which a screen reader can see.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySentence)
+        // For the tests' real hands: the row by its session, as `lbhands` finds it.
+        .accessibilityIdentifier("row.\(row.primary.id.prefix(8))")
         .accessibilityValue(row.count > 1 ? (flags.isExpanded ? "expanded" : "collapsed") : "")
         .accessibilityAddTraits(.isButton)
         // The children are folded into one sentence, so what they do is offered

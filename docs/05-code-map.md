@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  25,165 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    29,457 lines · 163 files   shell: AppKit, network, windows
+  LampBoardApp/    29,500 lines · 163 files   shell: AppKit, network, windows
   LampBoardTests/  18,544 lines · 131 files   1333 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
@@ -1931,11 +1931,13 @@ files; an open file or the project's shell (D156) — at the deepest step of ⌘
 where the Plancia was. Every rule it follows is in Core's `Hub/`; this reads,
 draws and sends.
 
-### `HubWindowController.swift` · 329
+### `HubWindowController.swift` · 342
 The window: columns in an `NSSplitView`, shown and hidden from the toolbar's
 icons, their widths and what is shown kept by macOS between launches. Opens on a
-named session, redraws the sidebar when the panel changes — an order, a name, a
-mute —, and on a fake home says what it shows, for the tests.
+named session and comes in front of every other application's windows, out of
+the Dock when it was minimised (a panel's click does not activate LampBoard, and
+macOS 14 may not), redraws the sidebar when the panel changes — an order, a name,
+a mute —, and on a fake home says what it shows, for the tests.
 
 ### `HubSetup.swift` · 95
 Builds the Hub and wires it to the panel, the live view and the Dock.
@@ -2236,12 +2238,12 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelHub.swift` | 42 | the Hub's sidebar is the panel itself (D150): the same `PanelRootView` from the same store, preferences and actions, wide whatever the panel is, so the rows, their order, the R, the ring and every badge are the panel's by construction; only a click differs, opening the conversation beside the rows |
 | `PanelBar.swift` | 212 | the bar wired in: sessions open as a click on their row does, `@name message` proposed into that session's terminal in the Hub, or sent into its own box where there is no terminal (D81, D165), or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
-| `PanelActivation.swift` | 193 | where a click goes, which is a different question for every surface; a background session's to the Hub (D103, D165), or to the live view when Settings says so (D130) |
+| `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
 | `PanelLive.swift` | 132 | opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
-| `AllowanceStrip.swift` | 178 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; the time the window runs out in place of the reset, in orange as «out HH:MM», when that is first (D111, D165) |
-| `TrafficLightRow.swift` | 585 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row`, the Hub first, then *Quiet* and *More* (D125, D165), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
+| `AllowanceStrip.swift` | 181 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; when the session window would run out before it resets, an orange ⚠ by its figure and the sentence on hover, the reset staying in its place (D111, D165) |
+| `TrafficLightRow.swift` | 590 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row`, the Hub first, then *Quiet* and *More* (D125, D165), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
 | `TrafficLightColumn.swift` | 655 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
 | `SessionSubRow.swift` | 201 | one conversation inside an opened block, and the grip that names its agent |

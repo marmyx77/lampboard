@@ -72,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Diagnostics.startSession()
+        preferences.clearLiveOpensBackgroundFromBeforeTheHub()
         // Off for measuring CPU (P1): its tenth-of-a-second ping wakes the main thread.
         if AppConfig.isUsingHomeOverride || Diagnostics.isEnabled,
            ProcessInfo.processInfo.environment["LAMPBOARD_MAIN_WATCH"] != "0" { MainThreadWatch.shared.start() }
@@ -379,7 +380,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Answering it is the one door that needs no lamp, no pointer aimed at
     /// twenty-two points of menu bar, and nothing learned in advance.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // The Dock icon of a live window brings the live windows back (D138).
+        // The Dock icon brings the Hub back while it is open, the live windows
+        // with it (D138, D165); the Hub is what keeps the icon in the Dock.
+        if let hub, hub.isOpen {
+            _ = live.bringAllForward()
+            hub.show()
+            return false
+        }
         if live.bringAllForward() { return false }
         panelController?.summon()
         return true
