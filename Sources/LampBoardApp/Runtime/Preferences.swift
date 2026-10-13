@@ -44,6 +44,7 @@ struct Preferences {
         static let presenceEnabled = "presence.enabled"
         static let usageEnabled = "usage.enabled"
         static let terminalSessions = "terminal.sessions"
+        static let sessionPermissions = "sessions.permissions"
         static let rowNames = "panel.rowNames"
         static let calmBlinkWorkspaces = "panel.calmBlink"
         static let expandedRows = "panel.expandedRows"
@@ -458,6 +459,13 @@ struct Preferences {
         guard !defaults.bool(forKey: migrated) else { return }
         defaults.set(true, forKey: migrated)
         if defaults.object(forKey: Key.liveOpensBackground) as? Bool == false { defaults.removeObject(forKey: Key.liveOpensBackground) }
+    }
+
+    /// The permission mode of every session LampBoard starts or resumes
+    /// (D169): Claude Code's own default unless changed.
+    var sessionPermissions: NewSession.Permissions {
+        get { NewSession.Permissions.named(defaults.string(forKey: Key.sessionPermissions)) }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.sessionPermissions) }
     }
 
     var liveOpensBackground: Bool {

@@ -444,6 +444,37 @@ enum NewSessionSuite {
             t.expect(!detached.contains("attach-session") && detached.hasSuffix(#"echo "$n""#), "made, and left: \(detached)")
         },
 
+        TestCase("A session starts in the permission mode chosen in Settings, and in Claude Code's own without a choice (D169)") { t in
+            let id = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
+            t.expectEqual(NewSession.claudeLine(.new(sessionId: id, permissions: .bypass)),
+                          "claude --session-id \(id) --dangerously-skip-permissions")
+            t.expectEqual(NewSession.claudeLine(.resume(sessionId: id).with(.allowBypass)),
+                          "claude --resume \(id) --allow-dangerously-skip-permissions")
+            t.expectEqual(NewSession.claudeLine(.resume(sessionId: id, permissions: .bypass).with(.ask)), "claude --resume \(id)")
+            t.expectEqual(NewSession.Start.new(sessionId: id).with(.bypass).sessionId, id)
+            t.expectEqual(NewSession.Permissions.named(nil), .ask)
+            t.expectEqual(NewSession.Permissions.named("rm -rf"), .ask, "an unknown stored value is the default, never a flag")
+            t.expectEqual(NewSession.Permissions.named("bypass"), .bypass)
+            // In tmux, here and on another machine, and in a terminal of its own.
+            let local = NewSession.localCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef",
+                                                start: .new(sessionId: id, permissions: .bypass)) ?? ""
+            t.expect(local.contains("--session-id \(id) --dangerously-skip-permissions ||"), local)
+            let remote = NewSession.remoteCommand(folder: "/home/dev/web", name: "web", launch: "0123456789abcdef",
+                                                  start: .resume(sessionId: id, permissions: .allowBypass))
+            t.expect(remote.contains("--resume \(id) --allow-dangerously-skip-permissions ||"), remote)
+            let direct = LiveTarget.temporary(host: nil, folder: "/home/dev/web", start: .new(sessionId: id, permissions: .bypass))
+            let command = direct.flatMap { LiveLaunch.command(for: $0, claude: LiveLaunchSuite.claude, environment: LiveLaunchSuite.base, home: "/home/dev") }
+            t.expectEqual(command?.arguments.last, "claude --session-id \(id) --dangerously-skip-permissions")
+            // The same conversation whatever its mode: its key does not change.
+            t.expectEqual(direct?.key, LiveTarget.temporary(host: nil, folder: "/home/dev/web", start: .new(sessionId: id))?.key)
+            // In the background: the flag, never in place of a name.
+            t.expectEqual(LiveLaunch.start(directory: "/home/dev/web", name: "web", permissions: .bypass, claude: LiveLaunchSuite.claude,
+                                           environment: LiveLaunchSuite.base, home: "/home/dev")?.arguments,
+                          ["--bg", "--dangerously-skip-permissions", "--name", "web"])
+            t.expectEqual(LiveLaunch.start(directory: "/home/dev/web", name: nil, claude: LiveLaunchSuite.claude, environment: LiveLaunchSuite.base, home: "/home/dev")?.arguments,
+                          ["--bg"])
+        },
+
         TestCase("On this Mac a session is born in tmux too, its status line off, and says where it sits") { t in
             let id = "4b138f7d-67ab-4d4c-9396-77adaed0f851"
             guard let script = NewSession.localCommand(folder: "/Users/dev/my web", name: "my-web", launch: "0123456789abcdef",

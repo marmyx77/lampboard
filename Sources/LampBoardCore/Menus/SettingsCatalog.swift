@@ -19,7 +19,7 @@ public enum SettingsCatalog {
         case mute, away, silenced
         case presence
         case connection, helper, band
-        case sendMessages, answerPrompts, safetyCatch
+        case sendMessages, answerPrompts, safetyCatch, sessionPermissions
         case lampMaster, lampMasterEvery, lampMasterModel, lampMasterAsk, lampMasterMuted
         case otherMacs
         case usage, updates, searchIndex
@@ -119,6 +119,7 @@ public enum SettingsCatalog {
                 i(.sendMessages, "Send messages to sessions", "Write to a session from ⌘K (@name message): it waits in its terminal in the Hub, or goes into its own box. Anything running as you could then start a turn in your name: asks before it turns on."),
                 i(.answerPrompts, "Answer permission prompts and questions", "Needs the helper. Up to 55 seconds for a permission, 20 for a question, then the session asks as usual."),
                 i(.safetyCatch, "Safety catch while I'm away", "With the helper, a command that deletes recursively, force-pushes, discards changes or runs as root waits for you. A fixed list of spellings, not a sandbox."),
+                i(.sessionPermissions, "Permissions in sessions LampBoard starts", "For every session started or resumed from the Hub, LampMaster or Move to LampBoard. Bypass on Shift+Tab adds it to the modes Shift+Tab cycles, which Claude Code allows only from the start; Bypass starts in it, and Claude Code then runs any command and edits any file without asking. Claude Code asks once to accept it. Sessions already running keep their mode."),
             ]),
         ]),
         Section(title: "LampMaster", warns: true, groups: [

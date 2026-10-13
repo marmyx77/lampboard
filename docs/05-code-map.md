@@ -1,13 +1,13 @@
 # Code map
 
-~79,400 lines of Swift across five targets. For each file: what it contains, why
+~79,700 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,336 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    29,882 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,655 lines · 132 files   1339 cases, instantaneous
+  LampBoardCore/  25,376 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,903 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  18,686 lines · 132 files   1340 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1620,13 +1620,14 @@ citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
 on (a file tool's whole path inside the folder), the lines a selection covers,
 and what the preview shows of a file.
 
-### `NewSession.swift` · 141
+### `NewSession.swift` · 183
 Starting a session from LampBoard (D133, D163): the folders a machine's sessions
 worked in, a tmux name made from a folder's, and the commands that start Claude
 Code in a new tmux session, on this Mac or on another machine, picking a free
 name there and turning tmux's status line off. A new conversation gets an id
 LampBoard chose (`--session-id`), a past one is taken up by its own
-(`--resume`); only an id is ever written into the script.
+(`--resume`); only an id is ever written into the script. The permission mode
+chosen in Settings travels with the start and adds Claude Code's flag (D169).
 
 ### `ProjectList.swift` · 98
 The projects attached to the Hub (D163): a folder on this Mac or on another
@@ -2299,7 +2300,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1339 cases
+## `LampBoardTests/` — 1340 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

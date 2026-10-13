@@ -6181,3 +6181,34 @@ started, never went away by itself.
 - a temporary session outlives the Hub's closing and ends with End session;
 - End session closes a session's tmux session and Claude Code with it;
 - `/exit` leaves no shell and no tmux session behind.
+
+## D169 · The permission mode of the sessions LampBoard starts
+
+**Decided** (13 October 2026). A setting under **Acting from the panel**, named
+**Permissions in sessions LampBoard starts**, picks the mode of every session
+LampBoard starts or resumes. That covers a project's start or resume in the Hub,
+LampMaster, and Move to LampBoard. There are three choices:
+- **Ask, as Claude Code does** adds no flag. It is the default.
+- **Bypass on Shift+Tab** adds `--allow-dangerously-skip-permissions`: bypass
+  joins the modes Shift+Tab cycles, but the session does not start in it.
+- **Bypass: never ask** adds `--dangerously-skip-permissions`.
+
+The choice travels with the start (`NewSession.Start`), so it reaches every
+place a `claude` line is built:
+- tmux here or on another machine;
+- a session that ends when closed;
+- the background start of a move.
+
+A session's key does not depend on it. An unknown stored value reads as Ask,
+never as a flag. A session already running keeps its mode.
+
+**Why.** Marco asked for it: bypass cannot be turned on from inside a session
+that was not started with a flag allowing it. The middle choice gives him that
+without starting every session with no prompts at all. The setting sits in the
+section marked as acting on sessions, with a line saying what bypass lets
+Claude Code do.
+
+**Measured** (`hub-perm.sh`, real sessions on the test Mac):
+- with Bypass, a session that ends when closed runs with `--dangerously-skip-permissions`;
+- with Bypass on Shift+Tab, a session in tmux runs with `--allow-dangerously-skip-permissions`;
+- with Ask, a session runs with neither flag.

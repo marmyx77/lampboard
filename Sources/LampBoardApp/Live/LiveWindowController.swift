@@ -234,7 +234,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// runs off the main thread: `claude --bg` may first start the supervisor.
     func start(directory: String, name: String?, failed: @escaping (String) -> Void) {
         guard let claude = LampMasterRunner.executable(),
-              let command = LiveLaunch.start(directory: directory, name: name, claude: claude,
+              let command = LiveLaunch.start(directory: directory, name: name, permissions: preferences.sessionPermissions, claude: claude,
                                              environment: ProcessInfo.processInfo.environment,
                                              home: AppConfig.homeDirectory.path)
         else { failed(LiveLaunch.StartFailure.other("Claude Code was not found on this Mac.").message); return }
@@ -268,7 +268,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         guard !moving.contains(process.sessionId) else { return }
         let inTmux = resumeInTmux != nil && LocalTmuxPlaces.executable() != nil
         guard let claude = LampMasterRunner.executable(),
-              let command = LiveLaunch.start(directory: process.cwd, name: name, resume: process.sessionId, claude: claude,
+              let command = LiveLaunch.start(directory: process.cwd, name: name, resume: process.sessionId,
+                                             permissions: preferences.sessionPermissions, claude: claude,
                                              environment: ProcessInfo.processInfo.environment,
                                              home: AppConfig.homeDirectory.path)
         else { failed(LiveLaunch.StartFailure.other("Claude Code was not found on this Mac.").message); return }

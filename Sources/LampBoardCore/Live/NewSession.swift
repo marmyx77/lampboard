@@ -61,12 +61,49 @@ public enum NewSession {
     /// What a session LampBoard starts runs (hub-terminale R4, R5): a new
     /// conversation under an id LampBoard chose, so its row and its terminal are
     /// known before it says anything, or a past one taken up again.
+    /// The permission mode it starts in, chosen in Settings (D169).
     public enum Start: Equatable, Hashable, Sendable {
-        case new(sessionId: String)
-        case resume(sessionId: String)
+        case new(sessionId: String, permissions: Permissions = .ask)
+        case resume(sessionId: String, permissions: Permissions = .ask)
 
         public var sessionId: String {
-            switch self { case .new(let id), .resume(let id): return id }
+            switch self { case .new(let id, _), .resume(let id, _): return id }
+        }
+
+        public var permissions: Permissions {
+            switch self { case .new(_, let mode), .resume(_, let mode): return mode }
+        }
+
+        /// The same start, in `permissions`.
+        public func with(_ permissions: Permissions) -> Start {
+            switch self {
+            case .new(let id, _): return .new(sessionId: id, permissions: permissions)
+            case .resume(let id, _): return .resume(sessionId: id, permissions: permissions)
+            }
+        }
+    }
+
+    /// How a session LampBoard starts treats Claude Code's permission prompts
+    /// (D169). Inside a session Shift+Tab cycles the modes, but bypass is among
+    /// them only when Claude Code was started with a flag that allows it.
+    public enum Permissions: String, CaseIterable, Equatable, Hashable, Sendable {
+        /// Claude Code's own default: no flag.
+        case ask
+        /// Bypass offered on Shift+Tab, not on at the start.
+        case allowBypass
+        /// Bypass from the start: no prompt at all.
+        case bypass
+
+        /// A stored value, or `.ask` for none or an unknown one.
+        public static func named(_ raw: String?) -> Permissions { raw.flatMap(Permissions.init(rawValue:)) ?? .ask }
+
+        /// Claude Code's flag for it; `nil` for its default.
+        public var flag: String? {
+            switch self {
+            case .ask: return nil
+            case .allowBypass: return "--allow-dangerously-skip-permissions"
+            case .bypass: return "--dangerously-skip-permissions"
+            }
         }
     }
 
@@ -74,9 +111,10 @@ public enum NewSession {
     public static func claudeLine(_ start: Start) -> String? {
         let id = start.sessionId.lowercased()
         guard ModReport.isSessionId(id), id.count == 36 else { return nil }
+        let flag = start.permissions.flag.map { " " + $0 } ?? ""
         switch start {
-        case .new: return "claude --session-id \(id)"
-        case .resume: return "claude --resume \(id)"
+        case .new: return "claude --session-id \(id)" + flag
+        case .resume: return "claude --resume \(id)" + flag
         }
     }
 

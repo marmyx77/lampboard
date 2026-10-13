@@ -64,6 +64,7 @@ final class SessionLauncher {
     /// LampBoard's own terminal, no tmux, ended when it is closed or LampBoard quits.
     func launch(folder: String, host: String?, start: NewSession.Start, name: String?, reveal: Bool = true,
                 checkBusy: Bool = true, keepsRunning: Bool = true, done: @escaping (String?) -> Void) {
+        let start = start.with(Preferences().sessionPermissions)
         let id = start.sessionId
         guard !isStarting(id) else { return done("This conversation is being started already.") }
         if checkBusy, case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }

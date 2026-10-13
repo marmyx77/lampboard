@@ -320,6 +320,17 @@ struct ActingPane: View {
                     Preferences().safetyCatch = value
                     model.refresh()
                 }
+                SettingRow(id: .sessionPermissions) {
+                    Picker("", selection: Binding(get: { Preferences().sessionPermissions }, set: { value in
+                        Preferences().sessionPermissions = value
+                        model.refresh()
+                    })) {
+                        Text("Ask, as Claude Code does").tag(NewSession.Permissions.ask)
+                        Text("Bypass on Shift+Tab").tag(NewSession.Permissions.allowBypass)
+                        Text("Bypass: never ask").tag(NewSession.Permissions.bypass)
+                    }
+                    .labelsHidden().fixedSize()
+                }
             }
         }
     }
