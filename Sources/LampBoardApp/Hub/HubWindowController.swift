@@ -47,8 +47,9 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         model.resume()
         HubChatTheme.apply()
         refreshToolbar()
-        onVisibilityChange()
+        // Visible first: told before, the Hub would read as closed and empty itself.
         bringForward(window)
+        onVisibilityChange()
     }
 
     /// In front of every other application's windows. A click in the panel, which

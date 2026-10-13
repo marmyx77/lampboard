@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  25,165 lines · 194 files  pure logic, zero AppKit
-  LampBoardApp/    29,500 lines · 163 files   shell: AppKit, network, windows
+  LampBoardApp/    29,501 lines · 163 files   shell: AppKit, network, windows
   LampBoardTests/  18,544 lines · 131 files   1333 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
@@ -1931,7 +1931,7 @@ files; an open file or the project's shell (D156) — at the deepest step of ⌘
 where the Plancia was. Every rule it follows is in Core's `Hub/`; this reads,
 draws and sends.
 
-### `HubWindowController.swift` · 342
+### `HubWindowController.swift` · 343
 The window: columns in an `NSSplitView`, shown and hidden from the toolbar's
 icons, their widths and what is shown kept by macOS between launches. Opens on a
 named session and comes in front of every other application's windows, out of
