@@ -1,13 +1,13 @@
 # Code map
 
-~79,700 lines of Swift across five targets. For each file: what it contains, why
+~80,100 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,451 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    30,023 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,746 lines · 132 files   1344 cases, instantaneous
+  LampBoardCore/  25,501 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    30,027 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  18,810 lines · 132 files   1346 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -2302,7 +2302,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1344 cases
+## `LampBoardTests/` — 1346 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

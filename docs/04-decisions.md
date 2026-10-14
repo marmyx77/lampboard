@@ -6258,3 +6258,25 @@ course did not know it was LampMaster.
 
 Found on the way: a conversation ended with End session within a minute and a half of its start still read
 as being started, and taking it up again was refused. End now clears that.
+
+## D171 · Claude Code is alive when it runs under the pane; a cut message says so
+
+**Decided** (14 October 2026), from a report LampMaster wrote for Marco.
+
+**Liveness.** `send_to_session` used to decide whether Claude Code still ran from tmux's
+`#{pane_current_command}`. Under `bash -c "claude …; exec bash -l"` Claude Code stays in the shell's
+process group, so tmux names the pane `bash` while Claude Code runs. Sending was refused into five live
+sessions on the Bestia. The check now walks the pane's process tree with one `ps -A -o pid=,ppid=,args=`
+and an awk program, `HandsScript.claudeUnderPane`, in the same script that reads the prompt. It looks for a
+`claude` at or under the pane's process, run by name, by its versioned path, or through node. A shell whose
+command line only mentions claude does not count. A refusal names the pane it looked under.
+
+**Reading.** `read_session` cut each message at 1,200 characters with a bare «…», and a third proposal
+was lost behind it. A cut now says how much was given and how to read on. `full: true` gives each message
+whole, 20,000 characters at a time, and `offset` reads on from a character.
+
+**Measured.**
+- The new check, run read-only on the Bestia's real panes, finds Claude Code under lampboard, cervello,
+  ai-act-lab, awevents and marketing (foreground `bash`), and under cosmos (foreground `claude`).
+- The domain suite runs the awk program over a written process table: a child of `bash -c`, the
+  foreground, node, a versioned path, a shell alone, and a shell naming claude.

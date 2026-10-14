@@ -50,6 +50,73 @@ enum LampMasterHandsSuite {
             t.expectEqual(LampMasterHands.digest(tail: "", messages: 3), "Nothing said yet in this session.")
         },
 
+        TestCase("A long message says it was cut, and how much; full reads it whole, from an offset") { t in
+            let long = String(repeating: "a", count: 1_000) + String(repeating: "b", count: 1_000) + "THE THIRD WAY"
+            let tail = #"{"type":"assistant","uuid":"a1","timestamp":"2026-10-11T09:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"\#(long)"}]}}"#
+            let cut = LampMasterHands.digest(tail: tail, messages: 1)
+            t.expect(cut.contains("[cut: 1,200 of 2,013 characters; full: true reads it whole]"), cut)
+            t.expect(!cut.contains("THE THIRD WAY"), "cut by default")
+            let whole = LampMasterHands.digest(tail: tail, messages: 1, full: true)
+            t.expect(whole.hasSuffix("THE THIRD WAY"), String(whole.suffix(40)))
+            t.expect(!whole.contains("[cut"), "whole: no mark")
+            let from = LampMasterHands.digest(tail: tail, messages: 1, full: true, offset: 2_000)
+            t.expectEqual(from, "[session] [from character 2,000] THE THIRD WAY")
+            let huge = String(repeating: "c", count: 50_000)
+            let big = #"{"type":"assistant","uuid":"a1","timestamp":"2026-10-11T09:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"\#(huge)"}]}}"#
+            let page = LampMasterHands.digest(tail: big, messages: 1, full: true)
+            t.expect(page.contains("[cut: 20,000 of 50,000 characters; offset: 20000 reads on]"), String(page.suffix(80)))
+            let schema = LampMasterHands.Tool.readSession.inputSchema["properties"] as? [String: Any] ?? [:]
+            t.expectEqual(Set(schema.keys), ["session", "messages", "full", "offset"])
+            t.expect(LampMasterHands.Tool.readSession.description.contains("full"), "the option is told")
+        },
+
+        TestCase("Claude Code is alive when it runs under the pane, in the foreground or as a shell's child") { t in
+            func under(_ root: Int, _ ps: String) -> String {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/awk")
+                process.arguments = ["-v", "root=\(root)", HandsScript.claudeUnderPane]
+                let input = Pipe(), output = Pipe()
+                process.standardInput = input
+                process.standardOutput = output
+                try? process.run()
+                input.fileHandleForWriting.write(Data(ps.utf8))
+                try? input.fileHandleForWriting.close()
+                process.waitUntilExit()
+                return String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            let ps = """
+              1     0 /sbin/launchd
+             90     1 tmux new-session -d -s lampboard
+            2101   90 bash -c claude --resume 4b138f7d; exec bash -l
+            2102 2101 claude --resume 4b138f7d-67ab-4d4c-9396-77adaed0f851
+             300   90 /Users/dev/.local/bin/claude --resume 9ffa24f0
+             400   90 -zsh
+             401  400 sleep 5
+             500   90 /bin/zsh -ilc claude --resume 4b138f7d || exec "$SHELL" -l
+             600   90 bash
+             601  600 node /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js
+             602  600 node /usr/local/bin/claude --resume x
+             700    1 /Users/dev/.local/bin/claude
+             800   90 bash
+             801  800 /home/dev/.local/share/claude/versions/2.1.296 --resume y
+            """
+            t.expectEqual(under(2101, ps), "claude 2102", "the child of bash -c: the case that read as ended")
+            t.expectEqual(under(300, ps), "claude 300", "in the foreground")
+            t.expectEqual(under(400, ps), "none", "only a shell: still refused")
+            t.expectEqual(under(500, ps), "none", "a shell whose command line names claude is not claude")
+            t.expectEqual(under(600, ps), "claude 602", "through node")
+            t.expectEqual(under(800, ps), "claude 801", "run by its versioned path")
+            t.expectEqual(under(90, ps).hasPrefix("claude "), true, "anywhere under the pane")
+            let look = HandsScript.parseLook("2 30 2101 bash\nclaude 2102\n❯ \nline")
+            t.expectEqual(look?.claude, true)
+            t.expectEqual(look?.panePid, 2101)
+            t.expectEqual(look?.lines, ["❯ ", "line"])
+            let gone = HandsScript.parseLook("0 5 400 zsh\nnone\n% ")
+            t.expectEqual(gone?.claude, false)
+            t.expect(HandsScript.look(target: "=web:0.0").contains("ps -A -o pid=,ppid=,args="), "the process tree, not the foreground name")
+        },
+
         TestCase("What it sends says where it comes from, without control characters, bounded") { t in
             let framed = LampMasterHands.framed("Run the tests\u{1b}[2J\u{202e} please\nand report.")
             t.expect(framed.hasPrefix("[From LampMaster, at the person's request] "), framed)
@@ -79,12 +146,9 @@ enum LampMasterHandsSuite {
             t.expect(!PromptLine.isEmpty(lines: ["❯ first", "  second"], cursorX: 8, cursorY: 1), "a second line")
             t.expect(!PromptLine.isEmpty(lines: ["Do you want to proceed?"], cursorX: 2, cursorY: 0), "not the prompt")
             t.expect(!PromptLine.isEmpty(lines: [], cursorX: 0, cursorY: 3), "no screen")
-            let look = HandsScript.parseLook("2 1 2.1.296\n─────\n❯ \n─────")
+            let look = HandsScript.parseLook("2 1 2101 2.1.296\nclaude 2102\n─────\n❯ \n─────")
             t.expectEqual(look?.x, 2)
-            t.expectEqual(look?.command, "2.1.296")
             t.expect(look.map { PromptLine.isEmpty(lines: $0.lines, cursorX: $0.x, cursorY: $0.y) } == true, "parsed back, empty")
-            t.expect(HandsScript.isShell("-zsh") && HandsScript.isShell("bash") && !HandsScript.isShell("2.1.296") && !HandsScript.isShell("claude"),
-                     "Claude Code gone, its shell left: nothing is pasted into a shell")
         },
 
         TestCase("The text goes by standard input, as one bracketed paste, then Enter; every target quoted") { t in

@@ -32,7 +32,10 @@ public enum LampMasterHands {
                     + "project, machine, where it runs (tmux, background, VS Code, the Claude app), its state, how long "
                     + "since it last moved, and whether LampBoard can write into it."
             case .readSession:
-                return "The last messages of one session, by its id or the start of it: what was asked, what it answered."
+                return "The last messages of one session, by its id or the start of it: what was asked, what it answered. "
+                    + "Each message is cut at 1,200 characters, and a cut says so; full: true gives the whole of each, "
+                    + "20,000 characters at a time, and offset reads on from a character. messages: 1 with full: true "
+                    + "reads the last message whole."
             case .searchConversations:
                 return "Searches every past conversation LampBoard has indexed, on this Mac and on the other machines, "
                     + "for words that were said in it: each hit gives its title, folder, machine, last day and id, "
@@ -63,7 +66,9 @@ public enum LampMasterHands {
             switch self {
             case .sessions: return object([:], [])
             case .searchConversations: return object(["query": ["type": "string", "maxLength": 200]], ["query"])
-            case .readSession: return object(["session": id, "messages": ["type": "integer", "minimum": 1, "maximum": 20]], ["session"])
+            case .readSession:
+                return object(["session": id, "messages": ["type": "integer", "minimum": 1, "maximum": 20],
+                               "full": ["type": "boolean"], "offset": ["type": "integer", "minimum": 0]], ["session"])
             case .sendToSession: return object(["session": id, "text": text], ["session", "text"])
             case .stopSession, .openInHub: return object(["session": id], ["session"])
             case .startSession:
@@ -249,17 +254,46 @@ public enum LampMasterHands {
     /// The last `messages` of a transcript's tail, the person's and the
     /// session's, each cut to a bound. The tail may begin inside a line: a line
     /// that does not read is left out.
-    public static func digest(tail: String, messages: Int) -> String {
+    /// How much of one message `read_session` gives: by default a glance,
+    /// with `full` the whole of it, a page at a time from `offset`.
+    public static let glance = 1_200
+    public static let page = 20_000
+
+    public static func digest(tail: String, messages: Int, full: Bool = false, offset: Int = 0) -> String {
         let entries = tail.split(separator: "\n").flatMap { TranscriptDecoder.entries(fromLine: String($0)) }
             .filter { $0.kind == .human || $0.kind == .assistant }
         let last = entries.suffix(max(1, min(messages, 20)))
         guard !last.isEmpty else { return "Nothing said yet in this session." }
         return last.map { entry in
-            let who = entry.kind == .human ? "person" : "session"
-            let text = entry.text.count > 1_200 ? String(entry.text.prefix(1_200)) + " …" : entry.text
-            return "[\(who)] \(text)"
+            "[\(entry.kind == .human ? "person" : "session")] " + excerpt(entry.text, full: full, offset: offset)
         }
         .joined(separator: "\n\n")
+    }
+
+    /// One message as `read_session` gives it: a cut says so, how much, and
+    /// how to read on (a person's report, 14 October 2026: a third proposal
+    /// lost behind a bare «…»).
+    static func excerpt(_ text: String, full: Bool, offset: Int) -> String {
+        let count = text.count
+        guard full else {
+            guard count > glance else { return text }
+            return String(text.prefix(glance)) + " … [cut: \(grouped(glance)) of \(grouped(count)) characters; full: true reads it whole]"
+        }
+        let start = min(max(0, offset), count)
+        let from = start > 0 ? "[from character \(grouped(start))] " : ""
+        let rest = text.dropFirst(start)
+        guard rest.count > page else { return from + rest }
+        return from + rest.prefix(page) + " … [cut: \(grouped(page)) of \(grouped(count)) characters; offset: \(start + page) reads on]"
+    }
+
+    private static func grouped(_ number: Int) -> String {
+        let digits = String(number)
+        var out = ""
+        for (index, digit) in digits.enumerated() {
+            if index > 0, (digits.count - index) % 3 == 0 { out += "," }
+            out.append(digit)
+        }
+        return out
     }
 
     /// The message as it arrives: marked as LampMaster's, without control or
@@ -295,36 +329,52 @@ public enum HandsScript {
     /// What a non-interactive ssh lacks on a Mac: Homebrew's tmux.
     static let path = #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin""#
 
-    /// The pane's cursor and what runs in its foreground, then its screen.
+    /// The pane's cursor, its process and whether Claude Code runs under it,
+    /// then its screen.
+    ///
+    /// Not the pane's foreground name: under `bash -c "claude …; exec bash -l"`
+    /// Claude Code stays in the shell's process group, and tmux names the pane
+    /// `bash` while Claude Code runs (a person's report, 14 October 2026).
     public static func look(target: String) -> String {
         let t = NewSession.shellQuoted(target)
         // `-u`: without a locale tmux writes `❯` and every other non-ASCII character as `_`.
-        return "\(path); tmux -u display-message -p -t \(t) '#{cursor_x} #{cursor_y} #{pane_current_command}' && tmux -u capture-pane -p -t \(t)"
+        return "\(path); h=$(tmux -u display-message -p -t \(t) '#{cursor_x} #{cursor_y} #{pane_pid} #{pane_current_command}') || exit 1; "
+            + "echo \"$h\"; set -- $h; ps -A -o pid=,ppid=,args= | awk -v root=\"$3\" \(NewSession.shellQuoted(claudeUnderPane)); "
+            + "tmux -u capture-pane -p -t \(t)"
     }
+
+    /// An awk program over `ps`'s pid, parent and command line: `claude <pid>`
+    /// for a Claude Code process at or under the pane's process `root`, else
+    /// `none`. Claude Code is a command named `claude`, or `node` running one; a
+    /// shell whose command line merely mentions it is not.
+    public static let claudeUnderPane = #"""
+        { parent[$1] = $2; n = split($3, a, "/"); first = a[n]; m = split($4, b, "/"); second = b[m]
+          if (first == "claude" || $3 ~ /\/claude\/versions\// || (first ~ /^node/ && second == "claude")) found[$1] = 1 }
+        END { for (pid in found) { p = pid; k = 0
+                while (p != "" && p != root && k < 64) { p = parent[p]; k++ }
+                if (p == root) { print "claude " pid; exit } }
+              print "none" }
+        """#
 
     public struct Look: Equatable, Sendable {
         public let lines: [String]
         public let x: Int
         public let y: Int
-        /// The pane's foreground process: Claude Code, or a shell it left behind.
-        public let command: String
+        /// The pane's own process.
+        public let panePid: Int?
+        /// Whether a Claude Code process runs at or under it.
+        public let claude: Bool
     }
 
-    /// The cursor, the foreground process and the screen, read back.
+    /// The cursor, the pane's process, Claude Code's presence and the screen, read back.
     public static func parseLook(_ output: String) -> Look? {
         var lines = output.components(separatedBy: "\n")
-        guard let first = lines.first else { return nil }
-        let fields = first.split(separator: " ", maxSplits: 2).map(String.init)
+        guard lines.count >= 2 else { return nil }
+        let fields = lines[0].split(separator: " ", maxSplits: 3).map(String.init)
         guard fields.count >= 2, let x = Int(fields[0]), let y = Int(fields[1]) else { return nil }
-        lines.removeFirst()
-        return Look(lines: lines, x: x, y: y, command: fields.count == 3 ? fields[2] : "")
-    }
-
-    /// Whether the pane's foreground process is a shell: Claude Code has ended
-    /// there, and what is pasted would run as commands.
-    public static func isShell(_ command: String) -> Bool {
-        let name = command.hasPrefix("-") ? String(command.dropFirst()) : command
-        return ["sh", "bash", "zsh", "fish", "dash", "ksh", "tcsh", "csh", "nu", "login", ""].contains(name)
+        let claude = lines[1].hasPrefix("claude ")
+        lines.removeFirst(2)
+        return Look(lines: lines, x: x, y: y, panePid: fields.count > 2 ? Int(fields[2]) : nil, claude: claude)
     }
 
     /// Standard input pasted into the pane as one paste (bracketed, so a line

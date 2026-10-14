@@ -146,7 +146,8 @@ final class LampMasterConductor {
             return (LampMasterHands.list(all), false)
         case .readSession:
             guard let found = LampMasterHands.find(string("session"), in: all) else { return (unknown(string("session")), true) }
-            return (await read(found, messages: arguments["messages"] as? Int ?? 6), false)
+            return (await read(found, messages: arguments["messages"] as? Int ?? 6, full: arguments["full"] as? Bool ?? false,
+                               offset: arguments["offset"] as? Int ?? 0), false)
         case .sendToSession:
             guard let found = LampMasterHands.find(string("session"), in: all) else { return (unknown(string("session")), true) }
             return await send(LampMasterHands.framed(string("text")), to: found)
@@ -223,7 +224,7 @@ final class LampMasterConductor {
         return (host, place.target)
     }
 
-    private func read(_ session: LampMasterHands.Facts, messages: Int) async -> String {
+    private func read(_ session: LampMasterHands.Facts, messages: Int, full: Bool, offset: Int) async -> String {
         guard let state = store.state.sessions[session.id] else { return "No transcript for \(session.name)." }
         let tail: String?
         if let host = state.workspace.host {
@@ -243,7 +244,7 @@ final class LampMasterConductor {
         }
         guard let tail else { return "LampBoard could not read \(session.name)'s transcript." }
         // Decoded away from the main actor: a quarter of a megabyte of JSON lines.
-        let digest = await Task.detached(priority: .userInitiated) { LampMasterHands.digest(tail: tail, messages: messages) }.value
+        let digest = await Task.detached(priority: .userInitiated) { LampMasterHands.digest(tail: tail, messages: messages, full: full, offset: offset) }.value
         return "\(session.name) (\(session.id.prefix(8))):\n" + digest
     }
 
@@ -255,7 +256,10 @@ final class LampMasterConductor {
         guard let look = await run(HandsScript.look(target: place.target), on: place.host).flatMap(HandsScript.parseLook) else {
             return ("LampBoard could not read \(session.name)'s terminal.", true)
         }
-        guard !HandsScript.isShell(look.command) else { return ("Claude Code is no longer running in \(session.name)'s terminal.", true) }
+        guard look.claude else {
+            let pane = look.panePid.map { " \($0)" } ?? ""
+            return ("Claude Code is no longer running in \(session.name)'s terminal: no claude process under its tmux pane\(pane).", true)
+        }
         let empty = PromptLine.isEmpty(lines: look.lines, cursorX: look.x, cursorY: look.y)
         if case .refuse(let why) = LampMasterHands.canSend(session, promptEmpty: empty) { return (why, true) }
         // The same cursor is checked again by the script that pastes, at once.
