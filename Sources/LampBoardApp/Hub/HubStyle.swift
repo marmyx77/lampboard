@@ -164,7 +164,8 @@ struct HubPopList<Item: Identifiable>: View {
                 }
                 .padding(4)
             }
-            .frame(maxHeight: 280)
+            .scrollIndicators(.visible)
+            .frame(height: HubListHeight.of(items.count, row: 26, most: 280, padding: 8))
             if let note {
                 Divider().overlay(HubPalette.line)
                 Text(note).font(.system(size: 10)).foregroundStyle(HubPalette.muted).padding(.horizontal, 10).padding(.vertical, 6)
@@ -218,5 +219,15 @@ struct HubFlow: SwiftUI.Layout {
             rows[rows.count - 1] = row
         }
         return rows
+    }
+}
+
+/// The height of a list in a sheet or a popover: as tall as its rows, up to
+/// `most`, then it scrolls. A scroll view given only a largest height takes
+/// its smallest in a sheet, which sized to its content showed one row and a
+/// scroll bar too thin to see (a person, 14 October 2026).
+enum HubListHeight {
+    static func of(_ count: Int, row: CGFloat, most: CGFloat, padding: CGFloat = 0) -> CGFloat {
+        min(CGFloat(max(count, 1)) * row + padding, most)
     }
 }

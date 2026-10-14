@@ -68,6 +68,10 @@ struct HubSidebarView: View {
                 HubLampMasterRow(service: service, selected: model.selected == HubModel.lampMasterId) {
                     model.selected = HubModel.lampMasterId
                 }
+                .contextMenu {
+                    Button("Talk to LampMaster") { model.startLampMaster() }
+                    Button("New conversation with LampMaster…") { model.restartLampMaster() }
+                }
                 .padding(.horizontal, 4).padding(.vertical, 4)
                 Rectangle().fill(HubPalette.line).frame(height: 1)
             }
@@ -151,6 +155,10 @@ struct HubConversationView: View {
                     }
                     .pickerStyle(.segmented).fixedSize()
                     .accessibilityIdentifier("hub.lampmaster.view")
+                    Button { model.restartLampMaster() } label: { Image(systemName: "arrow.counterclockwise") }
+                        .buttonStyle(.borderless).foregroundStyle(HubPalette.muted)
+                        .help("New conversation: the one running ends, and LampMaster starts again from nothing")
+                        .accessibilityIdentifier("hub.lampmaster.restart")
                 } else {
                     Button("Talk to LampMaster") { model.startLampMaster() }
                         .buttonStyle(HubButtonStyle(kind: .primary)).fixedSize()
@@ -159,6 +167,15 @@ struct HubConversationView: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
+            // Claude Code asks once whether to trust LampMaster's folder; a No,
+            // or an Esc, ends it before it says anything (a person, 14 October 2026).
+            if LampMasterConductor.willAskTrust() {
+                Text("The first time, Claude Code asks whether to trust LampMaster's folder, with the arrow on «No, exit»: press ↓, then Enter, for «Yes, I trust this folder».")
+                    .font(.system(size: 11)).foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14).padding(.bottom, 6)
+                    .accessibilityIdentifier("hub.lampmaster.trust")
+            }
             line
         }
     }

@@ -67,6 +67,9 @@ final class HubModel: ObservableObject {
     }
 
     @Published var selected: String?
+    /// A project whose Resume sheet a probe asked for, by its folder: the
+    /// projects' section opens it as the project's menu would.
+    @Published var resumeAsked: String?
     @Published private(set) var centre: Centre = .none
     /// Said over the centre when two processes hold the chosen conversation.
     @Published private(set) var twoWriters: String?
@@ -261,6 +264,23 @@ final class HubModel: ObservableObject {
     func startLampMaster() {
         failure = nil
         conductor?.start { [weak self] reason in self?.failed("LampMaster did not start", reason) }
+        lampMasterCards = false
+        if selected == Self.lampMasterId { refreshCentre() } else { selected = Self.lampMasterId }
+    }
+
+    /// A new conversation with LampMaster, after a Yes: the one running ends,
+    /// with what it was told; its cards and rounds stay.
+    func restartLampMaster(confirmed: Bool = false) {
+        guard let conductor else { return }
+        if conductor.sessionId != nil, !confirmed, !Alerts.confirm(
+            title: "Start a new conversation with LampMaster?",
+            message: "The one running now ends, and LampMaster starts again knowing nothing of it. Its cards and rounds stay.",
+            confirmTitle: "New conversation"
+        ) { return }
+        failure = nil
+        conductor.restart(end: { [weak self] id in self?.deps.endConfirmed(id) }) { [weak self] reason in
+            self?.failed("LampMaster did not start", reason)
+        }
         lampMasterCards = false
         if selected == Self.lampMasterId { refreshCentre() } else { selected = Self.lampMasterId }
     }

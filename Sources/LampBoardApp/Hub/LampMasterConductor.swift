@@ -21,6 +21,10 @@ final class LampMasterConductor {
 
     static let sessionKey = "lampmaster.sessionId"
 
+    /// Past conversations that say some words: the search index's, set once
+    /// the app has one. `nil`, LampMaster is told the search is off.
+    var search: ((String) -> [LampMasterHands.Found])?
+
     init(store: StateStore, launcher: SessionLauncher, port: UInt16,
          target: @escaping (String) -> LiveTarget?, openInHub: @escaping (String) -> Void) {
         self.store = store
@@ -50,7 +54,26 @@ final class LampMasterConductor {
         let start: NewSession.Start = resumable.map { .resume(sessionId: $0) } ?? .new(sessionId: SessionLauncher.newSessionId())
         Preferences.sharedDefaults.set(start.sessionId, forKey: Self.sessionKey)
         // Not revealed as a session of its own: the Hub shows it on LampMaster's row.
-        launcher.launch(folder: folder, host: nil, start: start, name: "LampMaster", reveal: false) { if let reason = $0 { failed(reason) } }
+        // Always in the mode that asks, whatever Settings choose for other sessions
+        // (D169): its own settings turn bypass off, and its hands act only when asked.
+        launcher.launch(folder: folder, host: nil, start: start, name: "LampMaster", reveal: false,
+                        permissions: .ask) { if let reason = $0 { failed(reason) } }
+    }
+
+    /// A new conversation with LampMaster: the one running ends (`end` closes
+    /// its tmux session), and the next start is a new id, not a resume.
+    func restart(end: (String) -> Void, failed: @escaping (String) -> Void) {
+        if let old = sessionId { end(old) }
+        Preferences.sharedDefaults.removeObject(forKey: Self.sessionKey)
+        start(failed: failed)
+    }
+
+    /// Whether Claude Code will first ask to trust LampMaster's folder: it asks
+    /// once per folder, and the conversation starts only after a Yes.
+    static func willAskTrust() -> Bool {
+        let config = try? Data(contentsOf: URL(fileURLWithPath: MoveHere.configPath(
+            environment: ProcessInfo.processInfo.environment, home: AppConfig.homeDirectory.path)))
+        return !MoveHere.isTrusted(folder: folder.path, config: config)
     }
 
     /// The key of this start of LampMaster, given to its server alone through
@@ -75,7 +98,8 @@ final class LampMasterConductor {
         }
         let key = bytes.map { String(format: "%02x", $0) }.joined()
         let config = folder.appendingPathComponent(".mcp.json")
-        try LampMasterHome.mcpConfig(executable: executable, port: port, defaultPort: AppConfig.listenPort, key: key)
+        try LampMasterHome.mcpConfig(executable: executable, port: port, defaultPort: AppConfig.listenPort, key: key,
+                                     home: AppConfig.isUsingHomeOverride ? AppConfig.homeDirectory.path : nil)
             .write(to: config, options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: config.path)
         FileManager.default.createFile(atPath: Self.keyFile.path, contents: Data(key.utf8), attributes: [.posixPermissions: 0o600])
@@ -132,16 +156,29 @@ final class LampMasterConductor {
             guard let place = place(found.id) else { return ("LampBoard has no terminal into \(found.name).", true) }
             let done = await run(HandsScript.stop(target: place.target), on: place.host) != nil
             return done ? ("Esc pressed in \(found.name).", false) : ("tmux did not take the key.", true)
+        case .searchConversations:
+            let query = string("query")
+            guard !query.isEmpty else { return ("Say what to search for.", true) }
+            guard Preferences().searchIndexed, let search else {
+                return ("LampBoard's search of past conversations is off (Settings › Privacy & data). Use the person's own memory tools, if any.", true)
+            }
+            let found = await Task.detached(priority: .userInitiated) { search(query) }.value
+            return (LampMasterHands.searchResult(found, query: query, day: { $0.formatted(date: .abbreviated, time: .shortened) }), false)
         case .startSession:
             let folder = string("folder"), host = string("host").nilIfEmpty, resume = string("resume").nilIfEmpty
             guard ProjectList.isValid(path: folder, host: host) else { return ("A folder is an absolute path, on this Mac or a machine in Settings › Other Macs.", true) }
             let start: NewSession.Start = resume.map { .resume(sessionId: $0) } ?? .new(sessionId: SessionLauncher.newSessionId())
+            let options = LampMasterHands.startOptions(arguments)
             // Its outcome, not a guess: a start here takes tmux's word, one there ssh's.
             let refusal: String? = await withCheckedContinuation { continuation in
-                launcher.launch(folder: folder, host: host, start: start, name: nil, reveal: false) { continuation.resume(returning: $0) }
+                launcher.launch(folder: folder, host: host, start: start, name: nil, reveal: false,
+                                keepsRunning: options.keepsRunning, permissions: options.permissions) { continuation.resume(returning: $0) }
             }
+            Diagnostics.log("lampmaster: start_session \(start.sessionId.prefix(8)) \(resume == nil ? "new" : "resume") "
+                            + "keeps \(options.keepsRunning) mode \(options.permissions?.rawValue ?? "settings") → \(refusal ?? "started")")
             if let refusal { return (refusal, true) }
-            return ("Started in \((folder as NSString).lastPathComponent)\(host.map { " on \($0)" } ?? ""), id \(start.sessionId.prefix(8)).", false)
+            let how = options.keepsRunning ? "in tmux" : "in the Hub, ending when closed"
+            return ("Started \(how) in \((folder as NSString).lastPathComponent)\(host.map { " on \($0)" } ?? ""), id \(start.sessionId.prefix(8)).", false)
         case .openInHub:
             guard let found = LampMasterHands.find(string("session"), in: all) else { return (unknown(string("session")), true) }
             openInHub(found.id)

@@ -102,10 +102,11 @@ enum LampMasterHandsSuite {
                      "UTF-8 asked for: without a locale tmux writes ❯ as _ \(look)")
         },
 
-        TestCase("Its server lists six tools; what reads is marked as data, what acts is asked about") { t in
+        TestCase("Its server lists seven tools; what reads is marked as data, what acts is asked about") { t in
             let list = call(#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)
             let tools = ((list["result"] as? [String: Any])?["tools"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }
-            t.expectEqual(tools, ["sessions", "read_session", "send_to_session", "stop_session", "start_session", "open_in_hub"])
+            t.expectEqual(tools, ["sessions", "read_session", "search_conversations", "send_to_session", "stop_session",
+                                  "start_session", "open_in_hub"])
             let read = call(#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_session","arguments":{"session":"4b13"}}}"#)
             let text = (((read["result"] as? [String: Any])?["content"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
             t.expect(text.hasPrefix(LampMasterMCP.dataNotice), text)
@@ -118,15 +119,57 @@ enum LampMasterHandsSuite {
                                                                 key: "k3y"), as: UTF8.self)
             t.expect(mcp.contains(#""args" : ["#) && mcp.contains(#""--hands""#) && mcp.contains(#""9900""#), mcp)
             t.expect(mcp.contains(#""LAMPBOARD_HANDS_KEY" : "k3y""#), "the key of this start, for its server alone: \(mcp)")
+            t.expect(!mcp.contains("LAMPBOARD_HOME"), "the account's home unless LampBoard runs against another")
+            let fake = String(decoding: LampMasterHome.mcpConfig(executable: "/x", port: 9876, defaultPort: 9876, key: "k",
+                                                                 home: "/tmp/fake"), as: UTF8.self)
+            t.expect(fake.contains(#""LAMPBOARD_HOME" : "\/tmp\/fake""#) || fake.contains(#""LAMPBOARD_HOME" : "/tmp/fake""#), fake)
             let settings = (try? JSONSerialization.jsonObject(with: LampMasterHome.settings()) as? [String: Any]) ?? [:]
             t.expectEqual(settings["enabledMcpjsonServers"] as? [String], ["lampboard"])
             let permissions = settings["permissions"] as? [String: Any]
-            t.expectEqual(permissions?["allow"] as? [String], ["mcp__lampboard__sessions", "mcp__lampboard__read_session"])
+            t.expectEqual(permissions?["allow"] as? [String], ["mcp__lampboard__sessions", "mcp__lampboard__read_session",
+                                                               "mcp__lampboard__search_conversations"])
             t.expectEqual(permissions?["ask"] as? [String], ["mcp__lampboard__send_to_session", "mcp__lampboard__stop_session",
                                                              "mcp__lampboard__start_session", "mcp__lampboard__open_in_hub"],
                           "every action asked about, whatever the mode")
             t.expectEqual(permissions?["defaultMode"] as? String, "default")
             t.expectEqual(permissions?["disableBypassPermissionsMode"] as? String, "disable")
+        },
+
+        TestCase("A start says how: in tmux unless told otherwise, and in Settings' permission mode unless one is named") { t in
+            t.expectEqual(LampMasterHands.startOptions([:]).keepsRunning, true)
+            t.expectNil(LampMasterHands.startOptions([:]).permissions, "Settings decide")
+            let temporary = LampMasterHands.startOptions(["keepsRunning": false, "permissions": "bypass"])
+            t.expectEqual(temporary.keepsRunning, false)
+            t.expectEqual(temporary.permissions, .bypass)
+            t.expectEqual(LampMasterHands.startOptions(["permissions": "allowBypass"]).permissions, .allowBypass)
+            t.expectNil(LampMasterHands.startOptions(["permissions": "--rm"]).permissions, "an unknown mode is no flag")
+            let schema = LampMasterHands.Tool.startSession.inputSchema["properties"] as? [String: Any] ?? [:]
+            t.expectEqual(Set(schema.keys), ["folder", "host", "resume", "keepsRunning", "permissions"])
+            t.expectEqual((schema["permissions"] as? [String: Any])?["enum"] as? [String], ["ask", "allowBypass", "bypass"])
+            t.expect(LampMasterHands.Tool.startSession.description.contains("bypass"), "the modes are told")
+        },
+
+        TestCase("A search says where each conversation ran, so it can be taken up there") { t in
+            let at = Date(timeIntervalSince1970: 1_800_000_000)
+            let found = [
+                LampMasterHands.Found(sessionId: "4b138f7d-67ab-4d4c-9396-77adaed0f851", title: "Pricing page", folder: "/home/dev/site",
+                                      host: "box", lastAt: at, snippet: "the «pricing» table"),
+                LampMasterHands.Found(sessionId: "9ffa24f0-6fa8-4ebc-88fe-551d610cba17", title: nil, folder: "/Users/dev/app",
+                                      host: nil, lastAt: nil, snippet: "pricing\nagain"),
+            ]
+            let text = LampMasterHands.searchResult(found, query: "pricing", day: { _ in "1 Jan" })
+            t.expect(text.contains("Pricing page · /home/dev/site on box · 1 Jan · id 4b138f7d-67ab-4d4c-9396-77adaed0f851"), text)
+            t.expect(text.contains("untitled · /Users/dev/app on this Mac"), text)
+            t.expect(text.contains("start_session"), "how to take one up: \(text)")
+            t.expect(LampMasterHands.searchResult([], query: "pricing", day: { _ in "" }).contains("No conversation"), "none")
+            t.expect(!LampMasterHands.Tool.searchConversations.acts, "a search reads")
+        },
+
+        TestCase("Its instructions say who it is, and how it finds and opens a past conversation") { t in
+            let text = LampMasterHome.instructions
+            t.expect(text.contains("You are LampMaster"), text)
+            t.expect(text.contains("search_conversations") && text.contains("start_session"), text)
+            t.expect(text.contains("keepsRunning") && text.contains("permissions"), text)
         },
     ])
 }

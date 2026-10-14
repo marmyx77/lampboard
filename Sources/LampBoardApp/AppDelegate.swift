@@ -270,6 +270,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panelController = controller
         // The Hub (D149), where the Plancia was.
         hub = HubSetup.make(store: store, panel: controller, live: live, server: server, port: port)
+        hub?.model.conductor?.search = { [searchIndex] words in
+            searchIndex.search(words, limit: 10).map {
+                LampMasterHands.Found(sessionId: $0.sessionId, title: $0.title, folder: $0.cwd, host: $0.host,
+                                      lastAt: $0.lastAt, snippet: $0.snippet)
+            }
+        }
 
         startNotifier(for: controller)
         startPresence()

@@ -64,6 +64,7 @@ enum HubSetup {
         panel.openHub = { [weak hub] id in hub?.show(session: id) }
         let launcher = SessionLauncher(store: store) { [weak hub] started in hub?.show(started) }
         model.launcher = launcher
+        panel.ending = { [weak launcher] id in launcher?.forget(id) }
         let conductor = LampMasterConductor(
             store: store, launcher: launcher, port: port,
             target: { [weak panel] id in store.state.sessions[id].flatMap { panel?.liveTarget($0) } },

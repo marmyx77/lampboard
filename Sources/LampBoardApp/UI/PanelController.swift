@@ -61,6 +61,9 @@ final class PanelController {
     /// The target the Hub started a session with, while its tmux pane is not
     /// learnt yet (D168).
     var startedTarget: ((String) -> LiveTarget?)?
+    /// Told when the person ends a session (D168): a conversation LampBoard
+    /// started a moment ago is no longer one being started.
+    var ending: ((String) -> Void)?
     /// Conversations being moved from another machine (D166): one at a time each.
     var movingElsewhere: Set<String> = []
     /// Takes a conversation up in tmux on `host`, in the Hub, once its VS Code

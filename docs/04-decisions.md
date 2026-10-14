@@ -6212,3 +6212,49 @@ Claude Code do.
 - with Bypass, a session that ends when closed runs with `--dangerously-skip-permissions`;
 - with Bypass on Shift+Tab, a session in tmux runs with `--allow-dangerously-skip-permissions`;
 - with Ask, a session runs with neither flag.
+
+## D170 · LampMaster finds a past conversation and opens it; a new conversation with it
+
+**Decided** (14 October 2026). LampMaster gets what it needs to answer «where did we talk about X?» and act on it.
+
+**Search.** A new tool, `search_conversations`, searches LampBoard's index of past conversations, on this Mac and
+on the other machines. Each hit gives its title, folder, machine, last day and id. The tool only reads, so it is
+allowed ahead, like `sessions`. Its instructions also tell LampMaster to use any memory tool the person has
+connected. The product never names one.
+
+**Opening.** `start_session` takes two more choices:
+- `keepsRunning`: tmux, or the Hub's own terminal, ending when closed (D168);
+- `permissions`: `ask`, `allowBypass` or `bypass` (D169). Left out, Settings decide.
+
+The tool still asks the person before it runs, and the question shows those choices.
+
+**LampMaster itself always starts in the mode that asks**, whatever Settings choose for other sessions. Its own
+settings turn bypass off, so a bypass flag would have contradicted them.
+
+**A new conversation.** **New conversation with LampMaster…** is in its row's menu and on a button in its header.
+After a Yes, the running conversation ends and the next one starts with a new id. LampMaster's cards and rounds
+stay.
+
+**Identity.** The instructions say who LampMaster is, and that the folder it runs in is only its home.
+
+**The trust question.** The first start asks Claude Code's question about trusting LampMaster's folder. Because
+the folder allows three reading tools ahead, the arrow starts on «No, exit»: Enter ends Claude Code, and the
+terminal is left at a shell. The header now says, in orange until the folder is trusted, to press ↓ and then
+Enter. LampBoard does not mark the folder trusted itself: that question is Claude Code's to ask.
+
+**Why.** Marco asked LampMaster where a project had been discussed, then wanted it opened in tmux without
+prompts. There was no way to start over after a mistake. On his Mac, LampMaster's folder had never been trusted,
+so its conversation never started. A plain Claude Code reached over ssh sat in its terminal instead, and of
+course did not know it was LampMaster.
+
+**Measured** (`lampmaster-reach.sh`, real sessions on the test Mac):
+- the trust note shows, and Yes starts LampMaster;
+- LampMaster runs with no bypass flag, though Settings say Bypass;
+- asked who it is, it answers LampMaster;
+- asked where a codename was said, it calls `search_conversations` and names the folder;
+- asked to open that conversation in tmux in bypass, it asks the person first, then resumes it with
+  `--dangerously-skip-permissions`, in tmux;
+- a new conversation ends the old one and starts a new id.
+
+Found on the way: a conversation ended with End session within a minute and a half of its start still read
+as being started, and taking it up again was refused. End now clears that.

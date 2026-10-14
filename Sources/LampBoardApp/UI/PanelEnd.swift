@@ -34,12 +34,14 @@ extension PanelController {
         switch target {
         case .direct?:
             guard confirm("Claude Code stops, and its terminal closes."), let target else { return }
+            ending?(session.id)
             live?.endHosted(target)
             store.dismiss(sessionId: session.id)
             rebuildContent()
         case .tmux(let host, let place, _)?:
             let place_ = host.map { " on \($0)" } ?? ""
             guard confirm("Claude Code stops, and its tmux session \u{201C}\(place.session)\u{201D}\(place_) closes with it.") else { return }
+            ending?(session.id)
             Task { @MainActor [weak self] in
                 let ended = await Self.killTmuxSession(place.session, host: host)
                 guard let self else { return }
@@ -54,6 +56,7 @@ extension PanelController {
         case .newTmux(let host, _, _, let launch, _)?:
             // Started on another machine and not yet placed: found there by its tag.
             guard confirm("Claude Code stops, and its tmux session on \(host) closes with it.") else { return }
+            ending?(session.id)
             let script = #"export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"; l="# + launch + "; "
                 + #"n=$(tmux list-sessions -F '#{@lampboard} #{session_name}' 2>/dev/null | sed -n "s/^$l //p" | head -n 1); "#
                 + #"[ -n "$n" ] && tmux kill-session -t "=$n" && echo ended"#
@@ -71,6 +74,7 @@ extension PanelController {
             }
             guard confirm("Process \(process.pid), in \((process.cwd as NSString).lastPathComponent), is asked to stop and gets to save what it holds.")
             else { return }
+            ending?(session.id)
             if SessionTerminator.terminate(process) {
                 store.dismiss(sessionId: session.id)
                 rebuildContent()

@@ -97,6 +97,11 @@ struct HubProjectsSection: View {
                 if item.isLive { model.openRunning(item.id) } else { model.resumeSession(item.id, folder: entry.path, host: entry.host) }
             }, cancel: { resuming = nil })
         }
+        .onChange(of: model.resumeAsked) { _, path in
+            guard let path else { return }
+            model.resumeAsked = nil
+            resuming = ProjectList.entries(attached: projects.attached, state: store.state).first { $0.path == path && $0.host == nil }
+        }
     }
 
     private func row(_ entry: ProjectList.Entry) -> some View {
@@ -314,7 +319,8 @@ struct HubResumeSheet: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 280)
+                    .scrollIndicators(.visible)
+                    .frame(height: HubListHeight.of(items.count, row: 26, most: 360))
                 } else {
                     ProgressView().controlSize(.small)
                 }

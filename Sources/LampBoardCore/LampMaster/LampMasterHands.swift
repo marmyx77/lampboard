@@ -15,6 +15,7 @@ public enum LampMasterHands {
     public enum Tool: String, CaseIterable, Sendable {
         case sessions
         case readSession = "read_session"
+        case searchConversations = "search_conversations"
         case sendToSession = "send_to_session"
         case stopSession = "stop_session"
         case startSession = "start_session"
@@ -22,7 +23,7 @@ public enum LampMasterHands {
 
         /// Tools that change something: never allowed ahead in LampMaster's
         /// settings, so Claude Code asks every time.
-        public var acts: Bool { self != .sessions && self != .readSession }
+        public var acts: Bool { ![.sessions, .readSession, .searchConversations].contains(self) }
 
         public var description: String {
             switch self {
@@ -32,6 +33,10 @@ public enum LampMasterHands {
                     + "since it last moved, and whether LampBoard can write into it."
             case .readSession:
                 return "The last messages of one session, by its id or the start of it: what was asked, what it answered."
+            case .searchConversations:
+                return "Searches every past conversation LampBoard has indexed, on this Mac and on the other machines, "
+                    + "for words that were said in it: each hit gives its title, folder, machine, last day and id, "
+                    + "enough to take it up with start_session."
             case .sendToSession:
                 return "Writes a message into one session and sends it, as the person would type it. Only a session "
                     + "in tmux, at rest, with nothing typed in its prompt; it arrives marked as coming from LampMaster. "
@@ -39,14 +44,17 @@ public enum LampMasterHands {
             case .stopSession:
                 return "Stops the turn a session is running (Esc in its terminal). Only a session in tmux that is working."
             case .startSession:
-                return "Starts a session in a project folder, on this Mac or on a machine of Settings › Other Macs, "
-                    + "in tmux; or takes up a past conversation by its id. It opens in LampBoard's Hub."
+                return "Starts a session in a project folder, on this Mac or on a machine of Settings › Other Macs; "
+                    + "or takes up a past conversation by its id (resume). keepsRunning true (the default) runs it in "
+                    + "tmux, where it outlives LampBoard; false runs it in the Hub's own terminal and it ends when closed. "
+                    + "permissions: ask (Claude Code asks), allowBypass (bypass offered on Shift+Tab) or bypass (it never "
+                    + "asks); left out, the person's Settings decide. Its row joins the panel; open_in_hub shows it."
             case .openInHub:
                 return "Shows a session in LampBoard's Hub, in its own terminal, for the person to look at."
             }
         }
 
-        var inputSchema: [String: Any] {
+        public var inputSchema: [String: Any] {
             let text: [String: Any] = ["type": "string", "maxLength": LampMasterHands.maxText]
             let id: [String: Any] = ["type": "string", "maxLength": 64]
             func object(_ properties: [String: Any], _ required: [String]) -> [String: Any] {
@@ -54,13 +62,60 @@ public enum LampMasterHands {
             }
             switch self {
             case .sessions: return object([:], [])
+            case .searchConversations: return object(["query": ["type": "string", "maxLength": 200]], ["query"])
             case .readSession: return object(["session": id, "messages": ["type": "integer", "minimum": 1, "maximum": 20]], ["session"])
             case .sendToSession: return object(["session": id, "text": text], ["session", "text"])
             case .stopSession, .openInHub: return object(["session": id], ["session"])
             case .startSession:
-                return object(["folder": ["type": "string", "maxLength": 1024], "host": id, "resume": id], ["folder"])
+                return object(["folder": ["type": "string", "maxLength": 1024], "host": id, "resume": id,
+                               "keepsRunning": ["type": "boolean"],
+                               "permissions": ["type": "string", "enum": NewSession.Permissions.allCases.map(\.rawValue)]],
+                              ["folder"])
             }
         }
+    }
+
+    /// How `start_session` was asked to start: in tmux unless `keepsRunning`
+    /// is false; in a permission mode only when one is named, Settings' otherwise.
+    public static func startOptions(_ arguments: [String: Any]) -> (keepsRunning: Bool, permissions: NewSession.Permissions?) {
+        let keeps = arguments["keepsRunning"] as? Bool ?? true
+        let mode = (arguments["permissions"] as? String).flatMap(NewSession.Permissions.init(rawValue:))
+        return (keeps, mode)
+    }
+
+    /// One past conversation a search found.
+    public struct Found: Equatable, Sendable {
+        public let sessionId: String
+        public let title: String?
+        public let folder: String?
+        public let host: String?
+        public let lastAt: Date?
+        public let snippet: String
+
+        public init(sessionId: String, title: String?, folder: String?, host: String?, lastAt: Date?, snippet: String) {
+            self.sessionId = sessionId
+            self.title = title
+            self.folder = folder
+            self.host = host
+            self.lastAt = lastAt
+            self.snippet = snippet
+        }
+    }
+
+    /// What `search_conversations` answers: one line per conversation, where
+    /// it ran first, and how to take one up.
+    public static func searchResult(_ found: [Found], query: String, day: (Date) -> String) -> String {
+        guard !found.isEmpty else {
+            return "No conversation LampBoard has indexed says \"\(query.prefix(80))\". Try other words, or the person's own memory tools."
+        }
+        let lines = found.map { hit -> String in
+            let place = "\(hit.folder ?? "unknown folder") on \(hit.host ?? "this Mac")"
+            let when = hit.lastAt.map { " · " + day($0) } ?? ""
+            let snippet = hit.snippet.replacingOccurrences(of: "\n", with: " ").prefix(160)
+            return "- \(hit.title ?? "untitled") · \(place)\(when) · id \(hit.sessionId)\n  \(snippet)"
+        }
+        return lines.joined(separator: "\n")
+            + "\n\nTo take one up: start_session with its folder, its machine as host (none for this Mac) and its id as resume."
     }
 
     /// The most LampMaster writes into a session at once.

@@ -281,6 +281,7 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if wish["hideLast"] as? Bool == true { setLast(model.files.lastColumn, shown: false) }
         if wish["popOut"] as? Bool == true { model.popOut() }
         if wish["startLampMaster"] as? Bool == true { model.startLampMaster() }
+        if wish["restartLampMaster"] as? Bool == true { model.restartLampMaster(confirmed: true) }
         // A drop on the centre's terminal: `{"drop": {"files": [...]}}` or `{"drop": {"text": "..."}}`.
         if let drop = wish["drop"] as? [String: Any] {
             guard case .terminal(let target) = model.centre, let terminal = model.terminal(for: target) else { return false }
@@ -296,6 +297,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let resume = wish["resume"] as? [String: String], let id = resume["id"], let folder = resume["folder"] {
             model.resumeSession(id, folder: folder, host: resume["host"])
         }
+        // A project's «Resume a past conversation…», by its folder on this Mac.
+        if let path = wish["resumeSheet"] as? String { model.resumeAsked = path }
         if wish["bringBack"] as? Bool == true { model.bringBack() }
         if let preview = wish["preview"] as? Bool, let active = model.files.active {
             if preview { model.files.previews.insert(active) } else { model.files.previews.remove(active) }

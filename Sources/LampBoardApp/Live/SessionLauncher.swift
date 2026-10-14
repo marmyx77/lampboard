@@ -56,15 +56,22 @@ final class SessionLauncher {
         return now.timeIntervalSince(since) < Self.startingFor
     }
 
+    /// `id` was ended by the person: taking it up again is no second writer.
+    /// Ended before its row moved, it read as being started for a minute and a
+    /// half, and LampMaster's resume of it was refused (14 October 2026).
+    func forget(_ id: String) { starting[id] = nil }
+
     /// Starts `start` in `folder`, on `host` or this Mac; `done` is told `nil`
     /// once it is started, or why not. `checkBusy` is off only right after
     /// LampBoard ended the one process that held the conversation, checked by
     /// its start (D166): the probe has not seen it go yet.
     /// `keepsRunning` off starts a temporary session (D168): Claude Code in
     /// LampBoard's own terminal, no tmux, ended when it is closed or LampBoard quits.
+    /// `permissions` is the mode it starts in; Settings' (D169) when `nil`.
     func launch(folder: String, host: String?, start: NewSession.Start, name: String?, reveal: Bool = true,
-                checkBusy: Bool = true, keepsRunning: Bool = true, done: @escaping (String?) -> Void) {
-        let start = start.with(Preferences().sessionPermissions)
+                checkBusy: Bool = true, keepsRunning: Bool = true, permissions: NewSession.Permissions? = nil,
+                done: @escaping (String?) -> Void) {
+        let start = start.with(permissions ?? Preferences().sessionPermissions)
         let id = start.sessionId
         guard !isStarting(id) else { return done("This conversation is being started already.") }
         if checkBusy, case .resume = start, let reason = Self.busy(id, host: host, store: store) { return done(reason) }
