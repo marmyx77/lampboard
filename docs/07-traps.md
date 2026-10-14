@@ -2121,3 +2121,14 @@ keychain by name, since the login keychain of such an account is locked.
 `async function`, the module was installed, reported "Successfully installed", and
 then never ran: no error in the session, no line in any log. `claude plugin validate`
 names the cause in one sentence. Run it on every mod before trusting a live probe.
+
+## A scroll view in a sheet asks for no height
+
+The Hub's «Resume a past conversation…» sheet held its list in a `ScrollView` with
+`.frame(maxHeight: 280)`. A cap is not a height: a sheet takes the height its content
+asks for, and a scroll view asks for almost none. With five conversations to take up,
+the sheet showed half of the first one and a scroller a few points tall for the rest
+(14 October 2026). The list's height is computed now from its count
+(`ResumeList.height`): every row up to eight, then eight and a scroll. A scroll view
+in a sheet, a popover or anything else that sizes itself to its content needs a
+height of its own, not a maximum.

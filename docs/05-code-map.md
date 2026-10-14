@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,383 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    29,908 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,703 lines · 132 files   1341 cases, instantaneous
+  LampBoardCore/  25,457 lines · 195 files  pure logic, zero AppKit
+  LampBoardApp/    29,992 lines · 165 files   shell: AppKit, network, windows
+  LampBoardTests/  18,740 lines · 132 files   1344 cases, instantaneous
   LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1636,11 +1636,13 @@ ssh can be given. The list the Hub shows: the attached ones in their order, then
 the folders the sessions are in, the latest first, each with its sessions. Its
 file read back keeps only what is valid.
 
-### `PastConversations.swift` · 42
+### `PastConversations.swift` · 116
 What a project offers to take up again (D163): its transcripts, the latest first,
 and on another machine only the ones of that folder. The ones a process holds now
 come first, marked: they are opened where they run, never taken up again, which
-would make a second writer.
+would make a second writer. `ResumeList` is that list as the sheet draws it: each
+row's title, project and age, the list's height for its count (eight rows, then
+it scrolls), and the selection `↑` `↓` move.
 
 > **Touching here** writes a shell command that runs on someone else's machine:
 > every word from a folder or a name goes in single quotes.
@@ -1991,13 +1993,20 @@ the text view draws itself (AppKit's ruler floats over the content since macOS
 14), code kept whole and wrapped past 2,000 characters, the place kept when the
 file is read again. What is drawn is reported for the tests.
 
-### `HubProjects.swift` · 323
+### `HubProjects.swift` · 275
 The projects in the Hub's first column (D163): attached ones and the folders the
 sessions are in, each a menu — a new session in tmux, one in the background here,
 a past conversation to resume, kept in or taken off the list —, the sheet that
 attaches a folder here, or on another machine by browsing its folders over ssh
-(`RemoteFolders`, D165), and the one that lists what can be
-resumed, read off the main thread.
+(`RemoteFolders`, D165), and what can be resumed, read off the main thread.
+
+### `HubResumeSheet.swift` · 137
+The sheet that lists what a project can resume (D163), as `ResumeList` lays it
+out: every row whole — title, project, age — the list as tall as its rows up to
+eight and scrolling past them, the sheet growing with it. `↑` `↓` move the
+selection, `⏎` resumes it or opens the one running now, `Esc` cancels; a row under
+the pointer is shaded, the selected one tinted and outlined. A scroll view with
+only a maximum height showed half a row (07-traps).
 
 ### `HubTestDrop.swift` · 45
 A drop on the Hub's terminal as AppKit hands one, made by hand for the end-to-end
@@ -2300,7 +2309,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1341 cases
+## `LampBoardTests/` — 1344 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
