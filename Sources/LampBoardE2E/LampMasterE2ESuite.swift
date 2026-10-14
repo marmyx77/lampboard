@@ -407,7 +407,7 @@ enum LampMasterE2ESuite {
                     }
                     let answers = bench.mcp(as: "0000aaaa-asker", lines)
                     t.expectEqual(((answers[1]?["result"] as? [String: Any])?["serverInfo"] as? [String: Any])?["name"] as? String, "lampmaster")
-                    t.expectEqual(((answers[2]?["result"] as? [String: Any])?["tools"] as? [[String: Any]])?.count, 4, "four tools")
+                    t.expectEqual(((answers[2]?["result"] as? [String: Any])?["tools"] as? [[String: Any]])?.count, 5, "five tools, ask_session the fifth (D172)")
                     t.expect(text(answers[3]).contains("f00dcafe") && text(answers[3]).contains("build.ts"), "overlaps: \(text(answers[3]))")
                     t.expect(text(answers[4]).contains("e2e1a2b3"), "who_knows: \(text(answers[4]))")
                     t.expect(!text(answers[4]).contains(answer), "never the other session's words")
@@ -470,7 +470,9 @@ enum LampMasterE2ESuite {
                     let install = bench.app.runCommand(["mcp", "install", "--port", String(bench.app.port)])
                     t.expectEqual(install.status, 0, "installed: \(install.output)")
                     let args = bench.read("args.txt").split(separator: "\n").map(String.init)
-                    t.expectEqual(Array(args.prefix(6)), ["mcp", "add", "--scope", "user", "lampmaster", "--"], "claude's own command")
+                    // The bench's LampBoard runs on a fake home, which its server is told (D172).
+                    t.expectEqual(Array(args.prefix(8)), ["mcp", "add", "--scope", "user", "lampmaster", "-e",
+                                                          "LAMPBOARD_HOME=" + bench.app.home.path, "--"], "claude's own command")
                     t.expectEqual(Array(args.suffix(3)), ["mcp", "--port", String(bench.app.port)], "this binary, on this port")
                     // What claude would have written, so the uninstall sees it.
                     let config = bench.app.home.appendingPathComponent(".claude.json")

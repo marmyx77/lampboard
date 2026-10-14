@@ -70,6 +70,7 @@ enum HubSetup {
             target: { [weak panel] id in store.state.sessions[id].flatMap { panel?.liveTarget($0) } },
             openInHub: { [weak hub] id in hub?.show(session: id) })
         model.conductor = conductor
+        panel.hubCentreSession = { [weak model] in model?.centreSessionId }
         // From the server's queue; the conductor answers on the main actor itself.
         server?.onLampMasterHands = { body in conductor.answer(body) }
         panel.startedTarget = { [weak model] id in model?.pending[id]?.target }

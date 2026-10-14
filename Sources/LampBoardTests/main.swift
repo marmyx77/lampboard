@@ -48,6 +48,7 @@ let suites: [TestSuite] = [
     WeekSummarySuite.suite,
     HandoffSuite.suite,
     LampMasterMCPSuite.suite,
+    SessionMentionSuite.suite,
     LampMasterPrecedentsSuite.suite,
     LampMasterQuotaSuite.suite,
     LampMasterAutoMuteSuite.suite,

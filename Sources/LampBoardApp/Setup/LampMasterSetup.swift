@@ -25,7 +25,8 @@ enum LampMasterSetup {
         guard let executable = Bundle.main.executablePath else { return .failed("This app's path is unknown.") }
         if isRegistered, case .failed(let reason) = unregister() { return .failed(reason) }
         return claude(LampMasterRegistration.addArguments(
-            executable: executable, port: port, defaultPort: AppConfig.listenPort
+            executable: executable, port: port, defaultPort: AppConfig.listenPort,
+            home: AppConfig.isUsingHomeOverride ? AppConfig.homeDirectory.path : nil
         ))
     }
 

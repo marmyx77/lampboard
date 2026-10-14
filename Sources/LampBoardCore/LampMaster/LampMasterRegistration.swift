@@ -18,8 +18,13 @@ public enum LampMasterRegistration {
     ///   - executable: this app's binary, which `mcp` turns into the server.
     ///   - port: added only when it is not the default, so the usual entry stays
     ///     the shortest one.
-    public static func addArguments(executable: String, port: UInt16, defaultPort: UInt16) -> [String] {
-        ["mcp", "add", "--scope", "user", name, "--", executable, "mcp"]
+    ///   - home: LampBoard's own home when it runs against another
+    ///     (`LAMPBOARD_HOME`): the server reads the panel's token there.
+    public static func addArguments(executable: String, port: UInt16, defaultPort: UInt16, home: String? = nil) -> [String] {
+        // `-e` after the name: it takes several values, and before the name it took
+        // the name as one (measured, 14 October 2026).
+        ["mcp", "add", "--scope", "user", name] + (home.map { ["-e", "\(AppConfig.homeOverrideVariable)=\($0)"] } ?? [])
+            + ["--", executable, "mcp"]
             + (port == defaultPort ? [] : ["--port", String(port)])
     }
 

@@ -44,6 +44,11 @@ final class LampMasterService: ObservableObject {
     /// What was said in earlier conversations, for `who_knows` (D89): the
     /// search index, set by whoever owns it.
     var remember: (@Sendable (String) -> [LampMasterLookup.Remembered])?
+    /// Which session may ask which (D172): granted by a drag in the Hub.
+    var mentions = SessionMention.Grants()
+    /// A question to another session through its mod (D82), answered framed,
+    /// or why not; set by whoever holds the ask desk.
+    var askSession: ((_ target: String, _ question: String) async -> (text: String, isError: Bool))?
     /// The same, wider: a question from the panel searches word by word and
     /// keeps what two words agree on, which a top six per word rarely shares.
     var rememberMany: (@Sendable (String) -> [LampMasterLookup.Remembered])?

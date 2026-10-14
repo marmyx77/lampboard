@@ -43,6 +43,9 @@ struct RowActions {
     /// «End session…» (D168): whether it can be ended from here, and ending it.
     var canEnd: (SessionState) -> Bool = { _ in false }
     var endSession: (ColumnRow) -> Void = { _ in }
+    /// In the Hub's column (D172): what the row writes when dragged into a
+    /// terminal. `nil` elsewhere: the panel's rows are not dragged out.
+    var mention: ((ColumnRow) -> NSItemProvider)? = nil
     /// The decision board of the row's repository (D105): pin one, take one off
     /// by its number, and the ones pinned now, for the menu.
     var pinDecision: (String) -> Void = { _ in }
@@ -286,6 +289,7 @@ struct TrafficLightRow: View {
         .accessibilityAction(named: "Show in Finder") { actions.revealInFinder(row) }
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
+        .modifier(MentionDrag(provide: isSample ? nil : actions.mention.map { mention in { mention(row) } }))
         .contextMenu { menu }
         .tooltip(RowSummary.of(row, now: now, muted: flags.isMuted))
         // The movement is **not** here. A row is the top line of a project, and a
@@ -592,4 +596,12 @@ struct TrafficLightRow: View {
         row.status == .idle ? Color.primary.opacity(0.72) : .primary
     }
 
+}
+
+/// A row dragged out of the Hub's column into a terminal (D172); nothing elsewhere.
+private struct MentionDrag: ViewModifier {
+    let provide: (() -> NSItemProvider)?
+    func body(content: Content) -> some View {
+        if let provide { content.onDrag(provide) } else { content }
+    }
 }

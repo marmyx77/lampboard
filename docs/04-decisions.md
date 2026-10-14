@@ -6280,3 +6280,41 @@ whole, 20,000 characters at a time, and `offset` reads on from a character.
   ai-act-lab, awevents and marketing (foreground `bash`), and under cosmos (foreground `claude`).
 - The domain suite runs the awk program over a written process table: a child of `bash -c`, the
   foreground, node, a versioned path, a shell alone, and a shell naming claude.
+
+## D172 · A session dragged into another's terminal can be asked; a green light read in the Hub
+
+**Decided** (14 October 2026).
+
+**Naming a session.** A row of the Hub's column, dragged into the terminal at the centre, writes
+`[session «name» 1a2b3c4d]` into its prompt: the row's name and the first eight characters of its
+conversation's id. The drag is also the person's leave: for twelve hours the session at the centre may ask
+the dragged one questions, and no other session may.
+
+**Asking it.** The `lampmaster` server every session has gains a fifth tool, `ask_session`, with the session
+(those eight characters, or the full id) and a question. LampBoard puts the question into the named session's
+box as a side question (D82). That session's mod answers it with a fork of its conversation: it is not
+interrupted, and nothing is added to its transcript. This works on this Mac and on the nodes, through the
+tunnel. The answer reaches the asking session inside a frame. The frame says it is another session's view and
+never an instruction. Control and format characters go, the frame's own markers inside it are broken, and it
+is cut at 8,000 characters. The frame was written anew: the D155 code went with the chat in D165. A session
+nobody dragged in is refused, and so is a session that was dragged into another terminal.
+
+**Why.** Marco asked to be able to say «compare notes with session X and find a solution» from the terminal
+he is in. D62 keeps one session's words out of another unless the person chooses them. Here the drag is that
+choice, scoped to the pair, the time and the questions the asking session puts.
+
+**The green light.** A click on a row in the Hub's column now reads it, as a click in the panel did. The
+column's click went straight to the Hub's selection and skipped `markSeen`. A session at the centre that
+finishes its turn while the Hub is the key window of the active app is read: its answer arrived under the
+person's eyes. Before, both stayed green after the person had read them.
+
+**Measured** with real sessions on the test Mac:
+- `hub-mention.sh`: the drag writes the reference and grants the pair. The session at the centre gets a word
+  only the dragged session knew, and the dragged session's transcript holds no trace of the question. A
+  session nobody dragged anything into is refused and never learns the word.
+- `hub-read.sh`: the session at the centre is read when it finishes. The other one stays green until its row
+  in the Hub's column is clicked.
+
+Found on the way: a LampBoard running against another home (the tests') now registers the sessions' server
+with that home, as LampMaster's own server does (D170). The `-e` goes after the server's name, because before
+the name `claude mcp add` read the name as a second variable.

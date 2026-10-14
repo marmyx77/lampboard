@@ -64,6 +64,9 @@ final class PanelController {
     /// Told when the person ends a session (D168): a conversation LampBoard
     /// started a moment ago is no longer one being started.
     var ending: ((String) -> Void)?
+    /// The session whose terminal is at the Hub's centre, which a row dragged
+    /// there names (D172).
+    var hubCentreSession: (() -> String?)?
     /// Conversations being moved from another machine (D166): one at a time each.
     var movingElsewhere: Set<String> = []
     /// Takes a conversation up in tmux on `host`, in the Hub, once its VS Code

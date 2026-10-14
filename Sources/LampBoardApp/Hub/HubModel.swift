@@ -113,6 +113,13 @@ final class HubModel: ObservableObject {
         return deps.store.state.session(named: selected)
     }
 
+    /// The conversation whose terminal is at the centre: the selected session's,
+    /// or LampMaster's own.
+    var centreSessionId: String? {
+        guard case .terminal = centre else { return nil }
+        return selected == Self.lampMasterId ? conductor?.sessionId : selected
+    }
+
     /// The warning for a conversation held by several processes, or `nil`.
     static func twoWriters(_ holders: [String]) -> String? {
         guard holders.count > 1 else { return nil }

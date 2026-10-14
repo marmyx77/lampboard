@@ -39,6 +39,14 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     var isOpen: Bool { window.map { $0.isVisible || $0.isMiniaturized } ?? false }
     var isKey: Bool { window?.isKeyWindow ?? false }
 
+    /// The centre's session marked read when the Hub is the window in front of
+    /// the person and the session waits to be read.
+    private func readCentre() {
+        guard let window, window.isKeyWindow, NSApp.isActive, window.occlusionState.contains(.visible),
+              let id = model.centreSessionId, model.deps.store.state.sessions[id]?.status == .ready else { return }
+        model.deps.store.markSeen(sessionId: id)
+    }
+
     /// Opens the Hub, on `session` when one is named.
     func show(session: String? = nil) {
         let window = self.window ?? makeWindow()
@@ -171,6 +179,15 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         split.addSplitViewItem(chatItem)
         split.addSplitViewItem(filesItem)
         split.addSplitViewItem(lastItem)
+        // A session at the centre that finishes while the Hub is in front of the
+        // person is read: its answer arrived under their eyes (14 October 2026: the
+        // lights stayed green on conversations read in the Hub).
+        model.deps.store.$state.receive(on: RunLoop.main).sink { [weak self] _ in self?.readCentre() }.store(in: &cancellables)
+        NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)
+            .sink { [weak self] note in
+                guard let self, (note.object as? NSWindow) === self.window else { return }
+                self.readCentre()
+            }.store(in: &cancellables)
         // Opening a file shows the last column, as the Claude app does.
         model.files.$active.dropFirst().sink { [weak self] active in
             guard active != nil else { return }

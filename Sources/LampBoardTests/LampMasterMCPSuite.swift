@@ -57,11 +57,11 @@ enum LampMasterMCPSuite {
             t.expectEqual((reply("not json")?["error"] as? [String: Any])?["code"] as? Int, -32700)
         },
 
-        TestCase("The four tools are listed, each with a schema that requires its argument") { t in
+        TestCase("The five tools are listed, each with a schema that requires its arguments") { t in
             let tools = (reply(#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)?["result"] as? [String: Any])?["tools"] as? [[String: Any]] ?? []
-            t.expectEqual(tools.compactMap { $0["name"] as? String }, ["overlaps", "who_knows", "precedents", "ask_lampmaster"])
-            t.expect(tools.allSatisfy { (($0["inputSchema"] as? [String: Any])?["required"] as? [String])?.count == 1 },
-                     "one required argument each")
+            t.expectEqual(tools.compactMap { $0["name"] as? String }, ["overlaps", "who_knows", "precedents", "ask_lampmaster", "ask_session"])
+            let required = tools.map { (($0["inputSchema"] as? [String: Any])?["required"] as? [String]) ?? [] }
+            t.expectEqual(required.map(\.count), [1, 1, 1, 1, 2], "one argument each, a session and a question to ask_session")
         },
 
         TestCase("A call reaches the tool with its arguments; an unknown tool is refused") { t in
@@ -204,6 +204,9 @@ enum LampMasterMCPSuite {
                           ["mcp", "add", "--scope", "user", "lampmaster", "--", "/Applications/LampBoard.app/Contents/MacOS/LampBoard", "mcp"])
             t.expectEqual(Array(LampMasterRegistration.addArguments(executable: "/x", port: 9899, defaultPort: 9877).suffix(3)),
                           ["mcp", "--port", "9899"])
+            t.expectEqual(Array(LampMasterRegistration.addArguments(executable: "/x", port: 9877, defaultPort: 9877, home: "/tmp/fake").prefix(7)),
+                          ["mcp", "add", "--scope", "user", "lampmaster", "-e", "LAMPBOARD_HOME=/tmp/fake"],
+                          "a LampBoard on another home tells its server where the token is")
             t.expectEqual(LampMasterRegistration.removeArguments, ["mcp", "remove", "--scope", "user", "lampmaster"])
         },
 

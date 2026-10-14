@@ -61,6 +61,20 @@ extension LampMasterService {
             return (LampMasterLookup.remembered(hits, asker: asker, named: named, now: now).map { cards + "\n\n" + $0 } ?? cards, false)
         case .askLampMaster:
             return await ask(text("question"), asker: asker, sessions: sessions, now: now)
+        case .askSession:
+            // Only a session the person dragged into this one's terminal (D172).
+            guard let asker else { return ("Only a Claude Code session can ask another.", true) }
+            let allowed = mentions.targets(of: asker, now: now)
+            guard !allowed.isEmpty else {
+                return ("No session was put into this terminal. The person drags a session's row from LampBoard's Hub into it first.", true)
+            }
+            guard let target = SessionMention.resolve(text("session"), among: allowed) else {
+                return ("That session was not put into this terminal. Use the eight characters of [session «name» …] in the prompt.", true)
+            }
+            let question = text("question").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !question.isEmpty else { return ("Say what to ask.", true) }
+            guard let askSession else { return ("Asking another session is not available.", true) }
+            return await askSession(target, question)
         }
     }
 

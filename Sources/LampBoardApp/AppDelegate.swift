@@ -169,6 +169,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.startPolling()
         fleet.start()
         lampMaster.port = port
+        // A session asks another the person dragged into its terminal (D172), through
+        // that session's mod (D82), here or on its machine; the answer framed as data.
+        lampMaster.askSession = { [store, askDesk] target, question in
+            guard let session = store.state.sessions[target] else { return ("That session is no longer in LampBoard.", true) }
+            let reply = await askDesk.reply(sessionId: target, question: question, host: session.workspace.host)
+            guard reply.answered else { return ("\(session.displayName) could not answer: \(reply.text)", true) }
+            return (SessionMention.framed(answer: reply.text, name: session.displayName, sessionId: target), false)
+        }
         // Earlier conversations for `who_knows` (D89), with or without a panel on screen.
         lampMaster.remember = { [searchIndex] words in
             searchIndex.search(words, limit: 6).map {

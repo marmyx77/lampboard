@@ -5,10 +5,10 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,501 lines · 195 files  pure logic, zero AppKit
-  LampBoardApp/    30,027 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,810 lines · 132 files   1346 cases, instantaneous
-  LampBoardE2E/    5,393 lines · 23 files   186 cases, the real binary
+  LampBoardCore/  25,590 lines · 196 files  pure logic, zero AppKit
+  LampBoardApp/    30,119 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  18,866 lines · 133 files   1350 cases, instantaneous
+  LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1338,6 +1338,14 @@ the nonce, an HMAC with the permission key over nonce, session and question — 
 the question, at most 2,000 characters; the feature a mod announces, and the
 minute the panel waits.
 
+### `SessionMention.swift` · 74
+One session named in another's terminal (D172): the reference a row dragged from
+the Hub's column writes, `[session «name» 1a2b3c4d]`, its name defused; the leave
+that drag gives the session at the centre to ask the named one, twelve hours, one
+way; the id or unique eight-character start a call names it by; and the frame an
+answer reaches the asking session in, cleaned, its markers broken, at most 8,000
+characters.
+
 ### `Handoff.swift` · 59
 The baton (D91): the question a session is asked when another takes over — what it
 understood, decided, left and touched, thirty lines, no secrets — within a side
@@ -2246,7 +2254,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `PanelDecisions.swift` | 49 | the decision board from a row's menu (D105): pin a line for the row's repository, the ones already pinned shown in the question; one taken off from *Pinned decisions*, confirmed first; the same service the command line reaches, an error said in the panel |
 | `PanelGovernor.swift` | 59 | the governor from a row's menu (D112): *Use Sonnet until the window resets (13:10)* for a local Claude Code session with a known model, never the one in focus; chosen again, its own model back |
 | `PanelRound.swift` | 85 | the round of depths behind `⌘⇧L` (D149): the column, the panel, the Hub and back; Focus, a session's band and LampMaster's view in the Hub; what was proposed into a session waits in its terminal in the Hub (D165) |
-| `PanelHub.swift` | 42 | the Hub's sidebar is the panel itself (D150): the same `PanelRootView` from the same store, preferences and actions, wide whatever the panel is, so the rows, their order, the R, the ring and every badge are the panel's by construction; only a click differs, opening the conversation beside the rows |
+| `PanelHub.swift` | 60 | the Hub's sidebar is the panel itself (D150): the same `PanelRootView` from the same store, preferences and actions, wide whatever the panel is, so the rows, their order, the R, the ring and every badge are the panel's by construction; only a click differs, opening the conversation beside the rows and reading it (D172); and a row dragged into the centre's terminal names that session there and lets the centre's session ask it (D172) |
 | `PanelBar.swift` | 212 | the bar wired in: sessions open as a click on their row does, `@name message` proposed into that session's terminal in the Hub, or sent into its own box where there is no terminal (D81, D165), or over ssh into the box of a session on a node, the bar saying where it went, `@name ?question` handed to the side-question desk and the list redrawn when a mod says it can answer, what was said looked up in the search index and a closed conversation's resume command copied, `/handoff @from @to` asking the first and handing its answer to `PanelHandoff`, nothing done once the bar has moved on (D91), actions reach the same windows the menus open, a `?question` goes through the MCP tool's own door (D62), `⌘K` opens it while the wide panel holds the keyboard and `⌘,` opens Settings (D125), the shortcut from anywhere (when chosen) brings the panel up key with the bar open, the panel remeasured when its results come and go; `--bar-type`, on a fake home only, types into it and presses `⏎`, waiting up to two minutes for a row that has answered, `{first}` standing for its first word |
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
@@ -2302,7 +2310,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1346 cases
+## `LampBoardTests/` — 1350 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
