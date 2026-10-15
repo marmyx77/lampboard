@@ -15,8 +15,8 @@ enum PushEnvelopeSuite {
     private static let phone = Curve25519.KeyAgreement.PrivateKey()
     private static let mac = Curve25519.KeyAgreement.PrivateKey()
 
-    private static func content(seq: Int = 1, at: Date = t0) -> PushContent {
-        PushContent(source: "Example Mac", seq: seq, at: at, title: "project-alpha",
+    private static func content(seq: Int = 1, at: Date = t0, journal: String = "journal-a") -> PushContent {
+        PushContent(source: "Example Mac", journal: journal, seq: seq, at: at, title: "project-alpha",
                     body: "A session is asking to run a command", session: "00000000-0000-4000-8000-000000000001")
     }
 
@@ -56,12 +56,46 @@ enum PushEnvelopeSuite {
 
         TestCase("The phone shows an envelope once, and never a late one") { t in
             var guardian = PushReplayGuard(maxAge: 600)
-            t.expectEqual(guardian.admit(content(seq: 4), at: t0), .fresh, "the first")
-            t.expectEqual(guardian.admit(content(seq: 4), at: t0), .replayed, "the same again")
-            t.expectEqual(guardian.admit(content(seq: 3), at: t0), .replayed, "an older one")
-            t.expectEqual(guardian.admit(content(seq: 5, at: t0.addingTimeInterval(-601)), at: t0), .stale, "eleven minutes late")
-            t.expectEqual(guardian.admit(content(seq: 6, at: t0.addingTimeInterval(120)), at: t0), .stale, "from the future")
-            t.expectEqual(guardian.admit(content(seq: 5), at: t0), .fresh, "the late one's number is still free")
+            t.expectEqual(guardian.admit(content(seq: 4), from: "mac-1", at: t0), .fresh, "the first")
+            t.expectEqual(guardian.admit(content(seq: 4), from: "mac-1", at: t0), .replayed, "the same again")
+            t.expectEqual(guardian.admit(content(seq: 3), from: "mac-1", at: t0), .replayed, "an older one")
+            t.expectEqual(guardian.admit(content(seq: 5, at: t0.addingTimeInterval(-601)), from: "mac-1", at: t0), .stale, "eleven minutes late")
+            t.expectEqual(guardian.admit(content(seq: 6, at: t0.addingTimeInterval(120)), from: "mac-1", at: t0), .stale, "from the future")
+            t.expectEqual(guardian.admit(content(seq: 5), from: "mac-1", at: t0), .fresh, "the late one's number is still free")
+        },
+
+        TestCase("A source that starts its numbers again rings again, and its old numbers do not") { t in
+            // A source restarted with nothing kept starts a new journal at 1. Keyed
+            // on the number alone, every notification after the restart would be a
+            // "replay" until the count passed the old one: silence, which this
+            // project never takes for calm.
+            var guardian = PushReplayGuard(maxAge: 600)
+            t.expectEqual(guardian.admit(content(seq: 40, at: t0), from: "mac-1", at: t0), .fresh, "before the restart")
+            let after = t0.addingTimeInterval(30)
+            t.expectEqual(guardian.admit(content(seq: 1, at: after, journal: "journal-b"), from: "mac-1", at: after), .fresh,
+                          "the new journal's first")
+            t.expectEqual(guardian.admit(content(seq: 41, at: t0.addingTimeInterval(10), journal: "journal-a"), from: "mac-1", at: after),
+                          .replayed, "an old journal's envelope, held back and sent after")
+            t.expectEqual(guardian.admit(content(seq: 2, at: after, journal: "journal-b"), from: "mac-1", at: after), .fresh,
+                          "the new journal goes on")
+        },
+
+        TestCase("One source's numbers cannot silence another's") { t in
+            // The guard keys on the pair the envelope opened with, never on what
+            // the content says of itself.
+            var guardian = PushReplayGuard(maxAge: 600)
+            t.expectEqual(guardian.admit(content(seq: 1_000_000), from: "node-1", at: t0), .fresh, "a node far ahead")
+            t.expectEqual(guardian.admit(content(seq: 5), from: "mac-1", at: t0), .fresh, "the Mac's own count")
+        },
+
+        TestCase("The guard is kept between launches of the extension") { t in
+            var guardian = PushReplayGuard(maxAge: 600)
+            _ = guardian.admit(content(seq: 7), from: "mac-1", at: t0)
+            guard let data = try? JSONEncoder().encode(guardian),
+                  var again = try? JSONDecoder().decode(PushReplayGuard.self, from: data) else {
+                t.expect(false, "it does not round-trip"); return
+            }
+            t.expectEqual(again.admit(content(seq: 7), from: "mac-1", at: t0), .replayed, "it remembers")
         },
 
         TestCase("The relay gets the envelope and nothing a person wrote") { t in

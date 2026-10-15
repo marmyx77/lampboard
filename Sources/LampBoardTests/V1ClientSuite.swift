@@ -152,6 +152,46 @@ enum V1ClientSuite {
             t.expect(events.contains { if case .incompatible = $0 { return true }; return false }, "incompatible")
         },
 
+        TestCase("A reply of a kind this app does not know is passed over, not a reason to start again") { t in
+            // A source one version ahead may say more. An app that drops the
+            // connection on what it cannot read reconnects, is told the same
+            // thing, and reconnects again, for as long as it is not updated.
+            var pair = Pair(source: F.source(rows: 2))
+            pair.connect()
+            let newer = V1Frame.encode(Array(#"{"type":"presence","at":"2025-10-09T08:53:20Z"}"#.utf8))
+            t.expectEqual(pair.client.receive(newer, on: pair.connection, at: F.t0), [], "nothing to do")
+            pair.source.upsert(F.row(7), at: F.t0)
+            pair.pump()
+            t.expectEqual(pair.client.lastSeq, 3, "and the stream goes on")
+        },
+
+        TestCase("An event of a kind this app does not know keeps the count") { t in
+            var pair = Pair(source: F.source(rows: 2))
+            pair.connect()
+            let newer = V1Frame.encode(Array(#"{"type":"event","seq":3,"at":"2025-10-09T08:53:20Z","kind":"moved","id":"x"}"#.utf8))
+            let events = pair.client.receive(newer, on: pair.connection, at: F.t0)
+            t.expect(!reconnects(events), "no reconnection")
+            t.expectEqual(pair.client.lastSeq, 3, "the number is held")
+            let next = V1ServerMessage(re: nil, .event(V1Event(seq: 4, at: F.t0, change: .row(F.row(4)))))
+            _ = pair.client.receive(V1Frame.encode((try? V1Codec.encode(next)) ?? []), on: pair.connection, at: F.t0)
+            t.expectEqual(pair.client.lastSeq, 4, "so the next one is no hole")
+        },
+
+        TestCase("A refusal with a code this app does not know is still a refusal") { t in
+            var pair = Pair(source: F.source(rows: 1))
+            pair.connect()
+            let newer = V1Frame.encode(Array(#"{"type":"error","re":9,"code":"slowDown","message":"too many requests"}"#.utf8))
+            let events = pair.client.receive(newer, on: pair.connection, at: F.t0)
+            t.expectEqual(events, [.refused(re: 9, V1Failure(.unavailable, "too many requests"))], "refused, with its words")
+        },
+
+        TestCase("A reply of a known kind that does not read is still out of step") { t in
+            var pair = Pair(source: F.source(rows: 1))
+            pair.connect()
+            let broken = V1Frame.encode(Array(#"{"type":"event","seq":"two"}"#.utf8))
+            t.expect(reconnects(pair.client.receive(broken, on: pair.connection, at: F.t0)), "dropped")
+        },
+
         TestCase("A source that has never known its rows is not an empty column") { t in
             let source = V1MemorySource(identity: F.node, startedAt: F.t0, journal: "j", known: false)
             var pair = Pair(source: source)

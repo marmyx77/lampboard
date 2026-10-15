@@ -70,6 +70,10 @@ public struct V1Command: Codable, Equatable, Sendable {
     }
 
     public static let maxName = 120
+    /// The same name in bytes. A character can be any number of them — a
+    /// letter under two thousand accents is one character — so characters
+    /// alone do not bound what a source keeps.
+    public static let maxNameBytes = 1024
     public static let maxIds = 1000
 
     /// Why the command cannot be carried out as written, or `nil`. Checked by
@@ -82,7 +86,9 @@ public struct V1Command: Codable, Equatable, Sendable {
         switch action {
         case .rename:
             guard let name else { return "rename needs a name" }
-            if name.count > Self.maxName { return "a name is at most \(Self.maxName) characters" }
+            if name.count > Self.maxName || name.utf8.count > Self.maxNameBytes {
+                return "a name is at most \(Self.maxName) characters and \(Self.maxNameBytes) bytes"
+            }
             if V1Validation.hasControlCharacters(name) { return "a name has no control characters" }
         case .hide, .mute:
             if on == nil { return "\(action.rawValue) needs on" }
@@ -151,13 +157,18 @@ public struct V1DevicesRequest: Codable, Equatable, Sendable {
 
 /// The shapes a source accepts, checked once for every source.
 public enum V1Validation {
-    /// A session or device id: 1 to 200 characters out of letters, digits and
-    /// `-_.:`. A Claude Code session id is a UUID; a Codex one too.
+    /// A session or device id: 1 to 200 characters out of ASCII letters, digits
+    /// and `-_.:`, starting with a letter or a digit — so never `.`, `..` or a
+    /// hidden name, whatever a source later builds from it. A Claude Code
+    /// session id is a UUID; a Codex one too.
     public static func isSessionId(_ value: String) -> Bool {
-        guard (1...200).contains(value.count) else { return false }
-        return value.unicodeScalars.allSatisfy { scalar in
-            CharacterSet.alphanumerics.contains(scalar) && scalar.isASCII || "-_.:".unicodeScalars.contains(scalar)
-        }
+        guard (1...200).contains(value.unicodeScalars.count), let first = value.unicodeScalars.first,
+              isASCIIAlphanumeric(first) else { return false }
+        return value.unicodeScalars.allSatisfy { isASCIIAlphanumeric($0) || "-_.:".unicodeScalars.contains($0) }
+    }
+
+    private static func isASCIIAlphanumeric(_ scalar: Unicode.Scalar) -> Bool {
+        scalar.isASCII && CharacterSet.alphanumerics.contains(scalar)
     }
 
     public static func hasControlCharacters(_ value: String) -> Bool {

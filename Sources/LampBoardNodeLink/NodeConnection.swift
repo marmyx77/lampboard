@@ -217,6 +217,7 @@ final class ExecChannel: NodeByteChannel, @unchecked Sendable {
     private let lock = NSLock()
     private var writer: TTYStdinWriter?
     private var task: Task<Void, Never>?
+    private var cancelled = false
     private var ended = false
 
     private init(deadlines: NodeDeadlines) {
@@ -227,11 +228,11 @@ final class ExecChannel: NodeByteChannel, @unchecked Sendable {
     static func open(_ client: SSHClient, command: String, deadlines: NodeDeadlines) async throws -> ExecChannel {
         let channel = ExecChannel(deadlines: deadlines)
         try await NodeDeadline.run(deadlines.open, "opening the channel", expired: {
-            channel.task?.cancel()
+            channel.cancel()
         }) {
             try await withCheckedThrowingContinuation { (ready: CheckedContinuation<Void, Error>) in
                 let gate = NodeDeadline.Gate()
-                channel.task = Task {
+                channel.hold(Task {
                     do {
                         try await client.withExec(command) { output, input in
                             channel.lend(input)
@@ -253,7 +254,7 @@ final class ExecChannel: NodeByteChannel, @unchecked Sendable {
                         // first (`alreadyClosed`), or it went with the connection.
                     }
                     channel.end()
-                }
+                })
             }
         }
         return channel
@@ -275,8 +276,27 @@ final class ExecChannel: NodeByteChannel, @unchecked Sendable {
     }
 
     func close() async {
-        task?.cancel()
+        cancel()
         end()
+    }
+
+    /// The task that holds the channel open. Set on the task that opens it and
+    /// cancelled from the deadline's own, so it is kept under the lock.
+    /// A deadline can expire before the task is even made: then it is made cancelled.
+    private func hold(_ task: Task<Void, Never>) {
+        lock.lock()
+        self.task = task
+        let late = cancelled
+        lock.unlock()
+        if late { task.cancel() }
+    }
+
+    private func cancel() {
+        lock.lock()
+        cancelled = true
+        let task = self.task
+        lock.unlock()
+        task?.cancel()
     }
 
     private func lend(_ writer: TTYStdinWriter) {

@@ -162,6 +162,16 @@ enum V1ServiceSuite {
             t.expectEqual(F.failure(service.receive(F.frame(.transcript(session: F.sid(2), limit: nil)), at: F.t0))?.code, .notFound, "none")
         },
 
+        TestCase("A transcript never carries more than was asked, whatever the source hands over") { t in
+            let source = OverGenerous(F.source())
+            var service = F.greeted(source)
+            let out = F.replies(service.receive(F.frame(.transcript(session: F.sid(1), limit: 5)), at: F.t0))
+            guard case .transcript(let transcript)? = out.first?.reply else { t.expect(false, "no transcript"); return }
+            t.expectEqual(transcript.messages.count, 5, "five, as asked")
+            t.expectEqual(transcript.messages.last?.text, "answer 40", "the newest kept")
+            t.expectEqual(transcript.notSent, 35, "and the rest counted as not sent")
+        },
+
         TestCase("An unknown op is refused and the connection goes on") { t in
             var service = F.greeted(F.source())
             let out = service.receive(Array(V1Frame.encode(Array(#"{"op":"exec","id":5,"command":"ls"}"#.utf8))), at: F.t0)
@@ -191,4 +201,24 @@ enum V1ServiceSuite {
             t.expectEqual(out.map(\.re), [1, 2, 3], "1, 2, 3")
         },
     ])
+}
+
+/// A source that ignores the limit it is given: forty messages, whatever is asked.
+private final class OverGenerous: V1Source {
+    let inner: V1MemorySource
+    init(_ inner: V1MemorySource) { self.inner = inner }
+    var identity: V1SourceIdentity { inner.identity }
+    func status(at now: Date) -> V1SourceStatus { inner.status(at: now) }
+    func snapshot(at now: Date) -> V1State { inner.snapshot(at: now) }
+    func events(after seq: Int) -> V1Replay { inner.events(after: seq) }
+    func transcript(session: String, limit: Int) -> V1Transcript? {
+        V1Transcript(session: session, messages: (1...40).map { .init(role: "assistant", text: "answer \($0)", at: nil) }, notSent: 0)
+    }
+    func perform(_ command: V1Command, by peer: V1Peer, at now: Date) -> V1Failure? { inner.perform(command, by: peer, at: now) }
+    func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure? {
+        inner.register(registration, by: peer, at: now)
+    }
+    func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure> {
+        inner.devices(request, by: peer, at: now)
+    }
 }

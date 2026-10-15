@@ -16,6 +16,11 @@ public enum V1Reply: Equatable, Sendable {
     /// The source is going away (an orderly stop): the client reconnects later.
     case bye(reason: String)
 
+    /// Every `type` this build knows.
+    public static let types: Set<String> = [
+        "hello", "state", "events", "event", "ping", "transcript", "result", "devices", "error", "bye",
+    ]
+
     public var type: String {
         switch self {
         case .hello: return "hello"
@@ -182,6 +187,9 @@ public struct V1Event: Equatable, Sendable {
         self.at = at
         self.change = change
     }
+
+    /// Every `kind` of event this build knows.
+    public static let kinds: Set<String> = ["row", "gone"]
 
     public var rowId: String {
         switch change {

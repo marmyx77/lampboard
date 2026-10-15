@@ -95,6 +95,7 @@ public actor V1Link {
 
     /// The clock moved: the state may have become old. Called every `tickEvery`.
     public func tick() async {
+        guard status != .stopped else { return }
         handle(client.tick(at: clock()))
         if needsReconnect { await dropChannel() }
     }
@@ -114,6 +115,12 @@ public actor V1Link {
                 await wait(after: "\(error)")
                 continue
             }
+            // `stop` may have come in while `open` was waiting: a channel that
+            // arrives after it is closed, not adopted.
+            if status == .stopped || Task.isCancelled {
+                await next.close()
+                return
+            }
             opened += 1
             channel = next
             needsReconnect = false
@@ -126,6 +133,7 @@ public actor V1Link {
                 await wait(after: "\(error)")
                 continue
             }
+            guard status != .stopped else { await dropChannel(); return }
             status = .live
             let liveSince = clock()
             for await chunk in next.inbound {
@@ -167,6 +175,7 @@ public actor V1Link {
     }
 
     private func wait(after reason: String) async {
+        guard status != .stopped, !Task.isCancelled else { return }
         let seconds = backoff[min(failures, backoff.count - 1)]
         failures += 1
         status = .waiting(seconds: seconds, reason: reason)
@@ -174,6 +183,8 @@ public actor V1Link {
     }
 
     private func startTicking(every seconds: TimeInterval) {
+        // `stop` can come before this task first runs: then there is nothing to tick.
+        guard status != .stopped else { return }
         ticking = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))

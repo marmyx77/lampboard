@@ -138,6 +138,19 @@ enum V1MessagesSuite {
             t.expectNotNil(V1Command(action: .order, ids: ["ok", "not ok"]).problem, "an id with a space")
         },
 
+        TestCase("A name is bounded in bytes too, and an id is never a path") { t in
+            // One character can be any number of bytes: a letter under two
+            // thousand accents is one character and four kilobytes.
+            let heavy = "e" + String(repeating: "\u{0301}", count: 2000)
+            t.expectEqual(heavy.count, 1, "one character")
+            t.expect(V1Command(action: .rename, session: V1Fixtures.sid(1), name: heavy).problem != nil, "refused")
+            t.expect(V1Command(action: .rename, session: V1Fixtures.sid(1), name: "Résumé ✓").problem == nil, "a real name passes")
+            for id in [".", "..", ".hidden"] {
+                t.expect(!V1Validation.isSessionId(id), "\(id) is not an id")
+            }
+            t.expect(V1Validation.isSessionId(V1Fixtures.sid(1)), "a UUID is one")
+        },
+
         TestCase("A push registration is checked before a source keeps it") { t in
             let key = Data(repeating: 1, count: 32).base64EncodedString()
             let token = String(repeating: "0f", count: 32)

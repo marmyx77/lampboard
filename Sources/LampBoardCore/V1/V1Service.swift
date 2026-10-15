@@ -116,7 +116,14 @@ public struct V1Service {
             guard let transcript = source.transcript(session: session, limit: count) else {
                 return refuse(.notFound, "no conversation for \(session)")
             }
-            return [V1ServerMessage(re: re, .transcript(transcript))]
+            // Bounded here, not trusted to each source: the newest `count`, and
+            // the rest counted as not sent.
+            let kept = Array(transcript.messages.suffix(count))
+            let bounded = V1Transcript(
+                session: transcript.session, messages: kept,
+                notSent: max(0, transcript.notSent) + transcript.messages.count - kept.count
+            )
+            return [V1ServerMessage(re: re, .transcript(bounded))]
         case .command(let command):
             if let problem = command.problem { return refuse(.badRequest, problem) }
             if let failure = source.perform(command, by: peer, at: now) { return [V1ServerMessage(re: re, .error(failure))] }

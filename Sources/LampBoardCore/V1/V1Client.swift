@@ -115,10 +115,18 @@ public struct V1Client {
                 return events + retire(at: now, silence: nil, reason: "the stream is out of step")
             }
             guard let frame else { break }
-            guard let message = try? V1Codec.decodeReply(frame) else {
+            switch V1Codec.readReply(frame) {
+            case .known(let message):
+                events += apply(message)
+            case .newer(.kind):
+                break                                   // a newer source's: passed over
+            case .newer(.event(let seq)):
+                events += count(seq)
+            case .newer(.refusal(let re, let text)):
+                events.append(.refused(re: re, V1Failure(.unavailable, text)))
+            case .unreadable:
                 return events + retire(at: now, silence: nil, reason: "a message this app cannot read")
             }
-            events += apply(message)
         }
         return events
     }
@@ -156,9 +164,7 @@ public struct V1Client {
         case .event(let event):
             let held = lastSeq ?? 0
             if event.seq <= held { return [] }                 // already held: a replay overlapping
-            if event.seq > held + 1 {
-                return retire(at: nil, silence: nil, reason: "events \(held + 1)–\(event.seq - 1) never arrived")
-            }
+            if event.seq > held + 1 { return count(event.seq) }
             lastSeq = event.seq
             switch event.change {
             case .row(let row):
@@ -187,6 +193,18 @@ public struct V1Client {
             live = false
             return [.bye(reason)]
         }
+    }
+
+    /// An event's number, for one whose change is not applied: one already
+    /// held is nothing, the next is held, one past it is a hole.
+    private mutating func count(_ seq: Int) -> [Event] {
+        let held = lastSeq ?? 0
+        if seq <= held { return [] }
+        if seq > held + 1 {
+            return retire(at: nil, silence: nil, reason: "events \(held + 1)–\(seq - 1) never arrived")
+        }
+        lastSeq = seq
+        return []
     }
 
     /// Leaves the current connection: whatever still arrives on it is dropped.

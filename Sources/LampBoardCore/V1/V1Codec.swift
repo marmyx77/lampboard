@@ -80,6 +80,38 @@ public enum V1Codec {
         try decoder().decode(ServerWire.self, from: Data(json)).message
     }
 
+    /// A reply as a client of this build reads it: one it knows, one a newer
+    /// source added, or bytes that are not a reply at all.
+    ///
+    /// A source one version ahead may send a kind of reply, an event or a
+    /// refusal code this build has never heard of. Treating that as bytes out of
+    /// step would drop the connection, get the same reply on the next one, and
+    /// drop it again for as long as the app is not updated. So what is newer is
+    /// named and passed over; only what cannot be a reply ends the connection.
+    public static func readReply(_ json: [UInt8]) -> V1ReplyReading {
+        if let message = try? decodeReply(json) { return .known(message) }
+        let data = Data(json)
+        guard let head = try? decoder().decode(TypeHead.self, from: data) else { return .unreadable }
+        switch head.type {
+        case let type where !V1Reply.types.contains(type):
+            return .newer(.kind(type))
+        case "event":
+            guard let event = try? decoder().decode(EventHead.self, from: data),
+                  !V1Event.kinds.contains(event.kind) else { return .unreadable }
+            return .newer(.event(seq: event.seq))
+        case "error":
+            guard let error = try? decoder().decode(ErrorHead.self, from: data),
+                  V1Failure.Code(rawValue: error.code) == nil else { return .unreadable }
+            return .newer(.refusal(re: error.re, message: error.message))
+        default:
+            return .unreadable
+        }
+    }
+
+    private struct TypeHead: Decodable { let type: String }
+    private struct EventHead: Decodable { let seq: Int; let kind: String }
+    private struct ErrorHead: Decodable { let re: Int?; let code: String; let message: String }
+
     /// One line of a decoding error, without the coding path's noise.
     static func describe(_ error: Error) -> String {
         switch error {
@@ -96,6 +128,24 @@ public enum V1Codec {
         let op: String?
         let id: Int?
     }
+}
+
+/// What `V1Codec.readReply` found.
+public enum V1ReplyReading: Equatable, Sendable {
+    case known(V1ServerMessage)
+    /// Something a newer source says, which this build passes over.
+    case newer(V1Newer)
+    /// Not a reply: the stream is out of step.
+    case unreadable
+}
+
+public enum V1Newer: Equatable, Sendable {
+    /// A kind of reply this build does not know.
+    case kind(String)
+    /// An event of a kind this build does not know: its number still counts.
+    case event(seq: Int)
+    /// A refusal with a code this build does not know: still a refusal.
+    case refusal(re: Int?, message: String)
 }
 
 /// The request's fields next to `op` and `id`, in one object.

@@ -127,7 +127,76 @@ enum NodeLinkSuite {
             t.expect(Blocking.eventually { bench.opened == 2 }, "and replaced")
             t.expect(Blocking.eventually { await bench.link.isStale == false }, "fresh again once the new one answered")
         },
+
+        TestCase("A link stopped while a channel is opening stays stopped, and closes what comes late") { t in
+            // The actor lets `stop` in while the loop waits on `open`: the
+            // channel that arrives after it must not bring the link back to life.
+            let release = DispatchSemaphore(value: 0)
+            let clock = ManualClock(), source = V1ReferenceFixtureShim.source()
+            let made = Holder<MemoryChannel>()
+            let link = V1Link(name: "test", pingInterval: 5, backoff: [0.01], tickEvery: nil, clock: { clock.now }) {
+                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.global().async { release.wait(); c.resume() }
+                }
+                let channel = MemoryChannel(source: source, clock: clock)
+                made.set(channel)
+                return channel
+            }
+            _ = try? Blocking.run { await link.start() }
+            usleep(100_000)
+            _ = try? Blocking.run { await link.stop() }
+            release.signal()
+            t.expect(Blocking.eventually(5) { made.value != nil }, "the late channel was made")
+            usleep(200_000)
+            t.expectEqual(try? Blocking.run { await link.status }, .stopped, "still stopped")
+            t.expect(Blocking.eventually(5) { made.value?.isClosed == true }, "and the late channel closed")
+        },
+
+        TestCase("A link stopped while an attempt is failing stays stopped") { t in
+            // The failure lands after `stop`: it must not turn into a wait for
+            // the next attempt.
+            let release = DispatchSemaphore(value: 0)
+            let clock = ManualClock()
+            let link = V1Link(name: "test", backoff: [0.3], tickEvery: nil, clock: { clock.now }) {
+                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                    DispatchQueue.global().async { release.wait(); c.resume() }
+                }
+                throw NodeLinkError.refused("the channel")
+            }
+            _ = try? Blocking.run { await link.start() }
+            usleep(100_000)
+            _ = try? Blocking.run { await link.stop() }
+            release.signal()
+            usleep(200_000)
+            t.expectEqual(try? Blocking.run { await link.status }, .stopped, "still stopped")
+        },
+
+        TestCase("A link stopped before its clock started has no clock running") { t in
+            let ticks = Counter()
+            let link = V1Link(name: "test", tickEvery: 0.02, clock: { ticks.bump(); return V1Fixtures.t0 }) {
+                throw NodeLinkError.closed
+            }
+            _ = try? Blocking.run { await link.stop() }
+            usleep(150_000)
+            let after = ticks.value
+            usleep(200_000)
+            t.expectEqual(ticks.value, after, "the clock is not read any more")
+        },
     ])
+}
+
+private final class Holder<T: AnyObject>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var held: T?
+    var value: T? { lock.lock(); defer { lock.unlock() }; return held }
+    func set(_ value: T) { lock.lock(); held = value; lock.unlock() }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func bump() { lock.lock(); count += 1; lock.unlock() }
 }
 
 // MARK: - The bench: a link over channels to a service in memory
@@ -189,6 +258,7 @@ private final class MemoryChannel: NodeByteChannel, @unchecked Sendable {
     private let lock = NSLock()
     private var service: V1Service
     private var types: [String] = []
+    private var closed = false
 
     init(source: V1Source, clock: ManualClock) {
         self.clock = clock
@@ -211,9 +281,14 @@ private final class MemoryChannel: NodeByteChannel, @unchecked Sendable {
         deliver(out)
     }
 
+    var isClosed: Bool { lock.lock(); defer { lock.unlock() }; return closed }
+
     func end() { feed.finish() }
 
-    func close() async { feed.finish() }
+    func close() async {
+        lock.withLock { closed = true }
+        feed.finish()
+    }
 
     private func deliver(_ bytes: [UInt8]) {
         guard !bytes.isEmpty else { return }

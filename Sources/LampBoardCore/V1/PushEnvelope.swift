@@ -62,9 +62,14 @@ public enum PushEnvelope {
 /// The real text of a notification and what places it in time.
 public struct PushContent: Codable, Equatable, Sendable {
     public let v: Int
-    /// The source that sent it, and its number among that source's envelopes:
-    /// what lets the extension drop one it has already seen.
+    /// The source that sent it, as it names itself: shown, never trusted. The
+    /// extension knows which pair an envelope belongs to from the key that
+    /// opened it (`PushReplayGuard.admit(_:from:at:)`).
     public let source: String
+    /// The count the number belongs to, and the number: what lets the extension
+    /// drop an envelope it has already seen. A source that starts again with
+    /// nothing kept starts a new journal at 1, like its `v1` journal.
+    public let journal: String
     public let seq: Int
     public let at: Date
     public let title: String
@@ -72,9 +77,10 @@ public struct PushContent: Codable, Equatable, Sendable {
     /// The row it is about, for the tap.
     public let session: String?
 
-    public init(source: String, seq: Int, at: Date, title: String, body: String, session: String?) {
+    public init(source: String, journal: String, seq: Int, at: Date, title: String, body: String, session: String?) {
         self.v = PushEnvelope.version
         self.source = source
+        self.journal = journal
         self.seq = seq
         self.at = at
         self.title = title
@@ -83,32 +89,57 @@ public struct PushContent: Codable, Equatable, Sendable {
     }
 }
 
-/// The extension's memory of what it has shown: per source, the last number.
+/// The extension's memory of what it has shown: per pair, the journal, the last
+/// number and its time.
 ///
 /// A relay can repeat an envelope or hold one back; neither may ring twice, or
-/// ring for a moment long gone.
-public struct PushReplayGuard: Equatable, Sendable {
+/// ring for a moment long gone. Two things are kept apart on purpose:
+/// - **The pair, not the content's word.** The guard is keyed on the pair whose
+///   key opened the envelope. Keyed on what the content says of itself, one
+///   paired source could name another and push its count past anything the
+///   other will send: silence for that one.
+/// - **A new journal is a new count.** A source restarted with nothing kept
+///   numbers from 1 again. Its envelopes are fresh when they are newer than the
+///   last one shown from that pair; an old journal's envelope, held back and
+///   sent after, is not.
+public struct PushReplayGuard: Codable, Equatable, Sendable {
 
     public enum Verdict: Equatable, Sendable {
         case fresh
-        /// Its number is not past the last one shown from that source.
+        /// Its number is not past the last one shown from that pair, or it
+        /// belongs to a count that has since been replaced.
         case replayed
         /// Older than `maxAge`, or from further in the future than a clock drifts.
         case stale
     }
 
+    public struct Mark: Codable, Equatable, Sendable {
+        public let journal: String
+        public let seq: Int
+        public let at: Date
+    }
+
     public let maxAge: TimeInterval
-    public private(set) var lastSeq: [String: Int] = [:]
+    public private(set) var last: [String: Mark] = [:]
 
     public init(maxAge: TimeInterval = 15 * 60) {
         self.maxAge = maxAge
     }
 
-    public mutating func admit(_ content: PushContent, at now: Date) -> Verdict {
+    /// `content`, opened with the key of `pair`, at `now`.
+    public mutating func admit(_ content: PushContent, from pair: String, at now: Date) -> Verdict {
         let age = now.timeIntervalSince(content.at)
         guard age <= maxAge, age >= -60 else { return .stale }
-        if let last = lastSeq[content.source], content.seq <= last { return .replayed }
-        lastSeq[content.source] = content.seq
+        if let mark = last[pair] {
+            if content.journal == mark.journal {
+                if content.seq <= mark.seq { return .replayed }
+            } else if content.at <= mark.at {
+                return .replayed
+            }
+        }
+        // The time only moves forward: it is what judges the next journal.
+        let shown = last[pair].map { $0.journal == content.journal ? max($0.at, content.at) : content.at } ?? content.at
+        last[pair] = Mark(journal: content.journal, seq: content.seq, at: shown)
         return .fresh
     }
 }
