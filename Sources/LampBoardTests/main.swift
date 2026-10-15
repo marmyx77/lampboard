@@ -189,6 +189,7 @@ let suites: [TestSuite] = [
     V1ClientSuite.suite,
     V1ContractSuite.suite,
     V1ConformanceSuite.suite,
+    NodeLinkSuite.suite,
     PushEnvelopeSuite.suite,
     LiveAdoptionSuite.suite,
 ]

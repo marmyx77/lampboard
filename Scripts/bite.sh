@@ -35,6 +35,8 @@
 #   ./Scripts/bite.sh --swift    only the test instrument (needs a build)
 #   ./Scripts/bite.sh --ios      only the Core's iOS build (needs Xcode)
 #   ./Scripts/bite.sh --linux    only the Core's Linux build (needs docker)
+#   ./Scripts/bite.sh --nodelink only NodeLink over ssh (needs docker)
+#   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
 
 set -uo pipefail   # deliberately not -e: half of what runs here is meant to fail
 
@@ -596,8 +598,61 @@ PY
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Everywhere but the two platform runs, as before they existed.
-if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ]; then
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--links" ]; then
+
+chapter "The Mac app links only its own"
+
+# NodeLink's ssh stack is declared in the same manifest as the app (D175). The
+# app naming NodeLink must turn the check red, and say through what.
+protect Package.swift
+attack_platform Scripts/check-app-links.sh "the Mac app made to link NodeLink" "LampBoardNodeLink → Citadel" <<'PY'
+p = "Package.swift"
+s = open(p).read()
+old = 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],'
+open(p, "w").write(s.replace(old, 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit", "LampBoardNodeLink"],', 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--nodelink" ]; then
+
+chapter "NodeLink over ssh"
+
+# The read key's line in the node's authorized_keys without its forced command:
+# the key can run anything, and the check must see the command run.
+protect Scripts/test-nodelink.sh
+attack_platform Scripts/test-nodelink.sh "a read key whose line lost its forced command" "the command's own output never came" <<'PY'
+p = "Scripts/test-nodelink.sh"
+s = open(p).read()
+old = 'READ_LINE="restrict,command=\\"/opt/ref/V1ReferenceNode stdio --socket /tmp/v1ref/v1.sock --device check-phone --role read\\" '
+open(p, "w").write(s.replace(old, 'READ_LINE="restrict ', 1))
+PY
+
+# A host key verdict that lets any key in: the changed key must be noticed by
+# the check over ssh, not only by the domain suite.
+protect Sources/LampBoardNodeLink/NodeKeys.swift
+attack_platform Scripts/test-nodelink.sh "a pinned host key that lets any other in" "a connection was made to a machine with another key" <<'PY'
+p = "Sources/LampBoardNodeLink/NodeKeys.swift"
+s = open(p).read()
+old = "self = presented == expected ? .accepted(presented) : .refused(presented: presented, expected: expected)"
+open(p, "w").write(s.replace(old, "_ = expected; self = .accepted(presented)", 1))
+PY
+
+# One protocol, every source: a field renamed in what a source writes, seen
+# through ssh as it is seen through a buffer (D174).
+protect Sources/LampBoardCore/V1/V1Row.swift
+attack_platform Scripts/test-nodelink.sh "a field of a row renamed, seen over ssh" 'missing "owner"' <<'PY'
+p = "Sources/LampBoardCore/V1/V1Row.swift"
+s = open(p).read().replace("        case source, owner\n", "        case source, owner = \"ownedBy\"\n", 1)
+open(p, "w").write(s)
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Everywhere but the platform runs, as before they existed.
+if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ]; then
 
 chapter "The mod loads"
 

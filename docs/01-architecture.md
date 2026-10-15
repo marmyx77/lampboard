@@ -134,12 +134,27 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1431 cases, instantaneous. They verify Core, on the Mac and on Linux
+1442 cases, instantaneous. They verify Core, on the Mac and on Linux
 (`Scripts/test-linux.sh`). Among them, the `v1` conformance battery from
 `ProtocolConformance`: a library rather than suites of the runner's own,
 because it is meant to be pointed at any source a byte stream reaches — the
 reference source in memory today, the Linux service and the Mac over ssh
-next — and to hold each of them to the same written contract.
+next — and to hold each of them to the same written contract. The same battery
+already runs over a real ssh, through NodeLink, against the reference node in a
+container (`Scripts/test-nodelink.sh`).
+
+### `LampBoardNodeLink` — the phone's way into a machine
+
+The app's ssh client (D175), on Citadel and a fork of swift-nio-ssh pinned to a
+commit that was read: one connection per machine, the host key pinned before
+anything is sent, a read key that can only open `v1` and an action key that can
+also run a command — two types, so the difference is the compiler's to keep —
+and a deadline on every operation. `V1Link` carries `V1Client` over its channels
+and resumes with `since` when one ends. The iPhone and iPad app and the Linux
+checks use it; the Mac app does not link it, and `Scripts/check-app-links.sh`
+is the gate that says so. Its checks live in two more targets, `V1ReferenceNode`
+(the reference source as a node will serve it: a daemon and a thin `stdio`
+command for sshd) and `NodeLinkCheck`.
 
 ### `LampBoardE2E` — the real chain
 

@@ -1,16 +1,19 @@
 # Code map
 
-~84,000 lines of Swift across six targets. For each file: what it contains, why
+~86,000 lines of Swift across nine targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  27,667 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  19,864 lines · 141 files   1431 cases, instantaneous
+  LampBoardTests/  20,138 lines · 142 files   1442 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
-  ProtocolConformance/  604 lines · 3 files   the v1 battery, any source
-  TestKit/            369 lines · 4 files   minimal assertions
+  ProtocolConformance/  625 lines · 3 files   the v1 battery, any source
+  LampBoardNodeLink/  773 lines · 5 files   ssh to a machine: v1, commands
+  V1ReferenceNode/    256 lines · 1 files   the reference source behind ssh
+  NodeLinkCheck/      386 lines · 3 files   NodeLink against a real ssh
+  TestKit/            410 lines · 5 files   minimal assertions
 ```
 
 No file exceeds 798 lines. The limit the project sets itself is 800.
@@ -2408,7 +2411,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1431 cases
+## `LampBoardTests/` — 1442 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2544,10 +2547,61 @@ the low-power actions and nothing else, the devices refused to the read key, a
 transcript's `notSent` and a path refused, a client too old, bytes out of step.
 Every reply on the way is checked against the contract.
 
-### `V1ByteStream.swift` · 123
+### `V1ByteStream.swift` · 144
 What a source looks like to the battery — write, read with a timeout, close — and
 the loopback over a `V1Service` with a clock of its own, so half-second pings cost
 no time. The reference source in memory is the first target.
+
+## `LampBoardNodeLink/` — the phone's way into a machine
+
+The app's ssh client, without a terminal yet (D175): Citadel on swift-nio-ssh,
+both pinned to the commit read in W0 of the mobile plan. The iPhone and iPad app
+and the Linux checks use it; **the Mac app does not link it**, and
+`Scripts/check-app-links.sh` fails the gate if it ever does. Built for the iOS
+simulator by `Scripts/test-ios.sh`, tested on the Mac and on Linux by the domain
+suite, and over a real OpenSSH by `Scripts/test-nodelink.sh`.
+
+### `NodeKeys.swift`
+`NodeEndpoint`; `NodeHostKey`, an OpenSSH key line without its comment, and its
+`ssh-keygen -l` fingerprint; `HostKeyTrust` — `.pinned` or `.firstUse`, asked
+for by name, never "accept anything" — and `HostKeyVerdict`, the pure judgement
+the tests make without a network. `ReadKey` and `ActionKey` are two types on
+purpose. **What you would break**: a single key type with a role flag lets a read
+key reach for a command, and nothing would refuse it before the machine does.
+
+### `NodeConnection.swift`
+`NodeLink.read` and `NodeLink.act`, which give a `ReadConnection` (only `v1`) or
+an `ActionConnection` (`v1` and `run`). Opened with `SSHClient.connect(host:port:)`;
+a refused host key is told apart from a network failure by the verdict the hook
+remembered. `ExecChannel` keeps Citadel's `withExec`, which lends a channel for
+the length of a closure, open for as long as its user wants. Citadel's streaming
+exec needs macOS 15, so this file says so; iOS 17 and Linux have it.
+
+### `NodeDeadline.swift`
+`NodeLinkError`, the per-operation `NodeDeadlines`, and the race that answers the
+caller when the clock wins and closes whatever arrives late. **What you would
+break**: an `await` on Citadel with no deadline hangs for ever on a forced
+command (E12), and cancelling the task does not stop it.
+
+### `NodeChannel.swift`
+`NodeByteChannel`, what a channel is to the link, and the 32 KiB cut every write
+goes through: swift-nio-ssh never sends a single write larger than the window.
+
+### `V1Link.swift`
+The Core's `V1Client` carried over channels that come and go: connect, write,
+receive, tick, and a new channel when the client asks for one, which resumes with
+`since`. Backs off when a channel ends at once.
+
+## `V1ReferenceNode/` and `NodeLinkCheck/` — NodeLink against a real ssh
+
+`V1ReferenceNode` is the reference source as a node serves it, in the shape
+`lampd` will have: `serve` holds `V1ReferenceFixture` behind a Unix socket, and
+`stdio` is the thin process sshd runs for the read key, carrying bytes and the
+command the client asked for, which is logged and never run. `NodeLinkCheck`
+runs the conformance battery through NodeLink against it, and the key bites: a
+changed host key, an unknown key, a read key asking for a command, a silent
+machine, a channel the machine ends, the link over ssh. Only
+`Scripts/test-nodelink.sh` runs them.
 
 ## `LampBoardE2E/` — 186 cases
 
@@ -2659,12 +2713,14 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/embed-mod.py` | writes the files under `mod/` into the `ModFiles*.swift` sources the app installs the mod from (D66), and the version and the list in `ModFiles.swift`; run after editing the mod, or `ModFilesSuite` fails |
 | `Scripts/check-mod.sh` | the companion mod as Claude Code reads it, through `claude plugin validate`: a module that breaks one rule is dropped whole and silently from every session (D112); part of `test.sh`, attacked by `bite.sh` |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
-| `Scripts/test.sh` | both suites, the Core built for iOS, then the documentation check |
-| `Scripts/test-ios.sh` | builds the Core for the iOS simulator with warnings as errors (D173); exits 3 where there is no iOS SDK. Part of `test.sh`, attacked by `bite.sh` with an `import AppKit` |
+| `Scripts/test.sh` | both suites, the Core and NodeLink built for iOS, what the Mac app links, then the documentation check |
+| `Scripts/test-ios.sh` | builds the Core, then NodeLink, for the iOS simulator with warnings as errors (D173, D175); the packages' clones are kept between runs. Exits 3 where there is no iOS SDK. Part of `test.sh`, attacked by `bite.sh` with an `import AppKit` |
+| `Scripts/check-app-links.sh` | reads the manifest as a Mac does and fails if the Mac app reaches a product of another package: the ssh stack is NodeLink's alone (D175). Exits 3 off a Mac. Part of `test.sh`, attacked by `bite.sh --links` with the app naming NodeLink |
+| `Scripts/test-nodelink.sh` | NodeLink over a real OpenSSH (D175): builds NodeLink and `V1ReferenceNode` in the pinned `swift` image, starts a node in a second container with the read key forced to the reference node's `stdio`, and runs `NodeLinkCheck` — the conformance battery and the key bites — on a network of its own. Needs docker, so not on the test Mac: exits 3 there. Attacked by `bite.sh --nodelink`: the forced command dropped, any host key let in, a row's field renamed |
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty-two violations and demands thirty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty-six violations and demands thirty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

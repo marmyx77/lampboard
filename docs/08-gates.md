@@ -67,7 +67,7 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (1431 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (1442 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
 | End-to-end suite (186 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
@@ -81,9 +81,11 @@ Measured on an M-series Mac, 29 August 2026.
 | Every file is on the map | nothing shipped, and no script, is written about nowhere | filesystem | `bite.sh` erases a file's row, then a script's | CI, `test.sh` | ” |
 | The stated mutation count | the number of mutations the documents claim is the number `bite.sh` runs | filesystem | `bite.sh` drifts the count, then rewords every sentence stating it away | CI, `test.sh` | ” |
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
-| The Core builds for iOS | the Core compiles for the iOS simulator, warnings as errors (D173) | filesystem | `bite.sh --ios` imports AppKit into the Core | `test.sh` (Xcode with the iOS SDK) | 16 s |
+| The Core builds for iOS | the Core, and NodeLink after it, compile for the iOS simulator, warnings as errors (D173, D175) | filesystem | `bite.sh --ios` imports AppKit into the Core | `test.sh` (Xcode with the iOS SDK) | 16 s the Core; NodeLink and its ssh stack a few minutes more |
 | The Core builds and tests on Linux | the Core and the domain suite build on Linux, warnings as errors, and every case passes there; a write into a closed pipe does not end the process (D173) | filesystem | `bite.sh --linux` imports Darwin into the Core with no condition | a machine with docker, `Scripts/test-linux.sh`: **not** the test Mac | 25 s warm, 2 min cold |
 | One protocol, every source | every `v1` source passes the conformance battery over a byte stream, held to a contract written by hand: hello and the state's age, a stream with no hole and no double across a reconnection, the low-power actions and nothing else (D174) | filesystem | `bite.sh --swift` renames a row's field in what the source writes and demands the battery name it | CI, `test.sh`, `Scripts/test-linux.sh` | in the domain suite |
+| NodeLink over ssh | the `v1` conformance battery passes against the reference node behind a real OpenSSH, through NodeLink; a changed host key is refused before anything is opened; a read key asking for anything else gets `v1` and its command never runs; an unknown key is refused; a silent machine costs the deadline; the link resumes over ssh (D175) | filesystem | `bite.sh --nodelink` drops the read key's forced command, lets any host key in, and renames a row's field | a machine with docker, `Scripts/test-nodelink.sh`: **not** the test Mac | ~1 min warm, a few cold |
+| The Mac app links only its own | the app reaches no product of another package, as the manifest reads on a Mac: the ssh stack is NodeLink's alone (D175) | filesystem | `bite.sh --links` makes the app name NodeLink | `test.sh` | 2 s |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Who answers a Codex approval | a `turn_context` still names `approvals_reviewer`; without it every Codex permission request blinks amber, including the automatic ones | **external** | a rollout with the field removed is reported against | with the contract | in the above |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
@@ -91,7 +93,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits thirty-two violations and demands thirty-two catches. It takes 26
+`bite.sh` commits thirty-six violations and demands thirty-six catches. It takes 26
 seconds.
 
 ## The two platform gates
@@ -110,11 +112,23 @@ machine may not have:
   the fixtures' sake and would otherwise hide a Core that stopped ignoring it
   itself: measured, the process dies with 141.
 
-Both answer with the three outcomes, and ⚠ is exit 3: "I could not look here".
+NodeLink over ssh is a third script of the same kind (D175). `Scripts/test-nodelink.sh`
+needs docker too: it builds NodeLink and the reference node in the pinned image,
+starts a node in a second container — OpenSSH, an account, a host key made for
+the run, the read key forced to the reference node's `stdio`, the action key
+with `restrict,pty` — on a network of its own with no port published, and runs
+the conformance battery and the key bites through NodeLink against it. What the
+Mac app links, on the other hand, is read on the Mac, where the manifest says
+what the app gets: `Scripts/check-app-links.sh` is part of `test.sh`, and is
+the one that says ⚠ on Linux.
+
+All of them answer with the three outcomes, and ⚠ is exit 3: "I could not look here".
 `bite.sh` treats that as a bite not attempted, and says so, the way it treats
 the mod where there is no `claude`. So on the test Mac the Linux bite is skipped
 and announced; `Scripts/bite.sh --linux` is how it is proved, on a machine with
-docker. A change to the Core is not done until that has run.
+docker. A change to the Core is not done until that has run, and a change to
+NodeLink not until `Scripts/test-nodelink.sh` and `Scripts/bite.sh --nodelink`
+have.
 
 ## The rule
 

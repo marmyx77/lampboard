@@ -88,36 +88,57 @@ public final class V1MemoryTarget: V1ConformanceTarget {
 
     public init(start: Date = Date(timeIntervalSince1970: 1_760_000_000)) {
         clock = V1ManualClock(start)
-        source = V1MemorySource(
-            identity: V1SourceIdentity(kind: .node, name: "example-node"), version: "conformance",
-            startedAt: start, journal: "conformance-1", retention: 100
-        )
-        source.setTranscript(session: Self.sessionId(1), messages: [
-            .init(role: "user", text: "Check the build.", at: start),
-            .init(role: "assistant", text: "The build is green.", at: start),
-        ])
-        try? provoke(3)
+        source = V1ReferenceFixture.source(startedAt: start)
+        made = V1ReferenceFixture.provoke(source, count: 3, made: made, at: clock.now)
     }
 
-    public static func sessionId(_ n: Int) -> String { String(format: "10000000-0000-4000-8000-%012ld", n) }
+    public static func sessionId(_ n: Int) -> String { V1ReferenceFixture.sessionId(n) }
 
     public func connect(role: V1Role) throws -> V1ByteStream {
         V1LoopbackStream(source: source, peer: V1Peer(device: "conformance-device", role: role), clock: clock)
     }
 
     public func provoke(_ count: Int) throws {
+        made = V1ReferenceFixture.provoke(source, count: count, made: made, at: clock.now)
+    }
+}
+
+/// The reference source's data, the same wherever it is served: in memory for
+/// the domain suite, behind ssh in a container for the transport's check
+/// (`V1ReferenceNode`). Example names only.
+public enum V1ReferenceFixture {
+
+    public static func source(startedAt start: Date) -> V1MemorySource {
+        let source = V1MemorySource(
+            identity: V1SourceIdentity(kind: .node, name: "example-node"), version: "conformance",
+            startedAt: start, journal: "conformance-1", retention: 100
+        )
+        source.setTranscript(session: sessionId(1), messages: [
+            .init(role: "user", text: "Check the build.", at: start),
+            .init(role: "assistant", text: "The build is green.", at: start),
+        ])
+        return source
+    }
+
+    public static func sessionId(_ n: Int) -> String { String(format: "10000000-0000-4000-8000-%012ld", n) }
+
+    /// Changes the source `count` times, one event each, cycling over three
+    /// sessions. Returns the new number of changes made so far.
+    public static func provoke(_ source: V1MemorySource, count: Int, made: Int, at now: Date) -> Int {
+        var made = made
         for _ in 0..<count {
             made += 1
             let n = (made - 1) % 3 + 1
             let session = SessionSnapshot(
-                id: Self.sessionId(n), status: made % 2 == 0 ? "ready" : "working", workspace: "project-\(n)",
-                path: "/work/project-\(n)", updatedAt: clock.now, statusSince: clock.now,
+                id: sessionId(n), status: made % 2 == 0 ? "ready" : "working", workspace: "project-\(n)",
+                path: "/work/project-\(n)", updatedAt: now, statusSince: now,
                 contextPercent: 40, contextConfidence: "exact", costUSD: 0.5, entrypoint: "cli", origin: "terminal",
                 title: "Example session \(n)"
             )
             source.upsert(V1Row(session: session, source: source.identity,
-                                extras: V1RowExtras(cacheMinutes: 3, readAt: clock.now, terminal: "tmux:project-\(n)")),
-                          at: clock.now)
+                                extras: V1RowExtras(cacheMinutes: 3, readAt: now, terminal: "tmux:project-\(n)")),
+                          at: now)
         }
+        return made
     }
 }

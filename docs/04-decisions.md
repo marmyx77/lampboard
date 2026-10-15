@@ -6403,3 +6403,54 @@ types (a renamed key would rename itself on both ends and pass).
 
 **Signal to revisit:** a source that needs a message the other does not, or a field that only one source
 can fill.
+
+## D175 · NodeLink: the phone's way into a machine, without a terminal yet
+
+**Decided** (16 October 2026), as the third step towards LampBoard on the iPhone and iPad (§2.4 of the
+plan): the app reaches a node, and later the Mac, through ssh, with two keys and a pinned host key.
+
+**What.** `Sources/LampBoardNodeLink/`, a target of its own that the Mac app does not link:
+- one ssh connection per machine, opened with Citadel's `SSHClient.connect(host:port:)` (the variant that
+  takes a channel crashes in Debug, S-C);
+- the host key judged before anything of ours is sent: `.pinned(key)`, or `.firstUse`, which a caller has
+  to ask for by name and which hands back the key to pin. There is no "accept anything";
+- the read key and the action key are two types, `ReadKey` and `ActionKey`, and so are the connections
+  they open: a `ReadConnection` can only open `v1`; an `ActionConnection` can also run a command. A read
+  key reaching for a command does not compile;
+- the `v1` channel is an exec channel named `v1`: a node's `authorized_keys` forces `lampd v1-stdio` for
+  the read key whatever it asks, and the Mac's server answers that name;
+- every operation has a deadline of its own, raced against a timer, because cancelling a task does not
+  stop a future deep in NIO (Citadel's `openSFTP` waits for ever against a forced command, E12). A
+  connection that arrives after its deadline is closed, not leaked. No SFTP and no PTY yet (W8);
+- every write is cut at 32 KiB: swift-nio-ssh does not split a write larger than the channel's window;
+- `ChannelError.alreadyClosed` is the normal end of a channel the machine closed first;
+- `V1Link` carries the Core's `V1Client` over channels that come and go: it writes what `connect` returns,
+  feeds what arrives to `receive`, ticks the client, and opens a new channel when the client asks, which
+  then resumes with `since`.
+
+The package declares Citadel at the commit of 0.12.1 and the fork it depends on, `Wellz26/swift-nio-ssh`,
+at `d88989f3d3bb` (its 0.3.7): 78 commits over Apple's 2022 tree from Citadel's authors and contributors,
+the last two from the fork's owner (a NIO product for Mac Catalyst; no window adjust after a local close).
+Read at that commit: no process, network or environment calls in the library; one known shortcut, a key
+offered without a signature always gets `PK_OK`, the refusal coming at the signed request (S-R). swift-nio
+is pinned to 2.104.0. swift-crypto is now declared on every platform, because Citadel needs it everywhere;
+the Core still takes it on Linux only, and the Mac app reaches none of these packages.
+
+**Why.** One client for every way in (§2.4): `v1`, commands, and later the terminal and files, over the
+ssh the nodes already have, with `authorized_keys` doing the restricting. The rules are the ones measured
+in W0, not chosen: S-C, S-R, S-H v2, S-C v2.
+
+**Proved by** three gates (docs/08-gates.md): the domain suite's NodeLink cases on the Mac and on Linux;
+`Scripts/test-nodelink.sh`, where docker is, which runs the `v1` conformance battery and the key bites
+over a real OpenSSH in a container, against `V1ReferenceNode` (the reference source as a daemon on a Unix
+socket and a thin `stdio` command, the shape `lampd` will have); `Scripts/check-app-links.sh`, which reads
+the manifest as a Mac does and fails if the app reaches another package's product. NodeLink is also built
+for the iOS simulator by `Scripts/test-ios.sh`.
+
+**Discarded:** Citadel's `withPTY` for `v1` (it sends `shell`, then the command typed); vendoring the fork
+now (pinning a read commit gives the same guarantee and keeps its history readable; to be revisited when it
+needs a patch); trusting on first use by default; a read key and an action key of the same type with a
+flag; Citadel's own reconnection (it reconnects without asking the `v1` client what it holds).
+
+**Signal to revisit:** the fork moving away from what was read, a channel that needs a window larger than
+128 KiB on a mobile network (S-C2), or a need for the terminal (W8).

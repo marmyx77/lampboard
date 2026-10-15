@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Runs both suites, and builds the Core for iOS.
+# Runs both suites, builds the Core and NodeLink for iOS, and checks what the
+# Mac app links.
 #
 # There are two because they cover different things: the first verifies pure
 # functions and is instantaneous, the second launches the real binary and talks
@@ -49,6 +50,15 @@ echo "▸ End-to-end tests (port $PORT)"
 echo
 echo "▸ The Core on iOS"
 "$ROOT/Scripts/test-ios.sh"
+
+# What the Mac app links. The package declares an ssh stack for NodeLink (D175);
+# the app must reach none of it, nor anything else from another package.
+echo
+echo "▸ What the Mac app links"
+"$ROOT/Scripts/check-app-links.sh"
+
+# NodeLink over a real ssh needs a container engine the test Mac does not have,
+# like the Linux build: Scripts/test-nodelink.sh runs it where there is one.
 
 # The companion mod as Claude Code reads it: a module that breaks one of its rules
 # is dropped whole, silently, from every session.

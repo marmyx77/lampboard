@@ -11,19 +11,38 @@ let strict: [SwiftSetting] = [.swiftLanguageMode(.v5)]
 
 // The Core and its domain suite also build on Linux, for the service that keeps
 // a Linux machine's sessions, and the Core builds for iOS. Linux has no
-// CryptoKit, so there — and only there — the same API comes from swift-crypto.
-// Decided when the manifest is read, on the machine that builds: on a Mac the
-// dependency does not exist at all, so nothing is fetched, resolved or linked
-// for the app, and an iOS build made on a Mac uses the system's CryptoKit.
+// CryptoKit, so there — and only there — the Core takes the same API from
+// swift-crypto. The Mac app never links it: on the Mac and on iOS the Core uses
+// the system's CryptoKit.
 #if os(Linux)
-let linuxPackages: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-crypto.git", "3.15.1"..<"4.0.0"),
-]
 let crypto: [Target.Dependency] = [.product(name: "Crypto", package: "swift-crypto")]
 #else
-let linuxPackages: [Package.Dependency] = []
 let crypto: [Target.Dependency] = []
 #endif
+
+// The ssh stack of NodeLink (D175): Citadel on swift-nio-ssh. Every one of these
+// is pinned to what was measured in W0 of the mobile plan, Citadel and its fork
+// of swift-nio-ssh to a commit rather than a range, because a fork of a third
+// party is read once and then must not move under us (S-C, S-R). Only the
+// targets that talk ssh name them; the Mac app links none of them, and
+// Scripts/check-app-links.sh is the gate that says so.
+let sshPackages: [Package.Dependency] = [
+    // 0.12.1
+    .package(url: "https://github.com/orlandos-nl/Citadel.git", revision: "ae8562f895de06ccb86fdb1cbb65fd99c8976e12"),
+    // 0.3.7 of the fork Citadel depends on, not apple/swift-nio-ssh: read at
+    // this commit (docs/04-decisions.md, D175).
+    .package(url: "https://github.com/Wellz26/swift-nio-ssh.git", revision: "d88989f3d3bb1dfb2a38ce4af598afbf7fc3095c"),
+    .package(url: "https://github.com/apple/swift-nio.git", exact: "2.104.0"),
+    // Declared on every platform because Citadel needs it everywhere; the Core
+    // takes it on Linux alone (above).
+    .package(url: "https://github.com/apple/swift-crypto.git", "3.15.1"..<"4.0.0"),
+]
+let ssh: [Target.Dependency] = [
+    .product(name: "Citadel", package: "Citadel"),
+    .product(name: "NIOSSH", package: "swift-nio-ssh"),
+    .product(name: "NIOCore", package: "swift-nio"),
+    .product(name: "Crypto", package: "swift-crypto"),
+]
 
 let package = Package(
     name: "LampBoard",
@@ -34,8 +53,9 @@ let package = Package(
     // package's executable targets are products by themselves.
     products: [
         .library(name: "LampBoardCore", targets: ["LampBoardCore"]),
+        .library(name: "LampBoardNodeLink", targets: ["LampBoardNodeLink"]),
     ],
-    dependencies: linuxPackages,
+    dependencies: sshPackages,
     targets: [
         // Pure logic: parsing, workspace resolution, state machine.
         // No dependency on AppKit — entirely verifiable.
@@ -59,10 +79,34 @@ let package = Package(
             dependencies: ["LampBoardCore", "TestKit"],
             swiftSettings: strict
         ),
+        // The phone's way into a machine (D175): one ssh connection, the host key
+        // pinned, a read key that only opens `v1` and an action key, every
+        // operation with a deadline of its own. The iPhone and iPad app and the
+        // Linux checks use it; the Mac app does not link it.
+        .target(
+            name: "LampBoardNodeLink",
+            dependencies: ["LampBoardCore"] + ssh,
+            swiftSettings: strict
+        ),
+        // The reference `v1` source as a node serves it: a daemon on a Unix
+        // socket and the thin `stdio` process sshd runs for a restricted key,
+        // the shape `lampd` will have. Only the checks run it.
+        .executableTarget(
+            name: "V1ReferenceNode",
+            dependencies: ["LampBoardCore", "ProtocolConformance"],
+            swiftSettings: strict
+        ),
+        // The conformance battery and the key bites over a real ssh, through
+        // NodeLink: `Scripts/test-nodelink.sh` runs it against a node in a container.
+        .executableTarget(
+            name: "NodeLinkCheck",
+            dependencies: ["LampBoardCore", "LampBoardNodeLink", "ProtocolConformance", "TestKit"],
+            swiftSettings: strict
+        ),
         // Executable test suite: `swift run LampBoardTests`.
         .executableTarget(
             name: "LampBoardTests",
-            dependencies: ["LampBoardCore", "TestKit", "ProtocolConformance"] + crypto,
+            dependencies: ["LampBoardCore", "TestKit", "ProtocolConformance", "LampBoardNodeLink"] + crypto,
             swiftSettings: strict
         ),
         // The terminal emulator behind the live view (D129): SwiftTerm,
