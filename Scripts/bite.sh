@@ -543,6 +543,19 @@ s = open(p).read().replace(
 open(p, "w").write(s)
 PY
 
+chapter "One protocol, every source"
+
+# The conformance battery holds every source of the `v1` protocol to a contract
+# written by hand. A field renamed in what a source writes must turn it red, and
+# say which field. The client in the same Core would rename it too and keep
+# reading, so only a contract written apart can notice (D174).
+protect Sources/LampBoardCore/V1/V1Row.swift
+attack_swift "a field of a row renamed in what a source writes" 'missing "owner"' 1 <<'PY'
+p = "Sources/LampBoardCore/V1/V1Row.swift"
+s = open(p).read().replace("        case source, owner\n", "        case source, owner = \"ownedBy\"\n", 1)
+open(p, "w").write(s)
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

@@ -18,37 +18,22 @@ extension StateStore {
 
     // MARK: - Where a hook from an unclaimed folder belongs (moved from StateStore at 800 lines)
 
-    /// The folder a terminal row is anchored on, for a signal nothing claims:
-    /// the `cwd` of the session's live file, or `nil` when there is no such
-    /// file, the feature is off, the signal names a host, or nobody is in front
-    /// of the session (`sdk`, `print`).
-    func terminalHome(for signal: HookSignal, live file: LiveSession?) -> Workspace? {
-        guard showsTerminalSessions, signal.host == nil, signal.deservesTrafficLight, let file else { return nil }
-        return Workspace(path: file.cwd)
-    }
-
-    /// The folder of a background session's live file, when the signal is from one.
-    func backgroundHome(for signal: HookSignal, live file: LiveSession?) -> Workspace? {
-        guard signal.host == nil, signal.deservesTrafficLight, let file, file.isBackground else { return nil }
-        return Workspace(path: file.cwd)
-    }
-
     /// A background session's folder, or else, for a signal no folder claims,
-    /// a terminal session's: from the signal's live file, read once.
+    /// a terminal session's: from the signal's live file, read once. The rule
+    /// is `LiveAdoption.home`, shared with the node.
     func liveHome(for signal: HookSignal, claimed: Bool) -> (workspace: Workspace, origin: SessionOrigin)? {
-        let live = liveFile(for: signal)
-        if let home = backgroundHome(for: signal, live: live) { return (home, .background) }
         // In tmux or in LampBoard's own terminal, its own folder, whatever editor
         // window contains it: one open on the home folder claimed every project
         // (a person, on 2.1.0, and again on 2.2.6 for a session that ends when closed).
-        if let live, Self.hasOwnFolder(live) { return (Workspace(path: live.cwd), .terminal) }
-        if !claimed, let home = terminalHome(for: signal, live: live) { return (home, .terminal) }
-        return nil
+        LiveAdoption.home(
+            of: liveFile(for: signal), claimed: claimed, showsTerminalSessions: showsTerminalSessions,
+            hasOwnFolder: Self.hasOwnFolder
+        )
     }
 
     /// Whether a live session's process runs in tmux or in LampBoard's own
     /// terminal: in either, no editor window hosts it.
-    static func hasOwnFolder(_ session: LiveSession) -> Bool {
+    nonisolated static func hasOwnFolder(_ session: LiveSession) -> Bool {
         guard session.pid > 1 else { return false }
         let ancestry = ProcessTree.ancestry(of: pid_t(session.pid))
         return TmuxPlace.runsInTmux(ancestry: ancestry)
@@ -104,52 +89,21 @@ extension StateStore {
                 continue
             }
             // A background session's place is the panel, whatever window has its
-            // folder open (AV1); its file's folder is its row's.
-            // In tmux or LampBoard's own terminal, no editor window's either: its folder is its own.
-            let inTmux = !session.isBackground && Self.hasOwnFolder(session)
-            let resolved = session.isBackground || inTmux ? nil : WorkspaceResolver.resolve(cwd: session.cwd, in: windows, at: now)
-            // Unclaimed and terminal sessions on: the file's own folder is the
-            // row's (D25) — the file is the anchor, so no `cd` can move it.
-            guard let workspace = resolved
-                ?? (session.isBackground || inTmux || showsTerminalSessions ? Workspace(path: session.cwd) : nil) else {
+            // folder open (AV1); in tmux or LampBoard's own terminal, no editor
+            // window's either; unclaimed with terminal sessions on (D25), the
+            // file's own folder. The rule is `LiveAdoption.placement`, shared
+            // with the node.
+            guard let place = LiveAdoption.placement(
+                of: session, windows: windows, showsTerminalSessions: showsTerminalSessions, at: now,
+                hasOwnFolder: Self.hasOwnFolder
+            ) else {
                 continue
             }
-            let origin: SessionOrigin = session.isBackground ? .background : resolved == nil ? .terminal : .editor
+            let (workspace, origin) = place
             let known = state.sessions[session.sessionId] != nil
-            // State `idle`: the app does not know what a session it has never seen
-            // is doing, and this is where it says so.
-            //
-            // It was briefly inferred instead — "the transcript moved in the last
-            // forty-five seconds, therefore a turn is in flight" — and that was
-            // wrong in a way worth recording. A transcript is appended on plenty of
-            // things that are not a turn, **resuming a session among them**. So
-            // after a reboot, when Claude Code resumes everything at once, every
-            // file moved at once and the whole column went yellow: twelve sessions
-            // claiming to be working while none of them were.
-            //
-            // A column that is uniformly wrong is worse than one that is
-            // uniformly cautious, because the panel exists to make the one session
-            // that needs you stand out. `idle` here is not a guess dressed up as a
-            // fact; it is the absence of information, and the first hook replaces it.
-            //
-            // The timestamp, by contrast, IS evidence and is kept: it comes from
-            // the transcript, which is the only file that moves when a session
-            // does something.
-            apply(
-                .adopt(
-                    SessionState(
-                        id: session.sessionId,
-                        // Claude Code's own word when it gives one (D141).
-                        status: session.isBusy ? .working : .idle,
-                        workspace: workspace,
-                        updatedAt: session.modifiedAt,
-                        statusSince: session.modifiedAt,
-                        entrypoint: session.entrypoint,
-                        origin: origin
-                    )
-                ),
-                now: now
-            )
+            // `idle` unless Claude Code says `busy`: see `LiveAdoption.adopted`
+            // for why a row never seen is not inferred to be working.
+            apply(.adopt(LiveAdoption.adopted(session, in: workspace, origin: origin)), now: now)
             if !known {
                 if origin == .terminal {
                     Diagnostics.log(
@@ -305,11 +259,7 @@ extension StateStore {
                 cwd: session.cwd, sessionId: session.sessionId, host: host,
                 windows: remoteWindows[host] ?? [], sessions: live, at: now
             )
-            apply(.adopt(SessionState(
-                id: session.sessionId, status: session.isBusy ? .working : .idle, workspace: workspace,
-                updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
-                entrypoint: session.entrypoint, origin: .terminal, title: session.name
-            )), now: now)
+            apply(.adopt(RemoteAdoption.adopted(session, in: workspace)), now: now)
             Diagnostics.log("remote \(host): adopted \(session.sessionId.prefix(8)) in \(session.cwd)")
         }
     }

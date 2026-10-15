@@ -50,10 +50,19 @@ let package = Package(
             name: "TestKit",
             swiftSettings: strict
         ),
+        // The `v1` protocol's conformance battery (W1 of the mobile plan): the
+        // same cases against any source a byte stream reaches — the reference
+        // source in memory today, `lampd` and the Mac over ssh later. A library,
+        // so that every runner can take it; the Mac app does not link it.
+        .target(
+            name: "ProtocolConformance",
+            dependencies: ["LampBoardCore", "TestKit"],
+            swiftSettings: strict
+        ),
         // Executable test suite: `swift run LampBoardTests`.
         .executableTarget(
             name: "LampBoardTests",
-            dependencies: ["LampBoardCore", "TestKit"] + crypto,
+            dependencies: ["LampBoardCore", "TestKit", "ProtocolConformance"] + crypto,
             swiftSettings: strict
         ),
         // The terminal emulator behind the live view (D129): SwiftTerm,

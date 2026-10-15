@@ -147,9 +147,13 @@ else:
 for target, claimed in declared("per-target case counts", re.findall(
     r'(LampBoard(?:Tests|E2E))/.*?(\d+) cases', doc
 )):
+    # The domain runner also runs the protocol's conformance battery, whose
+    # cases are written in a library of their own: they count where they run.
+    folders = [target] + (["ProtocolConformance"] if target == "LampBoardTests" else [])
     actual = sum(
         open(p).read().count("TestCase(")
-        for p in glob.glob(f"Sources/{target}/**/*.swift", recursive=True)
+        for folder in folders
+        for p in glob.glob(f"Sources/{folder}/**/*.swift", recursive=True)
     )
     if actual != int(claimed):
         problems.append(f"{target}/ says {claimed} cases, has {actual}")
@@ -270,7 +274,8 @@ if not sources:
     print("    no Swift sources found — nothing to compare these figures against", file=sys.stderr)
     sys.exit(2)
 
-domain, e2e = cases("LampBoardTests"), cases("LampBoardE2E")
+# The conformance battery's cases run in the domain runner (see above).
+domain, e2e = cases("LampBoardTests") + cases("ProtocolConformance"), cases("LampBoardE2E")
 longest = max(lines_of(p) for p in sources)
 total = sum(lines_of(p) for p in sources)
 
@@ -365,7 +370,8 @@ if start < 0:
 end = text.find("\n## ", start + 1)
 table = text[start:end if end > 0 else len(text)]
 
-domain, e2e = cases("LampBoardTests"), cases("LampBoardE2E")
+# The conformance battery's cases run in the domain runner (see above).
+domain, e2e = cases("LampBoardTests") + cases("ProtocolConformance"), cases("LampBoardE2E")
 longest = max(lines_of(p) for p in glob.glob("Sources/**/*.swift", recursive=True))
 
 problems = []

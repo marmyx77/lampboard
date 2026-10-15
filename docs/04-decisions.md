@@ -6354,3 +6354,52 @@ fetch it); ignoring `SIGPIPE` only in the test runner (the service needs it as m
 
 **Signal to revisit:** a Core file that needs an `#if` on the platform's name rather than on what it has,
 or a Linux build that needs a second package.
+
+## D174 · The protocol the phone reads, written once
+
+**Decided** (16 October 2026), as the second step towards LampBoard on the iPhone and iPad (§2.2 of the
+plan): the Mac and the Linux service serve the same protocol, and whoever has only a Mac can use the app.
+
+**What.** `Sources/LampBoardCore/V1/` holds the whole `v1` protocol, both sides of it:
+- the messages: `hello` (protocol, `minClient`, version, start, **the age of the state**), `state` (a
+  journal name, a number, the rows, `null` for rows never known), numbered events (a whole row, or a row
+  gone), `events since <seq>` with pings, `transcript` (always saying how much it left out), the
+  low-power `cmd` actions and nothing else, `push.register`, `devices` (action key only);
+- the frame on a byte stream: decimal length, space, JSON, newline; 4 MiB at most; writes cut at 32 KiB;
+- `V1Service`, the serving side of one connection, bytes in and bytes out, over a `V1Source` the Mac
+  and the Linux service each provide; `V1MemorySource`, the reference source;
+- `V1Client`, the reading side: it declares its state old after **2 × the ping interval + 5 s** without a
+  message (E13), does not use a message that ends a longer silence, throws away what arrives on a dropped
+  connection, and comes back with `since`. A hole in the numbers starts the connection again;
+- the push envelope and the relay request (§2.8), client side only: X25519, HKDF bound to the source and
+  the device, ChaCha20-Poly1305; a replay guard for the extension; a request refused before it leaves
+  when its bytes contain what the envelope hides.
+
+A row is the read endpoint's `SessionSnapshot` plus the phone's fields, its source and its owner, flat in
+one object. The rules for adopting the sessions nobody announced moved out of the Mac's store into
+`Node/LiveAdoption` and `RemoteAdoption.adopted`, unchanged, so the Linux service applies the same ones.
+
+`ProtocolConformance`, a library run by the domain runner, holds every source to a contract written by
+hand (`V1WireContract`) over a byte stream, with a frame reader of its own and requests written as plain
+JSON: nothing in it goes through the Core's codec. Today it runs against the reference source in memory.
+
+**Why.** A protocol written twice is two protocols. With one service over two sources, a rule — no gap at
+the start of a stream, `hello` first, no action beyond the low-power ones — is true on both because it is
+the same code, and the battery says so for each source over its own transport.
+
+**Measured** in W0, not chosen: an ssh stream over a network that disappears is closed by neither TCP nor
+ssh (S-H v2, six cuts in two hours); a 30.00 s silence at a 15 s interval is one lost ping, and a threshold
+of two intervals raised false alarms on it; after a suspension the kernel hands over pings up to 45.7 s
+late; a write larger than the channel's window is never sent (S-R).
+
+**Proved by** the conformance battery and its bite: a field renamed in what a source writes turns the
+domain suite red, named as missing and as unknown (`Scripts/bite.sh`). The domain cases run on the Mac and
+on Linux.
+
+**Discarded:** HTTP routes (the plan's first version: no LAN without Tailscale); a newline-only frame (a
+writer that forgets to escape one desynchronises the stream silently); asking for the state and the events
+in two requests (an event between the two answers is lost); a conformance suite built on the Core's own
+types (a renamed key would rename itself on both ends and pass).
+
+**Signal to revisit:** a source that needs a message the other does not, or a field that only one source
+can fill.

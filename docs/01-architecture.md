@@ -114,6 +114,15 @@ CryptoKit or swift-crypto, `F_SETNOSIGPIPE` or an ignored `SIGPIPE`, a `Process`
 to run tools only where tools can be run. `Scripts/test-ios.sh` and
 `Scripts/test-linux.sh` keep it that way.
 
+`V1/` is the protocol the phone reads, written once (D174): the messages, the
+frame they travel in on an ssh channel's byte stream, `V1Service` for the
+side that serves and `V1Client` for the side that reads. Neither the Mac nor
+the Linux service will write a protocol of its own: each provides a
+`V1Source` and a transport, and the service does the rest the same way for
+both. `Node/` holds the rules a machine applies to its own sessions without a
+panel — today, adopting the sessions nobody announced (`LiveAdoption`), taken
+out of the Mac's store so that both apply the same ones.
+
 ### `LampBoardApp` — the shell
 
 AppKit, SwiftUI, Network.framework, AppleScript, `UserNotifications`.
@@ -125,8 +134,12 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1351 cases, instantaneous. They verify Core, on the Mac and on Linux
-(`Scripts/test-linux.sh`).
+1431 cases, instantaneous. They verify Core, on the Mac and on Linux
+(`Scripts/test-linux.sh`). Among them, the `v1` conformance battery from
+`ProtocolConformance`: a library rather than suites of the runner's own,
+because it is meant to be pointed at any source a byte stream reaches — the
+reference source in memory today, the Linux service and the Mac over ssh
+next — and to hold each of them to the same written contract.
 
 ### `LampBoardE2E` — the real chain
 

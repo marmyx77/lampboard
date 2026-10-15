@@ -23,4 +23,14 @@ public enum RemoteAdoption {
                 && TmuxPlace.isPlaceable(entrypoint: session.entrypoint, isBackground: session.isBackground)
         }
     }
+
+    /// The row an adoptable session starts as: idle unless Claude Code says
+    /// `busy` (D141), a terminal's row, named as Claude Code names it there.
+    public static func adopted(_ session: LiveSession, in workspace: Workspace) -> SessionState {
+        SessionState(
+            id: session.sessionId, status: session.isBusy ? .working : .idle, workspace: workspace,
+            updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
+            entrypoint: session.entrypoint, origin: .terminal, title: session.name
+        )
+    }
 }

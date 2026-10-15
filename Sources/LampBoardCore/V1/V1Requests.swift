@@ -1,0 +1,172 @@
+import Foundation
+
+/// What a client asks a source (§2.2). Each request is one JSON object with an
+/// `op`, and an `id` the answer repeats as `re`.
+public enum V1Request: Equatable, Sendable {
+    /// The first thing on every connection: who is asking, and what it speaks.
+    case hello(protocol: Int, client: String)
+    /// The whole state, once. What a widget asks.
+    case state
+    /// The event stream. `since` is the last event the client holds, in the
+    /// journal it names; `nil` means "I hold nothing": the source sends its
+    /// state first, then everything after it, with no gap between the two.
+    case events(since: Int?, journal: String?, ping: TimeInterval?)
+    /// The last messages of one session's conversation.
+    case transcript(session: String, limit: Int?)
+    /// One of the low-power actions, and nothing else (R4).
+    case command(V1Command)
+    /// Where to send this device's notifications, and how to seal them.
+    case pushRegister(V1PushRegistration)
+    /// The paired devices: only with the action key.
+    case devices(V1DevicesRequest)
+
+    /// The `op` each request travels under.
+    public var op: String {
+        switch self {
+        case .hello: return "hello"
+        case .state: return "state"
+        case .events: return "events"
+        case .transcript: return "transcript"
+        case .command: return "cmd"
+        case .pushRegister: return "push.register"
+        case .devices: return "devices"
+        }
+    }
+
+    public static let ops: Set<String> = ["hello", "state", "events", "transcript", "cmd", "push.register", "devices"]
+}
+
+/// The low-power actions a phone may ask of a source (§2.2). Each is a choice
+/// about how a row is shown; none starts, stops or answers anything, so none
+/// needs the action key. Anything else is refused before the source sees it.
+public enum V1Action: String, Codable, Sendable, CaseIterable {
+    case markSeen, markUnread, rename, hide, mute, calmBlink, focus, order, dismiss
+
+    /// The actions about one row, which name it.
+    public var needsSession: Bool {
+        switch self {
+        case .focus, .order: return false
+        default: return true
+        }
+    }
+}
+
+public struct V1Command: Codable, Equatable, Sendable {
+    public let action: V1Action
+    public let session: String?
+    /// `rename`: the new name; empty clears it.
+    public let name: String?
+    /// `hide` and `mute`: on or off.
+    public let on: Bool?
+    /// `order`: the rows' ids in the order wanted.
+    public let ids: [String]?
+
+    public init(action: V1Action, session: String? = nil, name: String? = nil, on: Bool? = nil, ids: [String]? = nil) {
+        self.action = action
+        self.session = session
+        self.name = name
+        self.on = on
+        self.ids = ids
+    }
+
+    public static let maxName = 120
+    public static let maxIds = 1000
+
+    /// Why the command cannot be carried out as written, or `nil`. Checked by
+    /// the service before any source sees it: a source implements the actions,
+    /// it does not re-validate them.
+    public var problem: String? {
+        if action.needsSession {
+            guard let session, V1Validation.isSessionId(session) else { return "\(action.rawValue) needs a session id" }
+        }
+        switch action {
+        case .rename:
+            guard let name else { return "rename needs a name" }
+            if name.count > Self.maxName { return "a name is at most \(Self.maxName) characters" }
+            if V1Validation.hasControlCharacters(name) { return "a name has no control characters" }
+        case .hide, .mute:
+            if on == nil { return "\(action.rawValue) needs on" }
+        case .order:
+            guard let ids, ids.count <= Self.maxIds, ids.allSatisfy(V1Validation.isSessionId) else {
+                return "order needs up to \(Self.maxIds) session ids"
+            }
+        default:
+            break
+        }
+        return nil
+    }
+}
+
+/// What a phone registers with each source it is paired with (§2.8).
+public struct V1PushRegistration: Codable, Equatable, Sendable {
+    /// The capability the relay gave this device's token.
+    public let capability: String
+    /// The APNs device token, hex.
+    public let token: String
+    public let environment: APNsEnvironment
+    /// The device's X25519 public key for the envelopes, base64.
+    public let envelopeKey: String
+    /// The Live Activity's push token, when one is running.
+    public let liveActivityToken: String?
+
+    public init(capability: String, token: String, environment: APNsEnvironment, envelopeKey: String, liveActivityToken: String? = nil) {
+        self.capability = capability
+        self.token = token
+        self.environment = environment
+        self.envelopeKey = envelopeKey
+        self.liveActivityToken = liveActivityToken
+    }
+
+    public var problem: String? {
+        if !V1Validation.isHexToken(token) { return "token is not an APNs token" }
+        if let live = liveActivityToken, !V1Validation.isHexToken(live) { return "liveActivityToken is not an APNs token" }
+        if capability.isEmpty || capability.count > 512 || V1Validation.hasControlCharacters(capability) {
+            return "capability is not one"
+        }
+        guard let key = Data(base64Encoded: envelopeKey), key.count == 32 else { return "envelopeKey is not an X25519 key" }
+        return nil
+    }
+}
+
+public enum APNsEnvironment: String, Codable, Sendable {
+    case sandbox
+    case production
+}
+
+public struct V1DevicesRequest: Codable, Equatable, Sendable {
+    public enum Action: String, Codable, Sendable { case list, revoke }
+    public let action: Action
+    public let device: String?
+
+    public init(action: Action, device: String? = nil) {
+        self.action = action
+        self.device = device
+    }
+
+    public var problem: String? {
+        if action == .revoke, !(device.map(V1Validation.isSessionId) ?? false) { return "revoke needs a device id" }
+        return nil
+    }
+}
+
+/// The shapes a source accepts, checked once for every source.
+public enum V1Validation {
+    /// A session or device id: 1 to 200 characters out of letters, digits and
+    /// `-_.:`. A Claude Code session id is a UUID; a Codex one too.
+    public static func isSessionId(_ value: String) -> Bool {
+        guard (1...200).contains(value.count) else { return false }
+        return value.unicodeScalars.allSatisfy { scalar in
+            CharacterSet.alphanumerics.contains(scalar) && scalar.isASCII || "-_.:".unicodeScalars.contains(scalar)
+        }
+    }
+
+    public static func hasControlCharacters(_ value: String) -> Bool {
+        value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
+    }
+
+    /// An APNs token: an even number of hex digits, 32 to 200 bytes' worth.
+    public static func isHexToken(_ value: String) -> Bool {
+        guard (64...400).contains(value.count), value.count % 2 == 0 else { return false }
+        return value.unicodeScalars.allSatisfy { $0.properties.isASCIIHexDigit }
+    }
+}

@@ -1,14 +1,15 @@
 # Code map
 
-~80,500 lines of Swift across five targets. For each file: what it contains, why
+~84,000 lines of Swift across six targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,654 lines · 196 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,119 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,931 lines · 133 files   1351 cases, instantaneous
+  LampBoardCore/  27,667 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  19,864 lines · 141 files   1431 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
+  ProtocolConformance/  604 lines · 3 files   the v1 battery, any source
   TestKit/            369 lines · 4 files   minimal assertions
 ```
 
@@ -1698,9 +1699,10 @@ contains the hook's `cwd`, resolved by the same function as a local row; failing
 that the session file's folder, written once; failing that the `cwd` itself. Born
 from a row called "experiment" whose window was called `simlab` (D51).
 
-### `RemoteAdoption.swift` · 26
+### `RemoteAdoption.swift` · 36
 Which sessions another machine's probe reports become rows before they speak
-(D137): a terminal's, with a conversation, while terminal sessions are shown.
+(D137): a terminal's, with a conversation, while terminal sessions are shown; and
+the row each starts as.
 
 ### `RemoteSessionsDecoder.swift` · 140
 The other machine's answer, entering the domain. Validates like
@@ -1759,6 +1761,102 @@ paragraphs, lists with their depth, quotes, fenced code (a longer fence holds a
 shorter one), tables and rules, with inline marks left in the text for the drawing
 to read. Pure and quick, so a README of a hundred kilobytes is parsed off the main
 thread once per file.
+
+## `V1/`
+
+The protocol the iPhone and iPad read, written once (D174): every source serves
+it with this code and every client reads it with this code. A source provides
+its state and a transport; nothing else in it is its own.
+
+### `V1Protocol.swift` · 87
+The numbers both ends agree on: the version and `minClient`, the ping interval
+and its range, and when a client calls what it shows old — two intervals **and
+five seconds** (E13), because one lost ping at a 15-second interval leaves exactly
+30.00 s of silence and the threshold without the margin raised a false alarm on
+that line. Also the kinds of source, the identity a source gives itself (a name,
+never a host name), and what a connection's key may do.
+
+### `V1Frame.swift` · 115
+The frame on a byte stream: the length, a space, the JSON, a newline. The reader
+refuses a header that is not a length and a frame over 4 MiB before buffering it,
+and once out of step stays failed. `pieces` cuts writes at 32 KiB: swift-nio-ssh
+does not split a write larger than the channel's window (S-R, 9.5 MB sent nothing
+in 30 s).
+
+### `V1Requests.swift` · 172
+What a client asks — `hello`, `state`, `events since`, `transcript`, `cmd`,
+`push.register`, `devices` — and what each must hold. The commands are only the
+low-power actions (R4): nothing a read key sends can start, stop or answer
+anything, and anything else does not even decode.
+
+### `V1Replies.swift` · 315
+What a source says: `hello` with **the age of its state** (the failure this
+project's Linux machine is known for is a service alive on a state nobody
+refreshed), the state with its journal and `null` rows for "never known" (D21),
+the numbered events, pings carrying the last number sent, the transcript that
+always says how much it left out, and the refusal codes.
+
+### `V1Row.swift` · 189
+A row: the read endpoint's `SessionSnapshot`, the fields the phone needs beyond
+it, its source and its owner — flat in one JSON object, so the snapshot stays the
+one place its fields are defined.
+
+### `V1Codec.swift` · 214
+The JSON of every message, both ways, with `op` or `type` beside the fields and
+the request's `id` repeated as `re`. Tells a malformed request from an unknown op
+from a known op with the wrong fields, and keeps the id for the refusal.
+
+### `V1Source.swift` · 74
+What a machine provides to be served: identity and status, a snapshot, the events
+after a number, a transcript, and the actions — already validated.
+
+### `V1Service.swift` · 194
+The source's side of one connection, bytes in and bytes out, no transport:
+`hello` first, a client below `minClient` told and closed, an event stream that
+starts with no gap (the journal after what the client holds, or a whole state when
+the journal cannot say), a ping every interval, the devices only for the action
+key, a goodbye on an orderly stop.
+
+> **Touching the stream's start** is where a hole or a double appears. The choice
+> between replay and state is made in one step on purpose: a client that asked
+> for the state and then the events separately could miss what happened between.
+
+### `V1Client.swift` · 204
+The phone's side: what it holds, and when to start again. A network that
+disappears does not close an ssh stream (S-H v2: six cuts, none closed by TCP or
+ssh), so the client declares its state old by itself and comes back with `since`.
+A message that ends a silence longer than the threshold — pings held back by a
+suspension, up to 45.7 s late — is not used; bytes on a dropped connection are
+thrown away; a hole in the numbers starts the connection again.
+
+### `V1MemorySource.swift` · 174
+The reference source: rows and a journal in memory, the actions carried out on
+them. What the conformance battery is first run against, what the client is
+tested with, and what the demo mode will serve.
+
+### `PushEnvelope.swift` · 114
+What a notification really says, sealed for the relay to carry without reading
+(§2.8 of the mobile plan): X25519 between the phone and each source, HKDF bound
+to the pair, ChaCha20-Poly1305. `PushReplayGuard` is the extension's memory: an
+envelope shows once, never late, never from the future.
+
+### `RelayRequest.swift` · 80
+The client side of the push relay: the capability a token was given, the three
+kinds of push, and the request a source hands over — refused before it leaves
+when it is too large, when a background push asks for priority 10, or when its
+bytes contain what the envelope was meant to hide.
+
+## `Node/`
+
+What a machine applies to its own sessions without a panel, taken out of the
+Mac's store so that the Mac and the Linux service apply the same rules.
+
+### `LiveAdoption.swift` · 71
+Where a session nobody announced belongs, and the row it starts as: the editor
+window containing its folder, its own folder in tmux or LampBoard's terminal or
+in the background, its own folder when terminal sessions are shown, or nothing;
+`idle` unless Claude Code says `busy` (D141). The process-tree walk is handed in
+as a closure, asked only when the answer matters.
 
 ---
 
@@ -2055,7 +2153,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 800 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 341 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStoreAdoption.swift` | 296 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -2310,7 +2408,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1351 cases
+## `LampBoardTests/` — 1431 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2425,6 +2523,31 @@ must still reach a non-zero exit code; nineteen proofs, none of them written in
 the vocabulary they are testing. A blunt instrument ends the process with 70
 rather than the 1 of an ordinary failure, because the two mean different things.
 `Scripts/bite.sh` attacks it from the outside as well.
+
+## `ProtocolConformance/` — the `v1` battery
+
+A library, run by the domain runner and meant for any other: the same cases
+against any source a byte stream reaches (D174). Its requests are written by hand
+and its replies read as plain JSON with a frame reader of its own, so a defect
+shared by both ends of the Core cannot hide from it. The Mac app does not link it.
+
+### `V1WireContract.swift` · 175
+The wire, written down apart from the code that writes it: every reply type, every
+row field, their JSON kinds, which are required. A key renamed in a source's
+encoder is a required key missing **and** an unknown key present; adding a field
+means adding it here, on purpose.
+
+### `V1Conformance.swift` · 306
+The battery: hello first and its age, the state's rows, a stream with no hole and
+no double across a reconnection with `since`, another journal's numbers, pings,
+the low-power actions and nothing else, the devices refused to the read key, a
+transcript's `notSent` and a path refused, a client too old, bytes out of step.
+Every reply on the way is checked against the contract.
+
+### `V1ByteStream.swift` · 123
+What a source looks like to the battery — write, read with a timeout, close — and
+the loopback over a `V1Service` with a clock of its own, so half-second pings cost
+no time. The reference source in memory is the first target.
 
 ## `LampBoardE2E/` — 186 cases
 
@@ -2543,5 +2666,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty-one violations and demands thirty-one catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty-two violations and demands thirty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

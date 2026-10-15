@@ -183,6 +183,14 @@ let suites: [TestSuite] = [
     NotificationTextSuite.suite,
     StuckSuite.suite,
     WatchSuite.suite,
+    V1FrameSuite.suite,
+    V1MessagesSuite.suite,
+    V1ServiceSuite.suite,
+    V1ClientSuite.suite,
+    V1ContractSuite.suite,
+    V1ConformanceSuite.suite,
+    PushEnvelopeSuite.suite,
+    LiveAdoptionSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

@@ -67,7 +67,7 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (1351 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (1431 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
 | End-to-end suite (186 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
@@ -83,6 +83,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
 | The Core builds for iOS | the Core compiles for the iOS simulator, warnings as errors (D173) | filesystem | `bite.sh --ios` imports AppKit into the Core | `test.sh` (Xcode with the iOS SDK) | 16 s |
 | The Core builds and tests on Linux | the Core and the domain suite build on Linux, warnings as errors, and every case passes there; a write into a closed pipe does not end the process (D173) | filesystem | `bite.sh --linux` imports Darwin into the Core with no condition | a machine with docker, `Scripts/test-linux.sh`: **not** the test Mac | 25 s warm, 2 min cold |
+| One protocol, every source | every `v1` source passes the conformance battery over a byte stream, held to a contract written by hand: hello and the state's age, a stream with no hole and no double across a reconnection, the low-power actions and nothing else (D174) | filesystem | `bite.sh --swift` renames a row's field in what the source writes and demands the battery name it | CI, `test.sh`, `Scripts/test-linux.sh` | in the domain suite |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Who answers a Codex approval | a `turn_context` still names `approvals_reviewer`; without it every Codex permission request blinks amber, including the automatic ones | **external** | a rollout with the field removed is reported against | with the contract | in the above |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
@@ -90,7 +91,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits thirty-one violations and demands thirty-one catches. It takes 26
+`bite.sh` commits thirty-two violations and demands thirty-two catches. It takes 26
 seconds.
 
 ## The two platform gates
