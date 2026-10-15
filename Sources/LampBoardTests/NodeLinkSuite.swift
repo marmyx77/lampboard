@@ -121,7 +121,9 @@ enum NodeLinkSuite {
             let threshold = (try? Blocking.run { await bench.link.staleAfter }) ?? 35
             bench.clock.advance(threshold + 1)
             _ = try? Blocking.run { await bench.link.tick() }
-            t.expect(bench.saw { if case .stale = $0 { return true }; return false }, "declared old")
+            // The events reach the bench through a stream read by a task of its
+            // own: what the link said is waited for, not assumed delivered.
+            t.expect(Blocking.eventually { bench.saw { if case .stale = $0 { return true }; return false } }, "declared old")
             t.expect(Blocking.eventually { bench.opened == 2 }, "and replaced")
             t.expect(Blocking.eventually { await bench.link.isStale == false }, "fresh again once the new one answered")
         },
