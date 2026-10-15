@@ -11,7 +11,7 @@
 # read key that can run something else — would be the phone. This makes both a
 # red the same day (D175).
 #
-# The node is the pinned `swift` image with OpenSSH, an account `demo`, its own
+# The node is the pinned `swift` image with OpenSSH, an account `dev`, its own
 # host key, the reference `v1` daemon (V1ReferenceNode, the shape `lampd` will
 # have) and two keys written the way a node's `authorized_keys` holds them: the
 # read key forced to `V1ReferenceNode stdio` with `restrict`, the action key
@@ -122,11 +122,11 @@ docker run -d --name "$NODE" --network "$NET" --network-alias node \
     -v "$CACHE/build/debug/V1ReferenceNode:/opt/ref/V1ReferenceNode:ro" -v "$CACHE/keys:/keys:ro" \
     "$IMAGE" bash -c '
         set -e
-        useradd -m -s /bin/bash demo
-        usermod -p "*" demo   # no password, and not locked: sshd without PAM refuses a locked account
-        install -d -m 700 -o demo -g demo /home/demo/.ssh
-        install -m 600 -o demo -g demo /keys/authorized_keys /home/demo/.ssh/authorized_keys
-        install -d -m 700 -o demo -g demo /tmp/v1ref
+        useradd -m -s /bin/bash dev
+        usermod -p "*" dev   # no password, and not locked: sshd without PAM refuses a locked account
+        install -d -m 700 -o dev -g dev /home/dev/.ssh
+        install -m 600 -o dev -g dev /keys/authorized_keys /home/dev/.ssh/authorized_keys
+        install -d -m 700 -o dev -g dev /tmp/v1ref
         rm -f /etc/ssh/ssh_host_*
         ssh-keygen -q -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
         ssh-keygen -q -t ed25519 -N "" -f /tmp/wrong_host_key
@@ -139,9 +139,9 @@ KbdInteractiveAuthentication no
 PubkeyAuthentication yes
 PermitRootLogin no
 UsePAM no
-AllowUsers demo
+AllowUsers dev
 CONF
-        runuser -u demo -- bash -c "/opt/ref/V1ReferenceNode serve --socket /tmp/v1ref/v1.sock 2> /tmp/v1ref/node.log &"
+        runuser -u dev -- bash -c "/opt/ref/V1ReferenceNode serve --socket /tmp/v1ref/v1.sock 2> /tmp/v1ref/node.log &"
         python3 -c "import socket,time
 s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind((\"0.0.0.0\", 2223)); s.listen(8)
 held=[]
@@ -166,7 +166,7 @@ for a in "$@"; do ARGS="$ARGS $(printf '%q' "$a")"; done
 # SIGPIPE ignored, as a service runs; every wait bounded.
 docker run --rm --name "$NAME-check" --network "$NET" --user "$(id -u):$(id -g)" -e HOME=/tmp/h \
     -v "$CACHE/build:/src/.build:ro" -v "$CACHE/keys:/keys:ro" -w /src "$IMAGE" \
-    bash -c "trap '' PIPE; timeout -k 5 $LIMIT .build/debug/NodeLinkCheck run --host node --port 2222 --user demo \
+    bash -c "trap '' PIPE; timeout -k 5 $LIMIT .build/debug/NodeLinkCheck run --host node --port 2222 --user dev \
         --host-key /keys/host.pub --wrong-host-key /keys/wrong.pub --keys /keys \
         --reference /opt/ref/V1ReferenceNode --socket /tmp/v1ref/v1.sock --log /tmp/v1ref/node.log \
         --silent-port 2223$ARGS < /dev/null"

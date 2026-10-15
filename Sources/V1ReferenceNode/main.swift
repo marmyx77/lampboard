@@ -3,6 +3,8 @@ import LampBoardCore
 import ProtocolConformance
 #if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
 #elseif canImport(Darwin)
 import Darwin
 #endif
@@ -19,7 +21,9 @@ import Darwin
 //   V1ReferenceNode stdio   --socket <path> --device <id> --role read|action
 //   V1ReferenceNode provoke --socket <path> <count>
 //
-// Only the checks run it (Scripts/test-nodelink.sh). Example data only.
+// Only the checks run it (Scripts/test-nodelink.sh). It also builds with the
+// Static Linux SDK (musl), as `lampd` will, to run on a node with no Swift
+// installed. Example data only.
 
 signal(SIGPIPE, SIG_IGN)
 
@@ -162,8 +166,11 @@ enum ReferenceStdio {
 
 /// The few socket calls this needs, the same on Linux and on the Mac.
 enum UnixSocket {
-    #if os(Linux)
+    #if canImport(Glibc)
     static let stream = Int32(SOCK_STREAM.rawValue)
+    static let noSignal = Int32(MSG_NOSIGNAL)
+    #elseif canImport(Musl)
+    static let stream = SOCK_STREAM
     static let noSignal = Int32(MSG_NOSIGNAL)
     #else
     static let stream = SOCK_STREAM
@@ -246,6 +253,11 @@ enum Glue {
     static func listen(_ fd: Int32, _ backlog: Int32) -> Int32 { Glibc.listen(fd, backlog) }
     static func connect(_ fd: Int32, _ address: UnsafePointer<sockaddr>, _ length: socklen_t) -> Int32 {
         Glibc.connect(fd, address, length)
+    }
+    #elseif canImport(Musl)
+    static func listen(_ fd: Int32, _ backlog: Int32) -> Int32 { Musl.listen(fd, backlog) }
+    static func connect(_ fd: Int32, _ address: UnsafePointer<sockaddr>, _ length: socklen_t) -> Int32 {
+        Musl.connect(fd, address, length)
     }
     #else
     static func listen(_ fd: Int32, _ backlog: Int32) -> Int32 { Darwin.listen(fd, backlog) }
