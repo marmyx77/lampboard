@@ -1,5 +1,9 @@
 import Foundation
 
+// A Mac or a Linux machine runs tools; an iPhone or an iPad has no `Process` at
+// all, and reaches a tool only through a machine it is connected to.
+#if os(macOS) || os(Linux)
+
 /// Runs a command line tool with a deadline, and reads it without deadlocking.
 ///
 /// WHY THIS EXISTS
@@ -176,11 +180,21 @@ public enum Command {
     /// end, and writing into a closed pipe sends `SIGPIPE`, whose default is to
     /// end the process that wrote — this app. `F_SETNOSIGPIPE` turns that into
     /// an error on this one write, which is all it deserves.
+    ///
+    /// Linux has no such flag on a descriptor. There the signal is ignored for
+    /// the whole process, which is what a service does anyway: every write into
+    /// a pipe or a socket whose other end has gone becomes an error on that write.
     private static func feed(_ input: Data, into handle: FileHandle) {
+        #if canImport(Darwin)
         _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+        #else
+        _ = signal(SIGPIPE, SIG_IGN)
+        #endif
         DispatchQueue.global(qos: .userInitiated).async {
             try? handle.write(contentsOf: input)
             try? handle.close()
         }
     }
 }
+
+#endif

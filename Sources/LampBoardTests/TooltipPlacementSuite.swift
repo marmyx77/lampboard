@@ -1,4 +1,9 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
+#else
+// Linux: Foundation carries the same geometry types.
+import Foundation
+#endif
 import LampBoardCore
 import TestKit
 

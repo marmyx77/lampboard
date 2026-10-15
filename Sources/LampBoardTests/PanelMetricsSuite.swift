@@ -1,5 +1,10 @@
 import LampBoardCore
+#if canImport(CoreGraphics)
 import CoreGraphics
+#else
+// Linux: Foundation carries the same geometry types.
+import Foundation
+#endif
 import TestKit
 
 /// How tall the panel has to be for everything it draws to be visible.

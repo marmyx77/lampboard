@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#endif
 
 /// Setting a terminal's title by writing to the tty a session runs on.
 ///
@@ -75,7 +80,20 @@ public enum TerminalTitle {
 
         let bytes = Array(sequence(setting: title).utf8)
         return bytes.withUnsafeBufferPointer { buffer in
-            Darwin.write(descriptor, buffer.baseAddress, buffer.count) == buffer.count
+            systemWrite(descriptor, buffer.baseAddress, buffer.count) == buffer.count
         }
+    }
+
+    /// The C library's `write`, named by its module: inside this type the bare
+    /// name is the method above. Darwin on the Mac and on iOS, glibc on Linux,
+    /// musl in a static Linux build.
+    private static func systemWrite(_ descriptor: Int32, _ bytes: UnsafeRawPointer?, _ count: Int) -> Int {
+        #if canImport(Darwin)
+        return Darwin.write(descriptor, bytes, count)
+        #elseif canImport(Glibc)
+        return Glibc.write(descriptor, bytes, count)
+        #else
+        return Musl.write(descriptor, bytes, count)
+        #endif
     }
 }

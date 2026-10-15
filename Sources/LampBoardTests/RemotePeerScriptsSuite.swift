@@ -18,11 +18,12 @@ enum RemotePeerScriptsSuite {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let pid = ProcessInfo.processInfo.processIdentifier
         let socket = home.appendingPathComponent("box.sock").path
+        let start = procStart()
         let meta: [String: Any] = ["pid": Int(pid), "sessionId": session, "peerProtocol": 1, "messagingSocketPath": socket,
-                                   "procStart": "start-1"]
+                                   "procStart": start]
         try? JSONSerialization.data(withJSONObject: meta).write(to: folder.appendingPathComponent("\(pid).json"))
         let key = folder.appendingPathComponent("\(pid).abc123.key")
-        try? Data(#"{"peerToken":"tok_9f2c4e6a8b","procStart":"start-1"}"#.utf8).write(to: key)
+        try? Data(#"{"peerToken":"tok_9f2c4e6a8b","procStart":"\#(start)"}"#.utf8).write(to: key)
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: key.path)
         let listener = Process()
         listener.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -42,6 +43,22 @@ enum RemotePeerScriptsSuite {
             Thread.sleep(forTimeInterval: 0.05)
         }
         return (home, listener)
+    }
+
+    /// The start time the script compares with the one the session wrote. On
+    /// Linux it is field 22 of `/proc/<pid>/stat`, as Claude Code writes it, and
+    /// a made-up value never matches: the box is refused as another process's.
+    /// The Mac has no `/proc`, the script skips the comparison, and any value
+    /// passes.
+    private static func procStart() -> String {
+        #if os(Linux)
+        if let stat = try? String(contentsOfFile: "/proc/self/stat", encoding: .utf8),
+           let tail = stat.components(separatedBy: ")").last {
+            let fields = tail.split(separator: " ")
+            if fields.count > 19 { return String(fields[19]) }
+        }
+        #endif
+        return "start-1"
     }
 
     private static func run(_ payload: [String: Any], home: URL) -> [String: Any] {
@@ -72,6 +89,8 @@ enum RemotePeerScriptsSuite {
             }
             let result = run(payload, home: home)
             t.expectEqual(result["ok"] as? Bool, true, "\(result)")
+            // Nothing was sent, so the listener would wait for ever: a red, not a hang.
+            guard result["ok"] as? Bool == true else { return }
             listener.waitUntilExit()
             let lines = (try? String(contentsOf: home.appendingPathComponent("received"), encoding: .utf8))?
                 .split(separator: "\n").map(String.init) ?? []

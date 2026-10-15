@@ -1,4 +1,6 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
+#endif
 import LampBoardCore
 import Foundation
 import TestKit

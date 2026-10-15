@@ -9,14 +9,39 @@ let strictWarnings = ProcessInfo.processInfo.environment["LAMPBOARD_STRICT"] == 
 let strict: [SwiftSetting] = [.swiftLanguageMode(.v5)]
     + (strictWarnings ? [.unsafeFlags(["-warnings-as-errors"])] : [])
 
+// The Core and its domain suite also build on Linux, for the service that keeps
+// a Linux machine's sessions, and the Core builds for iOS. Linux has no
+// CryptoKit, so there — and only there — the same API comes from swift-crypto.
+// Decided when the manifest is read, on the machine that builds: on a Mac the
+// dependency does not exist at all, so nothing is fetched, resolved or linked
+// for the app, and an iOS build made on a Mac uses the system's CryptoKit.
+#if os(Linux)
+let linuxPackages: [Package.Dependency] = [
+    .package(url: "https://github.com/apple/swift-crypto.git", "3.15.1"..<"4.0.0"),
+]
+let crypto: [Target.Dependency] = [.product(name: "Crypto", package: "swift-crypto")]
+#else
+let linuxPackages: [Package.Dependency] = []
+let crypto: [Target.Dependency] = []
+#endif
+
 let package = Package(
     name: "LampBoard",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
+    // Declared so that it can be built on its own, as the iOS app will use it
+    // and as Scripts/test-ios.sh builds it: Xcode makes no scheme for a target
+    // that no product names. The executables need no line here; a root
+    // package's executable targets are products by themselves.
+    products: [
+        .library(name: "LampBoardCore", targets: ["LampBoardCore"]),
+    ],
+    dependencies: linuxPackages,
     targets: [
         // Pure logic: parsing, workspace resolution, state machine.
         // No dependency on AppKit — entirely verifiable.
         .target(
             name: "LampBoardCore",
+            dependencies: crypto,
             swiftSettings: strict
         ),
         // A mini assertion framework. It exists because the macOS Command Line
@@ -28,7 +53,7 @@ let package = Package(
         // Executable test suite: `swift run LampBoardTests`.
         .executableTarget(
             name: "LampBoardTests",
-            dependencies: ["LampBoardCore", "TestKit"],
+            dependencies: ["LampBoardCore", "TestKit"] + crypto,
             swiftSettings: strict
         ),
         // The terminal emulator behind the live view (D129): SwiftTerm,

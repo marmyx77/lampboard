@@ -215,7 +215,8 @@ enum MailboxDirectorySafetySuite {
 
         TestCase("A plain file where the mailbox should be is refused by name") { t in
             inTemporaryHome { _ in
-                FileManager.default.createFile(
+                // `_ =`: Linux's Foundation does not mark the result discardable.
+                _ = FileManager.default.createFile(
                     atPath: Mailbox.directory.path, contents: Data("x".utf8)
                 )
                 t.expectThrows(MailboxError.unsafeDirectory(Mailbox.directory.path)) {

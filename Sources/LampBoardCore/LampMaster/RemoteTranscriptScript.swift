@@ -108,8 +108,12 @@ public enum RemoteTranscriptScript {
     }
 
     /// A whole, non-negative number: never a boolean, a fraction or a sign.
+    ///
+    /// A JSON boolean decodes to a class of its own, on the Mac and on Linux
+    /// alike, the one `NSNumber(value: true)` is; a number is of another. `is
+    /// Bool` cannot tell them apart: 0 and 1 bridge to `Bool` as well.
     static func count(_ value: Any?) -> UInt64? {
-        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+        guard let number = value as? NSNumber, type(of: number) != type(of: NSNumber(value: true)),
               let exact = Int64(exactly: number.doubleValue), exact >= 0, Double(exact) == number.doubleValue
         else { return nil }
         return UInt64(exact)

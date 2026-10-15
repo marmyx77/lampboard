@@ -107,6 +107,13 @@ It is pure not for elegance but because it is the only part that can be verified
 in milliseconds and without opening any windows. Every time a decision slipped
 out of here, it became invisible to the tests.
 
+It builds in three places (D173): the Mac, iOS (for the iPhone and iPad app) and
+Linux (for a service on a machine that runs sessions). The few lines that differ
+are `#if`s on what a platform has, never on its name where a capability will do:
+CryptoKit or swift-crypto, `F_SETNOSIGPIPE` or an ignored `SIGPIPE`, a `Process`
+to run tools only where tools can be run. `Scripts/test-ios.sh` and
+`Scripts/test-linux.sh` keep it that way.
+
 ### `LampBoardApp` — the shell
 
 AppKit, SwiftUI, Network.framework, AppleScript, `UserNotifications`.
@@ -118,7 +125,8 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1350 cases, instantaneous. They verify Core.
+1351 cases, instantaneous. They verify Core, on the Mac and on Linux
+(`Scripts/test-linux.sh`).
 
 ### `LampBoardE2E` — the real chain
 

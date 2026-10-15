@@ -45,6 +45,22 @@ enum RemoteTranscriptScriptSuite {
             }
         },
 
+        TestCase("A count of 0 or 1 is a number; true and false never are, on any platform") { t in
+            // The check for a JSON boolean used CoreFoundation's type ids, which
+            // only the Mac has. Its replacement must not swing the other way: a
+            // number bridges to Bool on the Mac, so `is Bool` would refuse 0 and 1.
+            for (start, size) in [("0", "10"), ("1", "10"), ("0", "1"), ("1", "1")] {
+                let entry = #"{"start": \#(start), "size": \#(size), "data": ""}"#
+                t.expectEqual(RemoteTranscriptScript.decode(Data(#"{"a": \#(entry)}"#.utf8), asked: ["a"]).count, 1,
+                              "a count: start \(start), size \(size)")
+            }
+            for bad in [#"{"start": false, "size": 10}"#, #"{"start": 0, "size": true}"#, #"{"start": 0, "size": false}"#] {
+                let entry = bad.dropLast() + #", "data": ""}"#
+                t.expectEqual(RemoteTranscriptScript.decode(Data(#"{"a": \#(entry)}"#.utf8), asked: ["a"]).count, 0,
+                              "a boolean is not a count: \(bad)")
+            }
+        },
+
         TestCase("Whole lines only: a record or a character cut by the read's end waits for the next") { t in
             t.expectEqual(RemoteTranscriptScript.wholeLines(Data("a\nb\nc".utf8)), Data("a\nb\n".utf8))
             t.expectEqual(RemoteTranscriptScript.wholeLines(Data("città".utf8).dropLast()), Data(), "half an à is not a line")

@@ -223,6 +223,50 @@ enum MultiplexerSuite {
 
 /// The three hosts without a tty in their dictionary: what their listings say.
 enum TerminalListingSuite {
+    /// A title written to a real pty, opened the Mac's way. Only a Mac has the
+    /// path `TerminalTitle` accepts (`/dev/ttys…`) and Ghostty, the terminal it
+    /// exists for; a Linux pty is `/dev/pts/…` and is refused by design.
+    #if canImport(Darwin)
+    private static let ttyCases: [TestCase] = [
+        TestCase("Writing a title reaches the terminal holding the other end") { t in
+            // The whole probe rests on this: a write to a slave pty is a
+            // **display**, not an input. It travels to whoever holds the master,
+            // which here is the test itself and on a real Mac is Ghostty.
+            var master: Int32 = -1
+            master = posix_openpt(O_RDWR | O_NOCTTY)
+            guard master >= 0, grantpt(master) == 0, unlockpt(master) == 0,
+                  let name = ptsname(master) else {
+                t.expect(false, "no pty to test with")
+                return
+            }
+            defer { close(master) }
+            let slave = String(cString: name)
+
+            // A shell holds its own end open for as long as it lives. Without a
+            // stand-in for it here the pty is torn down by the writer's own
+            // `close`, and the master reads a hangup instead of the bytes — the
+            // test would be measuring the fixture, not the code.
+            let shell = open(slave, O_RDWR | O_NOCTTY)
+            defer { if shell >= 0 { close(shell) } }
+            t.expect(shell >= 0, "the far end is held open")
+
+            t.expect(TerminalTitle.write("turing", toTTY: slave), "the write went out")
+
+            var seen = ""
+            var buffer = [UInt8](repeating: 0, count: 256)
+            for _ in 0..<20 where !seen.contains("]0;turing") {
+                let read = Darwin.read(master, &buffer, buffer.count)
+                if read > 0 { seen += String(decoding: buffer[0..<read], as: UTF8.self) }
+                else { usleep(20_000) }
+            }
+            t.expect(seen.contains("]0;turing"),
+                     "and arrived at the other end as the sequence that sets a title")
+        }
+    ]
+    #else
+    private static let ttyCases: [TestCase] = []
+    #endif
+
     static let suite = TestSuite("Terminal listings: WezTerm, kitty, Ghostty", [
 
         TestCase("WezTerm panes are keyed by tty, and the cwd is a file URL") { t in
@@ -323,41 +367,6 @@ enum TerminalListingSuite {
             t.expectEqual(sequence, "\u{1B}]0;turing\u{07}", "OSC 0, terminated by BEL")
         },
 
-        TestCase("Writing a title reaches the terminal holding the other end") { t in
-            // The whole probe rests on this: a write to a slave pty is a
-            // **display**, not an input. It travels to whoever holds the master,
-            // which here is the test itself and on a real Mac is Ghostty.
-            var master: Int32 = -1
-            master = posix_openpt(O_RDWR | O_NOCTTY)
-            guard master >= 0, grantpt(master) == 0, unlockpt(master) == 0,
-                  let name = ptsname(master) else {
-                t.expect(false, "no pty to test with")
-                return
-            }
-            defer { close(master) }
-            let slave = String(cString: name)
-
-            // A shell holds its own end open for as long as it lives. Without a
-            // stand-in for it here the pty is torn down by the writer's own
-            // `close`, and the master reads a hangup instead of the bytes — the
-            // test would be measuring the fixture, not the code.
-            let shell = open(slave, O_RDWR | O_NOCTTY)
-            defer { if shell >= 0 { close(shell) } }
-            t.expect(shell >= 0, "the far end is held open")
-
-            t.expect(TerminalTitle.write("turing", toTTY: slave), "the write went out")
-
-            var seen = ""
-            var buffer = [UInt8](repeating: 0, count: 256)
-            for _ in 0..<20 where !seen.contains("]0;turing") {
-                let read = Darwin.read(master, &buffer, buffer.count)
-                if read > 0 { seen += String(decoding: buffer[0..<read], as: UTF8.self) }
-                else { usleep(20_000) }
-            }
-            t.expect(seen.contains("]0;turing"),
-                     "and arrived at the other end as the sequence that sets a title")
-        },
-
         TestCase("Nothing that is not a tty is written to") { t in
             // The path comes from the process table. A guard on the one shape it
             // may have costs nothing next to what an unguarded open for writing
@@ -369,7 +378,7 @@ enum TerminalListingSuite {
             // with the guard deleted.
             let scratch = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("lampboard-title-\(UUID().uuidString)")
-            FileManager.default.createFile(atPath: scratch.path, contents: Data())
+            _ = FileManager.default.createFile(atPath: scratch.path, contents: Data())
             defer { try? FileManager.default.removeItem(at: scratch) }
 
             t.expect(!TerminalTitle.write("x", toTTY: scratch.path), "a writable file is still not a tty")
@@ -415,5 +424,5 @@ enum TerminalListingSuite {
                 "and two silences are not a place"
             )
         },
-    ])
+    ] + ttyCases)
 }

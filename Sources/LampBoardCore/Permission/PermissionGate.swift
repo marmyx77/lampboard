@@ -1,4 +1,9 @@
+#if canImport(CryptoKit)
 import CryptoKit
+#else
+// Linux: the same API, from swift-crypto (Package.swift).
+import Crypto
+#endif
 import Foundation
 
 /// Allow and Deny from the panel (D73): a permission a session's companion mod

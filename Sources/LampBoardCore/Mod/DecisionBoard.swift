@@ -1,4 +1,9 @@
+#if canImport(CryptoKit)
 import CryptoKit
+#else
+// Linux: the same API, from swift-crypto (Package.swift).
+import Crypto
+#endif
 import Foundation
 
 /// One decision pinned for a repository (§5.5, D105).

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Runs both suites.
+# Runs both suites, and builds the Core for iOS.
 #
 # There are two because they cover different things: the first verifies pure
 # functions and is instantaneous, the second launches the real binary and talks
@@ -41,6 +41,14 @@ echo "▸ Domain tests"
 echo
 echo "▸ End-to-end tests (port $PORT)"
 .build/debug/LampBoardE2E --port "$PORT" "$@"
+
+# The Core as the iPhone and iPad app will take it: built for the simulator, with
+# warnings as errors. A Mac-only API reaching the Core compiles here without a
+# word, and this is where it is heard. Its Linux counterpart needs a container
+# engine the test Mac does not have, and runs on its own: Scripts/test-linux.sh.
+echo
+echo "▸ The Core on iOS"
+"$ROOT/Scripts/test-ios.sh"
 
 # The companion mod as Claude Code reads it: a module that breaks one of its rules
 # is dropped whole, silently, from every session.

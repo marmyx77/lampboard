@@ -33,6 +33,8 @@
 #   ./Scripts/bite.sh            everything
 #   ./Scripts/bite.sh --docs     only the documentation gates (a few seconds)
 #   ./Scripts/bite.sh --swift    only the test instrument (needs a build)
+#   ./Scripts/bite.sh --ios      only the Core's iOS build (needs Xcode)
+#   ./Scripts/bite.sh --linux    only the Core's Linux build (needs docker)
 
 set -uo pipefail   # deliberately not -e: half of what runs here is meant to fail
 
@@ -193,6 +195,34 @@ attack_swift() {
         blunt "$description" "the suite exited $status, expected $wanted"
     elif ! grep -Fq -- "$expected" "$log"; then
         blunt "$description" "it exited $status, but never said “${expected}”"
+    else
+        bit "$description"
+    fi
+}
+
+# The same, for a gate that lives in a script of its own because it needs
+# something a machine may not have: a container engine, the iOS SDK. Such a gate
+# exits 3 where it cannot look, and then the attack is skipped and said, like
+# the mod's where there is no claude.
+#   attack_platform <gate script> <description> <expected fragment>
+attack_platform() {
+    local gate="$1" description="$2" expected="$3" before status log="$WORK/platform.log"
+    before="$(fingerprint)"
+    if ! python3 - ; then blunt "$description" "the mutation itself failed to run"; restore; return; fi
+    if [ "$before" = "$(fingerprint)" ]; then
+        blunt "$description" "the mutation no longer applies — this bite is stale, and has been proving nothing"
+        restore
+        return
+    fi
+    "$gate" > "$log" 2>&1
+    status=$?
+    restore
+    if [ "$status" -eq 3 ]; then
+        printf '  %s cannot look on this machine: "%s" is not attacked here\n' "$gate" "$description"
+    elif [ "$status" -eq 0 ]; then
+        blunt "$description" "$gate stayed green with the violation in place"
+    elif ! grep -Fq -- "$expected" "$log"; then
+        blunt "$description" "it went red, but never said “${expected}”"
     else
         bit "$description"
     fi
@@ -519,6 +549,43 @@ swift build > /dev/null 2>&1
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--ios" ]; then
+
+chapter "The Core builds for iOS"
+
+# The Core is the iPhone and iPad app's as it is. A framework only the Mac has,
+# imported where the Core can see it, must stop the build for the simulator.
+protect Sources/LampBoardCore/Update/ReleaseVersion.swift
+attack_platform Scripts/test-ios.sh "a Mac-only framework imported into the Core" "'AppKit'" <<'PY'
+p = "Sources/LampBoardCore/Update/ReleaseVersion.swift"
+s = open(p).read()
+open(p, "w").write("import AppKit\n" + s)
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--linux" ]; then
+
+chapter "The Core builds and tests on Linux"
+
+# The Core is also the Linux service's. Darwin, imported with no condition,
+# compiles on every Mac and on no Linux machine: the Linux gate must say so.
+# Where there is no container engine (the test Mac) this one is not attacked;
+# `Scripts/bite.sh --linux` runs it on a machine that has one.
+protect Sources/LampBoardCore/Update/ReleaseVersion.swift
+attack_platform Scripts/test-linux.sh "Darwin imported into the Core with no condition" "'Darwin'" <<'PY'
+p = "Sources/LampBoardCore/Update/ReleaseVersion.swift"
+s = open(p).read()
+open(p, "w").write("import Darwin\n" + s)
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Everywhere but the two platform runs, as before they existed.
+if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ]; then
+
 chapter "The mod loads"
 
 # A streaming hook written as an ordinary function: Claude Code drops the whole
@@ -529,6 +596,8 @@ p = "mod/hooks/register.js"
 s = open(p).read().replace("on('turn.step', async function* ($, e, next)", "on('turn.step', async ($, e, next)", 1)
 open(p, "w").write(s)
 PY
+
+fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 printf '\n%s\n' "────────────────────────────────────────────────────────"

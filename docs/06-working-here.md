@@ -46,7 +46,7 @@ remote named `hub` pointing at that repository, and nothing else from this one.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 1350 cases, instantaneous
+swift run LampBoardTests              # 1351 cases, instantaneous
 swift run LampBoardE2E                # 186 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
@@ -79,7 +79,9 @@ never the real panel's 9877.
 ```bash
 ./Scripts/check-docs.sh    # ten gates, half a second
 ./Scripts/bite.sh          # breaks the repository on purpose, 26 seconds
-./Scripts/test.sh          # build, both suites, then both of the above
+./Scripts/test.sh          # build, both suites, the Core for iOS, then both of the above
+./Scripts/test-linux.sh    # the Core and its suite on Linux, where docker is (not the test Mac)
+./Scripts/bite.sh --linux  # and the proof that it bites, on the same machine
 ```
 
 `check-docs.sh` verifies the figures this documentation states — line counts,
@@ -89,7 +91,7 @@ things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and 
 could not observe what it judges. **A green with a ⚠ in it is not a green**, and
 it exits 3 to say so.
 
-`bite.sh` is the one that judges the others. It commits twenty-nine violations — a
+`bite.sh` is the one that judges the others. It commits thirty-one violations — a
 drifted figure, a broken link, a planted home directory, a suite nobody runs, an
 assertion that has stopped asserting — and fails if any gate does not notice.
 Every mutation is undone afterwards, including on Ctrl-C.

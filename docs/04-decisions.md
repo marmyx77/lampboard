@@ -6318,3 +6318,39 @@ person's eyes. Before, both stayed green after the person had read them.
 Found on the way: a LampBoard running against another home (the tests') now registers the sessions' server
 with that home, as LampMaster's own server does (D170). The `-e` goes after the server's name, because before
 the name `claude mcp add` read the name as a second variable.
+
+## D173 · The Core builds for the Mac, iOS and Linux
+
+**Decided** (15 October 2026), as the first step towards LampBoard on the iPhone and iPad, and a service
+that keeps the lights of a Linux machine's sessions.
+
+**What.** `Package.swift` declares iOS 17 next to macOS 14, and the Core and its domain suite build on
+Linux. The Core is a library product, so that a build can name it on its own. What differs is a handful
+of `#if`s on what a platform has:
+- CryptoKit where it exists; elsewhere the same API from swift-crypto. The dependency is declared only
+  when the manifest is read on Linux, so on a Mac nothing is fetched, resolved or linked for the app;
+- `Command` exists where a tool can be run (macOS, Linux). A write into a tool that never reads is
+  `F_SETNOSIGPIPE` on the Mac and an ignored `SIGPIPE` on Linux, which has no such flag;
+- `TerminalTitle` names the C library's `write` by its module: Darwin, glibc or musl;
+- a JSON boolean is told from a number by its class, the one `NSNumber(value: true)` has, instead of
+  CoreFoundation's type ids, which only the Mac has. `is Bool` would not do: 0 and 1 bridge to `Bool`;
+- on iOS the home folder is the app's container;
+- the geometry files import CoreGraphics where it exists; Linux's Foundation has the same types.
+
+One case stays on the Mac: writing a title to a real pty, whose path (`/dev/ttys…`) and terminal
+(Ghostty) only a Mac has. The peer box fixture writes the process start time Linux checks, read from
+`/proc`, and stops at a refusal instead of waiting for a connection that will not come.
+
+**Why.** The iPhone and iPad app and the Linux service reuse the Core as it is: models, reducer, parsers,
+remote scripts, signed envelopes. Measured before this change: 189 of 196 Core files compiled on Linux and
+195 for iOS, and the exceptions were these.
+
+**Proved by** two gates (docs/08-gates.md): `Scripts/test-ios.sh` in `test.sh`, and `Scripts/test-linux.sh`
+where docker is, each with its bite. On Linux every domain case passes but the pty one.
+
+**Discarded:** moving the geometry files out of the Core (they compile everywhere as they are); a
+swift-crypto dependency on every platform with a condition on the product (the Mac would still resolve and
+fetch it); ignoring `SIGPIPE` only in the test runner (the service needs it as much as the tests do).
+
+**Signal to revisit:** a Core file that needs an `#if` on the platform's name rather than on what it has,
+or a Linux build that needs a second package.

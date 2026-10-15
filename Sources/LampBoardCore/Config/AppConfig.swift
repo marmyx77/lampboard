@@ -144,7 +144,12 @@ public enum AppConfig {
            !override.trimmed.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
+        #if os(iOS)
+        // An app on iOS has no user home: its own container is the only one.
+        return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        #else
         return FileManager.default.homeDirectoryForCurrentUser
+        #endif
     }
 
     /// `true` when the app is running against a fake home.

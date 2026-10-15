@@ -67,7 +67,7 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (1350 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (1351 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
 | End-to-end suite (186 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
@@ -81,6 +81,8 @@ Measured on an M-series Mac, 29 August 2026.
 | Every file is on the map | nothing shipped, and no script, is written about nowhere | filesystem | `bite.sh` erases a file's row, then a script's | CI, `test.sh` | ” |
 | The stated mutation count | the number of mutations the documents claim is the number `bite.sh` runs | filesystem | `bite.sh` drifts the count, then rewords every sentence stating it away | CI, `test.sh` | ” |
 | Every gate bites | each gate above has a mutation that turns it red | filesystem | `bite.sh` adds a gate with no bite | CI, `test.sh` | ” |
+| The Core builds for iOS | the Core compiles for the iOS simulator, warnings as errors (D173) | filesystem | `bite.sh --ios` imports AppKit into the Core | `test.sh` (Xcode with the iOS SDK) | 16 s |
+| The Core builds and tests on Linux | the Core and the domain suite build on Linux, warnings as errors, and every case passes there; a write into a closed pipe does not end the process (D173) | filesystem | `bite.sh --linux` imports Darwin into the Core with no condition | a machine with docker, `Scripts/test-linux.sh`: **not** the test Mac | 25 s warm, 2 min cold |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
 | Who answers a Codex approval | a `turn_context` still names `approvals_reviewer`; without it every Codex permission request blinks amber, including the automatic ones | **external** | a rollout with the field removed is reported against | with the contract | in the above |
 | Claude Code contract | hook events, payload shapes, `@internal` rewake options, the extension's files | **external** | the live probe (`--live`) runs real sessions | a person's machine, before a release | 29 s |
@@ -88,8 +90,30 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits twenty-nine violations and demands twenty-nine catches. It takes 26
+`bite.sh` commits thirty-one violations and demands thirty-one catches. It takes 26
 seconds.
+
+## The two platform gates
+
+The Core is built in three places (D173), and the Mac gate alone sees one of
+them. The other two have scripts of their own, because each needs something a
+machine may not have:
+
+- `Scripts/test-ios.sh` needs Xcode with the iOS SDK. The test Mac has it, so it
+  is part of `test.sh` and of every gate run there.
+- `Scripts/test-linux.sh` needs a container engine, which the test Mac does not
+  have. It runs where docker does — the Linux machine the agents work from — on
+  a copy of the working tree, in the `swift` image pinned by digest, without a
+  network once swift-crypto is fetched. It runs `Command`'s suite first on its
+  own with `SIGPIPE` at its default, because the full run ignores the signal for
+  the fixtures' sake and would otherwise hide a Core that stopped ignoring it
+  itself: measured, the process dies with 141.
+
+Both answer with the three outcomes, and ⚠ is exit 3: "I could not look here".
+`bite.sh` treats that as a bite not attempted, and says so, the way it treats
+the mod where there is no `claude`. So on the test Mac the Linux bite is skipped
+and announced; `Scripts/bite.sh --linux` is how it is proved, on a machine with
+docker. A change to the Core is not done until that has run.
 
 ## The rule
 

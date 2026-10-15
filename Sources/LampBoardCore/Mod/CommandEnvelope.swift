@@ -1,4 +1,9 @@
+#if canImport(CryptoKit)
 import CryptoKit
+#else
+// Linux: the same API, from swift-crypto (Package.swift).
+import Crypto
+#endif
 import Foundation
 
 /// A command the panel sends to one session's companion mod (D152): a message
