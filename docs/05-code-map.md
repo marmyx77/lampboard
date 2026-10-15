@@ -7,7 +7,7 @@ it exists, and **what you would break** by touching it.
 Sources/
   LampBoardCore/  27,667 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  20,138 lines · 142 files   1442 cases, instantaneous
+  LampBoardTests/  20,140 lines · 142 files   1442 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  625 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  773 lines · 5 files   ssh to a machine: v1, commands
