@@ -90,7 +90,8 @@ git ls-files -z --cached --others --exclude-standard \
     | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
     | tar --null -T - -cf - | tar -xf - -C "$SRC" \
     || failed "the working tree could not be copied to $SRC"
-[ -f "$CACHE/Package.resolved" ] && cp "$CACHE/Package.resolved" "$SRC/Package.resolved"
+# The committed pins decide; the cache only stands in for a tree without them.
+[ -f "$SRC/Package.resolved" ] || { [ -f "$CACHE/Package.resolved" ] && cp "$CACHE/Package.resolved" "$SRC/Package.resolved"; }
 
 in_builder() {
     docker run --rm --name "$NAME-build" --user "$(id -u):$(id -g)" -e HOME=/tmp/h --cpus 8 --memory 8g \

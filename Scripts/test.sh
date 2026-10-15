@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Runs both suites, builds the Core and NodeLink for iOS, and checks what the
-# Mac app links.
+# Mac app links and that every package it fetches is pinned.
 #
 # There are two because they cover different things: the first verifies pure
 # functions and is instantaneous, the second launches the real binary and talks
@@ -56,6 +56,12 @@ echo "▸ The Core on iOS"
 echo
 echo "▸ What the Mac app links"
 "$ROOT/Scripts/check-app-links.sh"
+
+# What the build fetches: every package the graph reaches, pinned in the
+# committed Package.resolved. SwiftPM itself says nothing when a pin is missing.
+echo
+echo "▸ Every package is pinned"
+"$ROOT/Scripts/check-pins.sh"
 
 # NodeLink over a real ssh needs a container engine the test Mac does not have,
 # like the Linux build: Scripts/test-nodelink.sh runs it where there is one.

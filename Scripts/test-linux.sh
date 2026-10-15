@@ -18,8 +18,9 @@
 #
 # What it builds is the working tree — tracked files and new ones git does not
 # ignore — copied to a cache folder outside the checkout, so the checkout never
-# gets a Linux `.build` or a `Package.resolved`, and `bite.sh` can attack it the
-# way it attacks every other gate.
+# gets a Linux `.build`, and `bite.sh` can attack it the way it attacks every
+# other gate. The committed Package.resolved comes with it: the pins are the
+# Mac's and Linux's alike (Scripts/check-pins.sh).
 #
 # EXIT CODES
 #   0  the Core built and every suite passed
@@ -88,7 +89,8 @@ git ls-files -z --cached --others --exclude-standard \
     | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done \
     | tar --null -T - -cf - | tar -xf - -C "$SRC" \
     || failed "the working tree could not be copied to $SRC"
-[ -f "$CACHE/Package.resolved" ] && cp "$CACHE/Package.resolved" "$SRC/Package.resolved"
+# The committed pins decide; the cache only stands in for a tree without them.
+[ -f "$SRC/Package.resolved" ] || { [ -f "$CACHE/Package.resolved" ] && cp "$CACHE/Package.resolved" "$SRC/Package.resolved"; }
 
 run() {
     docker run --rm --name "$NAME" --user "$(id -u):$(id -g)" -e HOME=/tmp/h \

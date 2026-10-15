@@ -5,12 +5,12 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  27,667 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  27,792 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  20,140 lines · 142 files   1442 cases, instantaneous
+  LampBoardTests/  20,332 lines · 142 files   1454 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  625 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  773 lines · 5 files   ssh to a machine: v1, commands
+  LampBoardNodeLink/  804 lines · 5 files   ssh to a machine: v1, commands
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/      386 lines · 3 files   NodeLink against a real ssh
   TestKit/            410 lines · 5 files   minimal assertions
@@ -1804,10 +1804,14 @@ A row: the read endpoint's `SessionSnapshot`, the fields the phone needs beyond
 it, its source and its owner — flat in one JSON object, so the snapshot stays the
 one place its fields are defined.
 
-### `V1Codec.swift` · 214
+### `V1Codec.swift` · 264
 The JSON of every message, both ways, with `op` or `type` beside the fields and
 the request's `id` repeated as `re`. Tells a malformed request from an unknown op
-from a known op with the wrong fields, and keeps the id for the refusal.
+from a known op with the wrong fields, and keeps the id for the refusal. On the
+client's side, `readReply` tells what a newer source added — a kind of reply, an
+event or a refusal code this build does not know — from bytes that are no reply:
+the first is passed over (an event's number still counts), only the second ends
+the connection. Otherwise an app one version behind reconnects for ever.
 
 ### `V1Source.swift` · 74
 What a machine provides to be served: identity and status, a snapshot, the events
@@ -1837,11 +1841,14 @@ The reference source: rows and a journal in memory, the actions carried out on
 them. What the conformance battery is first run against, what the client is
 tested with, and what the demo mode will serve.
 
-### `PushEnvelope.swift` · 114
+### `PushEnvelope.swift` · 145
 What a notification really says, sealed for the relay to carry without reading
 (§2.8 of the mobile plan): X25519 between the phone and each source, HKDF bound
 to the pair, ChaCha20-Poly1305. `PushReplayGuard` is the extension's memory: an
-envelope shows once, never late, never from the future.
+envelope shows once, never late, never from the future. It is keyed on the pair
+whose key opened the envelope, never on what the content says of itself, and a
+source's new journal is a new count: a restart with nothing kept must not turn
+every notification after it into a "replay".
 
 ### `RelayRequest.swift` · 80
 The client side of the push relay: the capability a token was given, the three
@@ -2411,7 +2418,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1442 cases
+## `LampBoardTests/` — 1454 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2713,14 +2720,15 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/embed-mod.py` | writes the files under `mod/` into the `ModFiles*.swift` sources the app installs the mod from (D66), and the version and the list in `ModFiles.swift`; run after editing the mod, or `ModFilesSuite` fails |
 | `Scripts/check-mod.sh` | the companion mod as Claude Code reads it, through `claude plugin validate`: a module that breaks one rule is dropped whole and silently from every session (D112); part of `test.sh`, attacked by `bite.sh` |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
-| `Scripts/test.sh` | both suites, the Core and NodeLink built for iOS, what the Mac app links, then the documentation check |
+| `Scripts/test.sh` | both suites, the Core and NodeLink built for iOS, what the Mac app links, the pins, then the documentation check |
 | `Scripts/test-ios.sh` | builds the Core, then NodeLink, for the iOS simulator with warnings as errors (D173, D175); the packages' clones are kept between runs. Exits 3 where there is no iOS SDK. Part of `test.sh`, attacked by `bite.sh` with an `import AppKit` |
 | `Scripts/check-app-links.sh` | reads the manifest as a Mac does and fails if the Mac app reaches a product of another package: the ssh stack is NodeLink's alone (D175). Exits 3 off a Mac. Part of `test.sh`, attacked by `bite.sh --links` with the app naming NodeLink |
+| `Scripts/check-pins.sh` | every package the dependency graph reaches has a pin in the committed `Package.resolved`, at the version the graph uses, and the build did not move one. SwiftPM itself says nothing when a pin is missing (measured). Exits 3 where there is no swift. Part of `test.sh`, attacked by `bite.sh --pins` with BigInt's pin removed |
 | `Scripts/test-nodelink.sh` | NodeLink over a real OpenSSH (D175): builds NodeLink and `V1ReferenceNode` in the pinned `swift` image, starts a node in a second container with the read key forced to the reference node's `stdio`, and runs `NodeLinkCheck` — the conformance battery and the key bites — on a network of its own. Needs docker, so not on the test Mac: exits 3 there. Attacked by `bite.sh --nodelink`: the forced command dropped, any host key let in, a row's field renamed |
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty-six violations and demands thirty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty-seven violations and demands thirty-seven catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

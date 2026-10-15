@@ -6454,3 +6454,22 @@ flag; Citadel's own reconnection (it reconnects without asking the `v1` client w
 
 **Signal to revisit:** the fork moving away from what was read, a channel that needs a window larger than
 128 KiB on a mobile network (S-C2), or a need for the terminal (W8).
+
+**Amended at the end of W1 (review).** Pinning Citadel and the fork in the manifest left seven packages
+under them — BigInt, swift-asn1, swift-atomics, swift-collections, swift-log, swift-system, swift-crypto —
+pinned by nothing, because `Package.resolved` was still ignored as a build product from the days the
+package had no dependencies. It is now committed, and `Scripts/check-pins.sh` (part of `test.sh`, bitten
+by `bite.sh --pins`) compares it with the graph SwiftPM builds: measured on Swift 6.4, a pin removed from
+the file is resolved to the newest version without a word, even with `--only-use-versions-from-resolved-file`.
+The same review found that a `V1Link` stopped while a channel was opening, or while an attempt was
+failing, came back to `live` or `waiting` and kept the late channel open, and that its clock could start
+after `stop`: a stopped link now stays stopped, and closes what arrives late. The client of D174 passes
+over what a newer source adds — a kind of reply, an event kind, a refusal code — instead of dropping the
+connection, which a source one version ahead would have turned into a reconnection every few seconds for
+as long as the app was not updated; an unknown event's number still counts. And the push envelope's
+replay guard is keyed on the pair whose key opened it and on the source's journal: keyed on the content's
+own `source` and number, one paired source could silence another by naming it with a large number, and a
+source restarted with nothing kept would have had every notification after it dropped as a replay.
+The service now also bounds what it does not trust a source with: a transcript is cut to what was asked
+whatever the source hands over, a name is bounded in bytes as well as in characters (one character can
+be four kilobytes), and an id never starts with a dot, so `..` is not one.

@@ -37,6 +37,7 @@
 #   ./Scripts/bite.sh --linux    only the Core's Linux build (needs docker)
 #   ./Scripts/bite.sh --nodelink only NodeLink over ssh (needs docker)
 #   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
+#   ./Scripts/bite.sh --pins     only the pins of the packages (needs swift)
 
 set -uo pipefail   # deliberately not -e: half of what runs here is meant to fail
 
@@ -615,6 +616,24 @@ PY
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--pins" ]; then
+
+chapter "Every package the build reaches is pinned"
+
+# A package of the ssh stack that no pin names: SwiftPM resolves it to whatever
+# is newest and says nothing (measured), so the check has to.
+protect Package.resolved
+attack_platform Scripts/check-pins.sh "a package of the ssh stack with no pin" "bigint is in the build with no pin" <<'PY'
+import json
+p = "Package.resolved"
+d = json.load(open(p))
+d["pins"] = [pin for pin in d["pins"] if pin["identity"] != "bigint"]
+open(p, "w").write(json.dumps(d, indent=2) + "\n")
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
 if [ "$WHAT" = "all" ] || [ "$WHAT" = "--nodelink" ]; then
 
 chapter "NodeLink over ssh"
@@ -652,7 +671,8 @@ fi
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Everywhere but the platform runs, as before they existed.
-if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ]; then
+if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ] \
+    && [ "$WHAT" != "--pins" ]; then
 
 chapter "The mod loads"
 

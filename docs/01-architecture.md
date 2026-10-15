@@ -134,7 +134,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1442 cases, instantaneous. They verify Core, on the Mac and on Linux
+1454 cases, instantaneous. They verify Core, on the Mac and on Linux
 (`Scripts/test-linux.sh`). Among them, the `v1` conformance battery from
 `ProtocolConformance`: a library rather than suites of the runner's own,
 because it is meant to be pointed at any source a byte stream reaches — the
