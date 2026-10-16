@@ -272,12 +272,12 @@ enum TerminalChecks {
     sleep 100000 < /dev/null > /dev/null 2>&1 &
     idle=$!
     echo "$busy" > /tmp/lbcheck-busy.pid; echo "$idle" > /tmp/lbcheck-idle.pid
-    mkdir -p ~/.claude/sessions ~/.claude/projects/-home-check-api ~/.claude/projects/-home-check-web
-    printf '{"pid":%s,"sessionId":"44444444-4444-4444-8444-444444444444","cwd":"/home/check/api","entrypoint":"cli","kind":"interactive","status":"busy"}' "$busy" > ~/.claude/sessions/$busy.json
-    printf '{"pid":%s,"sessionId":"55555555-5555-4555-8555-555555555555","cwd":"/home/check/web","entrypoint":"cli","kind":"interactive","status":"idle"}' "$idle" > ~/.claude/sessions/$idle.json
+    mkdir -p ~/.claude/sessions ~/.claude/projects/-home-dev-api ~/.claude/projects/-home-dev-web
+    printf '{"pid":%s,"sessionId":"44444444-4444-4444-8444-444444444444","cwd":"/home/dev/api","entrypoint":"cli","kind":"interactive","status":"busy"}' "$busy" > ~/.claude/sessions/$busy.json
+    printf '{"pid":%s,"sessionId":"55555555-5555-4555-8555-555555555555","cwd":"/home/dev/web","entrypoint":"cli","kind":"interactive","status":"idle"}' "$idle" > ~/.claude/sessions/$idle.json
     tail='{"type":"assistant","timestamp":"2025-10-09T08:00:00Z","message":{"model":"claude-opus-4-5","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":1000}}}'
-    echo "$tail" > ~/.claude/projects/-home-check-api/44444444-4444-4444-8444-444444444444.jsonl
-    echo "$tail" > ~/.claude/projects/-home-check-web/55555555-5555-4555-8555-555555555555.jsonl
+    echo "$tail" > ~/.claude/projects/-home-dev-api/44444444-4444-4444-8444-444444444444.jsonl
+    echo "$tail" > ~/.claude/projects/-home-dev-web/55555555-5555-4555-8555-555555555555.jsonl
     echo ready
     """#
 
@@ -287,7 +287,7 @@ enum TerminalChecks {
     for f in /tmp/lbcheck-busy.pid /tmp/lbcheck-idle.pid; do
         [ -f "$f" ] && { kill "$(cat "$f")" 2>/dev/null; rm -f ~/.claude/sessions/"$(cat "$f")".json "$f"; }
     done
-    rm -rf ~/.claude/projects/-home-check-api ~/.claude/projects/-home-check-web /tmp/lbcheck-mark
+    rm -rf ~/.claude/projects/-home-dev-api ~/.claude/projects/-home-dev-web /tmp/lbcheck-mark
     true
     """#
 

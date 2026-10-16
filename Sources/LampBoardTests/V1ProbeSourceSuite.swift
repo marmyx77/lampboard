@@ -17,7 +17,7 @@ enum V1ProbeSourceSuite {
     static let tail = #"{"type":"assistant","timestamp":"2025-10-09T08:00:00Z","message":{"model":"claude-opus-4-5","usage":{"input_tokens":10,"cache_creation_input_tokens":2000,"cache_read_input_tokens":40000}}}"#
 
     static func record(_ id: String, pid: Int, status: String, tmux: String? = nil, entrypoint: String = "cli",
-                       tail: String = tail, cwd: String = "/home/example/project") -> [String: Any] {
+                       tail: String = tail, cwd: String = "/home/dev/project") -> [String: Any] {
         var record: [String: Any] = [
             "pid": pid, "sessionId": id, "cwd": cwd, "entrypoint": entrypoint, "kind": "interactive",
             "status": status, "activityEpoch": 1_760_000_000, "contextTail": tail,
@@ -173,7 +173,7 @@ enum V1ProbeSourceSuite {
     /// test runs) and its transcript, and a `tmux` stand-in on the PATH.
     static func makeHome() -> String? {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("lbtest-probe-\(UUID().uuidString)").path
-        let cwd = "/home/example/project"
+        let cwd = "/home/dev/project"
         let encoded = "-" + String(cwd.dropFirst().map { $0.isLetter || $0.isNumber ? $0 : "-" })
         let pid = ProcessInfo.processInfo.processIdentifier
         do {

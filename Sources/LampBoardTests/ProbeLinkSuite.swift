@@ -15,7 +15,7 @@ enum ProbeLinkSuite {
     static func answer(status: String) -> String {
         let tail = #"{"type":"assistant","timestamp":"2025-10-09T08:00:00Z","message":{"model":"claude-opus-4-5","usage":{"input_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":1000}}}"#
         let record: [String: Any] = [
-            "pid": 42, "sessionId": sid, "cwd": "/home/example/api", "entrypoint": "cli", "kind": "interactive",
+            "pid": 42, "sessionId": sid, "cwd": "/home/dev/api", "entrypoint": "cli", "kind": "interactive",
             "status": status, "activityEpoch": 1_760_000_000, "contextTail": tail,
             "tmux": ["session": "api", "window": 0, "pane": 0, "launch": ""],
         ]

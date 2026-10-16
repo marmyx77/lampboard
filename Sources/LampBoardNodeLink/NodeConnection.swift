@@ -182,6 +182,12 @@ final class SSHLink: @unchecked Sendable {
         }
     }
 
+    static func describe(_ error: Error, _ what: String) -> Error { NodeErrorWords.describe(error, what) }
+}
+
+/// An error from below, said as a `NodeLinkError`. Outside `SSHLink`, which
+/// needs macOS 15, so that the terminal's own connection can use it too.
+enum NodeErrorWords {
     static func describe(_ error: Error, _ what: String) -> Error {
         if error is NodeLinkError { return error }
         // Citadel's errors are compared by name: some of its enums carry values

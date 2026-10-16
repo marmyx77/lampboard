@@ -10,7 +10,7 @@ Sources/
   LampBoardTests/  20,826 lines · 145 files   1481 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  1,454 lines · 8 files   ssh to a machine: v1, commands, terminal
+  LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/      773 lines · 4 files   NodeLink against a real ssh
   TestKit/            410 lines · 5 files   minimal assertions

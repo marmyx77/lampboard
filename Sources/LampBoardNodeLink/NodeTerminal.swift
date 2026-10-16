@@ -89,7 +89,7 @@ public final class NodeTerminal: NodeByteChannel, @unchecked Sendable {
             if case .refused(let presented, let expected)? = judge.verdict {
                 throw NodeLinkError.hostKeyMismatch(presented: presented.openSSH, expected: expected.openSSH)
             }
-            throw SSHLink.describe(error, "connecting to \(endpoint)")
+            throw NodeErrorWords.describe(error, "connecting to \(endpoint)")
         }
         terminal.adopt(parent: parent)
         do {
@@ -99,7 +99,7 @@ public final class NodeTerminal: NodeByteChannel, @unchecked Sendable {
         } catch {
             parent.close(promise: nil)
             terminal.end()
-            throw SSHLink.describe(error, "opening the terminal")
+            throw NodeErrorWords.describe(error, "opening the terminal")
         }
         return terminal
     }
