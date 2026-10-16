@@ -192,6 +192,9 @@ let suites: [TestSuite] = [
     NodeLinkSuite.suite,
     PushEnvelopeSuite.suite,
     LiveAdoptionSuite.suite,
+    TmuxSizeRuleSuite.suite,
+    V1ProbeSourceSuite.suite,
+    ProbeLinkSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

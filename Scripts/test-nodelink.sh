@@ -15,9 +15,15 @@
 # host key, the reference `v1` daemon (V1ReferenceNode, the shape `lampd` will
 # have) and two keys written the way a node's `authorized_keys` holds them: the
 # read key forced to `V1ReferenceNode stdio` with `restrict`, the action key
-# with `restrict,pty`. Nothing of this machine is touched: the two containers
+# with `restrict,pty`. Nothing of this machine is touched: the containers
 # share a network of their own, no port is published, and every key is made
 # for the run and thrown away with it.
+#
+# A second node is the Linux machine as it is, for the terminal (D176): Ubuntu
+# 24.04 pinned by digest, so OpenSSH 9.6p1, tmux 3.4 and Python 3.12 — the
+# versions the size rule of Q7 was measured on (S-D) — with the same two keys.
+# The terminal, the rule with three tmux clients, and the lights read over ssh
+# run against it.
 #
 # EXIT CODES
 #   0  every case passed
@@ -45,6 +51,7 @@ BASE="swift:6.4@sha256:870edbd7f37b77dc01ebab7eb4e0475d16be82796a06734d0bdc010cd
 CACHE="${LAMPBOARD_NODELINK_CACHE:-$HOME/.cache/lampboard/nodelink-gate}"
 NAME="${LAMPBOARD_NODELINK_NAME:-lampboard-nodelink-$$}"
 NODE="${LAMPBOARD_NODELINK_NODE:-$NAME-node}"
+TMUX_NODE="$NAME-tmux"
 NET="$NAME-net"
 LIMIT="${LAMPBOARD_NODELINK_LIMIT:-900}"
 
@@ -63,7 +70,7 @@ for _ in $(seq 1 120); do
 done
 [ "$(cat "$LOCK/pid" 2>/dev/null)" = $$ ] || failed "another run holds $LOCK and never let go"
 cleanup() {
-    docker rm -f "$NODE" "$NAME-build" "$NAME-check" >/dev/null 2>&1
+    docker rm -f "$NODE" "$TMUX_NODE" "$NAME-build" "$NAME-check" >/dev/null 2>&1
     docker network rm "$NET" >/dev/null 2>&1
     rm -rf "$CACHE/keys" "$LOCK"
 }
@@ -72,13 +79,26 @@ trap 'exit 130' INT TERM
 
 # One image for building, checking and being the node: the toolchain, and
 # OpenSSH for the node's side. Rebuilt only when this list changes.
-IMAGE="lampboard-nodelink-gate:$(printf '%s' "$BASE openssh-server openssh-client python3 procps" | shasum | cut -c1-12)"
+IMAGE="lampboard-nodelink-gate:$(printf '%s' "$BASE openssh-server openssh-client python3 procps tmux" | shasum | cut -c1-12)"
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     echo "▸ Preparing $IMAGE"
     docker build -q -t "$IMAGE" - > "$CACHE/image.log" 2>&1 <<EOF || could_not_look "the image could not be prepared (see $CACHE/image.log)"
 FROM $BASE
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-        openssh-server openssh-client python3 procps && rm -rf /var/lib/apt/lists/*
+        openssh-server openssh-client python3 procps tmux && rm -rf /var/lib/apt/lists/*
+EOF
+fi
+
+# The Linux machine's versions, for the terminal and tmux: not the toolchain's
+# image, whose tmux and OpenSSH are newer than the machine's.
+TMUX_BASE="ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55"
+TMUX_IMAGE="lampboard-nodelink-tmux:$(printf '%s' "$TMUX_BASE openssh-server python3 procps tmux" | shasum | cut -c1-12)"
+if ! docker image inspect "$TMUX_IMAGE" >/dev/null 2>&1; then
+    echo "▸ Preparing $TMUX_IMAGE"
+    docker build -q -t "$TMUX_IMAGE" - > "$CACHE/tmux-image.log" 2>&1 <<EOF || could_not_look "the tmux node's image could not be prepared (see $CACHE/tmux-image.log)"
+FROM $TMUX_BASE
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+        openssh-server python3 procps tmux && rm -rf /var/lib/apt/lists/*
 EOF
 fi
 
@@ -160,6 +180,33 @@ done
 docker exec "$NODE" cat /etc/ssh/ssh_host_ed25519_key.pub > "$CACHE/keys/host.pub" || failed "no host key"
 docker exec "$NODE" cat /tmp/wrong_host_key.pub > "$CACHE/keys/wrong.pub" || failed "no second key"
 
+# The tmux node: the same two keys, the read key forced to a command that is
+# not `v1` (this node serves none) and without `pty`, as `lampd devices add`
+# will write it; the action key with `restrict,pty`.
+printf 'restrict,command="echo no-v1-here" %s lampboard-device:check-phone:read\n%s\n' \
+    "$(tr -d '\n' < "$CACHE/keys/read.pub")" "$ACTION_LINE" > "$CACHE/keys/authorized_keys.tmux"
+echo "▸ Starting the tmux node ($TMUX_NODE)"
+docker run -d --name "$TMUX_NODE" --network "$NET" --network-alias tmuxnode -v "$CACHE/keys:/keys:ro" \
+    "$TMUX_IMAGE" bash -c '
+        set -e
+        useradd -m -s /bin/bash dev
+        usermod -p "*" dev
+        install -d -m 700 -o dev -g dev /home/dev/.ssh
+        install -m 600 -o dev -g dev /keys/authorized_keys.tmux /home/dev/.ssh/authorized_keys
+        rm -f /etc/ssh/ssh_host_*
+        ssh-keygen -q -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
+        mkdir -p /run/sshd
+        printf "Port 2222\nHostKey /etc/ssh/ssh_host_ed25519_key\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nPubkeyAuthentication yes\nPermitRootLogin no\nUsePAM no\nAllowUsers dev\n" > /etc/ssh/sshd_config
+        exec /usr/sbin/sshd -D -e
+    ' > /dev/null || failed "the tmux node did not start"
+ready=0
+for _ in $(seq 1 100); do
+    if docker exec "$TMUX_NODE" bash -c 'exec 3<>/dev/tcp/127.0.0.1/2222' 2>/dev/null; then ready=1; break; fi
+    sleep 0.2
+done
+[ "$ready" = 1 ] || { docker logs "$TMUX_NODE" 2>&1 | tail -5 | sed 's/^/    /'; failed "the tmux node never listened"; }
+docker exec "$TMUX_NODE" cat /etc/ssh/ssh_host_ed25519_key.pub > "$CACHE/keys/tmux-host.pub" || failed "no tmux node host key"
+
 echo
 echo "▸ NodeLink over ssh, against the node"
 ARGS=""
@@ -170,10 +217,10 @@ docker run --rm --name "$NAME-check" --network "$NET" --user "$(id -u):$(id -g)"
     bash -c "trap '' PIPE; timeout -k 5 $LIMIT .build/debug/NodeLinkCheck run --host node --port 2222 --user dev \
         --host-key /keys/host.pub --wrong-host-key /keys/wrong.pub --keys /keys \
         --reference /opt/ref/V1ReferenceNode --socket /tmp/v1ref/v1.sock --log /tmp/v1ref/node.log \
-        --silent-port 2223$ARGS < /dev/null"
+        --silent-port 2223 --tmux-host tmuxnode --tmux-host-key /keys/tmux-host.pub$ARGS < /dev/null"
 status=$?
 case "$status" in
-    0) printf '\033[32m✓\033[0m NodeLink carries v1 over ssh, and the keys are held to what they may do\n' ;;
+    0) printf '\033[32m✓\033[0m NodeLink carries v1 and a terminal over ssh, the keys are held to what they may do, and tmux follows Q7\n' ;;
     124|137) failed "the check was still running after $LIMIT seconds" ;;
     *) echo "    the node's sshd, last lines:"
        docker logs "$NODE" 2>&1 | tail -12 | sed 's/^/      /'

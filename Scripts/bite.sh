@@ -667,6 +667,47 @@ s = open(p).read().replace("        case source, owner\n", "        case source,
 open(p, "w").write(s)
 PY
 
+# The terminal (D176): a byte lost on the way in must show in the 10 MiB
+# compared byte for byte on the raw channel.
+protect Sources/LampBoardNodeLink/NodeTerminal.swift
+attack_platform Scripts/test-nodelink.sh "the terminal losing a byte of every piece on the way in" "the raw channel did not carry the bytes unchanged" <<'PY'
+p = "Sources/LampBoardNodeLink/NodeTerminal.swift"
+s = open(p).read()
+old = "for piece in V1Frame.pieces(Array(buffer.readableBytesView))"
+open(p, "w").write(s.replace(old, "for piece in V1Frame.pieces(Array(buffer.readableBytesView.dropLast()))", 1))
+PY
+
+# The read key's line on the Linux machine allowing a PTY: the check must see
+# the terminal open where it has to be refused.
+protect Scripts/test-nodelink.sh
+attack_platform Scripts/test-nodelink.sh "a read key whose line lets a terminal open" "the read key's terminal was not refused" <<'PY'
+p = "Scripts/test-nodelink.sh"
+s = open(p).read()
+old = "printf 'restrict,command=\"echo no-v1-here\" %s"
+open(p, "w").write(s.replace(old, "printf 'restrict,pty,command=\"echo no-v1-here\" %s", 1))
+PY
+
+# Q7 (D176): the background rule with `ignore-size` and no detach. With three
+# clients the Mac stays as narrow as the phone (S-D, B2), and the check on
+# tmux 3.4 must say so.
+protect Sources/LampBoardCore/Live/TmuxSizeRule.swift
+attack_platform Scripts/test-nodelink.sh "the background rule without its detach" "the Mac stayed narrow after the phone went to the background" <<'PY'
+p = "Sources/LampBoardCore/Live/TmuxSizeRule.swift"
+s = open(p).read()
+old = ' -f ignore-size \\\\; detach-client -t \\"$c\\" "'
+open(p, "w").write(s.replace(old, ' -f ignore-size "', 1))
+PY
+
+# The lights read over ssh write nothing (D176): a look that leaves a file in
+# the machine's home must be seen doing it.
+protect Sources/LampBoardCore/V1/V1ProbeReading.swift
+attack_platform Scripts/test-nodelink.sh "a look at the lights that writes in the home" "the look wrote nothing in the home" <<'PY'
+p = "Sources/LampBoardCore/V1/V1ProbeReading.swift"
+s = open(p).read()
+old = 'let probe = "python3 -c "'
+open(p, "w").write(s.replace(old, 'let probe = "touch $HOME/.probe-was-here; python3 -c "', 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════

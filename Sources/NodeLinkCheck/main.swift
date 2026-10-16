@@ -7,13 +7,14 @@ import TestKit
 // NodeLink over a real ssh (D175): the `v1` conformance battery against the
 // reference node behind OpenSSH, and the bites of the keys — a changed host key
 // is refused before anything is sent, a read key that asks for anything else
-// gets `v1` and nothing else, an unknown key does not get in. Run by
+// gets `v1` and nothing else, an unknown key does not get in. Then the terminal,
+// the size rule of Q7 on the node's tmux, and the lights read over ssh (D176). Run by
 // Scripts/test-nodelink.sh, in a container, against a node in another one.
 //
 //   NodeLinkCheck keys <dir>      writes read.key/.pub and action.key/.pub
 //   NodeLinkCheck run --host H --port P --user U --host-key F --wrong-host-key F
 //                     --keys <dir> --reference <path on the node> --socket <path on the node>
-//                     --log <path on the node> --silent-port P [filter]
+//                     --log <path on the node> --silent-port P --tmux-host H --tmux-host-key F [filter]
 
 setvbuf(stdout, nil, _IOLBF, 0)
 
@@ -61,7 +62,9 @@ case "run":
             readKey: try ReadKey(rawRepresentation: raw("read")),
             actionKey: try ActionKey(rawRepresentation: raw("action")),
             reference: option("reference"), socket: option("socket"), log: option("log"),
-            silentPort: Int(option("silent-port")) ?? 0
+            silentPort: Int(option("silent-port")) ?? 0,
+            tmuxEndpoint: NodeEndpoint(host: option("tmux-host"), port: Int(option("port")) ?? 22, user: option("user")),
+            tmuxHostKey: try NodeHostKey(openSSH: readText(option("tmux-host-key")))
         )
     } catch {
         fail("\(error)")
@@ -69,7 +72,8 @@ case "run":
     Instrument.prove(quietly: true)
     let filter = arguments.count % 2 == 0 ? arguments.last : nil
     let target = SSHConformanceTarget(node)
-    let code = TestRunner.runAndReport([V1Conformance.suite(against: target), KeyBites.suite(node)], filter: filter)
+    let code = TestRunner.runAndReport(
+        [V1Conformance.suite(against: target), KeyBites.suite(node), TerminalChecks.suite(node)], filter: filter)
     target.finish()
     exit(code)
 default:

@@ -77,6 +77,7 @@ public enum V1WireContract {
         req("hidden", .bool), req("folded", .bool), opt("order", .int), opt("readAt", .date),
         opt("hostProbedAt", .date), opt("hostReachable", .bool), opt("terminal", .string),
         opt("bridgeSessionId", .string), opt("permissionMode", .string), req("heldByMac", .bool),
+        opt("stateBasis", .string),
     ]
 
     public static let statuses: Set<String> = ["idle", "working", "waiting", "ready", "blocked", "failed"]

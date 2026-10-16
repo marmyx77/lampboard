@@ -41,6 +41,8 @@ let ssh: [Target.Dependency] = [
     .product(name: "Citadel", package: "Citadel"),
     .product(name: "NIOSSH", package: "swift-nio-ssh"),
     .product(name: "NIOCore", package: "swift-nio"),
+    // The terminal's own connection (D176): a bare NIOSSHHandler on a socket.
+    .product(name: "NIOPosix", package: "swift-nio"),
     .product(name: "Crypto", package: "swift-crypto"),
 ]
 

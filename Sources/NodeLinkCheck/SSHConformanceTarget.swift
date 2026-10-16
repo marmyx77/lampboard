@@ -17,6 +17,10 @@ struct CheckedNode {
     let log: String
     /// A port on the node that accepts TCP and never says a word.
     let silentPort: Int
+    /// The node with the Linux machine's versions, for the terminal and tmux
+    /// (D176): the same account and keys, its own host key.
+    let tmuxEndpoint: NodeEndpoint
+    let tmuxHostKey: NodeHostKey
 }
 
 /// The reference node reached through NodeLink: every connection of the battery

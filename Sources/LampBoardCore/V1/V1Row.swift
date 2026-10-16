@@ -92,6 +92,10 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
     public var permissionMode: String?
     /// A permission question the Mac is holding in process (D80, M9).
     public var heldByMac: Bool
+    /// How the row's state was learned, when not from the session's own hooks:
+    /// what the phone can and cannot trust in it (D176). `nil` is the usual
+    /// case, a source that hears the session.
+    public var stateBasis: V1StateBasis?
 
     public init(
         cacheMinutes: Int? = nil,
@@ -107,7 +111,8 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
         terminal: String? = nil,
         bridgeSessionId: String? = nil,
         permissionMode: String? = nil,
-        heldByMac: Bool = false
+        heldByMac: Bool = false,
+        stateBasis: V1StateBasis? = nil
     ) {
         self.cacheMinutes = cacheMinutes
         self.stuckSince = stuckSince
@@ -123,11 +128,12 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
         self.bridgeSessionId = bridgeSessionId
         self.permissionMode = permissionMode
         self.heldByMac = heldByMac
+        self.stateBasis = stateBasis
     }
 
     private enum Keys: String, CodingKey {
         case cacheMinutes, stuckSince, runningTool, fileConflict, hidden, folded, order, readAt
-        case hostProbedAt, hostReachable, terminal, bridgeSessionId, permissionMode, heldByMac
+        case hostProbedAt, hostReachable, terminal, bridgeSessionId, permissionMode, heldByMac, stateBasis
     }
 
     /// Lenient on the flags: a row from a source one version behind, which did
@@ -148,6 +154,8 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
         bridgeSessionId = try c.decodeIfPresent(String.self, forKey: .bridgeSessionId)
         permissionMode = try c.decodeIfPresent(String.self, forKey: .permissionMode)
         heldByMac = try c.decodeIfPresent(Bool.self, forKey: .heldByMac) ?? false
+        // A basis this build does not know reads as none: the row is still shown.
+        stateBasis = try c.decodeIfPresent(String.self, forKey: .stateBasis).flatMap(V1StateBasis.init(rawValue:))
     }
 
     /// The flags always, the rest when there is something to say.
@@ -167,6 +175,30 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
         try c.encodeIfPresent(bridgeSessionId, forKey: .bridgeSessionId)
         try c.encodeIfPresent(permissionMode, forKey: .permissionMode)
         try c.encode(heldByMac, forKey: .heldByMac)
+        try c.encodeIfPresent(stateBasis, forKey: .stateBasis)
+    }
+}
+
+/// How a row's state was learned when no hook of the session reached the
+/// source (D176).
+public enum V1StateBasis: String, Codable, Sendable, CaseIterable {
+    /// From Claude Code's own session file and the tail of its transcript, read
+    /// over ssh on the machine where they are: working or idle, the context of
+    /// the last reply, when the transcript last moved, where tmux holds it. A
+    /// wait for a person (amber), an answer to read (green) and a failure (red)
+    /// are told only by hooks, so a row read this way never shows them.
+    case sessionFile
+
+    /// What the phone does not know of a row read this way, in words it can show.
+    public var unknowns: [String] {
+        switch self {
+        case .sessionFile:
+            return [
+                "read from the session's own file, not heard: a question waiting for you, an answer to read and a failure do not show",
+                "working or idle as Claude Code wrote it in its file",
+                "the time is when the transcript last changed",
+            ]
+        }
     }
 }
 

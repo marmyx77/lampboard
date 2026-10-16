@@ -12,8 +12,8 @@ import NIOSSH
 /// pinned before a single byte of ours is sent, and the key decides which kind
 /// of connection comes back: a read key gets a `ReadConnection`, which can only
 /// open `v1`; an action key gets an `ActionConnection`, which can also run a
-/// command. There is no PTY here yet (W8) and no SFTP (Citadel's `openSFTP`
-/// has no deadline of its own, E12).
+/// command and open a terminal (`NodeTerminal`, D176). There is no SFTP
+/// (Citadel's `openSFTP` has no deadline of its own, E12).
 ///
 /// Citadel's streaming exec needs macOS 15; the Mac app does not use NodeLink,
 /// and iOS 17 and Linux have it.
@@ -54,6 +54,13 @@ public final class ReadConnection: @unchecked Sendable {
     @_spi(Probe) public func openAnything(_ command: String) async throws -> NodeByteChannel {
         try await link.exec(command)
     }
+
+    /// Probes only: a terminal asked for with the read key, to prove the
+    /// machine refuses it. The app has no way to ask (D176).
+    @_spi(Probe) public func openTerminalAnyway(command: String, size: TerminalSize) async throws -> NodeTerminal {
+        try await NodeTerminal.open(link.endpoint, hostKey: link.hostKey, key: link.key, command: command,
+                                    size: size, term: "xterm-256color", deadlines: link.deadlines)
+    }
 }
 
 /// What the action key can do: `v1`, and commands.
@@ -71,6 +78,15 @@ public final class ActionConnection: @unchecked Sendable {
     /// `limit` bytes is an error, not a truncation nobody sees.
     public func run(_ command: String, limit: Int = 1 << 20) async throws -> NodeCommandResult {
         try await link.run(command, limit: limit)
+    }
+
+    /// A terminal: `pty-req` with `size`, then `exec` of `command` — `ssh -t
+    /// host command`, not Citadel's `withPTY`, which asks for a shell (S-C). It
+    /// runs on a connection of its own to the same machine, held to the host
+    /// key this one accepted, and ends with it.
+    public func openTerminal(command: String, size: TerminalSize, term: String = "xterm-256color") async throws -> NodeTerminal {
+        try await NodeTerminal.open(link.endpoint, hostKey: link.hostKey, key: link.key, command: command,
+                                    size: size, term: term, deadlines: link.deadlines)
     }
 
     public func close() async { await link.close() }
@@ -94,11 +110,16 @@ final class SSHLink: @unchecked Sendable {
     let client: SSHClient
     let hostKey: NodeHostKey
     let deadlines: NodeDeadlines
+    let endpoint: NodeEndpoint
+    let key: P256.Signing.PrivateKey
 
-    private init(client: SSHClient, hostKey: NodeHostKey, deadlines: NodeDeadlines) {
+    private init(client: SSHClient, hostKey: NodeHostKey, deadlines: NodeDeadlines,
+                 endpoint: NodeEndpoint, key: P256.Signing.PrivateKey) {
         self.client = client
         self.hostKey = hostKey
         self.deadlines = deadlines
+        self.endpoint = endpoint
+        self.key = key
     }
 
     static func open(_ endpoint: NodeEndpoint, trust: HostKeyTrust, key: P256.Signing.PrivateKey,
@@ -120,7 +141,7 @@ final class SSHLink: @unchecked Sendable {
                 try? await client.close()
                 throw NodeLinkError.failed("connected to \(endpoint) without a host key verdict")
             }
-            return SSHLink(client: client, hostKey: accepted, deadlines: deadlines)
+            return SSHLink(client: client, hostKey: accepted, deadlines: deadlines, endpoint: endpoint, key: key)
         } catch {
             // A refused host key closes the connection under the handshake: say
             // what happened, not what it looked like from above.

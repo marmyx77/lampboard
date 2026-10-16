@@ -1,18 +1,18 @@
 # Code map
 
-~86,000 lines of Swift across nine targets. For each file: what it contains, why
+~88,000 lines of Swift across nine targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  27,792 lines · 209 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  28,338 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  20,332 lines · 142 files   1454 cases, instantaneous
+  LampBoardTests/  20,826 lines · 145 files   1481 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
-  ProtocolConformance/  625 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  804 lines · 5 files   ssh to a machine: v1, commands
+  ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
+  LampBoardNodeLink/  1,454 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
-  NodeLinkCheck/      386 lines · 3 files   NodeLink against a real ssh
+  NodeLinkCheck/      773 lines · 4 files   NodeLink against a real ssh
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -1562,6 +1562,15 @@ caller the process id, so an app quitting mid-run can stop what it started.
 
 ## `Live/`
 
+### `TmuxSizeRule.swift` · 235
+Q7 as commands (D176), as S-D measured them on tmux 3.4 and 3.7c: the phone
+attaches with a new client that prints its pid in an OSC and `exec`s tmux, so the
+pid is the client's; in the background that client gets `ignore-size` **and**
+`detach-client`; the watching iPad attaches with `-f ignore-size`. `TmuxClientMark`
+takes the pid out of the bytes. **What you would break**: `ignore-size` without the
+detach leaves the Mac as narrow as the phone when a third client is attached;
+`resize-window` puts the window in `manual` for good.
+
 ### `LiveLaunch.swift` · 247
 What the live view runs (D130), decided where a test reads it. `LiveLaunch`
 builds the two commands it ever runs, `claude attach <id>` and `claude --bg
@@ -1799,10 +1808,12 @@ refreshed), the state with its journal and `null` rows for "never known" (D21),
 the numbered events, pings carrying the last number sent, the transcript that
 always says how much it left out, and the refusal codes.
 
-### `V1Row.swift` · 189
+### `V1Row.swift` · 221
 A row: the read endpoint's `SessionSnapshot`, the fields the phone needs beyond
 it, its source and its owner — flat in one JSON object, so the snapshot stays the
-one place its fields are defined.
+one place its fields are defined. `stateBasis` says when the state was read
+rather than heard (D176), and `V1StateBasis.unknowns` words what such a row
+cannot show.
 
 ### `V1Codec.swift` · 264
 The JSON of every message, both ways, with `op` or `type` beside the fields and
@@ -1836,10 +1847,25 @@ A message that ends a silence longer than the threshold — pings held back by a
 suspension, up to 45.7 s late — is not used; bytes on a dropped connection are
 thrown away; a hole in the numbers starts the connection again.
 
-### `V1MemorySource.swift` · 174
+### `V1MemorySource.swift` · 182
 The reference source: rows and a journal in memory, the actions carried out on
 them. What the conformance battery is first run against, what the client is
 tested with, and what the demo mode will serve.
+
+### `V1ProbeReading.swift` · 82
+One look at a machine that does not serve `v1` yet, over the phone's ssh (D176):
+the Mac's own probe and `tmux list-sessions` in one read-only command, read back
+by `RemoteSessionsDecoder`. An answer that is not one — no Python, a cut — is
+`nil`, never an empty machine; a machine without tmux has `nil` sessions, not none.
+
+### `V1ProbeSource.swift` · 187
+The `V1Source` made from those readings, by the Mac's rules for a remote session
+nobody announced: working when Claude Code's file says busy, idle otherwise, the
+context of the transcript's tail, `tmux:<session>` when tmux holds it, and
+`stateBasis: sessionFile` on every row. A change is one event; a silent machine
+keeps its rows, unreachable, with the time of its last answer; the person's
+choices survive every reading. **What you would break**: a guessed amber from a
+transcript is a light that lies (D1).
 
 ### `PushEnvelope.swift` · 145
 What a notification really says, sealed for the relay to carry without reading
@@ -2418,7 +2444,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1454 cases
+## `LampBoardTests/` — 1481 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2561,7 +2587,7 @@ no time. The reference source in memory is the first target.
 
 ## `LampBoardNodeLink/` — the phone's way into a machine
 
-The app's ssh client, without a terminal yet (D175): Citadel on swift-nio-ssh,
+The app's ssh client (D175), with the terminal since D176: Citadel on swift-nio-ssh,
 both pinned to the commit read in W0 of the mobile plan. The iPhone and iPad app
 and the Linux checks use it; **the Mac app does not link it**, and
 `Scripts/check-app-links.sh` fails the gate if it ever does. Built for the iOS
@@ -2599,6 +2625,24 @@ The Core's `V1Client` carried over channels that come and go: connect, write,
 receive, tick, and a new channel when the client asks for one, which resumes with
 `since`. Backs off when a channel ends at once.
 
+### `NodeTerminal.swift`
+The terminal (D176): `pty-req` and `exec` on a channel of its own connection,
+opened on a bare `NIOSSHHandler` (Citadel's `withPTY` sends `shell`, its
+`connect(on:)` crashes in Debug) and held to the host key the action connection
+accepted. Pieces of at most 32 KiB both ways, `window-change`, the machine's end as
+a normal one with the exit status, a deadline for every step. **What you would
+break**: a write past the window is never sent; a channel without a deadline hangs.
+
+### `NodeTmux.swift`
+`ActionConnection.attachTmux` (a `TmuxTerminal`: the bytes without the pid's mark,
+and the pid), `releaseTmuxSize` and `takeTmuxSize`, the rule of Q7 over the
+connection; `probeLights` and `probeRunner` for the lights read over ssh.
+
+### `ProbeLink.swift`
+The lights of a machine without `v1` on a clock: a look every 20 seconds through
+the action connection into a `V1ProbeSource`, and `LocalV1Channel`, a `V1Service`
+over that source in memory, so a `V1Link` reads those rows as any source's.
+
 ## `V1ReferenceNode/` and `NodeLinkCheck/` — NodeLink against a real ssh
 
 `V1ReferenceNode` is the reference source as a node serves it, in the shape
@@ -2607,8 +2651,10 @@ receive, tick, and a new channel when the client asks for one, which resumes wit
 command the client asked for, which is logged and never run. `NodeLinkCheck`
 runs the conformance battery through NodeLink against it, and the key bites: a
 changed host key, an unknown key, a read key asking for a command, a silent
-machine, a channel the machine ends, the link over ssh. Only
-`Scripts/test-nodelink.sh` runs them.
+machine, a channel the machine ends, the link over ssh. `TerminalChecks` runs on a
+second node with the Linux machine's versions: the terminal byte for byte, the read
+key's PTY refused, tmux through the terminal, Q7 with three clients, and the
+lights read over ssh (D176). Only `Scripts/test-nodelink.sh` runs them.
 
 ## `LampBoardE2E/` — 186 cases
 
@@ -2730,5 +2776,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty-seven violations and demands thirty-seven catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits forty-one violations and demands forty-one catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

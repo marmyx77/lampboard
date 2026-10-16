@@ -74,6 +74,14 @@ public final class V1MemorySource: V1Source {
         lastProbeAt = now
     }
 
+    /// The rows are known, and are as they were at `rowsAt`: a source that
+    /// asked and found nothing has an empty column, not an unknown one, and one
+    /// that lost sight of its machine says how old its rows are (D21).
+    public func confirm(rowsAt: Date) {
+        known = true
+        self.rowsAt = rowsAt
+    }
+
     /// A restart that kept nothing: a new journal, numbered from zero.
     public func restartJournal(_ name: String) {
         journal = name

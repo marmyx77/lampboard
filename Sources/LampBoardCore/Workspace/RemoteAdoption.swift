@@ -25,12 +25,14 @@ public enum RemoteAdoption {
     }
 
     /// The row an adoptable session starts as: idle unless Claude Code says
-    /// `busy` (D141), a terminal's row, named as Claude Code names it there.
-    public static func adopted(_ session: LiveSession, in workspace: Workspace) -> SessionState {
+    /// `busy` (D141), a terminal's row unless said otherwise, named as Claude
+    /// Code names it there. The phone's reading of a machine without `lampd`
+    /// makes its rows with this same rule (D176).
+    public static func adopted(_ session: LiveSession, in workspace: Workspace, origin: SessionOrigin = .terminal) -> SessionState {
         SessionState(
             id: session.sessionId, status: session.isBusy ? .working : .idle, workspace: workspace,
             updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
-            entrypoint: session.entrypoint, origin: .terminal, title: session.name
+            entrypoint: session.entrypoint, origin: origin, title: session.name
         )
     }
 }

@@ -6473,3 +6473,67 @@ source restarted with nothing kept would have had every notification after it dr
 The service now also bounds what it does not trust a source with: a transcript is cut to what was asked
 whatever the source hands over, a name is bounded in bytes as well as in characters (one character can
 be four kilobytes), and an id never starts with a dot, so `..` is not one.
+
+## D176 · The terminal over ssh, the size rule of Q7, and the lights of a machine without `v1`
+
+**Decided** (16 October 2026), as the fourth step towards LampBoard on the iPhone and iPad (§2.4, §2.7 and
+W8 of the plan, brought forward for the first TestFlight build): the app opens a terminal on a machine,
+shares tmux's window size with the Mac by the rule Q7 chose, and shows the lights of a machine that does
+not serve `v1` yet.
+
+**What.**
+- `NodeTerminal`, in NodeLink: `pty-req` (`xterm-256color`, columns and rows) and `exec` of a command on a
+  channel of its own connection, opened on a bare `NIOSSHHandler` and held to the host key the action
+  connection accepted. `ActionConnection.openTerminal` is the only way to one; a `ReadConnection` has
+  none. Bytes in and out in pieces of at most 32 KiB, `window-change` for a new size, the machine ending
+  the channel first as the normal end with the command's exit status, a deadline for every step.
+- `TmuxSizeRule`, in the Core, pure: the exact tmux commands. The phone attaches with a new client
+  (`sh -c` printing its own pid in an invisible OSC, then `exec tmux -u attach-session -t '=<name>'`), which
+  tmux makes `latest`, so the window takes the phone's size at once. In the background its own client,
+  found by that pid, gets `refresh-client -f ignore-size` **and** `detach-client` in one call. The iPad that
+  watches attaches with `-f ignore-size`, and takes the size by dropping it. Never `resize-window`, never a
+  change to `window-size`. `TmuxClientMark` takes the pid out of the bytes; `ActionConnection.attachTmux`,
+  `releaseTmuxSize` and `takeTmuxSize` put the two together.
+- `V1ProbeReading` and `V1ProbeSource`, in the Core: one read-only command that runs the Mac's own probe
+  (`RemoteProbeScript`, read back by `RemoteSessionsDecoder`) and `tmux list-sessions`, and a `V1Source`
+  that makes rows from it by the Mac's rules for a remote session nobody announced (`RemoteAdoption`,
+  D137, D141): working when Claude Code's file says busy, idle otherwise, the context of the transcript's
+  tail, `tmux:<session>` when tmux holds it. Each row carries `stateBasis: sessionFile`, the one new field
+  of the row: amber, an answer to read and red come only from hooks, so a row read this way never shows
+  them, and says so. A machine that stops answering keeps its rows, unreachable, with the time of its last
+  answer. `ProbeLink`, in NodeLink, looks every 20 seconds through the action connection and serves the
+  source to a `V1Link` from memory (`LocalV1Channel`), so the app reads these rows through the same code as
+  any other source's.
+
+**Why.** The first build on a phone needs the terminal and the Linux machine's lights before `lampd`
+exists (W4). The terminal cannot use Citadel's `withPTY`, which sends `shell` and types the command into
+it, nor its `connect(on:)`, which crashes in Debug (S-C). Q7's commands are the ones S-D measured on tmux
+3.4 and 3.7c: with three clients `ignore-size` alone leaves the Mac as narrow as the phone (B2), and only
+the detach gives the window back. The probe is the one the Mac already runs on its nodes; a second reading
+of the same files would be a second rule.
+
+**Measured** on Linux, over a real OpenSSH 9.6p1 and tmux 3.4 (Ubuntu 24.04, the Linux machine's
+versions): 10 MiB byte for byte on the raw channel, 1 MiB written whole, the read key's PTY refused, `exit 3`
+as a normal end with its status; through tmux the pane's text with `❯` intact, a key reaching the pane,
+`window-change` resizing the window, no client left after a close; with a Mac at 200 columns, an iPad at 120
+and the phone at 45, the phone wins on attaching, `ignore-size` alone leaves the window at 45, the rule
+gives it back to 200, the watching iPad's keys change nothing until it takes the size. The same eight cases
+passed against the W0 fake node (`lbprobe-nodo`) as against the gate's own node. Through tmux the screen is
+tmux's (E7): the comparison of a whole screen with `capture-pane` stays the W0 probes' (S-C, S-S, with
+SwiftTerm on Linux), because the vendored SwiftTerm does not build there.
+
+**Proved by** the domain suite (the rule's scripts run under `/bin/sh` against a stand-in `tmux`, the
+probe command run against a made-up home that it must leave untouched, the source's rows, events and
+silences, the link over it) and `Scripts/test-nodelink.sh`, which now starts a second node with the Linux
+machine's versions. Four more bites in `bite.sh --nodelink`: a byte lost from every piece of the terminal,
+a read key's line that lets a PTY open, the background rule without its detach, a look at the lights that
+writes in the home.
+
+**Discarded:** `resize-window` (the window stays `manual`); `ignore-size` without the detach (B2); the
+phone's client found by its tty name (it is not known before tmux starts; the pid is); a terminal on the
+action connection's own Citadel session (its handler is not reachable without `connect(on:)`); reading
+the transcripts to guess amber (the miniature carries no content, and a guessed amber is the lie D1
+forbids); a field per unknown on the row (one basis says it, and the app words it).
+
+**Signal to revisit:** `lampd` serving `v1` on the Linux machine (the probe source then gives way to it),
+a tmux release where `ignore-size` alone gives the window back, or Citadel exposing PTY with `exec`.
