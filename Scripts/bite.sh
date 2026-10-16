@@ -559,6 +559,31 @@ s = open(p).read().replace("        case source, owner\n", "        case source,
 open(p, "w").write(s)
 PY
 
+chapter "When a session on another machine last spoke"
+
+# The phone's first build showed a day and a half of silence as "13m": the
+# probe dated every session by the newest file in its project's folder. When a
+# session last spoke is the last timestamp in its own tail, read by the rule the
+# Mac applies to its own transcripts; dropping that rule must turn the suite red.
+protect Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift
+attack_swift "a remote session dated by its files, not by when it last spoke" "the tail's last spoken moment wins" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("modifiedAt: spoken ?? Date(", "modifiedAt: Date(", 1))
+PY
+
+# And where nothing in the tail carries a time, the session's own file dates
+# it: a neighbour in the same folder speaking must not move it.
+protect Sources/LampBoardCore/Workspace/RemoteProbeScript.swift
+attack_swift "a remote session dated by its project folder's newest file" "never a neighbour's" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteProbeScript.swift"
+s = open(p).read()
+old = "            activity = max(activity, os.path.getmtime(own))\n"
+new = ("            for other in glob.glob(os.path.dirname(own) + \"/*.jsonl\"):\n"
+       "                activity = max(activity, os.path.getmtime(other))\n")
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

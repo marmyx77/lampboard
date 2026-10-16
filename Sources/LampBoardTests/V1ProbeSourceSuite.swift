@@ -165,7 +165,87 @@ enum V1ProbeSourceSuite {
             t.expectEqual(parsed?.tmuxSessions?.map(\.name), ["example"], "tmux's sessions, through the stand-in")
             t.expectEqual(listing(home), before, "not one file created, changed or removed")
         },
+
+        // MARK: When a session last spoke, read where it runs
+
+        // Reported from the first build on a phone: sessions of a project quiet
+        // for a day and a half read "last heard 13m ago", and never folded into
+        // Resting, because the probe took the newest file of the whole project
+        // folder. Another conversation there, or bookkeeping appended to the
+        // session's own file, moved every row of the project.
+        TestCase("A session's time is its own transcript's last spoken moment, not its project's newest file") { t in
+            let spoke = "2025-10-01T08:00:00Z"
+            let own = #"{"type":"assistant","timestamp":"\#(spoke)","message":{"role":"assistant"}}"#
+                + "\n" + #"{"type":"last-prompt"}"#
+            guard let session = probedSession(own: own) else { t.fail("the probe did not run"); return }
+            t.expectEqual(session.modifiedAt, ISO8601DateFormatter().date(from: spoke),
+                          "a session's time is when it last spoke, not its project's newest file")
+        },
+
+        TestCase("With nothing timestamped in its tail, the session's own file dates it, never a neighbour's") { t in
+            let fileDate = Date(timeIntervalSince1970: 1_759_400_000)
+            guard let session = probedSession(own: #"{"type":"last-prompt"}"#, ownDate: fileDate,
+                                              sessionFileDate: fileDate.addingTimeInterval(-3_600)) else {
+                t.fail("the probe did not run"); return
+            }
+            t.expectEqual(session.modifiedAt, fileDate,
+                          "a session with no spoken moment is dated by its own file, never a neighbour's")
+        },
+
+        TestCase("A session in a git worktree finds its transcript by its id, and keeps its time") { t in
+            let spoke = "2025-10-02T09:30:00Z"
+            let own = #"{"type":"assistant","timestamp":"\#(spoke)","message":{"role":"assistant"}}"#
+            guard let session = probedSession(own: own, ownFolder: "-home-dev-project--worktrees-feature") else {
+                t.fail("the probe did not run"); return
+            }
+            t.expectEqual(session.hasTranscript, true, "the transcript filed under the worktree is found")
+            t.expectEqual(session.modifiedAt, ISO8601DateFormatter().date(from: spoke), "and its time read")
+        },
+
+        TestCase("The decoder dates a session by the last timestamp of the tail it was sent") { t in
+            let tail = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z"}"# + "\n" + #"{"type":"last-prompt","timestamp":null}"#
+            let sessions = reading([record(idleId, pid: 11, status: "idle", tail: tail)]).report.sessions
+            t.expectEqual(sessions.first?.modifiedAt, ISO8601DateFormatter().date(from: "2025-10-01T08:00:00Z"),
+                          "the tail's last spoken moment wins over the files' dates")
+            let untimed = reading([record(idleId, pid: 11, status: "idle", tail: #"{"type":"last-prompt"}"#)]).report.sessions
+            t.expectEqual(untimed.first?.modifiedAt, Date(timeIntervalSince1970: 1_760_000_000),
+                          "nothing timed in the tail: the files' date the probe sent")
+        },
     ])
+
+    /// The one session the probe reports from a home where it has two
+    /// conversations in one project: its own (`own`, in `ownFolder` when given,
+    /// dated `ownDate` when given) and a neighbour's, written now.
+    static func probedSession(own: String, ownFolder: String? = nil, ownDate: Date? = nil,
+                              sessionFileDate: Date? = nil) -> LiveSession? {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("lbtest-activity-\(UUID().uuidString)").path
+        defer { try? FileManager.default.removeItem(atPath: home) }
+        let cwd = "/home/dev/project"
+        let encoded = "-" + String(cwd.dropFirst().map { $0.isLetter || $0.isNumber ? $0 : "-" })
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let fm = FileManager.default
+        do {
+            for folder in [".claude/sessions", ".claude/projects/\(encoded)", ".claude/projects/\(ownFolder ?? encoded)", "bin"] {
+                try fm.createDirectory(atPath: "\(home)/\(folder)", withIntermediateDirectories: true)
+            }
+            let sessionFile = "\(home)/.claude/sessions/\(pid).json"
+            try #"{"pid":\#(pid),"sessionId":"\#(idleId)","cwd":"\#(cwd)","entrypoint":"cli","kind":"interactive","status":"idle"}"#
+                .write(toFile: sessionFile, atomically: true, encoding: .utf8)
+            let ownPath = "\(home)/.claude/projects/\(ownFolder ?? encoded)/\(idleId).jsonl"
+            try (own + "\n").write(toFile: ownPath, atomically: true, encoding: .utf8)
+            let neighbour = #"{"type":"assistant","timestamp":"2026-10-16T08:00:00Z","message":{"role":"assistant"}}"#
+            try (neighbour + "\n").write(toFile: "\(home)/.claude/projects/\(encoded)/\(busyId).jsonl",
+                                         atomically: true, encoding: .utf8)
+            if let ownDate { try fm.setAttributes([.modificationDate: ownDate], ofItemAtPath: ownPath) }
+            if let sessionFileDate { try fm.setAttributes([.modificationDate: sessionFileDate], ofItemAtPath: sessionFile) }
+            try "#!/bin/sh\nexit 0\n".write(toFile: "\(home)/bin/tmux", atomically: true, encoding: .utf8)
+            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: "\(home)/bin/tmux")
+        } catch {
+            return nil
+        }
+        guard let output = runLocally(V1ProbeReading.command(), home: home) else { return nil }
+        return V1ProbeReading.parse(output, host: node.name, at: Date())?.report.sessions.first
+    }
 
     // MARK: - An example home, run under /bin/sh
 

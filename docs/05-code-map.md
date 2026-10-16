@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,341 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  28,359 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  20,826 lines · 145 files   1481 cases, instantaneous
+  LampBoardTests/  20,907 lines · 145 files   1485 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -2444,7 +2444,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1481 cases
+## `LampBoardTests/` — 1485 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2776,5 +2776,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits forty-one violations and demands forty-one catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits forty-three violations and demands forty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
