@@ -46,7 +46,7 @@ remote named `hub` pointing at that repository, and nothing else from this one.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 1492 cases, instantaneous
+swift run LampBoardTests              # 1495 cases, instantaneous
 swift run LampBoardE2E                # 186 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```
@@ -91,7 +91,7 @@ things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and 
 could not observe what it judges. **A green with a ⚠ in it is not a green**, and
 it exits 3 to say so.
 
-`bite.sh` is the one that judges the others. It commits forty-five violations — a
+`bite.sh` is the one that judges the others. It commits forty-seven violations — a
 drifted figure, a broken link, a planted home directory, a suite nobody runs, an
 assertion that has stopped asserting — and fails if any gate does not notice.
 Every mutation is undone afterwards, including on Ctrl-C.
@@ -271,7 +271,7 @@ Every time a decision slipped into the shell, it became invisible to the tests.
 ## Style
 
 - **immutability**: produce new values, don't modify existing ones
-- **small files**: 200–400 lines typical, 800 the limit; the longest today is 798
+- **small files**: 200–400 lines typical, 800 the limit; the longest today is 797
 - **no magic values**: everything goes through `AppConfig`
 - **comments explain the why**, not the what
 

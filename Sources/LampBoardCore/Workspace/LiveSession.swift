@@ -52,38 +52,102 @@ public struct LiveSession: Sendable, Equatable {
     /// (D137): what makes it a conversation, whether or not a context can be
     /// read from its tail. A session just resumed has a tail of system records.
     public let hasTranscript: Bool
-    /// What Claude Code itself says of the session in its file: `busy` while
-    /// anything runs for it — its turn, a subagent's, and background agents or
-    /// tasks still at work after the turn ended (D141).
-    public let isBusy: Bool
+    /// What Claude Code itself writes as the session's `status` in its file
+    /// (D141), one of four words, kept as the word it is.
+    public let fileStatus: FileStatus
     /// Whether the tail of the session's own transcript ends inside a turn
     /// (`TranscriptActivity.turnIsOpen`), where a probe sent that tail: `nil`
     /// when nothing says — no tail read, or no turn in it.
     public let turnIsOpen: Bool?
 
+    /// The four words Claude Code writes as a session's `status`, and room for a
+    /// fifth. Claude Code 2.1.300 checks the field against exactly these four
+    /// and computes them in one place for an interactive session:
+    ///
+    /// - `waiting` when something waits for the person: a permission prompt, an
+    ///   MCP server's question, a proposed goal, a sandbox's network request, a
+    ///   worker's request, any other dialog it opened;
+    /// - otherwise `busy` while the turn runs or a background agent, teammate or
+    ///   workflow is still at work, after the turn too;
+    /// - otherwise `shell` while a background shell (`run_in_background`) runs;
+    /// - otherwise `idle`.
+    ///
+    /// Its own list draws `busy` and `shell` as working and `waiting` as blocked.
+    /// A session run through the SDK (the Claude app) writes `busy`, `waiting`
+    /// (`requires_action`) and `idle`.
+    public enum FileStatus: Sendable, Equatable {
+        case idle
+        case busy
+        case shell
+        case waiting
+        /// A word this build does not know, kept so a log can say it: read as
+        /// alive and resting, never as work and never as a reason to drop the
+        /// session.
+        case unrecognised(String)
+
+        /// The file's word; a file with none is idle, as Claude Code's own
+        /// readers take it.
+        public init(word: String?) {
+            switch word?.trimmed {
+            case nil, ""?, "idle"?: self = .idle
+            case "busy"?: self = .busy
+            case "shell"?: self = .shell
+            case "waiting"?: self = .waiting
+            case let other?: self = .unrecognised(other)
+            }
+        }
+    }
+
     /// The state the file and the tail tell together, for a row nobody announced.
     ///
-    /// - not `busy`: idle;
-    /// - `busy` with the turn closed: background work is registered and will
-    ///   wake the session — the Mac's blue, `waiting`, which its hooks give the
-    ///   same session. Measured on the always-on machine: a session whose turn had
+    /// - `waiting`: something waits for the person in the session's terminal or
+    ///   window — **amber**, `awaiting`. No question travels with it: the file
+    ///   says only that one waits, and what kind;
+    /// - `shell`: the turn is over and a background shell runs, which will wake
+    ///   the session — the Mac's blue, `waiting`, which its hooks give the same
+    ///   session (a `Stop` with a shell registered). Claude Code writes it only
+    ///   when its turn is not running, so a tail that still looks open does not
+    ///   change it. Measured on the always-on machine: five minutes of `shell`
+    ///   while a background `sleep` ran, the tail ending in `turn_duration`;
+    /// - `busy` with the turn closed: background agents are at work and will wake
+    ///   the session — blue as well. Measured there: a session whose turn had
     ///   ended, its agents at work, read `busy` for hours; blue on the Mac, it was
     ///   yellow on the phone, then (build 2) resting;
-    /// - `busy` with the turn open, or nothing known of it: working (D141).
+    /// - `busy` with the turn open, or nothing known of it: working (D141);
+    /// - `idle`, or a word not known yet: idle.
     public var statusFromFile: SessionStatus {
-        guard isBusy else { return .idle }
-        return turnIsOpen == false ? .waiting : .working
+        switch fileStatus {
+        case .waiting: return .awaiting
+        case .shell: return .waiting
+        case .busy: return turnIsOpen == false ? .waiting : .working
+        case .idle, .unrecognised: return .idle
+        }
+    }
+
+    /// The same reading for a row its hooks keep from here on (the Mac's): amber
+    /// is left to the hooks. They carry the question, and the way back from it.
+    /// A dialog the person closes fires no hook, so an amber taken from the file
+    /// would stay lit on a row nothing re-reads; the phone re-reads the file at
+    /// every look, and takes `statusFromFile` whole.
+    public var statusForAHeardRow: SessionStatus {
+        statusFromFile == .awaiting ? .idle : statusFromFile
     }
 
     /// The same session as `status` says it: what one row of two processes
     /// holding a conversation takes from the busier of them.
     public func with(statusFromFile status: SessionStatus) -> LiveSession {
         guard status != statusFromFile else { return self }
+        let word: FileStatus
+        switch status {
+        case .awaiting: word = .waiting
+        case .working, .waiting: word = .busy
+        case .idle, .ready, .failed: word = .idle
+        }
         return LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
-            isBusy: status != .idle, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen
+            fileStatus: word, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen
         )
     }
 
@@ -99,7 +163,7 @@ public struct LiveSession: Sendable, Equatable {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy,
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, fileStatus: fileStatus,
             turnIsOpen: turnIsOpen
         )
     }
@@ -118,12 +182,12 @@ public struct LiveSession: Sendable, Equatable {
         jobId: String? = nil,
         tmux: TmuxPlace? = nil,
         hasTranscript: Bool = false,
-        isBusy: Bool = false,
+        fileStatus: FileStatus = .idle,
         turnIsOpen: Bool? = nil
     ) {
         self.turnIsOpen = turnIsOpen
         self.hasTranscript = hasTranscript
-        self.isBusy = isBusy
+        self.fileStatus = fileStatus
         self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
@@ -209,7 +273,7 @@ public enum LiveSessionParser {
             modifiedAt: modifiedAt,
             procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init),
             jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty,
-            isBusy: (object["status"] as? String) == "busy"
+            fileStatus: LiveSession.FileStatus(word: object["status"] as? String)
         )
     }
 }

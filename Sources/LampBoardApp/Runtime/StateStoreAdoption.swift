@@ -239,12 +239,15 @@ extension StateStore {
         }
     }
 
-    /// Claude Code's own `busy` lights a row known only as idle (D141): yellow,
-    /// or blue where another machine's probe saw the turn closed with background
-    /// work registered (`LiveSession.statusFromFile`).
+    /// Claude Code's own file lights a row known only as idle (D141): yellow
+    /// for `busy` with a turn running, blue for a background shell or for `busy`
+    /// once another machine's probe saw the turn closed. Never amber: on the Mac
+    /// the hooks carry the question and its way back (`statusForAHeardRow`).
     func lightBusy(_ sessions: [LiveSession], at now: Date) {
-        for session in sessions where session.isBusy {
-            apply(.busy(sessionId: session.sessionId, status: session.statusFromFile), now: now)
+        for session in sessions {
+            let status = session.statusForAHeardRow
+            guard status == .working || status == .waiting else { continue }
+            apply(.busy(sessionId: session.sessionId, status: status), now: now)
         }
     }
 
@@ -263,7 +266,7 @@ extension StateStore {
                 cwd: session.cwd, sessionId: session.sessionId, host: host,
                 windows: remoteWindows[host] ?? [], sessions: live, at: now
             )
-            apply(.adopt(RemoteAdoption.adopted(session, in: workspace)), now: now)
+            apply(.adopt(RemoteAdoption.adopted(session, in: workspace, heard: true)), now: now)
             Diagnostics.log("remote \(host): adopted \(session.sessionId.prefix(8)) in \(session.cwd)")
         }
     }

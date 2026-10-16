@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,448 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,073 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,003 lines · 145 files   1492 cases, instantaneous
+  LampBoardCore/  28,526 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,076 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  21,070 lines · 145 files   1495 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -16,7 +16,7 @@ Sources/
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
-No file exceeds 798 lines. The limit the project sets itself is 800.
+No file exceeds 797 lines. The limit the project sets itself is 800.
 
 Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
 the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
@@ -1737,11 +1737,16 @@ The table of recognized editors: declared name, bundle, process name.
 ### `IDEWindow.swift` · `LiveSession.swift`
 The two parsers for the on-disk files. A live file's `jobId` — a background
 session's folder under `~/.claude/jobs/` — is kept only when it is fit for a
-shell (AV2). `statusFromFile` is the one rule for a row nobody announced: idle
-unless the file says `busy`; busy with the transcript's turn ended (known only
-where a probe sent the tail) is waiting, otherwise working. **What you would
-break**: collapsing busy-with-the-turn-ended into idle or working draws a
-paused session resting or yellow where the Mac's hooks draw it blue.
+shell (AV2). The file's `status` is kept as Claude Code's word (`FileStatus`:
+`busy`, `shell`, `idle`, `waiting`, or one not known yet), and `statusFromFile`
+is the one rule for a row nobody announced: `waiting` needs you (amber),
+`shell` is paused (blue), `busy` with the transcript's turn ended (known only
+where a probe sent the tail) is paused, otherwise working; the rest is idle.
+`statusForAHeardRow` is the same without amber, for the Mac's rows, whose hooks
+carry the question. **What you would break**: reading the field as a yes/no
+for `busy` draws a session paused on a background shell resting where the Mac
+draws it blue (build 3), and collapsing busy-with-the-turn-ended draws it
+resting or yellow.
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
 The extension's URI, the policy that sends it only to sessions the extension
@@ -1864,10 +1869,11 @@ by `RemoteSessionsDecoder`. An answer that is not one — no Python, a cut — i
 
 ### `V1ProbeSource.swift` · 187
 The `V1Source` made from those readings, by the Mac's rules for a remote session
-nobody announced: working when Claude Code's file says busy and the
-transcript's turn is open, waiting (blue) when it says busy and the turn ended —
-background work registered — idle otherwise (`LiveSession.statusFromFile`); one
-conversation in two processes takes the busier; the context of the transcript's tail, `tmux:<session>` when tmux holds it, and
+nobody announced, as Claude Code's file and the transcript's turn say
+(`LiveSession.statusFromFile`): needs you (amber, no question with it) for
+`waiting`, working for `busy` with the turn open, paused (blue) for `shell` or
+for `busy` with the turn ended, idle otherwise; one conversation in two
+processes takes the more urgent; the context of the transcript's tail, `tmux:<session>` when tmux holds it, and
 `stateBasis: sessionFile` on every row. A change is one event; a silent machine
 keeps its rows, unreachable, with the time of its last answer; the person's
 choices survive every reading. **What you would break**: a guessed amber from a
@@ -1897,7 +1903,8 @@ Mac's store so that the Mac and the Linux service apply the same rules.
 Where a session nobody announced belongs, and the row it starts as: the editor
 window containing its folder, its own folder in tmux or LampBoard's terminal or
 in the background, its own folder when terminal sessions are shown, or nothing;
-`idle` unless Claude Code says `busy` (D141). The process-tree walk is handed in
+`idle` unless Claude Code's file says otherwise (D141), never amber: the Mac's
+hooks carry the question (`statusForAHeardRow`). The process-tree walk is handed in
 as a closure, asked only when the answer matters.
 
 ---
@@ -2450,7 +2457,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1492 cases
+## `LampBoardTests/` — 1495 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2782,5 +2789,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits forty-five violations and demands forty-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits forty-seven violations and demands forty-seven catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

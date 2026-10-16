@@ -24,15 +24,19 @@ public enum RemoteAdoption {
         }
     }
 
-    /// The row an adoptable session starts as: idle unless Claude Code says
-    /// `busy` (D141) — working while its turn is open, waiting (blue) once the
-    /// turn ended with background work still registered
-    /// (`LiveSession.statusFromFile`) — a terminal's row unless said otherwise,
-    /// named as Claude Code names it there. The phone's reading of a machine
-    /// without `lampd` makes its rows with this same rule (D176).
-    public static func adopted(_ session: LiveSession, in workspace: Workspace, origin: SessionOrigin = .terminal) -> SessionState {
+    /// The row an adoptable session starts as: what Claude Code's file and the
+    /// transcript's turn say (D141, `LiveSession.statusFromFile`) — working while
+    /// a turn is open, paused (blue) once it ended with a background shell or
+    /// agents still at work, needs you (amber) while something waits for the
+    /// person, idle otherwise — a terminal's row unless said otherwise, named as
+    /// Claude Code names it there. The phone's reading of a machine without
+    /// `lampd` makes its rows with this same rule (D176), and re-reads it at
+    /// every look. A row its hooks keep from here (`heard`, the Mac's) leaves
+    /// amber to them (`LiveSession.statusForAHeardRow`).
+    public static func adopted(_ session: LiveSession, in workspace: Workspace, origin: SessionOrigin = .terminal,
+                               heard: Bool = false) -> SessionState {
         SessionState(
-            id: session.sessionId, status: session.statusFromFile, workspace: workspace,
+            id: session.sessionId, status: heard ? session.statusForAHeardRow : session.statusFromFile, workspace: workspace,
             updatedAt: session.modifiedAt, statusSince: session.modifiedAt,
             entrypoint: session.entrypoint, origin: origin, title: session.name
         )

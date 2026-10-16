@@ -6552,3 +6552,21 @@ turn open or with no turn in the tail is working. Blue is therefore known from t
 an answer to read and red are still told only by hooks. The Mac's remote rows take the same blue when
 Claude Code's busy lights a row they knew only as idle (`ReducerAction.busy` carries the status). Its own
 sessions are read without their tail, so busy stays working there, and their hooks already say waiting.
+
+**Amended after the third TestFlight build (16 October 2026).** The file's `status` is not a yes/no for
+`busy`. Claude Code 2.1.300 checks it against four words and computes them in one place for an interactive
+session: **`waiting`** when something waits for the person (a permission prompt, an MCP server's question, a
+proposed goal, a sandbox's network request, a worker's request, any other dialog it opened); otherwise
+**`busy`** while the turn runs or a background agent, teammate or workflow is at work; otherwise **`shell`**
+while a background shell runs; otherwise **`idle`**. Its own list draws `busy` and `shell` as working and
+`waiting` as blocked; the SDK writes `waiting` for `requires_action`. Measured on the Linux machine with build
+3: a session whose turn ended with only a background shell running read `shell` for five minutes, the tail
+ending in `turn_duration`; the Mac drew it blue, and build 3, which knew only `busy`, drew it resting.
+`LiveSession` now keeps the word (`FileStatus`), and `statusFromFile` reads `shell` as **waiting** (blue)
+whatever the tail, since Claude Code writes it only while no turn runs, and `waiting` as **awaiting**
+(amber); a word not known yet is idle. The phone takes amber from the file because it re-reads the file at
+every look. The row carries no question (the file has none), so nothing offers Allow or Deny for it: a tap
+opens its terminal, where the person answers. The Mac does not take amber from the file
+(`statusForAHeardRow`): its hooks carry the question and its way back, and a dialog the person closes fires
+no hook, so an amber lit there from the file would have nothing to put it out. An answer to read and red
+are still told only by hooks.

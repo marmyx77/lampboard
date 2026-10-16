@@ -605,6 +605,26 @@ open(p, "w").write(s.replace("return turnIsOpen == false ? .waiting : .working",
                              "return turnIsOpen == false ? .idle : .working", 1))
 PY
 
+# Claude Code writes `shell` once the turn is over and only a background shell
+# runs (measured with build 3: five minutes of it, blue on the Mac, resting on
+# the phone, which knew only `busy`). Reading it as idle again must turn red.
+protect Sources/LampBoardCore/Workspace/LiveSession.swift
+attack_swift "a remote session paused on a background shell drawn resting" "a background shell after the turn" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/LiveSession.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("case .shell: return .waiting", "case .shell: return .idle", 1))
+PY
+
+# `waiting` in the file is amber on the phone, which re-reads the file at every
+# look, and never on the Mac's rows: their hooks carry the question and its way
+# back, and a dialog closed fires no hook. Amber from the file there must turn red.
+protect Sources/LampBoardCore/Workspace/LiveSession.swift
+attack_swift "amber from the file lit on a row its hooks keep" "amber is the hooks'" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/LiveSession.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("statusFromFile == .awaiting ? .idle : statusFromFile", "statusFromFile", 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

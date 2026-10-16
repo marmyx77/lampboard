@@ -6,13 +6,16 @@ import Foundation
 ///
 /// The rows are made by the Mac's own rules for a remote session nobody has
 /// announced: one per conversation a person started (`deservesTrafficLight`,
-/// a transcript), placed by `RemoteWorkspaceResolver`, `working` when Claude
-/// Code's file says `busy` and the transcript's turn is open, `waiting` (blue)
-/// when it says `busy` and the turn ended — background work registered — and
-/// `idle` otherwise (`RemoteAdoption.adopted`, D141), with the context the
-/// probe read from the transcript's tail. Each row says how it was learned
-/// (`V1StateBasis.sessionFile`): no hook reaches the phone, so amber, an
-/// answer to read and red never show.
+/// a transcript), placed by `RemoteWorkspaceResolver`, in the state Claude
+/// Code's file and the transcript's turn say together
+/// (`LiveSession.statusFromFile`, D141): `awaiting` (amber) when the file says
+/// `waiting`, `working` when it says `busy` and the turn is open, `waiting`
+/// (blue) for `shell` or for `busy` with the turn ended — background work
+/// registered — and `idle` otherwise, with the context the probe read from the
+/// transcript's tail. Each row says how it was learned
+/// (`V1StateBasis.sessionFile`): no hook reaches the phone, so an amber row
+/// carries no question to answer from the list, and an answer to read and red
+/// never show.
 ///
 /// A machine that stops answering keeps its rows, marked unreachable, with the
 /// time of the last answer (D21); the state's age in `hello` is that answer's.
@@ -81,9 +84,9 @@ public final class V1ProbeSource: V1Source, @unchecked Sendable {
     /// The rows one report makes, before the person's choices.
     public static func rows(from report: RemoteSessionsDecoder.Report, identity: V1SourceIdentity, at now: Date) -> [V1Row] {
         let candidates = report.sessions.filter { $0.deservesTrafficLight && $0.hasTranscript }
-        // One row per conversation: two processes holding it are one row,
-        // working if either is, else waiting if either is, reached through tmux
-        // if either is in it.
+        // One row per conversation: two processes holding it are one row, in
+        // the more urgent state of the two, reached through tmux if either is
+        // in it.
         var order: [String] = []
         var grouped: [String: [LiveSession]] = [:]
         for session in candidates {
@@ -92,8 +95,8 @@ public final class V1ProbeSource: V1Source, @unchecked Sendable {
         }
         return order.compactMap { id in
             guard let group = grouped[id], let first = group.first else { return nil }
-            let lead = group.first { $0.tmux != nil } ?? group.first { $0.isBusy } ?? first
-            // working > waiting > idle: the Core's own order of urgency.
+            let lead = group.first { $0.tmux != nil } ?? group.first { $0.statusFromFile != .idle } ?? first
+            // needs you > working > paused > idle: the Core's own order of urgency.
             let busiest = group.map(\.statusFromFile).min { $0.urgencyRank < $1.urgencyRank } ?? lead.statusFromFile
             let session = lead.with(statusFromFile: busiest)
             let workspace = RemoteWorkspaceResolver.resolve(

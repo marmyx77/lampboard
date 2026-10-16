@@ -10,9 +10,9 @@ enum LiveAdoptionSuite {
     private static let window = IDEWindow(workspaceFolders: ["/work/alpha"], ideName: "Visual Studio Code", pid: 10, lockModifiedAt: t0)
 
     private static func live(cwd: String = "/work/alpha/src", kind: String? = "interactive", busy: Bool = false,
-                             turnIsOpen: Bool? = nil) -> LiveSession {
+                             word: LiveSession.FileStatus? = nil, turnIsOpen: Bool? = nil) -> LiveSession {
         LiveSession(pid: 4242, sessionId: "00000000-0000-4000-8000-000000000001", cwd: cwd, entrypoint: "cli",
-                    name: "alpha-7", kind: kind, modifiedAt: t0, isBusy: busy, turnIsOpen: turnIsOpen)
+                    name: "alpha-7", kind: kind, modifiedAt: t0, fileStatus: word ?? (busy ? .busy : .idle), turnIsOpen: turnIsOpen)
     }
 
     private static let never: (LiveSession) -> Bool = { _ in false }
@@ -88,6 +88,32 @@ enum LiveAdoptionSuite {
             t.expectEqual(RemoteAdoption.adopted(live(turnIsOpen: false), in: place).status, .idle, "not busy: resting")
             t.expectEqual(LiveAdoption.adopted(live(busy: true, turnIsOpen: false), in: Workspace(path: "/work/alpha"), origin: .editor).status,
                           .waiting, "the same rule for a session found by its file here")
+        },
+
+        // Claude Code 2.1.300 writes `shell` once the turn is over and only a
+        // background shell runs, and `waiting` while something waits for the
+        // person. The phone re-reads the file at every look and takes amber from
+        // it; the Mac keeps its rows by their hooks, which carry the question and
+        // its way back, so amber from the file is not lit there.
+        TestCase("Shell is paused; waiting is amber on a row read again and again, never on a row its hooks keep") { t in
+            let place = Workspace(path: "/work/alpha", host: "example-node")
+            for open in [Bool?.none, true, false] {
+                t.expectEqual(RemoteAdoption.adopted(live(word: .shell, turnIsOpen: open), in: place).status, .waiting,
+                              "a background shell, turn \(String(describing: open)): blue")
+            }
+            t.expectEqual(RemoteAdoption.adopted(live(word: .waiting), in: place).status, .awaiting, "the phone: amber")
+            t.expectEqual(RemoteAdoption.adopted(live(word: .waiting), in: place, heard: true).status, .idle,
+                          "the Mac adopting it: amber is the hooks'")
+            t.expectEqual(RemoteAdoption.adopted(live(word: .shell), in: place, heard: true).status, .waiting, "blue on the Mac too")
+            t.expectEqual(LiveAdoption.adopted(live(word: .waiting), in: Workspace(path: "/work/alpha"), origin: .editor).status,
+                          .idle, "a session found by its file here: amber is the hooks'")
+            t.expectEqual(LiveAdoption.adopted(live(word: .shell), in: Workspace(path: "/work/alpha"), origin: .editor).status,
+                          .waiting, "and a background shell is blue here as well")
+            t.expectEqual(RemoteAdoption.adopted(live(word: .unrecognised("dreaming")), in: place).status, .idle,
+                          "a word not known yet: resting, never yellow")
+            let idle = TrafficLightState(sessions: ["s": SessionState(id: "s", status: .idle, workspace: place, updatedAt: t0, statusSince: t0)])
+            t.expectEqual(StateReducer.reduce(idle, action: .busy(sessionId: "s", status: .awaiting), now: t0).sessions["s"]?.status,
+                          .idle, "the Mac's reducer lights no amber from the file")
         },
     ])
 }

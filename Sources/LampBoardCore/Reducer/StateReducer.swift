@@ -74,8 +74,10 @@ public enum ReducerAction: Sendable, Equatable {
     /// row that only knew it as idle — adopted after a restart, its turn waiting
     /// on a subagent whose signals are not the turn's — and touches no other state.
     /// `status` is what the file and the transcript's tail say together
-    /// (`LiveSession.statusFromFile`): `waiting` when another machine's probe
-    /// saw the turn closed with background work registered, `working` otherwise.
+    /// (`LiveSession.statusForAHeardRow`): `waiting` for a background shell, or
+    /// when another machine's probe saw the turn closed with background agents
+    /// at work, `working` otherwise. Never amber: a dialog closed fires no hook,
+    /// and an amber lit here would have no way back.
     case busy(sessionId: String, status: SessionStatus = .working)
     /// A command under `lampboard watch` started or ended (D70). The one action
     /// besides a hook that may create a row: it comes through the token.

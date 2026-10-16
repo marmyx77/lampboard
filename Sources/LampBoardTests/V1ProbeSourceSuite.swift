@@ -210,7 +210,7 @@ enum V1ProbeSourceSuite {
             let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
                 + "\n" + #"{"type":"system","subtype":"turn_duration","timestamp":"2025-10-01T08:00:01Z"}"#
             guard let session = probedSession(own: ended, status: "busy") else { t.fail("the probe did not run"); return }
-            t.expectEqual(session.isBusy, true, "the file's own word is kept")
+            t.expectEqual(session.fileStatus, .busy, "the file's own word is kept")
             t.expectEqual(session.turnIsOpen, false, "the tail's turn ended")
             t.expectEqual(session.statusFromFile, .waiting,
                           "a session whose own turn ended, busy in its file, is not yellow, whatever its file says: it is blue, as on the Mac")
@@ -246,6 +246,48 @@ enum V1ProbeSourceSuite {
             t.expectEqual(merged(("busy", ended), ("busy", onTool)), "working", "a paused lead and a working twin: working")
             t.expectEqual(merged(("busy", onTool), ("busy", ended)), "working", "a working lead stays working")
             t.expectEqual(merged(("idle", ended), ("idle", onTool)), "idle", "both resting: idle")
+            t.expectEqual(merged(("busy", onTool), ("waiting", ended)), "awaiting", "a twin that waits for the person: needs you")
+            t.expectEqual(merged(("idle", ended), ("shell", ended)), "waiting", "a twin with a background shell: paused")
+        },
+
+        // Measured on the always-on machine with build 3 (16 October 2026): a
+        // session's turn ended with only a background shell running, and Claude
+        // Code's file said `shell` for five minutes. Build 3 knew only `busy`, and
+        // the row a Mac drew blue was resting on the phone. Claude Code 2.1.300
+        // writes four words: `waiting` when something waits for the person,
+        // `busy` while the turn or a background agent runs, `shell` while only a
+        // background shell does, `idle` otherwise.
+        TestCase("Claude Code's four words: shell is paused whatever the tail, waiting needs you, a new word rests") { t in
+            let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
+                + "\n" + #"{"type":"system","subtype":"turn_duration","timestamp":"2025-10-01T08:00:01Z"}"#
+            let onTool = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            guard let shell = probedSession(own: ended, status: "shell"), let shellOpen = probedSession(own: onTool, status: "shell"),
+                  let waiting = probedSession(own: onTool, status: "waiting"), let future = probedSession(own: onTool, status: "dreaming")
+            else { t.fail("the probe did not run"); return }
+            t.expectEqual(shell.fileStatus, .shell, "the file's word is kept as it is")
+            t.expectEqual(shell.statusFromFile, .waiting, "a background shell after the turn: blue, as on the Mac, not resting")
+            t.expectEqual(shellOpen.statusFromFile, .waiting,
+                          "shell is written only while no turn runs: a tail that looks open does not make it yellow")
+            t.expectEqual(waiting.statusFromFile, .awaiting, "something waits for the person: amber")
+            t.expectEqual(waiting.statusForAHeardRow, .idle, "a row its hooks keep leaves amber to them")
+            t.expectEqual(future.fileStatus, .unrecognised("dreaming"), "a word not known yet is kept")
+            t.expectEqual(future.statusFromFile, .idle, "and rests: alive, never yellow")
+        },
+
+        TestCase("The row of a session waiting for its person is amber, with no question to answer from the list") { t in
+            let onTool = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            let source = source()
+            source.absorb(reading([record(busyId, pid: 10, status: "waiting", tmux: "api", tail: onTool),
+                                   record(idleId, pid: 11, status: "shell", tail: onTool)]), at: t0)
+            let byId = Dictionary(uniqueKeysWithValues: (rows(source) ?? []).map { ($0.id, $0) })
+            t.expectEqual(byId[busyId]?.session.status, "awaiting", "waiting in the file: needs you")
+            t.expectNil(byId[busyId]?.session.pendingAsk, "the file says one waits, never the question: nothing to Allow or Deny")
+            t.expectEqual(byId[busyId]?.extras.terminal, "tmux:api", "the way in is its terminal")
+            t.expectEqual(byId[busyId]?.extras.stateBasis, .sessionFile, "read, not heard")
+            t.expectEqual(byId[idleId]?.session.status, "waiting", "a background shell: paused")
+            let unknowns = V1StateBasis.sessionFile.unknowns.joined(separator: " | ")
+            t.expect(!unknowns.contains("a question waiting for you"), "amber shows now: the unknowns no longer deny it: \(unknowns)")
+            t.expect(unknowns.contains("without its question"), "and they say what an amber read this way lacks: \(unknowns)")
         },
 
         TestCase("The decoder dates a session by the last timestamp of the tail it was sent") { t in

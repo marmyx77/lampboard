@@ -55,14 +55,15 @@ public enum LiveAdoption {
     /// `idle` unless Claude Code itself says `busy` (D141): what a session never
     /// seen is doing is not known, and this is where that is said. Inferring
     /// "working" from a transcript that moved lit a whole column yellow after a
-    /// reboot, when every session was resumed at once. Busy with a turn known to
-    /// have ended is waiting (`LiveSession.statusFromFile`); a file read without
-    /// its tail knows no turn, and busy stays working. The time, on the other
-    /// hand, is evidence, and is kept.
+    /// reboot, when every session was resumed at once. A background shell, or
+    /// busy with a turn known to have ended, is waiting (blue); a file read
+    /// without its tail knows no turn, and busy stays working. Amber is left to
+    /// the hooks, which carry the question (`LiveSession.statusForAHeardRow`).
+    /// The time, on the other hand, is evidence, and is kept.
     public static func adopted(_ session: LiveSession, in workspace: Workspace, origin: SessionOrigin) -> SessionState {
         SessionState(
             id: session.sessionId,
-            status: session.statusFromFile,
+            status: session.statusForAHeardRow,
             workspace: workspace,
             updatedAt: session.modifiedAt,
             statusSince: session.modifiedAt,

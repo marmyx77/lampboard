@@ -183,11 +183,13 @@ public struct V1RowExtras: Codable, Equatable, Sendable {
 /// source (D176).
 public enum V1StateBasis: String, Codable, Sendable, CaseIterable {
     /// From Claude Code's own session file and the tail of its transcript, read
-    /// over ssh on the machine where they are: working, paused on background
-    /// work (blue: busy in the file, the turn ended in the tail) or idle, the
-    /// context of the last reply, when the session last spoke, where tmux holds
-    /// it. A wait for a person (amber), an answer to read (green) and a failure
-    /// (red) are told only by hooks, so a row read this way never shows them.
+    /// over ssh on the machine where they are: needs you (amber: `waiting` in
+    /// the file), working, paused on background work (blue: a background shell,
+    /// or busy with the turn ended in the tail) or idle, the context of the last
+    /// reply, when the session last spoke, where tmux holds it. The file says
+    /// that something waits for the person, never the question, so an amber row
+    /// read this way has nothing to answer from the list. An answer to read
+    /// (green) and a failure (red) are told only by hooks, and never show.
     case sessionFile
 
     /// What the phone does not know of a row read this way, in words it can show.
@@ -195,8 +197,9 @@ public enum V1StateBasis: String, Codable, Sendable, CaseIterable {
         switch self {
         case .sessionFile:
             return [
-                "read from the session's own file, not heard: a question waiting for you, an answer to read and a failure do not show",
-                "working, paused or resting as Claude Code's file and the transcript's last turn say",
+                "read from the session's own file, not heard: an answer to read and a failure do not show",
+                "needs you, working, paused or resting as Claude Code's file and the transcript's last turn say",
+                "a wait for you comes without its question: answer it in the session",
                 "the time is when the session last spoke",
             ]
         }

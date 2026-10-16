@@ -779,11 +779,10 @@ enum EngineBusySuite {
 
     static let suite = TestSuite("A session Claude Code says is busy", [
 
-        TestCase("The session file's status is read") { t in
-            let busy = try? LiveSessionParser.parse(data: Data(#"{"sessionId":"s","cwd":"/x","status":"busy"}"#.utf8), modifiedAt: t0)
-            let idle = try? LiveSessionParser.parse(data: Data(#"{"sessionId":"s","cwd":"/x","status":"idle"}"#.utf8), modifiedAt: t0)
-            t.expectEqual(busy?.isBusy, true)
-            t.expectEqual(idle?.isBusy, false)
+        TestCase("The session file's status is read, as the word it is") { t in
+            func read(_ status: String) -> LiveSession.FileStatus? { (try? LiveSessionParser.parse(data: Data(#"{"sessionId":"s","cwd":"/x",\#(status)}"#.utf8), modifiedAt: t0))?.fileStatus }
+            for (json, word) in [(#""status":"busy""#, LiveSession.FileStatus.busy), (#""status":"idle""#, .idle), (#""status":"shell""#, .shell),
+                                 (#""status":"waiting""#, .waiting), (#""status":"later""#, .unrecognised("later")), (#""x":1"#, .idle)] { t.expectEqual(read(json), word, json) }
         },
 
         TestCase("An idle row turns working, or blue once its turn ended elsewhere; a row that knows better is left alone") { t in
