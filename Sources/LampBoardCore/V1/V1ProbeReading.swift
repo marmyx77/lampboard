@@ -27,9 +27,12 @@ public struct V1ProbeReading: Equatable, Sendable {
     static let sessionFormat = "#{session_attached}\t#{session_windows}\t#{session_activity}\t#{session_created}\t#{session_name}"
 
     /// The one command: one `sh -c`, whatever the login shell, the probe handed
-    /// to `python3 -c` as a single quoted word.
+    /// to `python3 -c` as a single quoted word. `-B`: the Python of Apple's
+    /// developer tools otherwise fills `~/Library/Caches/com.apple.python` with
+    /// bytecode of its own library (measured on the test Mac), a write the look
+    /// promised not to make.
     public static func command(server: TmuxSizeRule.Server = .default) -> String {
-        let probe = "python3 -c " + NewSession.shellQuoted(RemoteProbeScript.script)
+        let probe = "python3 -B -c " + NewSession.shellQuoted(RemoteProbeScript.script)
         let tmux = "PATH=\"$PATH:/opt/homebrew/bin:/usr/local/bin\"; "
             + "if command -v tmux >/dev/null 2>&1; then \(server.tmux) list-sessions -F '\(sessionFormat)' 2>/dev/null; "
             + "else echo '\(noTmux)'; fi; true"

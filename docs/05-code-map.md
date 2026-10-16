@@ -5,7 +5,7 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,338 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  28,341 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
   LampBoardTests/  20,826 lines · 145 files   1481 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
@@ -1852,7 +1852,7 @@ The reference source: rows and a journal in memory, the actions carried out on
 them. What the conformance battery is first run against, what the client is
 tested with, and what the demo mode will serve.
 
-### `V1ProbeReading.swift` · 82
+### `V1ProbeReading.swift` · 85
 One look at a machine that does not serve `v1` yet, over the phone's ssh (D176):
 the Mac's own probe and `tmux list-sessions` in one read-only command, read back
 by `RemoteSessionsDecoder`. An answer that is not one — no Python, a cut — is

@@ -704,8 +704,8 @@ protect Sources/LampBoardCore/V1/V1ProbeReading.swift
 attack_platform Scripts/test-nodelink.sh "a look at the lights that writes in the home" "the look wrote nothing in the home" <<'PY'
 p = "Sources/LampBoardCore/V1/V1ProbeReading.swift"
 s = open(p).read()
-old = 'let probe = "python3 -c "'
-open(p, "w").write(s.replace(old, 'let probe = "touch $HOME/.probe-was-here; python3 -c "', 1))
+old = 'let probe = "python3 -B -c "'
+open(p, "w").write(s.replace(old, 'let probe = "touch $HOME/.probe-was-here; python3 -B -c "', 1))
 PY
 
 fi

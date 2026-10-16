@@ -6518,7 +6518,9 @@ as a normal end with its status; through tmux the pane's text with `❯` intact,
 `window-change` resizing the window, no client left after a close; with a Mac at 200 columns, an iPad at 120
 and the phone at 45, the phone wins on attaching, `ignore-size` alone leaves the window at 45, the rule
 gives it back to 200, the watching iPad's keys change nothing until it takes the size. The same eight cases
-passed against the W0 fake node (`lbprobe-nodo`) as against the gate's own node. Through tmux the screen is
+passed against the W0 fake node (`lbprobe-nodo`) as against the gate's own node. On the test Mac the look
+first failed its own promise: Apple's `python3` wrote its library's bytecode into `~/Library/Caches`, so the
+probe runs with `-B`. Through tmux the screen is
 tmux's (E7): the comparison of a whole screen with `capture-pane` stays the W0 probes' (S-C, S-S, with
 SwiftTerm on Linux), because the vendored SwiftTerm does not build there.
 
