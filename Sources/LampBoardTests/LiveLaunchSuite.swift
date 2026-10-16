@@ -786,11 +786,11 @@ enum EngineBusySuite {
             t.expectEqual(idle?.isBusy, false)
         },
 
-        TestCase("An idle row turns working; a row that knows better is left alone") { t in
+        TestCase("An idle row turns working, or blue once its turn ended elsewhere; a row that knows better is left alone") { t in
             let now = t0.addingTimeInterval(60)
-            t.expectEqual(StateReducer.reduce(state(.idle), action: .busy(sessionId: "s"), now: now).sessions["s"]?.status, .working)
-            for status in [SessionStatus.awaiting, .ready, .failed, .waiting] {
-                t.expectEqual(StateReducer.reduce(state(status), action: .busy(sessionId: "s"), now: now).sessions["s"]?.status, status, "\(status)")
+            for (lit, other) in [(SessionStatus.working, SessionStatus.waiting), (.waiting, .working)] {
+                t.expectEqual(StateReducer.reduce(state(.idle), action: .busy(sessionId: "s", status: lit), now: now).sessions["s"]?.status, lit, "lit \(lit)")
+                for status in [SessionStatus.awaiting, .ready, .failed, other] { t.expectEqual(StateReducer.reduce(state(status), action: .busy(sessionId: "s", status: lit), now: now).sessions["s"]?.status, status, "\(status)") }
             }
             t.expect(StateReducer.reduce(state(.idle), action: .busy(sessionId: "nobody"), now: now).sessions["nobody"] == nil, "no row made")
         },

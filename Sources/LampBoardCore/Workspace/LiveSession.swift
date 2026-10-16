@@ -52,9 +52,40 @@ public struct LiveSession: Sendable, Equatable {
     /// (D137): what makes it a conversation, whether or not a context can be
     /// read from its tail. A session just resumed has a tail of system records.
     public let hasTranscript: Bool
-    /// What Claude Code itself says of the session in its file: `busy` while a
-    /// turn is in progress, a subagent's included (D141).
+    /// What Claude Code itself says of the session in its file: `busy` while
+    /// anything runs for it — its turn, a subagent's, and background agents or
+    /// tasks still at work after the turn ended (D141).
     public let isBusy: Bool
+    /// Whether the tail of the session's own transcript ends inside a turn
+    /// (`TranscriptActivity.turnIsOpen`), where a probe sent that tail: `nil`
+    /// when nothing says — no tail read, or no turn in it.
+    public let turnIsOpen: Bool?
+
+    /// The state the file and the tail tell together, for a row nobody announced.
+    ///
+    /// - not `busy`: idle;
+    /// - `busy` with the turn closed: background work is registered and will
+    ///   wake the session — the Mac's blue, `waiting`, which its hooks give the
+    ///   same session. Measured on the always-on machine: a session whose turn had
+    ///   ended, its agents at work, read `busy` for hours; blue on the Mac, it was
+    ///   yellow on the phone, then (build 2) resting;
+    /// - `busy` with the turn open, or nothing known of it: working (D141).
+    public var statusFromFile: SessionStatus {
+        guard isBusy else { return .idle }
+        return turnIsOpen == false ? .waiting : .working
+    }
+
+    /// The same session as `status` says it: what one row of two processes
+    /// holding a conversation takes from the busier of them.
+    public func with(statusFromFile status: SessionStatus) -> LiveSession {
+        guard status != statusFromFile else { return self }
+        return LiveSession(
+            pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
+            name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
+            isBusy: status != .idle, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen
+        )
+    }
 
     /// For a background session, the Agent View's id for it: the folder under
     /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
@@ -68,7 +99,8 @@ public struct LiveSession: Sendable, Equatable {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy,
+            turnIsOpen: turnIsOpen
         )
     }
 
@@ -86,8 +118,10 @@ public struct LiveSession: Sendable, Equatable {
         jobId: String? = nil,
         tmux: TmuxPlace? = nil,
         hasTranscript: Bool = false,
-        isBusy: Bool = false
+        isBusy: Bool = false,
+        turnIsOpen: Bool? = nil
     ) {
+        self.turnIsOpen = turnIsOpen
         self.hasTranscript = hasTranscript
         self.isBusy = isBusy
         self.tmux = tmux

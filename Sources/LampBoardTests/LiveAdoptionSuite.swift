@@ -9,9 +9,10 @@ enum LiveAdoptionSuite {
     private static let t0 = Date(timeIntervalSince1970: 1_760_000_000)
     private static let window = IDEWindow(workspaceFolders: ["/work/alpha"], ideName: "Visual Studio Code", pid: 10, lockModifiedAt: t0)
 
-    private static func live(cwd: String = "/work/alpha/src", kind: String? = "interactive", busy: Bool = false) -> LiveSession {
+    private static func live(cwd: String = "/work/alpha/src", kind: String? = "interactive", busy: Bool = false,
+                             turnIsOpen: Bool? = nil) -> LiveSession {
         LiveSession(pid: 4242, sessionId: "00000000-0000-4000-8000-000000000001", cwd: cwd, entrypoint: "cli",
-                    name: "alpha-7", kind: kind, modifiedAt: t0, isBusy: busy)
+                    name: "alpha-7", kind: kind, modifiedAt: t0, isBusy: busy, turnIsOpen: turnIsOpen)
     }
 
     private static let never: (LiveSession) -> Bool = { _ in false }
@@ -73,6 +74,20 @@ enum LiveAdoptionSuite {
             t.expectEqual(row.origin, .terminal, "terminal")
             t.expectEqual(row.title, "alpha-7", "named as Claude Code names it")
             t.expectEqual(row.status, .working, "busy")
+        },
+
+        // Busy in Claude Code's file with the turn closed in the tail: background
+        // work registered, which the Mac's hooks paint blue. Read over ssh, the
+        // same blue: not yellow (the file alone), not resting (the build 2 collapse).
+        TestCase("Busy with its turn closed is paused; with it open or unknown, working; not busy, idle") { t in
+            let place = Workspace(path: "/work/alpha", host: "example-node")
+            t.expectEqual(RemoteAdoption.adopted(live(busy: true, turnIsOpen: false), in: place).status, .waiting,
+                          "background work registered: blue, as on the Mac")
+            t.expectEqual(RemoteAdoption.adopted(live(busy: true, turnIsOpen: true), in: place).status, .working, "a turn open")
+            t.expectEqual(RemoteAdoption.adopted(live(busy: true), in: place).status, .working, "no turn in the tail: the file")
+            t.expectEqual(RemoteAdoption.adopted(live(turnIsOpen: false), in: place).status, .idle, "not busy: resting")
+            t.expectEqual(LiveAdoption.adopted(live(busy: true, turnIsOpen: false), in: Workspace(path: "/work/alpha"), origin: .editor).status,
+                          .waiting, "the same rule for a session found by its file here")
         },
     ])
 }

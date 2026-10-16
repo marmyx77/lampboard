@@ -73,7 +73,10 @@ public enum ReducerAction: Sendable, Equatable {
     /// Claude Code's own session file says the session is busy (D141). Lights a
     /// row that only knew it as idle — adopted after a restart, its turn waiting
     /// on a subagent whose signals are not the turn's — and touches no other state.
-    case busy(sessionId: String)
+    /// `status` is what the file and the transcript's tail say together
+    /// (`LiveSession.statusFromFile`): `waiting` when another machine's probe
+    /// saw the turn closed with background work registered, `working` otherwise.
+    case busy(sessionId: String, status: SessionStatus = .working)
     /// A command under `lampboard watch` started or ended (D70). The one action
     /// besides a hook that may create a row: it comes through the token.
     case watched(WatchReport)
@@ -210,9 +213,10 @@ public enum StateReducer {
             }
             return state.upserting(session.with(context: context))
 
-        case .busy(let sessionId):
-            guard let session = state.sessions[sessionId], session.baseStatus == .idle else { return state }
-            return state.upserting(session.with(status: .working, at: now))
+        case .busy(let sessionId, let status):
+            guard let session = state.sessions[sessionId], session.baseStatus == .idle,
+                  status == .working || status == .waiting else { return state }
+            return state.upserting(session.with(status: status, at: now))
 
         case .jobRead(let sessionId, let job):
             guard let session = state.sessions[sessionId], session.origin == .background else { return state }

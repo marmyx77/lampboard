@@ -586,12 +586,23 @@ PY
 
 # Busy in Claude Code's file stays busy while background agents run after a
 # turn ended: blue on the Mac, it was yellow on the phone. A decoder that trusts
-# the file alone again must turn the suite red.
+# the file alone again, never reading the turn, must turn the suite red.
 protect Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift
 attack_swift "a remote session working on its file's word alone" "is not yellow, whatever its file says" 1 <<'PY'
 p = "Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift"
 s = open(p).read()
-open(p, "w").write(s.replace("                } != false\n", "                } != nil || true\n", 1))
+open(p, "w").write(s.replace('turnIsOpen: (record["contextTail"] as? String).flatMap {',
+                             'turnIsOpen: (nil as String?).flatMap {', 1))
+PY
+
+# And that same session is blue, not resting: build 2 collapsed busy with the
+# turn ended into idle, and the phone showed neutral what the Mac showed blue.
+protect Sources/LampBoardCore/Workspace/LiveSession.swift
+attack_swift "a remote session paused on background work drawn resting" "blue, as on the Mac" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/LiveSession.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("return turnIsOpen == false ? .waiting : .working",
+                             "return turnIsOpen == false ? .idle : .working", 1))
 PY
 
 # Whatever happened above, the binaries must match the sources again.

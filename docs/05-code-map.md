@@ -1,13 +1,13 @@
 # Code map
 
-~88,400 lines of Swift across nine targets. For each file: what it contains, why
+~88,500 lines of Swift across nine targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,403 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,069 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  20,952 lines · 145 files   1489 cases, instantaneous
+  LampBoardCore/  28,448 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,073 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  21,003 lines · 145 files   1492 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -1737,7 +1737,11 @@ The table of recognized editors: declared name, bundle, process name.
 ### `IDEWindow.swift` · `LiveSession.swift`
 The two parsers for the on-disk files. A live file's `jobId` — a background
 session's folder under `~/.claude/jobs/` — is kept only when it is fit for a
-shell (AV2).
+shell (AV2). `statusFromFile` is the one rule for a row nobody announced: idle
+unless the file says `busy`; busy with the transcript's turn ended (known only
+where a probe sent the tail) is waiting, otherwise working. **What you would
+break**: collapsing busy-with-the-turn-ended into idle or working draws a
+paused session resting or yellow where the Mac's hooks draw it blue.
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
 The extension's URI, the policy that sends it only to sessions the extension
@@ -1860,8 +1864,10 @@ by `RemoteSessionsDecoder`. An answer that is not one — no Python, a cut — i
 
 ### `V1ProbeSource.swift` · 187
 The `V1Source` made from those readings, by the Mac's rules for a remote session
-nobody announced: working when Claude Code's file says busy, idle otherwise, the
-context of the transcript's tail, `tmux:<session>` when tmux holds it, and
+nobody announced: working when Claude Code's file says busy and the
+transcript's turn is open, waiting (blue) when it says busy and the turn ended —
+background work registered — idle otherwise (`LiveSession.statusFromFile`); one
+conversation in two processes takes the busier; the context of the transcript's tail, `tmux:<session>` when tmux holds it, and
 `stateBasis: sessionFile` on every row. A change is one event; a silent machine
 keeps its rows, unreachable, with the time of its last answer; the person's
 choices survive every reading. **What you would break**: a guessed amber from a
@@ -2444,7 +2450,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1489 cases
+## `LampBoardTests/` — 1492 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2776,5 +2782,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits forty-four violations and demands forty-four catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits forty-five violations and demands forty-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

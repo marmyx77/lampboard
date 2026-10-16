@@ -202,14 +202,50 @@ enum V1ProbeSourceSuite {
             t.expectEqual(session.modifiedAt, ISO8601DateFormatter().date(from: spoke), "and its time read")
         },
 
-        TestCase("Busy in the file with its turn ended is not working: the row stays neutral") { t in
+        // Claude Code's file says `busy` while anything runs for the session, its
+        // background agents and tasks included; the tail says whether the turn is
+        // still open. Busy with the turn closed is background work registered:
+        // the Mac's blue (`waiting`), never yellow and never resting.
+        TestCase("Busy in the file with its turn ended is paused, blue as on the Mac; on a tool it is working") { t in
             let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
                 + "\n" + #"{"type":"system","subtype":"turn_duration","timestamp":"2025-10-01T08:00:01Z"}"#
             guard let session = probedSession(own: ended, status: "busy") else { t.fail("the probe did not run"); return }
-            t.expectEqual(session.isBusy, false, "a session whose own turn ended is not yellow, whatever its file says")
+            t.expectEqual(session.isBusy, true, "the file's own word is kept")
+            t.expectEqual(session.turnIsOpen, false, "the tail's turn ended")
+            t.expectEqual(session.statusFromFile, .waiting,
+                          "a session whose own turn ended, busy in its file, is not yellow, whatever its file says: it is blue, as on the Mac")
             let open = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
             guard let working = probedSession(own: open, status: "busy") else { t.fail("the probe did not run"); return }
-            t.expectEqual(working.isBusy, true, "a turn on a tool, busy in the file: working")
+            t.expectEqual(working.statusFromFile, .working, "a turn on a tool, busy in the file: working")
+            guard let resting = probedSession(own: ended, status: "idle") else { t.fail("the probe did not run"); return }
+            t.expectEqual(resting.statusFromFile, .idle, "idle in the file: resting, whatever the tail")
+        },
+
+        TestCase("The row of a paused session is waiting, and says it was read from the file") { t in
+            let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
+            let unknown = #"{"type":"system","timestamp":"2025-10-01T08:00:00Z"}"#
+            let source = source()
+            source.absorb(reading([record(busyId, pid: 10, status: "busy", tmux: "api", tail: ended),
+                                   record(idleId, pid: 11, status: "busy", tail: unknown)]), at: t0)
+            let byId = Dictionary(uniqueKeysWithValues: (rows(source) ?? []).map { ($0.id, $0) })
+            t.expectEqual(byId[busyId]?.session.status, "waiting", "busy with its turn ended: blue, as on the Mac")
+            t.expectEqual(byId[busyId]?.extras.stateBasis, .sessionFile, "read, not heard")
+            t.expectEqual(byId[idleId]?.session.status, "working", "busy with no turn in the tail: the file decides, as before")
+        },
+
+        TestCase("One conversation in two processes: working if either works, paused if either waits, else idle") { t in
+            let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
+            let onTool = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            func merged(_ a: (String, String), _ b: (String, String)) -> String? {
+                let source = source()
+                source.absorb(reading([record(busyId, pid: 10, status: a.0, tmux: "api", tail: a.1),
+                                       record(busyId, pid: 11, status: b.0, tail: b.1)]), at: t0)
+                return rows(source)?.first?.session.status
+            }
+            t.expectEqual(merged(("idle", ended), ("busy", ended)), "waiting", "a resting lead and a paused twin: paused")
+            t.expectEqual(merged(("busy", ended), ("busy", onTool)), "working", "a paused lead and a working twin: working")
+            t.expectEqual(merged(("busy", onTool), ("busy", ended)), "working", "a working lead stays working")
+            t.expectEqual(merged(("idle", ended), ("idle", onTool)), "idle", "both resting: idle")
         },
 
         TestCase("The decoder dates a session by the last timestamp of the tail it was sent") { t in

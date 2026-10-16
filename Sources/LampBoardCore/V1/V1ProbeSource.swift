@@ -7,10 +7,12 @@ import Foundation
 /// The rows are made by the Mac's own rules for a remote session nobody has
 /// announced: one per conversation a person started (`deservesTrafficLight`,
 /// a transcript), placed by `RemoteWorkspaceResolver`, `working` when Claude
-/// Code's file says `busy` and `idle` otherwise (`RemoteAdoption.adopted`,
-/// D141), with the context the probe read from the transcript's tail. Each
-/// row says how it was learned (`V1StateBasis.sessionFile`): no hook reaches
-/// the phone, so amber, an answer to read and red never show.
+/// Code's file says `busy` and the transcript's turn is open, `waiting` (blue)
+/// when it says `busy` and the turn ended — background work registered — and
+/// `idle` otherwise (`RemoteAdoption.adopted`, D141), with the context the
+/// probe read from the transcript's tail. Each row says how it was learned
+/// (`V1StateBasis.sessionFile`): no hook reaches the phone, so amber, an
+/// answer to read and red never show.
 ///
 /// A machine that stops answering keeps its rows, marked unreachable, with the
 /// time of the last answer (D21); the state's age in `hello` is that answer's.
@@ -80,7 +82,8 @@ public final class V1ProbeSource: V1Source, @unchecked Sendable {
     public static func rows(from report: RemoteSessionsDecoder.Report, identity: V1SourceIdentity, at now: Date) -> [V1Row] {
         let candidates = report.sessions.filter { $0.deservesTrafficLight && $0.hasTranscript }
         // One row per conversation: two processes holding it are one row,
-        // working if either is, reached through tmux if either is in it.
+        // working if either is, else waiting if either is, reached through tmux
+        // if either is in it.
         var order: [String] = []
         var grouped: [String: [LiveSession]] = [:]
         for session in candidates {
@@ -90,12 +93,9 @@ public final class V1ProbeSource: V1Source, @unchecked Sendable {
         return order.compactMap { id in
             guard let group = grouped[id], let first = group.first else { return nil }
             let lead = group.first { $0.tmux != nil } ?? group.first { $0.isBusy } ?? first
-            let busy = group.contains { $0.isBusy }
-            let session = busy == lead.isBusy ? lead : LiveSession(
-                pid: lead.pid, sessionId: lead.sessionId, cwd: lead.cwd, entrypoint: lead.entrypoint, name: lead.name,
-                kind: lead.kind, modifiedAt: lead.modifiedAt, host: lead.host, procStart: lead.procStart,
-                context: lead.context, jobId: lead.jobId, tmux: lead.tmux, hasTranscript: lead.hasTranscript, isBusy: busy
-            )
+            // working > waiting > idle: the Core's own order of urgency.
+            let busiest = group.map(\.statusFromFile).min { $0.urgencyRank < $1.urgencyRank } ?? lead.statusFromFile
+            let session = lead.with(statusFromFile: busiest)
             let workspace = RemoteWorkspaceResolver.resolve(
                 cwd: session.cwd, sessionId: session.sessionId, host: identity.name,
                 windows: report.windows, sessions: report.sessions, at: now

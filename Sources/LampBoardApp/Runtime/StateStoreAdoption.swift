@@ -239,9 +239,13 @@ extension StateStore {
         }
     }
 
-    /// Claude Code's own `busy` lights a row known only as idle (D141).
+    /// Claude Code's own `busy` lights a row known only as idle (D141): yellow,
+    /// or blue where another machine's probe saw the turn closed with background
+    /// work registered (`LiveSession.statusFromFile`).
     func lightBusy(_ sessions: [LiveSession], at now: Date) {
-        for session in sessions where session.isBusy { apply(.busy(sessionId: session.sessionId), now: now) }
+        for session in sessions where session.isBusy {
+            apply(.busy(sessionId: session.sessionId, status: session.statusFromFile), now: now)
+        }
     }
 
     /// The sessions resting on `host`, found rather than announced (D137): a

@@ -6539,3 +6539,16 @@ forbids); a field per unknown on the row (one basis says it, and the app words i
 
 **Signal to revisit:** `lampd` serving `v1` on the Linux machine (the probe source then gives way to it),
 a tmux release where `ignore-size` alone gives the window back, or Citadel exposing PTY with `exec`.
+
+**Amended after the first two TestFlight builds (16 October 2026).** "Working when the file says busy" was
+half the truth. Claude Code writes `busy` for as long as anything runs for a session, its background agents
+and tasks included, after the turn has ended. Measured on the Linux machine: a session whose turn closed at
+06:49 (`end_turn`, `turn_duration`) still read `busy` hours later, with its agents at work. The Mac, hearing
+its hooks, drew it blue (`waiting`); build 1 drew it yellow, and build 2, which read the turn from the tail
+but threw the answer away, drew it resting. The probe sends each record's `stop_reason` and a system
+record's `subtype`, and the row is now what the file and the tail say together
+(`LiveSession.statusFromFile`): not busy is idle, busy with the turn closed is **waiting**, busy with the
+turn open or with no turn in the tail is working. Blue is therefore known from the session file; amber,
+an answer to read and red are still told only by hooks. The Mac's remote rows take the same blue when
+Claude Code's busy lights a row they knew only as idle (`ReducerAction.busy` carries the status). Its own
+sessions are read without their tail, so busy stays working there, and their hooks already say waiting.
