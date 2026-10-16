@@ -202,6 +202,16 @@ enum V1ProbeSourceSuite {
             t.expectEqual(session.modifiedAt, ISO8601DateFormatter().date(from: spoke), "and its time read")
         },
 
+        TestCase("Busy in the file with its turn ended is not working: the row stays neutral") { t in
+            let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
+                + "\n" + #"{"type":"system","subtype":"turn_duration","timestamp":"2025-10-01T08:00:01Z"}"#
+            guard let session = probedSession(own: ended, status: "busy") else { t.fail("the probe did not run"); return }
+            t.expectEqual(session.isBusy, false, "a session whose own turn ended is not yellow, whatever its file says")
+            let open = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            guard let working = probedSession(own: open, status: "busy") else { t.fail("the probe did not run"); return }
+            t.expectEqual(working.isBusy, true, "a turn on a tool, busy in the file: working")
+        },
+
         TestCase("The decoder dates a session by the last timestamp of the tail it was sent") { t in
             let tail = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z"}"# + "\n" + #"{"type":"last-prompt","timestamp":null}"#
             let sessions = reading([record(idleId, pid: 11, status: "idle", tail: tail)]).report.sessions
@@ -217,7 +227,7 @@ enum V1ProbeSourceSuite {
     /// conversations in one project: its own (`own`, in `ownFolder` when given,
     /// dated `ownDate` when given) and a neighbour's, written now.
     static func probedSession(own: String, ownFolder: String? = nil, ownDate: Date? = nil,
-                              sessionFileDate: Date? = nil) -> LiveSession? {
+                              sessionFileDate: Date? = nil, status: String = "idle") -> LiveSession? {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("lbtest-activity-\(UUID().uuidString)").path
         defer { try? FileManager.default.removeItem(atPath: home) }
         let cwd = "/home/dev/project"
@@ -229,7 +239,7 @@ enum V1ProbeSourceSuite {
                 try fm.createDirectory(atPath: "\(home)/\(folder)", withIntermediateDirectories: true)
             }
             let sessionFile = "\(home)/.claude/sessions/\(pid).json"
-            try #"{"pid":\#(pid),"sessionId":"\#(idleId)","cwd":"\#(cwd)","entrypoint":"cli","kind":"interactive","status":"idle"}"#
+            try #"{"pid":\#(pid),"sessionId":"\#(idleId)","cwd":"\#(cwd)","entrypoint":"cli","kind":"interactive","status":"\#(status)"}"#
                 .write(toFile: sessionFile, atomically: true, encoding: .utf8)
             let ownPath = "\(home)/.claude/projects/\(ownFolder ?? encoded)/\(idleId).jsonl"
             try (own + "\n").write(toFile: ownPath, atomically: true, encoding: .utf8)

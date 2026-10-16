@@ -584,6 +584,16 @@ new = ("            for other in glob.glob(os.path.dirname(own) + \"/*.jsonl\"):
 open(p, "w").write(s.replace(old, new, 1))
 PY
 
+# Busy in Claude Code's file stays busy while background agents run after a
+# turn ended: blue on the Mac, it was yellow on the phone. A decoder that trusts
+# the file alone again must turn the suite red.
+protect Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift
+attack_swift "a remote session working on its file's word alone" "is not yellow, whatever its file says" 1 <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("                } != false\n", "                } != nil || true\n", 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

@@ -51,6 +51,41 @@ public enum TranscriptActivity {
         return nil
     }
 
+    /// Whether the tail ends inside a turn: `true` after a prompt, a tool call or
+    /// a tool's result, `false` after the model ended its turn, `nil` when the
+    /// tail holds no turn at all (a session just resumed, bookkeeping only).
+    ///
+    /// Claude Code's own file says `busy` for as long as anything runs for the
+    /// session, its background agents included. Measured on the always-on
+    /// machine: a session whose turn had ended, its agents still at work, read
+    /// `busy` six hours on; the Mac, hearing its hooks, drew it blue, and the
+    /// phone, reading the file, yellow. A turn that ended is not one at work.
+    /// Records queued after it, attachments and bookkeeping say nothing either way.
+    public static func turnIsOpen(inTailChunk chunk: String, isWholeFile: Bool = false) -> Bool? {
+        var lines = chunk.split(separator: "\n", omittingEmptySubsequences: true)
+        if !isWholeFile, !lines.isEmpty { lines.removeFirst() }
+
+        for line in lines.reversed() {
+            guard let data = line.data(using: .utf8),
+                  let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            switch record["type"] as? String {
+            case "user":
+                return true
+            case "assistant":
+                let reason = (record["message"] as? [String: Any])?["stop_reason"] as? String
+                return reason == nil || reason == "tool_use" || reason == "pause_turn"
+            case "system":
+                if let subtype = record["subtype"] as? String, ["turn_duration", "stop_hook_summary"].contains(subtype) {
+                    return false
+                }
+            default:
+                continue
+            }
+        }
+        return nil
+    }
+
     /// ISO 8601, with and without fractional seconds: transcripts carry both.
     private static func date(from text: String) -> Date? {
         let withFraction = ISO8601DateFormatter()
