@@ -1,0 +1,39 @@
+{
+  "about": "Claude Code's session files on the fake node, frame by frame (Tests/NodeFixture/fixture.py). Each session is what one process left in ~/.claude/sessions and its conversation; 'lamp' is what the Core's rule makes of it, for the reader of this file, and the gate checks the two readers against each other, not against these words.",
+  "frames": [
+    {
+      "name": "every word Claude Code writes, and the files that make no row",
+      "sessions": [
+        {"key": "busy-open", "id": "a1000000-0000-4000-8000-000000000001", "cwd": "/home/dev/work/api", "status": "busy", "turn": "open", "tmux": "api", "lamp": "working, in tmux"},
+        {"key": "busy-ended", "id": "a1000000-0000-4000-8000-000000000002", "cwd": "/home/dev/work/web", "status": "busy", "turn": "ended", "lamp": "waiting (blue): agents at work after the turn"},
+        {"key": "shell", "id": "a1000000-0000-4000-8000-000000000003", "cwd": "/home/dev/work/docs", "status": "shell", "turn": "ended", "lamp": "waiting (blue): a background shell"},
+        {"key": "waiting", "id": "a1000000-0000-4000-8000-000000000004", "cwd": "/home/dev/work/billing", "status": "waiting", "waitingFor": "permission prompt", "turn": "open", "lamp": "awaiting (amber)"},
+        {"key": "idle", "id": "a1000000-0000-4000-8000-000000000005", "cwd": "/home/dev/work/search", "status": "idle", "turn": "ended", "spoke": "2027-01-14T18:30:00Z", "lamp": "idle"},
+        {"key": "unknown-word", "id": "a1000000-0000-4000-8000-000000000006", "cwd": "/home/dev/work/mobile", "status": "compacting", "turn": "open", "lamp": "idle: a word not known yet"},
+        {"key": "dead", "id": "a1000000-0000-4000-8000-000000000007", "cwd": "/home/dev/work/old", "status": "busy", "alive": false, "lamp": "none: its process is gone"},
+        {"key": "reused", "id": "a1000000-0000-4000-8000-000000000008", "cwd": "/home/dev/work/old2", "status": "busy", "reused": true, "lamp": "none: its pid now names another process"},
+        {"key": "no-transcript", "id": "a1000000-0000-4000-8000-000000000009", "cwd": "/home/dev/work/blank", "status": "busy", "transcript": false, "lamp": "none: no conversation"},
+        {"key": "sdk", "id": "a1000000-0000-4000-8000-00000000000a", "cwd": "/home/dev/work/sdk", "status": "busy", "entrypoint": "sdk-ts", "lamp": "none: not somebody's session"},
+        {"key": "background", "id": "a1000000-0000-4000-8000-00000000000b", "cwd": "/home/dev/work/batch", "status": "busy", "kind": "bg", "turn": "open", "job": "job-example-1", "jobDetail": "Example background work", "lamp": "working, background, with its job"},
+        {"key": "twin-idle", "id": "a1000000-0000-4000-8000-00000000000c", "cwd": "/home/dev/work/twin", "status": "idle", "turn": "open", "lamp": "one row for two processes"},
+        {"key": "twin-busy", "id": "a1000000-0000-4000-8000-00000000000c", "cwd": "/home/dev/work/twin", "status": "busy", "turn": "open", "lamp": "working: the busier of the two"},
+        {"key": "editor", "id": "a1000000-0000-4000-8000-00000000000d", "cwd": "/home/dev/work/site", "status": "idle", "entrypoint": "claude-vscode", "turn": "ended", "lamp": "idle, an editor's session"}
+      ]
+    },
+    {
+      "name": "the same machine a moment later",
+      "sessions": [
+        {"key": "busy-open", "id": "a1000000-0000-4000-8000-000000000001", "cwd": "/home/dev/work/api", "status": "idle", "turn": "ended", "tmux": "api", "lamp": "idle, still in tmux"},
+        {"key": "shell", "id": "a1000000-0000-4000-8000-000000000003", "cwd": "/home/dev/work/docs", "status": "idle", "turn": "ended", "lamp": "idle: the shell finished"},
+        {"key": "waiting", "id": "a1000000-0000-4000-8000-000000000004", "cwd": "/home/dev/work/billing", "status": "busy", "turn": "open", "lamp": "working: allowed"},
+        {"key": "idle", "id": "a1000000-0000-4000-8000-000000000005", "cwd": "/home/dev/work/search", "status": "busy", "turn": "open", "spoke": "2027-01-15T09:10:00Z", "lamp": "working, and it spoke later"},
+        {"key": "background", "id": "a1000000-0000-4000-8000-00000000000b", "cwd": "/home/dev/work/batch", "status": "waiting", "kind": "bg", "turn": "open", "job": "job-example-1", "lamp": "awaiting, background"},
+        {"key": "editor", "id": "a1000000-0000-4000-8000-00000000000d", "cwd": "/home/dev/work/site", "status": "busy", "entrypoint": "claude-vscode", "turn": "open", "lamp": "working, an editor's session"}
+      ]
+    },
+    {
+      "name": "nobody left",
+      "sessions": []
+    }
+  ]
+}

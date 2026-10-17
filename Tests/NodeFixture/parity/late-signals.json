@@ -1,0 +1,56 @@
+[
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "late-signals-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PreToolUse",
+    "session" : "late-signals-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "late-signals-01",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PostToolUse",
+    "session" : "late-signals-01",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "late-signals-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Notification",
+    "session" : "late-signals-01",
+    "status" : "awaiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PreToolUse",
+    "session" : "late-signals-01",
+    "status" : "awaiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "late-signals-01",
+    "status" : "waiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PostToolUse",
+    "session" : "late-signals-01",
+    "status" : "waiting"
+  }
+]

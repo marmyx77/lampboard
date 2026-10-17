@@ -1,0 +1,14 @@
+# Daily and after boot; the check itself does nothing unless the version of
+# Claude Code changed since the last one (lampd-contract.sh).
+
+[Unit]
+Description=LampBoard (lampd): Claude Code's contract, daily and after boot
+
+[Timer]
+OnBootSec=10min
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=20min
+
+[Install]
+WantedBy=timers.target

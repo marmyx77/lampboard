@@ -1,0 +1,9 @@
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"UserPromptSubmit","session_id":"late-signals-01"}}
+{"at":1,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"PreToolUse","session_id":"late-signals-01","tool_input":{"command":"true"},"tool_name":"Bash"}}
+{"at":2,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"Stop","last_assistant_message":"The page renders.","session_id":"late-signals-01"}}
+{"at":3,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"PostToolUse","session_id":"late-signals-01","tool_name":"Bash"}}
+{"at":4,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"UserPromptSubmit","session_id":"late-signals-01"}}
+{"at":5,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"Notification","notification_type":"permission_prompt","session_id":"late-signals-01"}}
+{"at":6,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"PreToolUse","session_id":"late-signals-01","tool_input":{"command":"true"},"tool_name":"Bash"}}
+{"at":7,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"Stop","background_tasks":[{"status":"running","type":"shell"}],"session_id":"late-signals-01"}}
+{"at":8,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/web","hook_event_name":"PostToolUse","session_id":"late-signals-01","tool_name":"Bash"}}

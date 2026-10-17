@@ -1,0 +1,39 @@
+# lampd: LampBoard's service on a Linux machine (ADR-65 of the node's register,
+# W3 of the mobile plan). It reads Claude Code's files with the Core's rules and
+# serves them to the phone through the read key's forced command; in this form
+# it binds no network port and takes no hook. Installed by
+# Scripts/lampd-install.sh, which writes a copy of this file into
+# ~/.config/systemd/user/ marked with the commit it came from: nothing here is
+# edited on the machine (ADR-59).
+
+[Unit]
+Description=LampBoard (lampd): this machine's Claude Code sessions, for the phone
+# Five restarts in five minutes, then systemd gives up and says so.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+# READY=1 once the socket is bound and the first look is done (E10).
+Type=notify
+NotifyAccess=main
+ExecStart=%h/.local/bin/lampd serve
+Restart=always
+RestartSec=2
+# WATCHDOG=1 comes from the main loop alone: a loop that stops is killed and
+# started again, a process alive on an old state is not left running (§2.11).
+WatchdogSec=30
+# Every v1 connection is told `bye` on SIGTERM; this is the net under it (E4).
+TimeoutStopSec=10
+# The watchdog's SIGABRT must not leave a report in /var/crash (apport, E10).
+LimitCORE=0
+# systemd --user's own PATH has no ~/.local/bin, where claude is (E4, S-G).
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Without it the static binary's allocator commits 54 MB at rest instead of 3 (E4).
+Environment=MIMALLOC_ARENA_EAGER_COMMIT=0
+MemoryHigh=128M
+MemoryMax=256M
+CPUQuota=50%
+Nice=5
+
+[Install]
+WantedBy=default.target

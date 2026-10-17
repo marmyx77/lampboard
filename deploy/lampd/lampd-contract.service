@@ -1,0 +1,15 @@
+# The contract of Claude Code's events and files on this machine (E5, Q22 of
+# the mobile plan, ADR-65 point 11): checked when `claude --version` changes,
+# the outcome kept in lampd's state folder, where `lampd status`, `lampd doctor`
+# and the Quadro read it. No OnFailure to Telegram: LampBoard's warnings stay in
+# the app (Q15, Q21).
+
+[Unit]
+Description=LampBoard (lampd): Claude Code's contract on this machine
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/lib/lampd/contract/lampd-contract.sh
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Nice=10
+TimeoutStartSec=15min

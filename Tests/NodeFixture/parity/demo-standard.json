@@ -1,0 +1,86 @@
+[
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "demo-docs-0001",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "demo-api-00002",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "demo-events-03",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "demo-mobile-04",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "demo-search-05",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "demo-docs-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "demo-events-03",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "demo-search-05",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "demo-docs-0001",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "demo-api-00002",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "demo-search-05",
+    "status" : "waiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Notification",
+    "session" : "demo-api-00002",
+    "status" : "awaiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "demo-mobile-04",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "StopFailure",
+    "session" : "demo-mobile-04",
+    "status" : "failed"
+  }
+]

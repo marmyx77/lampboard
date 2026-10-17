@@ -1,0 +1,62 @@
+[
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "e2e-node-0001",
+    "status" : "idle"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "e2e-node-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 1,
+    "event" : "SubagentStart",
+    "session" : "e2e-node-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 1,
+    "event" : "PreToolUse",
+    "session" : "e2e-node-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SubagentStop",
+    "session" : "e2e-node-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Notification",
+    "session" : "e2e-node-0001",
+    "status" : "awaiting"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "e2e-node-0001",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "e2e-node-0001",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "StopFailure",
+    "session" : "e2e-node-0001",
+    "status" : "failed"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionEnd",
+    "session" : "e2e-node-0001",
+    "status" : "absent"
+  }
+]

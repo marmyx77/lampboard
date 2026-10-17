@@ -37,10 +37,13 @@ func readText(_ path: String) -> String {
 
 switch arguments.first {
 case "keys":
-    guard arguments.count == 2 else { fail("keys <dir>") }
+    // `keys <dir> [prefix]`: a pair named `<prefix>read` and `<prefix>action`.
+    guard arguments.count == 2 || arguments.count == 3 else { fail("keys <dir> [prefix]") }
     let dir = arguments[1]
+    let prefix = arguments.count == 3 ? arguments[2] : ""
     let read = ReadKey.generate(), action = ActionKey.generate()
-    for (name, raw, pub) in [("read", read.rawRepresentation, read.publicKey), ("action", action.rawRepresentation, action.publicKey)] {
+    for (name, raw, pub) in [(prefix + "read", read.rawRepresentation, read.publicKey),
+                             (prefix + "action", action.rawRepresentation, action.publicKey)] {
         _ = FileManager.default.createFile(atPath: "\(dir)/\(name).key", contents: Data(raw.base64EncodedString().utf8),
                                            attributes: [.posixPermissions: 0o600])
         _ = FileManager.default.createFile(atPath: "\(dir)/\(name).pub", contents: Data((pub + "\n").utf8))
@@ -76,6 +79,39 @@ case "run":
         [V1Conformance.suite(against: target), KeyBites.suite(node), TerminalChecks.suite(node)], filter: filter)
     target.finish()
     exit(code)
+case "lampd":
+    // The same checks against `lampd` installed on a node (W3): the conformance
+    // battery, the phone's lines, one rule for the files, the service stopped.
+    guard #available(macOS 15.0, *) else { fail("needs macOS 15 or Linux") }
+    let keys = option("keys")
+    func raw(_ name: String) -> Data {
+        guard let data = Data(base64Encoded: readText("\(keys)/\(name).key").trimmingCharacters(in: .whitespacesAndNewlines))
+        else { fail("\(name).key is not base64") }
+        return data
+    }
+    let node: LampDNode
+    do {
+        node = LampDNode(
+            endpoint: NodeEndpoint(host: option("host"), port: Int(option("port")) ?? 22, user: option("user")),
+            hostKey: try NodeHostKey(openSSH: readText(option("host-key"))),
+            readKey: try ReadKey(rawRepresentation: raw("read")),
+            actionKey: try ActionKey(rawRepresentation: raw("action")),
+            farReadKey: try ReadKey(rawRepresentation: raw("far-read")),
+            lostReadKey: try ReadKey(rawRepresentation: raw("lost-read")),
+            lostActionKey: try ActionKey(rawRepresentation: raw("lost-action")),
+            houseKey: try ActionKey(rawRepresentation: raw("house-action")),
+            houseLines: readText("\(keys)/house.txt"),
+            lampd: option("lampd"), fixture: option("fixture"), log: option("log"), name: option("name")
+        )
+    } catch {
+        fail("\(error)")
+    }
+    Instrument.prove(quietly: true)
+    let filter = arguments.count % 2 == 0 ? arguments.last : nil
+    let target = LampDTarget(node)
+    let code = TestRunner.runAndReport(LampDChecks.suites(node, target), filter: filter)
+    target.finish()
+    exit(code)
 default:
-    fail("usage: NodeLinkCheck keys <dir> | run …")
+    fail("usage: NodeLinkCheck keys <dir> [prefix] | run … | lampd …")
 }

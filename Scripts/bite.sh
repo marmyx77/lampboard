@@ -36,6 +36,8 @@
 #   ./Scripts/bite.sh --ios      only the Core's iOS build (needs Xcode)
 #   ./Scripts/bite.sh --linux    only the Core's Linux build (needs docker)
 #   ./Scripts/bite.sh --nodelink only NodeLink over ssh (needs docker)
+#   ./Scripts/bite.sh --lampd    only lampd on a fake node and its watchdog
+#                                (needs docker, and systemd --user for the watchdog)
 #   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
 #   ./Scripts/bite.sh --pins     only the pins of the packages (needs swift)
 
@@ -777,9 +779,117 @@ PY
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--lampd" ]; then
+
+chapter "lampd on a fake node"
+
+# One rule for the files (§6.2): a copy of the rule in lampd that reads a
+# background shell as resting must give a lamp the phone's look does not.
+protect Sources/LampDKit/NodeRows.swift
+attack_platform Scripts/test-lampd.sh "lampd reading the files with a rule of its own" "the same lamp for" <<'PY'
+p = "Sources/LampDKit/NodeRows.swift"
+s = open(p).read()
+old = "V1ProbeSource.rows(from: reading.report, identity: identity, at: now)"
+new = ("V1ProbeSource.rows(from: RemoteSessionsDecoder.Report(sessions: reading.report.sessions.map { "
+       "$0.fileStatus == .shell ? $0.with(statusFromFile: .idle) : $0 }, windows: reading.report.windows), "
+       "identity: identity, at: now)")
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+# The service stopped does not turn the lights off (E10 as amended): the
+# forced command giving up without the service, as it did before, is a red.
+protect Sources/LampDKit/LampDStdio.swift
+attack_platform Scripts/test-lampd.sh "v1-stdio that exits 69 when the service is down" "hello says the files are read" <<'PY'
+p = "Sources/LampDKit/LampDStdio.swift"
+s = open(p).read()
+old = "        let log = LampDLog(file:"
+open(p, "w").write(s.replace(old, "        exit(69)\n" + old, 1))
+PY
+
+# The read key's line allowing a terminal: OpenSSH must be seen opening it.
+protect Scripts/test-lampd.sh
+attack_platform Scripts/test-lampd.sh "a read key's line that lets a terminal open" "the read key's terminal was not refused" <<'PY'
+p = "Scripts/test-lampd.sh"
+s = open(p).read()
+old = 'as_dev "lampd devices revoke lost-phone" >> "$CACHE/devices.log" 2>&1 || failed "lampd devices revoke failed"\n'
+new = old + "as_dev \"sed -i 's/^restrict,from=/restrict,pty,from=/' ~/.ssh/authorized_keys\"\n"
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+# A phone paired for another network: without its from= it gets in.
+protect Scripts/test-lampd.sh
+attack_platform Scripts/test-lampd.sh "a phone's line without its from=" "a key from the wrong network got in" <<'PY'
+p = "Scripts/test-lampd.sh"
+s = open(p).read()
+open(p, "w").write(s.replace("--action '$(pub far-action)' --from 192.0.2.0/24", "--action '$(pub far-action)'", 1))
+PY
+
+# A revocation that leaves the lines in authorized_keys.
+protect Sources/LampDKit/DevicesStore.swift
+attack_platform Scripts/test-lampd.sh "a revocation that leaves the phone's lines" "the file as it was" <<'PY'
+p = "Sources/LampDKit/DevicesStore.swift"
+s = open(p).read()
+old = "let rewritten = try AuthorizedKeys.rewrite(text, removing: id, adding: [])"
+open(p, "w").write(s.replace(old, "let rewritten = text", 1))
+PY
+
+# The house's own lines: a rewrite that drops its comments, with the guard
+# that refuses it taken away, must be seen in the file it gives back.
+protect Sources/LampDKit/AuthorizedKeys.swift
+attack_platform Scripts/test-lampd.sh "authorized_keys rewritten without the house's comments" "the house first, unchanged" <<'PY'
+p = "Sources/LampDKit/AuthorizedKeys.swift"
+s = open(p).read()
+s = s.replace("let kept = lines.filter { line in", 'let kept = lines.filter { !$0.hasPrefix("#") }.filter { line in', 1)
+s = s.replace("guard others(in: result) == others(in: text) else {", "guard true else {", 1)
+open(p, "w").write(s)
+PY
+
+# The journal replaying, after a reconnection, the event the phone holds.
+protect Sources/LampDKit/NodeJournal.swift
+attack_platform Scripts/test-lampd.sh "a journal that replays the event the phone already holds" "in order, no hole" <<'PY'
+p = "Sources/LampDKit/NodeJournal.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("return .events(log.filter { $0.seq > since })", "return .events(log.filter { $0.seq >= since })", 1))
+PY
+
+# Parity with the Mac's reducer on the recorded flows (§6.2): an answer that
+# no longer resists a late signal reduces the flows to other lamps.
+protect Sources/LampBoardCore/Models/SessionStatus.swift
+attack_platform Scripts/test-lampd.sh "the reducer's downgrade rule inverted for an answer" "the reducer drifted from the Mac's" <<'PY'
+p = "Sources/LampBoardCore/Models/SessionStatus.swift"
+s = open(p).read()
+i = s.index("public var blocksDowngrade: Bool {")
+open(p, "w").write(s[:i] + s[i:].replace("{", "{\n        if self == .ready { return false }", 1))
+PY
+
+# The app one version behind (compatibility, §6.2): minClient raised without
+# saying so shuts it out.
+protect Sources/LampBoardCore/V1/V1Protocol.swift
+attack_platform Scripts/test-lampd.sh "minClient raised without a word" "it answers a protocol-1 client" <<'PY'
+p = "Sources/LampBoardCore/V1/V1Protocol.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("public static let minClient = 1", "public static let minClient = 2", 1))
+PY
+
+chapter "lampd's watchdog"
+
+# The heartbeat from a thread of its own: a stopped loop is never restarted,
+# and only the age in hello gives it away (S-G v2, row E). The gate must see it.
+protect Sources/LampDKit/LampDService.swift
+attack_platform Scripts/test-lampd-watchdog.sh "the heartbeat sent from a thread of its own" "the heartbeat does not come from the loop" <<'PY'
+p = "Sources/LampDKit/LampDService.swift"
+s = open(p).read()
+old = "        Thread.detachNewThread { [self] in pollLoop() }\n"
+new = old + '        Thread.detachNewThread { while true { SystemdNotify.send("WATCHDOG=1"); sleep(5) } }\n'
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
 # Everywhere but the platform runs, as before they existed.
 if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ] \
-    && [ "$WHAT" != "--pins" ]; then
+    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ]; then
 
 chapter "The mod loads"
 

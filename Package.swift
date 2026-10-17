@@ -98,6 +98,28 @@ let package = Package(
             dependencies: ["LampBoardCore", "ProtocolConformance"],
             swiftSettings: strict
         ),
+        // `lampd`'s library (W3 of the mobile plan): the node as a `v1` source,
+        // its journal, the person's choices, the phones' lines in
+        // authorized_keys, the service and the read key's command. Linux first,
+        // and the Mac for the build; the Mac app does not link it.
+        .target(
+            name: "LampDKit",
+            dependencies: ["LampBoardCore"],
+            swiftSettings: strict
+        ),
+        // `lampd` itself: the command line over LampDKit. Built static for
+        // Linux by Scripts/lampd-build.sh and run under systemd --user.
+        .executableTarget(
+            name: "LampD",
+            dependencies: ["LampBoardCore", "LampDKit"],
+            swiftSettings: strict
+        ),
+        // `lampd`'s own suite, run on Linux by Scripts/test-lampd.sh.
+        .executableTarget(
+            name: "LampDTests",
+            dependencies: ["LampBoardCore", "LampDKit", "TestKit", "ProtocolConformance"],
+            swiftSettings: strict
+        ),
         // The conformance battery and the key bites over a real ssh, through
         // NodeLink: `Scripts/test-nodelink.sh` runs it against a node in a container.
         .executableTarget(

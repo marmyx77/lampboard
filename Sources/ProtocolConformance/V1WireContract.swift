@@ -37,7 +37,7 @@ public enum V1WireContract {
         "hello": [
             req("protocol", .int), req("minClient", .int), req("version", .string), req("source", .object),
             req("startedAt", .date), opt("binaryModifiedAt", .date), opt("configModifiedAt", .date),
-            req("stateAge", .object), opt("relay", .object), req("role", .string),
+            req("stateAge", .object), opt("relay", .object), req("role", .string), opt("mode", .string),
         ],
         "state": [
             req("journal", .string), req("seq", .int), req("source", .object), req("rows", .array, .null),
@@ -80,7 +80,10 @@ public enum V1WireContract {
         opt("stateBasis", .string),
     ]
 
-    public static let statuses: Set<String> = ["idle", "working", "waiting", "ready", "blocked", "failed"]
+    /// `SessionStatus`'s words as the read endpoint writes them. "awaiting" is
+    /// amber, "needs you"; there is no "blocked" on the wire, whatever a reader
+    /// of the panel's legend might expect.
+    public static let statuses: Set<String> = ["idle", "working", "waiting", "awaiting", "ready", "failed"]
     public static let errorCodes: Set<String> = [
         "malformed", "unknownOp", "badRequest", "helloFirst", "clientTooOld", "forbidden", "notFound", "badFrame", "unavailable",
     ]
@@ -99,6 +102,7 @@ public enum V1WireContract {
             found += nested(message["stateAge"], stateAge, at: "hello.stateAge")
             if message["relay"] != nil { found += nested(message["relay"], relay, at: "hello.relay") }
             if let role = message["role"] as? String, !["read", "action"].contains(role) { found.append("hello.role \(role)") }
+            if let mode = message["mode"] as? String, !["live", "files"].contains(mode) { found.append("hello.mode \(mode)") }
         case "state":
             found += nested(message["source"], source, at: "state.source")
             for (n, row) in ((message["rows"] as? [Any]) ?? []).enumerated() { found += rowViolations(row, at: "state.rows[\(n)]") }

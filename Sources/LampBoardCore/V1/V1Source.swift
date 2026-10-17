@@ -49,10 +49,14 @@ public struct V1SourceStatus: Equatable, Sendable {
     public let lastEventAt: Date?
     public let lastProbeAt: Date?
     public let relay: V1RelayHealth?
+    /// How the source is serving this connection, when it can serve it two ways
+    /// (`lampd`: its service, or the files read by the connection itself).
+    public let mode: V1ServingMode?
 
     public init(
         version: String, startedAt: Date, binaryModifiedAt: Date? = nil, configModifiedAt: Date? = nil,
-        journal: String, seq: Int, lastEventAt: Date?, lastProbeAt: Date?, relay: V1RelayHealth? = nil
+        journal: String, seq: Int, lastEventAt: Date?, lastProbeAt: Date?, relay: V1RelayHealth? = nil,
+        mode: V1ServingMode? = nil
     ) {
         self.version = version
         self.startedAt = startedAt
@@ -63,6 +67,7 @@ public struct V1SourceStatus: Equatable, Sendable {
         self.lastEventAt = lastEventAt
         self.lastProbeAt = lastProbeAt
         self.relay = relay
+        self.mode = mode
     }
 }
 
@@ -71,4 +76,19 @@ public enum V1Replay: Equatable, Sendable {
     /// The journal was trimmed past the point asked for: only a whole state
     /// brings the client back.
     case unreachable
+}
+
+/// How a source that can serve a connection two ways is serving this one.
+///
+/// A node's `lampd` serves from its running service: one journal for every
+/// connection, numbered events kept across restarts, the person's choices
+/// written as they are made. When the service is stopped, the same command a
+/// read key is forced to run still answers, reading Claude Code's files itself
+/// for as long as the connection lasts (E10 as amended on 17 October 2026): the
+/// lights stay on, and the phone says so instead of asking for Face ID.
+public enum V1ServingMode: String, Codable, Sendable, CaseIterable {
+    /// The service is running and this connection is its.
+    case live
+    /// The service is not running: this connection reads the files itself.
+    case files
 }

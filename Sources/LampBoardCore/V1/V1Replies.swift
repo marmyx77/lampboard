@@ -58,11 +58,14 @@ public struct V1Hello: Codable, Equatable, Sendable {
     public let relay: V1RelayHealth?
     /// What this connection's key may do.
     public let role: V1Role
+    /// How a source that can serve two ways serves this connection; absent for
+    /// one that serves only one way. A client one version behind ignores it.
+    public let mode: V1ServingMode?
 
     public init(
         protocol: Int = V1Protocol.version, minClient: Int = V1Protocol.minClient, version: String,
         source: V1SourceIdentity, startedAt: Date, binaryModifiedAt: Date? = nil, configModifiedAt: Date? = nil,
-        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role
+        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role, mode: V1ServingMode? = nil
     ) {
         self.protocol = `protocol`
         self.minClient = minClient
@@ -74,6 +77,7 @@ public struct V1Hello: Codable, Equatable, Sendable {
         self.stateAge = stateAge
         self.relay = relay
         self.role = role
+        self.mode = mode
     }
 }
 

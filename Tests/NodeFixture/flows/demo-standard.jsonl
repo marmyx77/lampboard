@@ -1,0 +1,14 @@
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/docs-site","hook_event_name":"SessionStart","session_id":"demo-docs-0001"}}
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/api","hook_event_name":"SessionStart","session_id":"demo-api-00002"}}
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"SessionStart","session_id":"demo-events-03"}}
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/mobile-client","hook_event_name":"SessionStart","session_id":"demo-mobile-04"}}
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/search-index","hook_event_name":"SessionStart","session_id":"demo-search-05"}}
+{"at":1,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/docs-site","hook_event_name":"UserPromptSubmit","session_id":"demo-docs-0001"}}
+{"at":1,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"UserPromptSubmit","session_id":"demo-events-03"}}
+{"at":2,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/search-index","hook_event_name":"UserPromptSubmit","session_id":"demo-search-05"}}
+{"at":6,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/docs-site","hook_event_name":"Stop","last_assistant_message":"The docs build is ready: 42 pages, no broken links.","session_id":"demo-docs-0001"}}
+{"at":8,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/api","hook_event_name":"UserPromptSubmit","session_id":"demo-api-00002"}}
+{"at":9,"entrypoint":"cli","payload":{"background_tasks":[{"status":"running","type":"shell"}],"cwd":"/home/dev/work/search-index","hook_event_name":"Stop","session_id":"demo-search-05"}}
+{"at":11,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/api","hook_event_name":"Notification","message":"Claude needs your permission to use Bash: npm publish","notification_type":"permission_prompt","session_id":"demo-api-00002"}}
+{"at":14,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/mobile-client","hook_event_name":"UserPromptSubmit","session_id":"demo-mobile-04"}}
+{"at":20,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/mobile-client","hook_event_name":"StopFailure","reason":"rate_limit","session_id":"demo-mobile-04"}}
