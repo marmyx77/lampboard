@@ -1000,6 +1000,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("            if len(panes) == 1:\n", "            if True:\n", 1))
 PY
 
+# The tmux options a phone's sessions want come from the repository (Q10, E14):
+# the file that the installer copies losing focus-events must be seen on the node.
+protect deploy/tmux/lampboard.conf
+attack_platform Scripts/test-lampd.sh "focus-events dropped from the repository's tmux options" "focus-events, extended-keys and allow-passthrough on" <<'PY'
+p = "deploy/tmux/lampboard.conf"
+s = open(p).read()
+open(p, "w").write(s.replace("set -s focus-events on\n", "", 1))
+PY
+
 chapter "lampd's contract timer"
 
 # The four defects of the contract check read for the node in W0 (E5), each

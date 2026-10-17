@@ -11,6 +11,10 @@ import TestKit
 // today, against a node where `lampd` wrote the phone's lines.
 //
 //   N1Reader --host H --port P --user U --host-key F --keys <dir> --flip <command>
+//
+// `--flip -` is for a real machine, where the check may change nothing: the
+// rows through the read key and the look with the action key, no change and so
+// no event to follow.
 
 setvbuf(stdout, nil, _IOLBF, 0)
 
@@ -41,15 +45,18 @@ do {
     }
     _ = try? Blocking.run { await link.start() }
     if !Blocking.eventually(20, { await link.rows.count >= 1 }) { failures.append("no rows through the read key") }
-    let before = (try? Blocking.run { await link.lastSeq }) ?? nil
-    let flipped = try Blocking.run(60) { () async throws -> Int in
-        let action = try await NodeLink.act(endpoint, trust: .pinned(hostKey), key: actionKey)
-        defer { Task { await action.close() } }
-        return try await action.run(option("flip")).exitCode
-    }
-    if flipped != 0 { failures.append("the change could not be made (exit \(flipped))") }
-    if !Blocking.eventually(20, { await link.lastSeq.map { $0 > (before ?? 0) } ?? false }) {
-        failures.append("no event followed the change")
+    let rowsRead = (try? Blocking.run { await link.rows.count }) ?? 0
+    if option("flip") != "-" {
+        let before = (try? Blocking.run { await link.lastSeq }) ?? nil
+        let flipped = try Blocking.run(60) { () async throws -> Int in
+            let action = try await NodeLink.act(endpoint, trust: .pinned(hostKey), key: actionKey)
+            defer { Task { await action.close() } }
+            return try await action.run(option("flip")).exitCode
+        }
+        if flipped != 0 { failures.append("the change could not be made (exit \(flipped))") }
+        if !Blocking.eventually(20, { await link.lastSeq.map { $0 > (before ?? 0) } ?? false }) {
+            failures.append("no event followed the change")
+        }
     }
     _ = try? Blocking.run { await link.stop() }
 
@@ -65,6 +72,8 @@ do {
     }
 
     if failures.isEmpty {
+        let looked = (source.snapshot(at: Date()).rows ?? []).count
+        print("N1Reader: \(rowsRead) rows through the read key, \(looked) from the look with the action key")
         print("N1Reader: the app one version behind reads lampd and still looks over ssh")
         exit(0)
     }

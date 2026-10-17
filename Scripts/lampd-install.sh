@@ -17,6 +17,9 @@
 #   - deploy/lampd/*.service and *.timer into ~/.config/systemd/user/, each with
 #     a first line naming its commit; a unit of the same name that is not one of
 #     these copies is refused, never overwritten;
+#   - deploy/tmux/lampboard.conf into ~/.config/lampd/tmux.conf (Q10, E14),
+#     marked like the units; the person's ~/.tmux.conf reads it with a line of
+#     their own, which this script prints and never writes;
 #   - daemon-reload, then lampd.service and lampd-contract.timer enabled and
 #     started, unless --no-start.
 # It binds no port, writes nothing in ~/.claude, touches no line of
@@ -133,6 +136,25 @@ for file in deploy/lampd/*.service deploy/lampd/*.timer; do
     say "unit: $target"
 done
 run systemctl --user daemon-reload
+
+# The tmux options a phone's sessions want (Q10, E14), as a file the person's
+# ~/.tmux.conf reads with one line of their own: that file is never edited here.
+TMUX_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/lampd/tmux.conf"
+if [ -e "$TMUX_CONF" ] && ! ours "$TMUX_CONF"; then
+    say "left $TMUX_CONF: not a copy this script made"
+elif [ "$DRY" = 1 ]; then
+    say "would write $TMUX_CONF"
+else
+    mkdir -p "$(dirname "$TMUX_CONF")"
+    { echo "$MARK $COMMIT (deploy/tmux/lampboard.conf) by Scripts/lampd-install.sh: edit the repository, not this copy."
+      cat deploy/tmux/lampboard.conf; } > "$TMUX_CONF.new"
+    mv "$TMUX_CONF.new" "$TMUX_CONF"
+    say "tmux options: $TMUX_CONF"
+fi
+if ! grep -qs 'lampd/tmux.conf' "$HOME/.tmux.conf"; then
+    say "your ~/.tmux.conf does not read them yet; the line to add there, once:"
+    say "    source-file -q ~/.config/lampd/tmux.conf"
+fi
 
 # Older versions beyond the last three go.
 if [ "$DRY" = 0 ]; then

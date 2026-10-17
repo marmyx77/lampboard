@@ -189,6 +189,23 @@ enum LampDChecks {
                 t.expectEqual(outcome?.2, 10_485_760, "every byte arrived")
                 t.expect(outcome != nil && outcome?.0 == outcome?.1, "the action key's terminal carried the bytes unchanged")
             },
+
+            TestCase("The node's tmux runs with the repository's options, and lampd doctor says so (Q10, E14)") { t in
+                let outcome = try? Blocking.run(60) { () async throws -> (String, String) in
+                    let action = try await NodeLink.act(node.endpoint, trust: .pinned(node.hostKey), key: node.actionKey)
+                    defer { Task { await action.close() } }
+                    let shown = try await action.run(
+                        "tmux -u new-session -d -s lbcheck-options 'sleep 60'; tmux -u show -sv focus-events; "
+                        + "tmux -u show -sv extended-keys; tmux -u show -gv allow-passthrough; "
+                        + "tmux -u kill-session -t =lbcheck-options").output
+                    let doctor = try await action.run("\(node.lampd) doctor 2>&1").output
+                    return (shown, doctor)
+                }
+                t.expectEqual(outcome?.0.split(separator: "\n").map(String.init), ["on", "on", "on"],
+                              "focus-events, extended-keys and allow-passthrough on: \(outcome?.0 ?? "no answer")")
+                t.expect(outcome?.1.contains("tmux has the options the phone's sessions want") == true,
+                         "doctor says the running tmux has them: \(outcome?.1 ?? "no answer")")
+            },
         ])
     }
 

@@ -1,6 +1,6 @@
 # Code map
 
-~94,200 lines of Swift across twelve targets. For each file: what it contains, why
+~94,500 lines of Swift across twelve targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
@@ -12,10 +12,10 @@ Sources/
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
-  NodeLinkCheck/    1,377 lines · 6 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,570 lines · 21 files   lampd: the Linux machine's service
+  NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
+  LampDKit/         2,602 lines · 21 files   lampd: the Linux machine's service
   LampD/              216 lines · 1 files   lampd's command line
-  LampDTests/         641 lines · 6 files   lampd's suite, on Linux
+  LampDTests/         657 lines · 6 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2726,10 +2726,14 @@ actions as the app takes them (a tagged tmux session and its row, Resume of a he
 conversation refused, End refusing a reused pid, two Moves at once and the lock,
 `@name` arriving once in a box, one `claude attach`, Browse, files, SFTP
 attachments that never overwrite, `lampd projects`, the project's shell, a
-low-power command through the read key); only `Scripts/test-lampd.sh`
+low-power command through the read key) and the node's tmux with the options of
+`deploy/tmux/lampboard.conf`; only `Scripts/test-lampd.sh`
 runs it, with `Tests/NodeFixture/` (the session files' frames, `fixture.py` that
 plays them, the recorded hook flows and their golden reductions, and the reader of
-the app one version behind).
+the app one version behind). `RealNodeChecks` (`NodeLinkCheck real`) is for a real
+machine with a test key, never in a gate: 10 MiB byte for byte, the background
+rule's cycles leaving no client, the first frame cold and warm, all on a tmux server
+of its own (`-L lb-…`, refused otherwise), never the person's.
 
 ## `LampBoardE2E/` — 187 cases
 
@@ -2780,7 +2784,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LampDService.swift` | `lampd serve`: the main loop and its heartbeat, connections with bounded queues, `bye` on SIGTERM, the log |
 | `LampDStdio.swift` | `lampd v1-stdio`: bytes to the service, or the files read in the same process when it is stopped |
 | `LampDStatus.swift` | what `status` says and the Quadro reads; the contract's stamp |
-| `LampDDoctor.swift` | `doctor`: tools, the service and the age of its state, the phones' lines, the contract |
+| `LampDDoctor.swift` | `doctor`: tools, the running tmux's options (Q10, E14), the service and the age of its state, the phones' lines, the contract |
 | `LampDUsage.swift` | `usage`: the Core's allowance script run here |
 | `HookReplay.swift` | recorded hooks reduced as the tee will reduce them, for the parity with the Mac |
 | `ProjectsStore.swift` | `projects list`, `attach`, `detach`: the folders kept in the list, in the Hub's own file shape (`ProjectList`), under a lock; a path that is not a folder here refused |
@@ -2881,11 +2885,11 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline; `--node` on a Linux machine, from lampd's copy, without running Claude Code for its version |
 | `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D178). Exits 3 without docker |
-| `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units marked with their commit; refuses a unit it did not write; `--uninstall` |
-| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
+| `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units and `deploy/tmux/lampboard.conf` (as `~/.config/lampd/tmux.conf`, read by a line of the person's own `~/.tmux.conf`, never written) marked with their commit; refuses a unit it did not write; `--uninstall` |
+| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the node's tmux with the repository's options, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/test-lampd-watchdog.sh` | `lampd` under `systemd --user` with the unit as installed: a loop stopped on purpose restarted within `WatchdogSec`, a stop with a phone attached quick. Exits 3 without systemd; attacked by `bite.sh --lampd` |
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits seventy-four violations and demands seventy-four catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits seventy-five violations and demands seventy-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

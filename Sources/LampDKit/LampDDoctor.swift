@@ -33,8 +33,16 @@ public enum LampDDoctor {
         let path = (environment["PATH"] ?? "").split(separator: ":").map(String.init)
         if let python = find("python3", in: path) { say(.green, "python3 is \(python): the look at the files can run") }
         else { say(.red, "python3 is not on PATH: lampd cannot read Claude Code's files") }
-        if let tmux = find("tmux", in: path) { say(.green, "tmux is \(tmux)") }
-        else { say(.yellow, "tmux is not on PATH: rows will not say which tmux session holds them") }
+        if let tmux = find("tmux", in: path) {
+            say(.green, "tmux is \(tmux)")
+            lines += tmuxOptions { scope, name in
+                guard let result = try? Command.run(tmux, ["-u", "show", "-v", scope, name], deadline: 3),
+                      result.succeeded else { return nil }
+                return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        } else {
+            say(.yellow, "tmux is not on PATH: rows will not say which tmux session holds them")
+        }
         let localBin = paths.home + "/.local/bin"
         if let claude = find("claude", in: path) {
             say(.green, "claude is \(claude) (found, not run)")
@@ -81,6 +89,30 @@ public enum LampDDoctor {
             say(.yellow, "the contract has not been checked on this machine yet")
         }
         return lines
+    }
+
+    /// The options a phone's sessions want of the running tmux server
+    /// (deploy/tmux/lampboard.conf: Q10, E14), read with `tmux show`, never set.
+    /// `show(scope, name)` is the option's value, or `nil` when no server answers.
+    public static func tmuxOptions(show: (String, String) -> String?) -> [Line] {
+        let wanted: [(scope: String, name: String)] = [("-s", "focus-events"), ("-s", "extended-keys"),
+                                                       ("-g", "allow-passthrough")]
+        var answered = false
+        var missing: [String] = []
+        for option in wanted {
+            guard let value = show(option.scope, option.name) else { missing.append(option.name); continue }
+            answered = true
+            if value != "on" { missing.append(option.name) }
+        }
+        guard answered else {
+            return [Line(verdict: .yellow, text: "no tmux server answers: its options are read when one runs")]
+        }
+        guard missing.isEmpty else {
+            return [Line(verdict: .yellow, text: "tmux runs without \(missing.joined(separator: ", ")): add "
+                         + "`source-file -q ~/.config/lampd/tmux.conf` to ~/.tmux.conf, then start tmux again (Q10, E14)")]
+        }
+        return [Line(verdict: .green, text: "tmux has the options the phone's sessions want: "
+                     + wanted.map(\.name).joined(separator: ", "))]
     }
 
     /// The marked lines and the register agree, the command they force exists,

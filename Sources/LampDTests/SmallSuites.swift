@@ -81,6 +81,22 @@ enum SmallSuites {
             t.expectEqual(config.allowance, false, "the allowance is not asked unless turned on")
         },
 
+        TestCase("Doctor reads the tmux options a phone's sessions want, and says the line that sets them") { t in
+            func lines(_ values: [String: String]?) -> [LampDDoctor.Line] {
+                LampDDoctor.tmuxOptions { _, name in values?[name] }
+            }
+            let all = lines(["focus-events": "on", "extended-keys": "on", "allow-passthrough": "on"])
+            t.expectEqual(all.map(\.verdict), [.green], "all three on: green")
+            let some = lines(["focus-events": "on", "extended-keys": "off", "allow-passthrough": "off"])
+            t.expectEqual(some.map(\.verdict), [.yellow], "two off: yellow")
+            t.expect(some.first?.text.contains("extended-keys, allow-passthrough") == true, "named: \(some.first?.text ?? "")")
+            t.expect(some.first?.text.contains("source-file -q ~/.config/lampd/tmux.conf") == true, "with the line to add")
+            t.expect(!(some.first?.text.contains("focus-events") ?? true), "an option that is on is not named")
+            let none = lines(nil)
+            t.expectEqual(none.map(\.verdict), [.yellow], "no server: yellow")
+            t.expect(none.first?.text.contains("no tmux server") == true, "said: \(none.first?.text ?? "")")
+        },
+
         TestCase("The paths: a test home keeps everything inside it") { t in
             let paths = LampDPaths.current(environment: ["LAMPBOARD_HOME": "/tmp/x", "HOME": "/home/dev", "XDG_RUNTIME_DIR": "/run/user/1000"])
             t.expectEqual(paths.home, "/tmp/x", "the override")

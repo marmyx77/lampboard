@@ -26,7 +26,9 @@
 #   - the recorded hooks reduced as the tee will reduce them, against the golden
 #     files the Mac's end-to-end suite holds the real app to;
 #   - the app one version behind (the Core and NodeLink of N1_REV) reading
-#     `lampd` and still looking at the machine over ssh.
+#     `lampd` and still looking at the machine over ssh;
+#   - the node's tmux running with the options of deploy/tmux/lampboard.conf
+#     (Q10, E14), installed as the installer leaves them, and doctor saying so.
 #
 # Nothing of this machine is touched: the containers share a network of their
 # own, no port is published, the node's home is the container's, every key is
@@ -55,8 +57,8 @@ cd "$ROOT"
 
 BASE="swift:6.4@sha256:870edbd7f37b77dc01ebab7eb4e0475d16be82796a06734d0bdc010cd24ea32f"
 NODE_BASE="ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55"
-# The Core the TestFlight build 5 of the app was made from.
-N1_REV="${LAMPBOARD_LAMPD_N1:-0cb9a9c}"
+# The Core the TestFlight build 8 of the app (the last one out) was made from.
+N1_REV="${LAMPBOARD_LAMPD_N1:-be2981b}"
 CACHE="${LAMPBOARD_LAMPD_GATE_CACHE:-$HOME/.cache/lampboard/lampd-gate}"
 NAME="lampboard-lampd-$$"
 NODE="$NAME-node"
@@ -196,6 +198,7 @@ echo
 echo "▸ Starting the node ($NODE)"
 docker run -d --init --name "$NODE" --network "$NET" --network-alias node \
     -v "$LAMPD:/opt/lampd/lampd:ro" -v "$ROOT/Tests/NodeFixture:/opt/fixture-src:ro" -v "$CACHE/keys:/keys:ro" \
+    -v "$ROOT/deploy/tmux/lampboard.conf:/opt/lampboard-tmux.conf:ro" \
     "$NODE_IMAGE" bash -c '
         set -e
         useradd -m -s /bin/bash dev
@@ -206,6 +209,10 @@ docker run -d --init --name "$NODE" --network "$NET" --network-alias node \
         install -m 755 -o dev -g dev /opt/lampd/lampd /home/dev/.local/lib/lampd/0.1.0/lampd
         ln -s /home/dev/.local/lib/lampd/0.1.0/lampd /home/dev/.local/bin/lampd
         echo "{\"name\": \"fake-node\"}" > /home/dev/.config/lampd/config.json
+        # The tmux options as Scripts/lampd-install.sh leaves them, read by the
+        # one line the owner adds to ~/.tmux.conf (Q10, E14).
+        cp /opt/lampboard-tmux.conf /home/dev/.config/lampd/tmux.conf
+        echo "source-file -q ~/.config/lampd/tmux.conf" > /home/dev/.tmux.conf
         chown dev:dev /home/dev/.config/lampd/config.json /home/dev/.local/bin/lampd
         chown -R dev:dev /home/dev
         mkdir -p /opt/fixture && cp -r /opt/fixture-src/. /opt/fixture/
@@ -278,8 +285,6 @@ if [ "$(cat "$N1/rev" 2>/dev/null)" != "$(git rev-parse "$N1_REV")" ]; then
     rm -rf "$N1/src" && mkdir -p "$N1/src"
     git archive "$N1_REV" Package.swift Package.resolved Sources/LampBoardCore Sources/LampBoardNodeLink Sources/TestKit \
         | tar -x -C "$N1/src" || failed "the commit $N1_REV could not be read"
-    mkdir -p "$N1/src/Sources/N1Reader"
-    cp Tests/NodeFixture/n1-reader/main.swift "$N1/src/Sources/N1Reader/main.swift"
     python3 - "$N1/src/Package.swift" <<'PY' || failed "the old manifest could not take the reader"
 import re, sys
 path = sys.argv[1]
@@ -299,6 +304,9 @@ open(path, "w").write(s)
 PY
     git rev-parse "$N1_REV" > "$N1/rev"
 fi
+# The reader is this tree's, on the old Core: copied every run, so a change to it is the one checked.
+mkdir -p "$N1/src/Sources/N1Reader"
+cp Tests/NodeFixture/n1-reader/main.swift "$N1/src/Sources/N1Reader/main.swift"
 if ! docker run --rm --name "$NAME-build" --user "$(id -u):$(id -g)" -e HOME=/tmp/h --cpus 8 --memory 8g \
         -v "$N1/src:/src" -v "$N1/build:/src/.build" -v "$N1/home:/tmp/h" -w /src "$IMAGE" \
         bash -c 'swift build --product N1Reader 2>&1' > "$N1/build.log"; then
