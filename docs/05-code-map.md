@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  29,221 lines · 215 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,099 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,772 lines · 148 files   1530 cases, instantaneous
+  LampBoardCore/  29,250 lines · 216 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,084 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  21,787 lines · 148 files   1531 cases, instantaneous
   LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,502 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -1646,6 +1646,11 @@ made with `mkdir`: a second Move while it is held is `locked` and ends nothing;
 the lock goes at once when nothing ended, after the take-up otherwise
 (`unlock`), and one older than five minutes is taken over.
 
+### `LiveSurfaceText.swift` · 30
+What may go into a terminal as a paste, the Mac's live view and a phone's terminal alike
+(H1.2-10): inside the bracketed-paste marks nothing ends the paste early; without
+them a line break becomes a space, so a citation or a mention is never sent.
+
 ### `RemoteEnd.swift` · 101
 «End session…» from a device that knows the conversation and not its process
 (W3): the script finds the session file there, ends its process only if it is
@@ -2500,7 +2505,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1530 cases
+## `LampBoardTests/` — 1531 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

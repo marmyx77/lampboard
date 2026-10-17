@@ -46,7 +46,7 @@ remote named `hub` pointing at that repository, and nothing else from this one.
 ## The two suites
 
 ```bash
-swift run LampBoardTests              # 1530 cases, instantaneous
+swift run LampBoardTests              # 1531 cases, instantaneous
 swift run LampBoardE2E                # 187 cases, about a minute
 swift run LampBoardTests "Subagents"  # filter by suite or by case
 ```

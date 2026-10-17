@@ -87,12 +87,7 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
     /// becomes a space.
     func paste(_ text: String) {
         guard isRunning else { return }
-        let cleaned = LiveSurfaceText.forPaste(text)
-        if terminal.getTerminal().bracketedPasteMode {
-            terminal.send(Array("\u{1b}[200~".utf8) + Array(cleaned.utf8) + Array("\u{1b}[201~".utf8))
-        } else {
-            terminal.send(txt: cleaned.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " "))
-        }
+        terminal.send(LiveSurfaceText.bytes(text, bracketed: terminal.getTerminal().bracketedPasteMode))
     }
 
     func shiftTab() -> Bool {
@@ -175,16 +170,6 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
             self?.exited = true
             self?.onExit?(exitCode)
         }
-    }
-}
-
-/// What may go into a paste.
-enum LiveSurfaceText {
-    static func forPaste(_ text: String) -> String {
-        let unmarked = text.replacingOccurrences(of: "\u{1b}[200~", with: "").replacingOccurrences(of: "\u{1b}[201~", with: "")
-        return String(unmarked.unicodeScalars.filter { scalar in
-            scalar == "\t" || scalar == "\n" || !(scalar.value < 0x20 || scalar.value == 0x7f || (0x80...0x9f).contains(scalar.value))
-        }.map(Character.init))
     }
 }
 

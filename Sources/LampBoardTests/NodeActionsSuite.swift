@@ -35,7 +35,11 @@ enum NodeActionsSuite {
     static func temporaryHome() -> String {
         let path = NSTemporaryDirectory() + "lb-actions-\(UUID().uuidString.prefix(8))"
         try? FileManager.default.createDirectory(atPath: path + "/.claude/sessions", withIntermediateDirectories: true)
-        return (path as NSString).resolvingSymlinksInPath
+        // The real path, as `pwd -P` gives it: Foundation's own resolving gives a
+        // Mac's /private/var back as /var.
+        guard let real = realpath(path, nil) else { return path }
+        defer { free(real) }
+        return String(cString: real)
     }
 
     /// A process that stays, and its start as Claude Code writes it.
@@ -247,6 +251,17 @@ enum NodeActionsSuite {
             let refused = sh(command(.attachments(root: trap)) ?? "", home: home).1
             t.expect(refused?.status != 0, "a .lampboard that is a link out: refused")
             t.expectNil(refused.flatMap { RemoteProject.attachmentsListing($0.output) })
+        },
+
+        TestCase("A paste never ends early and never presses Enter (H1.2-10)") { t in
+            let sneaky = "@src/a.swift \u{1b}[201~\rrm -rf ~\n\u{7}line two"
+            let marked = LiveSurfaceText.bytes(sneaky, bracketed: true)
+            let text = String(decoding: marked, as: UTF8.self)
+            t.expect(text.hasPrefix("\u{1b}[200~") && text.hasSuffix("\u{1b}[201~"), "inside the marks")
+            t.expectEqual(text.components(separatedBy: "\u{1b}[201~").count, 2, "the end mark only at the end")
+            t.expect(!text.contains("\r") && !text.contains("\u{7}"), "no carriage return, no bell")
+            let plain = String(decoding: LiveSurfaceText.bytes("@a.md\nnext", bracketed: false), as: UTF8.self)
+            t.expectEqual(plain, "@a.md next", "unmarked, a line break is a space: nothing is sent")
         },
 
         TestCase("A folder's listing read back: folders end in a slash, . and .. are not entries") { t in
