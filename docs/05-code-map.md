@@ -1,13 +1,13 @@
 # Code map
 
-~80,100 lines of Swift across five targets. For each file: what it contains, why
+~80,400 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,590 lines · 196 files  pure logic, zero AppKit
+  LampBoardCore/  25,634 lines · 196 files  pure logic, zero AppKit
   LampBoardApp/    30,119 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,866 lines · 133 files   1350 cases, instantaneous
+  LampBoardTests/  18,920 lines · 133 files   1354 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -2310,7 +2310,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1350 cases
+## `LampBoardTests/` — 1354 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2541,5 +2541,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits twenty-nine violations and demands twenty-nine catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty violations and demands thirty catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

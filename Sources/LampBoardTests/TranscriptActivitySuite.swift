@@ -84,6 +84,41 @@ enum TranscriptActivitySuite {
                      "nonsense")
         },
 
+        // Claude Code's own file says `busy` for as long as anything runs for a
+        // session, its background agents included: measured on the always-on
+        // machine, a session whose turn had ended still read `busy` six hours
+        // later, blue on the Mac and yellow on the phone. Whether a turn is open
+        // is in the transcript's tail.
+        TestCase("A turn that ended is not open, whatever was queued after it") { t in
+            let tail = """
+            {"type":"user","timestamp":"2026-10-16T06:48:12Z"}
+            {"type":"assistant","timestamp":"2026-10-16T06:48:55Z","message":{"stop_reason":"tool_use"}}
+            {"type":"user","timestamp":"2026-10-16T06:48:56Z"}
+            {"type":"assistant","timestamp":"2026-10-16T06:49:04Z","message":{"stop_reason":"end_turn"}}
+            {"type":"system","subtype":"turn_duration","timestamp":"2026-10-16T06:49:04Z"}
+            {"type":"queue-operation","timestamp":"2026-10-16T06:51:03Z"}
+            {"type":"last-prompt"}
+            """
+            t.expectEqual(TranscriptActivity.turnIsOpen(inTailChunk: tail, isWholeFile: true), false,
+                          "an ended turn is closed: busy in the file is background work, not a turn")
+        },
+
+        TestCase("A turn waiting on a tool or on the model is open") { t in
+            let onTool = """
+            {"type":"user","timestamp":"2026-10-16T06:48:12Z"}
+            {"type":"assistant","timestamp":"2026-10-16T06:48:55Z","message":{"stop_reason":"tool_use"}}
+            {"type":"attachment","timestamp":"2026-10-16T06:48:56Z"}
+            """
+            t.expectEqual(TranscriptActivity.turnIsOpen(inTailChunk: onTool, isWholeFile: true), true, "a tool call")
+            let onModel = #"{"type":"user","timestamp":"2026-10-16T06:48:12Z"}"#
+            t.expectEqual(TranscriptActivity.turnIsOpen(inTailChunk: onModel, isWholeFile: true), true, "a prompt")
+        },
+
+        TestCase("A tail with no turn in it says nothing about one") { t in
+            let resumed = #"{"type":"system","timestamp":"2026-10-08T17:16:13Z"}"#
+            t.expectNil(TranscriptActivity.turnIsOpen(inTailChunk: resumed, isWholeFile: true), "only bookkeeping: unknown")
+        },
+
         TestCase("A timestamp that is not a date is not a date") { t in
             let tail = #"{"type":"assistant","timestamp":"yesterday afternoon"}"#
             t.expect(TranscriptActivity.lastTimestamp(inTailChunk: tail, isWholeFile: true) == nil,

@@ -121,7 +121,12 @@ public enum RemoteSessionsDecoder {
             context: context,
             tmux: tmux(record["tmux"]),
             hasTranscript: !((record["contextTail"] as? String) ?? "").isEmpty,
+            // `busy` in Claude Code's file and a turn open in the tail: the file
+            // alone stays `busy` while background agents run after the turn ended.
             isBusy: string(record, "status") == "busy"
+                && (record["contextTail"] as? String).flatMap {
+                    TranscriptActivity.turnIsOpen(inTailChunk: $0, isWholeFile: true)
+                } != false
         )
     }
 

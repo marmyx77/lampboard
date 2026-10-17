@@ -150,8 +150,12 @@ public enum RemoteProbeScript {
                 small = {"type": entry.get("type"), "timestamp": entry.get("timestamp")}
                 if entry.get("compactMetadata") is not None:
                     small["compactMetadata"] = {}
+                # Whether the turn ended (`TranscriptActivity.turnIsOpen`).
+                if entry.get("type") == "system" and entry.get("subtype"):
+                    small["subtype"] = entry.get("subtype")
                 if message.get("model"):
-                    small["message"] = {"model": message.get("model"), "usage": {
+                    small["message"] = {"model": message.get("model"), "stop_reason": message.get("stop_reason"),
+                                        "usage": {
                         k: usage.get(k, 0) for k in (
                             "input_tokens", "cache_creation_input_tokens",
                             "cache_read_input_tokens")}}
