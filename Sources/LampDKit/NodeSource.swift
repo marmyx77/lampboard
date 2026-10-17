@@ -80,7 +80,18 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         let shown = NodeRows.shown(fresh, preferences: preferences)
         let ids = Set(shown.map(\.id))
         for id in journal.rows.keys.sorted() where !ids.contains(id) { journal.remove(id: id, at: now) }
-        for row in shown where journal.rows[row.id] != row { journal.upsert(row, at: now) }
+        for row in shown where !Self.sameOnTheWire(journal.rows[row.id], row) { journal.upsert(row, at: now) }
+    }
+
+    /// Two rows a phone cannot tell apart: the same bytes on the wire. The
+    /// journal keeps its rows as the wire writes them, whole seconds, and a
+    /// transcript's time has milliseconds: compared as values, every row would
+    /// be a change after each restart.
+    static func sameOnTheWire(_ a: V1Row?, _ b: V1Row) -> Bool {
+        guard let a else { return false }
+        if a == b { return true }
+        let encoder = V1Codec.encoder()
+        return (try? encoder.encode(a)) == (try? encoder.encode(b))
     }
 
     public var lastProbe: (at: Date?, problem: String?) { locked { (lastProbeAt, lastProblem) } }

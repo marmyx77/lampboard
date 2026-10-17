@@ -134,6 +134,18 @@ enum NodeSourceSuite {
             } else { t.expect(false, "replayable") }
         },
 
+        TestCase("A restart sends nothing for rows that did not change, milliseconds and all") { t in
+            let paths = F.home("restart")
+            defer { F.remove(paths) }
+            let spoke = #"{"type":"assistant","timestamp":"2027-01-15T08:00:00.123Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            let one = F.source(paths)
+            one.absorb(F.look([F.record(F.a, pid: 10, status: "busy", tail: spoke)]))
+            let seq = one.status(at: F.t0).seq
+            let two = F.source(paths)
+            two.absorb(F.look([F.record(F.a, pid: 10, status: "busy", tail: spoke)], at: F.t0 + 5))
+            t.expectEqual(two.status(at: F.t0).seq, seq, "the same row after a restart is no event")
+        },
+
         TestCase("A journal whose events outran its rows starts again under another name") { t in
             let paths = F.home("torn")
             defer { F.remove(paths) }

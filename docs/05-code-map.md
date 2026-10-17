@@ -13,9 +13,9 @@ Sources/
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,111 lines · 5 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,495 lines · 20 files   lampd: the Linux machine's service
+  LampDKit/         2,509 lines · 20 files   lampd: the Linux machine's service
   LampD/              191 lines · 1 files   lampd's command line
-  LampDTests/         608 lines · 6 files   lampd's suite, on Linux
+  LampDTests/         620 lines · 6 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 

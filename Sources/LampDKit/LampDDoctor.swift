@@ -57,10 +57,13 @@ public enum LampDDoctor {
             }
             if let problem = object["lastProbeProblem"] as? String { say(.red, "its last look failed: \(problem)") }
             let started = (object["startedAt"] as? String).flatMap(ISO8601DateFormatter().date)
-            if let started, let binary = LampDBinary.modified(paths.home + "/.local/bin/lampd"), binary > started {
+            // The link's target, not the link; and a second's slack, since the
+            // service's start travels as whole seconds.
+            let installed = URL(fileURLWithPath: paths.home + "/.local/bin/lampd").resolvingSymlinksInPath().path
+            if let started, let binary = LampDBinary.modified(installed), binary > started.addingTimeInterval(1) {
                 say(.yellow, "the installed lampd is newer than the running one: restart the service")
             }
-            if let started, let config = LampDBinary.modified(paths.configFile), config > started {
+            if let started, let config = LampDBinary.modified(paths.configFile), config > started.addingTimeInterval(1) {
                 say(.yellow, "the configuration changed after the service started: restart it")
             }
         } else {
