@@ -25,6 +25,7 @@ import Darwin
 //   lampd doctor                      everything lampd depends on, read only
 //   lampd usage [--cached]            this machine's allowance, asked once (or as last kept)
 //   lampd look                        asks the service to look at the files now
+//   lampd compare                     the service's lamps against the phone's look, now
 //   lampd replay <flow.jsonl>         recorded hooks, reduced as the tee will
 //   lampd version
 
@@ -156,6 +157,23 @@ case "replay":
     } catch {
         fail("\(error)", code: 1)
     }
+
+case "compare":
+    // One rule for the files, on this machine, now: the service's rows against
+    // the phone's own reading of the same files (V1ProbeSource), session by
+    // session. Ids cut to eight characters; nothing of a conversation printed.
+    guard LampDStatus.ask(paths.socket, line: "look", timeout: 25)?.hasPrefix("ok") == true else {
+        fail("the service does not answer: nothing to compare", code: 1)
+    }
+    let look = LocalProbe(paths: paths).look()
+    guard let reading = look.reading else { fail("the look failed: \(look.problem ?? "?")", code: 1) }
+    let probe = V1ProbeSource(identity: config.identity, startedAt: Date(), journal: "compare")
+    probe.absorb(reading, at: look.at)
+    guard let served = LampDCompare.served(socket: paths.socket) else { fail("the service sent no state", code: 1) }
+    let lines = LampDCompare.table(probe: probe.snapshot(at: Date()).rows ?? [], served: served)
+    for line in lines.rows { print(line) }
+    print(lines.summary)
+    exit(lines.same ? 0 : 1)
 
 case "version", "--version":
     print("lampd \(version)")
