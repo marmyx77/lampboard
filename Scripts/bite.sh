@@ -704,6 +704,15 @@ s = open(p).read()
 open(p, "w").write("import Darwin\n" + s)
 PY
 
+# A tool run that leaves its pipe open: on Linux one descriptor per run, which
+# killed lampd at the 1024 limit after two hours on the Linux machine.
+protect Sources/LampBoardCore/System/Command.swift
+attack_platform Scripts/test-linux.sh "a tool run that leaves its pipe open" "descriptors open" <<'PY'
+p = "Sources/LampBoardCore/System/Command.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("            try? pipe.fileHandleForReading.close()\n", "", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════

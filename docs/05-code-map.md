@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,669 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  28,677 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,100 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,482 lines · 147 files   1518 cases, instantaneous
+  LampBoardTests/  21,501 lines · 147 files   1519 cases, instantaneous
   LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -2473,7 +2473,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1518 cases
+## `LampBoardTests/` — 1519 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2848,5 +2848,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits sixty-five violations and demands sixty-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits sixty-six violations and demands sixty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

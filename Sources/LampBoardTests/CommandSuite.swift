@@ -70,6 +70,25 @@ enum CommandSuite {
             }
         },
 
+        TestCase("Running a tool leaves no descriptor open behind it") { t in
+            // lampd runs its probe through here every five seconds. On Linux
+            // each run left the pipe's reading end open: 1001 pipes in
+            // `/proc/<pid>/fd` after two hours on the Linux machine, then the
+            // service died at the 1024 limit with "/bin/sh could not be run"
+            // (17 October 2026). A service on a clock turns one descriptor into a crash.
+            func open() -> Int { (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? -1 }
+            _ = try? Command.run("/bin/echo", ["warm"], deadline: 10)
+            _ = try? Command.run("/bin/cat", [], deadline: 10, input: Data("warm".utf8))
+            let before = open()
+            for _ in 0..<40 {
+                _ = try? Command.run("/bin/echo", ["again"], deadline: 10)
+                _ = try? Command.run("/bin/sh", ["-c", "echo out; echo err >&2"], deadline: 10, capturingStandardError: false)
+                _ = try? Command.run("/bin/cat", [], deadline: 10, input: Data("in".utf8))
+            }
+            t.expect(before > 0, "the open descriptors can be counted")
+            t.expect(open() - before <= 2, "120 runs left \(open() - before) descriptors open")
+        },
+
         TestCase("A tool that hangs is killed at the deadline") { t in
             let started = Date()
             t.expectThrows(Command.Failure.timedOut(tool: "/bin/sleep", seconds: 1)) {

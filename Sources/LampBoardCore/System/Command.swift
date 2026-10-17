@@ -138,6 +138,10 @@ public enum Command {
         // immediately never finds nobody at the other end of the pipe.
         DispatchQueue.global(qos: .userInitiated).async {
             buffer.bytes = pipe.fileHandleForReading.readDataToEndOfFile()
+            // Closed here, not left to the handle's deallocation: on Linux the
+            // Process keeps the pipe, and the reading end stayed open for good,
+            // one descriptor per run (lampd: 1001 after two hours, then dead).
+            try? pipe.fileHandleForReading.close()
             finished.signal()
         }
 
@@ -147,6 +151,10 @@ public enum Command {
             // The reading thread is parked on a pipe nobody will ever write to;
             // closing this end sends it the end-of-file it is waiting for.
             try? pipe.fileHandleForWriting.close()
+            if let inputPipe {
+                try? inputPipe.fileHandleForReading.close()
+                try? inputPipe.fileHandleForWriting.close()
+            }
             throw Failure.couldNotStart(tool: tool, reason: error.localizedDescription)
         }
 
