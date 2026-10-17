@@ -201,6 +201,7 @@ def clean():
 BOX_LOG = os.path.join(HOME, ".lampd-fixture", "box.log")
 BOX_SESSION = "b2000000-0000-4000-8000-000000000001"
 EDITORS = {"iphone": "c3000000-0000-4000-8000-000000000001", "ipad": "c3000000-0000-4000-8000-000000000002"}
+SPARES = {"iphone": "d4000000-0000-4000-8000-000000000001", "ipad": "d4000000-0000-4000-8000-000000000002"}
 
 # A `claude` that does what the actions need of it and nothing else: started
 # with a conversation's id it writes its session file as Claude Code does (its
@@ -323,6 +324,26 @@ def actions():
         with open(os.path.join(transcripts, session + ".jsonl"), "w") as handle:
             handle.write(transcript_lines({"id": session}))
     state["editors"] = editors
+    # A quiet conversation for each device, last spoken an hour ago: one a device
+    # takes off its list (a row taken off comes back only when it speaks after).
+    spoke = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 3600))
+    spares = {}
+    for device, session in SPARES.items():
+        folder = os.path.join(HOME, "work", "spare-" + device)
+        os.makedirs(folder, exist_ok=True)
+        old = state.get("spares", {}).get(device)
+        if old and alive(old):
+            stop(old)
+        pid = start_process("spare-" + device, None)
+        spares[device] = pid
+        with open(os.path.join(SESSIONS, "%d.json" % pid), "w") as handle:
+            json.dump({"pid": pid, "sessionId": session, "cwd": folder, "entrypoint": "cli",
+                       "kind": "interactive", "status": "idle", "procStart": proc_start(pid)}, handle)
+        transcripts = os.path.join(PROJECTS, encoded(folder))
+        os.makedirs(transcripts, exist_ok=True)
+        with open(os.path.join(transcripts, session + ".jsonl"), "w") as handle:
+            handle.write(transcript_lines({"id": session, "spoke": spoke}))
+    state["spares"] = spares
     save_state(state)
     print("actions: folders, project, fake claude, box %d, editors %s" % (child.pid, sorted(editors.values())))
 
