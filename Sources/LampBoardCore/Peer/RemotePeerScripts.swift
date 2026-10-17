@@ -88,11 +88,15 @@ public enum RemotePeerScripts {
                 continue
             box = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             box.settimeout(3)
+            sent = False
             try:
                 box.connect(path)
                 box.sendall((json.dumps({"type": "auth", "token": key["peerToken"]}) + "\\n").encode("utf-8"))
                 box.sendall((json.dumps({"type": "user", "from": payload["from"], "priority": "next",
                                          "message": {"role": "user", "content": payload["content"]}}) + "\\n").encode("utf-8"))
+                # Written whole: whatever the closing says, the box has it, and
+                # "not sent" now would make a second one.
+                sent = True
                 box.shutdown(socket.SHUT_WR)
                 # The box says nothing back; a box slow to close has the message
                 # all the same, and saying "not sent" would make a second one.
@@ -102,7 +106,8 @@ public enum RemotePeerScripts {
                 except socket.timeout:
                     pass
             except Exception as e:
-                done(False, "the session's box did not take it: %s" % e)
+                if not sent:
+                    done(False, "the session's box did not take it: %s" % e)
             finally:
                 box.close()
             done(True)

@@ -52,7 +52,10 @@ public enum RemoteMove {
             try:
                 if time.time() - os.stat(lock).st_mtime < \(Int(lockLasts)):
                     return False
-                os.rmdir(lock)
+                # Taken over by one Move only: of two that find it stale, one
+                # renames it away; the other's rename fails, and it is locked.
+                os.rename(lock, "%s.stale.%d" % (lock, os.getpid()))
+                os.rmdir("%s.stale.%d" % (lock, os.getpid()))
                 os.mkdir(lock, 0o700)
                 return True
             except OSError:
@@ -68,7 +71,10 @@ public enum RemoteMove {
             print("locked"); sys.exit(0)
         if started_at(pid) != start:
             done("not-it")
-        os.kill(pid, signal.SIGTERM)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            done("not-it")
         for _ in range(50):
             time.sleep(0.2)
             if started_at(pid) != start:

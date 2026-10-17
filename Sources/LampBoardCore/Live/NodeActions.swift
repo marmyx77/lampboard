@@ -84,14 +84,17 @@ public enum NodeAction: Equatable, Sendable {
         case .start(let folder, let name, let launch, let start):
             guard folder.hasPrefix("/"), !folder.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
             else { return .failure(.invalid("a folder is an absolute path")) }
-            guard TmuxPlace(session: name, window: 0, pane: 0) != nil, !name.hasPrefix("-")
+            // Letters, digits, `-` and `_`, as `NewSession.tmuxName` makes them: tmux
+            // expands `#(…)` and `#{…}` in a new session's name.
+            guard TmuxPlace(session: name, window: 0, pane: 0) != nil, !name.hasPrefix("-"), name.count <= 60,
+                  name.unicodeScalars.allSatisfy({ ($0.isASCII && CharacterSet.alphanumerics.contains($0)) || $0 == "-" || $0 == "_" })
             else { return .failure(.invalid("not a name tmux takes")) }
             guard NewSession.isLaunchTag(launch) else { return .failure(.invalid("not a launch tag")) }
             guard NewSession.claudeLine(start) != nil else { return .failure(.invalid("not a conversation's id")) }
             if start.permissions == .bypass, !bypassAllowed { return .failure(.bypassOff) }
             let make = NewSession.remoteCommand(folder: folder, name: name, launch: launch, start: start, attach: false)
             guard case .resume(let id, _) = start else { return .success(NewSession.posix(make)) }
-            return .success(NewSession.posix(Self.unlessHeld(id) + "\n" + make))
+            return .success(NewSession.posix(Self.unlessHeld(id.lowercased()) + "\n" + make))
         case .end(let session, let tmux):
             return Self.python(RemoteEnd.script(session: session, tmux: tmux), "not a conversation or a tmux name")
         case .move(let session, let pid, let procStart):
@@ -180,6 +183,9 @@ public enum NodeAction: Equatable, Sendable {
     // MARK: - Inside
 
     static let heldWord = "lampboard:held"
+    /// How long a Resume holds its conversation for the next one: longer than
+    /// Claude Code takes to write its session file.
+    static let resumeHolds: TimeInterval = 20
     static let noPythonWord = "lampboard:no-python"
 
     /// Before a conversation is taken up: no live process may hold it, as its
@@ -200,6 +206,17 @@ public enum NodeAction: Equatable, Sendable {
                 continue
             if meta.get("sessionId") == session and pid > 1 and start and started_at(pid) == start:
                 sys.exit(4)
+        # Claude Code writes its file a second or two after it starts: a second
+        # Resume in that while finds none, so the first holds it a little longer.
+        import time
+        lock = os.path.join(os.path.expanduser("~"), ".lampboard", "resuming", session)
+        os.makedirs(os.path.dirname(lock), mode=0o700, exist_ok=True)
+        try:
+            os.mkdir(lock, 0o700)
+        except FileExistsError:
+            if time.time() - os.stat(lock).st_mtime < \(Int(resumeHolds)):
+                sys.exit(4)
+            os.utime(lock)
         """
         return "python3 -B -c \(NewSession.shellQuoted(check)); s=$?\n"
             + "if [ \"$s\" = 4 ]; then echo '\(heldWord)'; exit 4; elif [ \"$s\" != 0 ]; then echo '\(noPythonWord)'; exit 4; fi"

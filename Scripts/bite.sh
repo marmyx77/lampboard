@@ -991,6 +991,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("if not set(int(p) for p in panes if p.isdigit()) & set(ancestors(pid)):", "if False:", 1))
 PY
 
+# End closes a tmux session only when the conversation is all it holds: other
+# panes are somebody's other work.
+protect Sources/LampBoardCore/Live/RemoteEnd.swift
+attack_platform Scripts/test-lampd.sh "End that closes a tmux session other panes still use" "the tmux session and its other pane are still there" <<'PY'
+p = "Sources/LampBoardCore/Live/RemoteEnd.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("            if len(panes) == 1:\n", "            if True:\n", 1))
+PY
+
 chapter "lampd's contract timer"
 
 # The four defects of the contract check read for the node in W0 (E5), each

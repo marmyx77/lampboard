@@ -5,14 +5,14 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  29,250 lines · 216 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  29,284 lines · 216 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,084 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,787 lines · 148 files   1531 cases, instantaneous
+  LampBoardTests/  21,800 lines · 148 files   1532 cases, instantaneous
   LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  1,502 lines · 8 files   ssh to a machine: v1, commands, terminal
+  LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
-  NodeLinkCheck/    1,362 lines · 6 files   NodeLink, and lampd, against a real ssh
+  NodeLinkCheck/    1,377 lines · 6 files   NodeLink, and lampd, against a real ssh
   LampDKit/         2,570 lines · 21 files   lampd: the Linux machine's service
   LampD/              216 lines · 1 files   lampd's command line
   LampDTests/         641 lines · 6 files   lampd's suite, on Linux
@@ -1635,7 +1635,7 @@ The read-only transcript's source (D147, D165): where a session on another machi
 transcript, the `tail -F` that follows it there under `sh`, and a buffer that
 keeps whole lines only, the last 800.
 
-### `RemoteMove.swift` · 151
+### `RemoteMove.swift` · 157
 «Move to LampBoard…» from another machine (D166): the script piped to `python3`
 over ssh that ends a VS Code process there only while it is still the one its
 session file names — the same pid at the same start, from `/proc` on Linux and
@@ -1651,14 +1651,14 @@ What may go into a terminal as a paste, the Mac's live view and a phone's termin
 (H1.2-10): inside the bracketed-paste marks nothing ends the paste early; without
 them a line break becomes a space, so a citation or a mention is never sent.
 
-### `RemoteEnd.swift` · 101
+### `RemoteEnd.swift` · 107
 «End session…» from a device that knows the conversation and not its process
 (W3): the script finds the session file there, ends its process only if it is
 still the one that wrote it (a reused pid is `not-it`), and closes a tmux session
-only when one of its panes holds that process. **What you would break**: a pid
+only when one of its panes holds that process and it has no other pane (otherwise the process alone). **What you would break**: a pid
 reused since is another program, and gets SIGTERM.
 
-### `NodeActions.swift` · 231
+### `NodeActions.swift` · 248
 What a device asks of a machine with its action key (W3, §2.6 of the mobile plan),
 named as the Mac's bridge will take them in W5: start or resume in tmux (Resume
 refused while a live process holds the conversation), End, Move and its lock,
@@ -2505,7 +2505,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1531 cases
+## `LampBoardTests/` — 1532 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2887,5 +2887,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits seventy-three violations and demands seventy-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits seventy-four violations and demands seventy-four catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

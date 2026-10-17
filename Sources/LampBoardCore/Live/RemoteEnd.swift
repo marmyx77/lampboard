@@ -88,9 +88,15 @@ public enum RemoteEnd {
                 panes = []
             if not set(int(p) for p in panes if p.isdigit()) & set(ancestors(pid)):
                 print("not-it"); sys.exit(0)
-            subprocess.run(["tmux", "kill-session", "-t", "=" + tmux], capture_output=True, timeout=5, env=env)
-            wait(pid, start)
-        os.kill(pid, signal.SIGTERM)
+            # A tmux session of one pane closes with it, as the panel's do (D168);
+            # one with other windows or panes keeps them: only the process ends.
+            if len(panes) == 1:
+                subprocess.run(["tmux", "kill-session", "-t", "=" + tmux], capture_output=True, timeout=5, env=env)
+                wait(pid, start)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            print("not-it"); sys.exit(0)
         wait(pid, start)
         """
     }

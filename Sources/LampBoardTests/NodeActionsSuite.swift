@@ -189,6 +189,19 @@ enum NodeActionsSuite {
                      "a new conversation has nothing to check")
         },
 
+        TestCase("Two Resumes of the same conversation in the second before its file: the second is refused") { t in
+            let home = temporaryHome()
+            defer { try? FileManager.default.removeItem(atPath: home) }
+            let guarded = NewSession.posix(NodeAction.unlessHeld(id) + "\necho free")
+            t.expectEqual(sh(guarded, home: home).1?.output, "free\n", "the first goes")
+            t.expectEqual(sh(guarded, home: home).1?.output, "lampboard:held\n", "the second, before Claude Code wrote its file, waits")
+            t.expectNil(command(.start(folder: "/w", name: "#(touch x)", launch: NewSession.newLaunchTag(),
+                                       start: .new(sessionId: id))), "a name tmux would expand")
+            t.expect(command(.start(folder: "/w", name: "w", launch: NewSession.newLaunchTag(),
+                                    start: .resume(sessionId: id.uppercased())))?.contains(id) == true,
+                     "the check reads the id as Claude Code writes it, in lower case")
+        },
+
         TestCase("A background session is attached once: a second attach is refused while the first is open") { t in
             let home = temporaryHome()
             defer { try? FileManager.default.removeItem(atPath: home) }

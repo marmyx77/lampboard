@@ -197,10 +197,12 @@ final class SSHLink: @unchecked Sendable {
         } catch {
             throw Self.describe(error, "opening SFTP")
         }
+        var created = false
         do {
             let file = try await NodeDeadline.run(deadlines.open, "creating the file") {
                 try await sftp.openFile(filePath: path, flags: [.write, .create, .forceCreate])
             }
+            created = true
             // A deadline that grows with the file: ten seconds, and one more for every 256 KiB.
             let seconds = deadlines.write + Double(bytes.count) / 262_144
             try await NodeDeadline.run(seconds, "writing the file") {
@@ -208,6 +210,8 @@ final class SSHLink: @unchecked Sendable {
             }
             try await NodeDeadline.run(deadlines.close, "closing the file") { try await file.close() }
         } catch {
+            // Half a file is no attachment: the one this call made goes (never one it did not make).
+            if created { _ = try? await NodeDeadline.run(deadlines.close, "removing the half file") { try await sftp.remove(at: path) } }
             _ = try? await NodeDeadline.run(deadlines.close, "closing SFTP") { try await sftp.close() }
             if let sftpError = error as? SFTPError, case .errorStatus(let status) = sftpError {
                 throw NodeLinkError.refused("the machine refused the file: \(status.message)")

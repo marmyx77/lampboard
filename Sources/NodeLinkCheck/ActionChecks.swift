@@ -85,6 +85,21 @@ enum ActionChecks {
                 _ = shell("tmux kill-session -t '=lbcheck-other'")
             },
 
+            TestCase("End in a tmux session of several panes ends the conversation and keeps the other panes") { t in
+                let id = UUID().uuidString.lowercased()
+                _ = shell("tmux new-session -d -s lbcheck-two -c \(api) '$HOME/.local/bin/claude --session-id \(id)' && tmux split-window -t '=lbcheck-two:' 'sleep 600'")
+                var there = false
+                for _ in 0..<20 where !there {
+                    there = shell("grep -l \(id) ~/.claude/sessions/*.json 2>/dev/null").isEmpty == false
+                    if !there { Thread.sleep(forTimeInterval: 0.3) }
+                }
+                t.expect(there, "the conversation wrote its file")
+                t.expectEqual(run(.end(session: id, tmux: "lbcheck-two")).flatMap { RemoteEnd.outcome($0.output) }, .ended, "ended")
+                t.expectEqual(shell("tmux has-session -t '=lbcheck-two' 2>/dev/null && echo there"), "there",
+                              "the tmux session and its other pane are still there")
+                _ = shell("tmux kill-session -t '=lbcheck-two'")
+            },
+
             TestCase("Move: of two Moves at once one ends the editor's process, the other is refused by the lock") { t in
                 guard let look = run(.look), let reading = V1ProbeReading.parse(look.output, host: node.name, at: Date()),
                       let record = reading.report.sessions.first(where: { $0.sessionId == editor }),
