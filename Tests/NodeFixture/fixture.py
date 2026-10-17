@@ -200,6 +200,7 @@ def clean():
 
 BOX_LOG = os.path.join(HOME, ".lampd-fixture", "box.log")
 BOX_SESSION = "b2000000-0000-4000-8000-000000000001"
+EDITORS = {"iphone": "c3000000-0000-4000-8000-000000000001", "ipad": "c3000000-0000-4000-8000-000000000002"}
 
 # A `claude` that does what the actions need of it and nothing else: started
 # with a conversation's id it writes its session file as Claude Code does (its
@@ -256,7 +257,7 @@ def actions():
     `claude` first on PATH, and a session whose message box writes down what it
     takes (the box of Claude Code 2.1.224 and later, D81)."""
     for name in ("api", "web", "docs", "billing", "search", "mobile", "old", "old2", "blank", "sdk", "batch", "twin",
-                 "site", "editor"):
+                 "site", "editor", "uinew"):
         os.makedirs(os.path.join(HOME, "work", name), exist_ok=True)
     api = os.path.join(HOME, "work", "api")
     os.makedirs(os.path.join(api, "src"), exist_ok=True)
@@ -297,8 +298,28 @@ def actions():
     if os.path.exists(BOX_LOG):
         os.remove(BOX_LOG)
     state["box"] = child.pid
+    # Two conversations in VS Code, one for each device the app's tests run on:
+    # a Move ends its editor's process, and a run on the iPad comes after the
+    # iPhone's on the same node.
+    editors = {}
+    for device, session in EDITORS.items():
+        folder = os.path.join(HOME, "work", "site-" + device)
+        os.makedirs(folder, exist_ok=True)
+        old = state.get("editors", {}).get(device)
+        if old and alive(old):
+            stop(old)
+        pid = start_process("editor-" + device, None)
+        editors[device] = pid
+        with open(os.path.join(SESSIONS, "%d.json" % pid), "w") as handle:
+            json.dump({"pid": pid, "sessionId": session, "cwd": folder, "entrypoint": "claude-vscode",
+                       "kind": "interactive", "status": "idle", "procStart": proc_start(pid)}, handle)
+        transcripts = os.path.join(PROJECTS, encoded(folder))
+        os.makedirs(transcripts, exist_ok=True)
+        with open(os.path.join(transcripts, session + ".jsonl"), "w") as handle:
+            handle.write(transcript_lines({"id": session}))
+    state["editors"] = editors
     save_state(state)
-    print("actions: folders, project, fake claude, box %d" % child.pid)
+    print("actions: folders, project, fake claude, box %d, editors %s" % (child.pid, sorted(editors.values())))
 
 
 def box(session, socket_path, token):
