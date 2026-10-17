@@ -28,7 +28,8 @@
         {"key": "waiting", "id": "a1000000-0000-4000-8000-000000000004", "cwd": "/home/dev/work/billing", "status": "busy", "turn": "open", "lamp": "working: allowed"},
         {"key": "idle", "id": "a1000000-0000-4000-8000-000000000005", "cwd": "/home/dev/work/search", "status": "busy", "turn": "open", "spoke": "2027-01-15T09:10:00Z", "lamp": "working, and it spoke later"},
         {"key": "background", "id": "a1000000-0000-4000-8000-00000000000b", "cwd": "/home/dev/work/batch", "status": "waiting", "kind": "bg", "turn": "open", "job": "job-example-1", "lamp": "awaiting, background"},
-        {"key": "editor", "id": "a1000000-0000-4000-8000-00000000000d", "cwd": "/home/dev/work/site", "status": "busy", "entrypoint": "claude-vscode", "turn": "open", "lamp": "working, an editor's session"}
+        {"key": "editor", "id": "a1000000-0000-4000-8000-00000000000d", "cwd": "/home/dev/work/site", "status": "busy", "entrypoint": "claude-vscode", "turn": "open", "lamp": "working, an editor's session"},
+        {"key": "compacting", "id": "a1000000-0000-4000-8000-00000000000e", "cwd": "/home/dev/work/notes", "status": "busy", "turn": "compacted", "lamp": "paused: compacted while idle, the summary is no prompt"}
       ]
     },
     {

@@ -270,6 +270,8 @@ fi
 # ── The app one version behind ──────────────────────────────────────────────
 echo
 echo "▸ The app one version behind ($N1_REV) against this lampd"
+# Whatever frame the checks left, the reader starts from the first one.
+as_dev "python3 /opt/fixture/fixture.py frame 0 > /dev/null && lampd look > /dev/null" || failed "the fixture could not play frame 0 again"
 N1="$CACHE/n1"
 mkdir -p "$N1/build" "$N1/home"
 if [ "$(cat "$N1/rev" 2>/dev/null)" != "$(git rev-parse "$N1_REV")" ]; then

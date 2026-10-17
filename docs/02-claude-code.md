@@ -72,7 +72,7 @@ Claude Code exposes around thirty. These are the ones that move a traffic light:
 
 | Event | When | Effect on the traffic light |
 |---|---|---|
-| `SessionStart` | startup, resume, clear, **compact**, fork | `idle` — **except** when `source == "compact"` |
+| `SessionStart` | startup, resume, clear, **compact**, fork | `idle` — **except** when `source == "compact"`: nothing, or back to rest for a row only the session file lit (D177) |
 | `UserPromptSubmit` | the user submits a prompt | `working`, and clears the subagents |
 | `Notification` | see the subtype table | it depends |
 | `Stop` | the turn closes normally | `ready` — or `waiting`, when `background_tasks` lists work still running |
@@ -247,8 +247,9 @@ is.
 **in UTC with no zone marker** (the process above started at 19:07 local); on
 Linux it is clock ticks since boot (`"5480393"`). Compared with the kernel's
 start time before a click on a terminal row trusts the pid. A `cli` session's
-file also carries `status`/`statusUpdatedAt`, only ever seen as `idle` — not a
-state source.
+file also carries `status`/`statusUpdatedAt`: `busy` while a turn, a compaction or
+background work runs, `idle` when nothing does. `busy` lights a row the hooks left
+at rest (D141), and an `idle` held a minute rests a yellow nothing will end (D177).
 
 **These files survive the death of the process too.** The liveness check is
 `kill(pid, 0)`: a syscall that sends no signal and only asks the kernel whether

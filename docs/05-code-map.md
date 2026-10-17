@@ -1,20 +1,20 @@
 # Code map
 
-~92,300 lines of Swift across twelve targets. For each file: what it contains, why
+~92,900 lines of Swift across twelve targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,550 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,076 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,070 lines · 145 files   1495 cases, instantaneous
+  LampBoardCore/  28,668 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,100 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  21,441 lines · 147 files   1516 cases, instantaneous
   LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,111 lines · 5 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,430 lines · 19 files   lampd: the Linux machine's service
-  LampD/              173 lines · 1 files   lampd's command line
+  LampDKit/         2,495 lines · 20 files   lampd: the Linux machine's service
+  LampD/              191 lines · 1 files   lampd's command line
   LampDTests/         608 lines · 6 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
@@ -36,7 +36,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 649
+### `AppConfig.swift` · 688
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -101,7 +101,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 542
+### `SessionState.swift` · 563
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -447,6 +447,11 @@ timestamp at all.
 So the answer comes from the last record that carries one. A record with no
 timestamp is not a moment, whatever it did to the file, and a row that invents
 activity is worse than a row that says nothing.
+
+`turnIsOpen` reads the same tail for whether a turn is running: open after a
+prompt, a tool call or a tool's result, closed after the model ended its turn.
+The summary a compaction writes is a `user` record nobody typed and is skipped
+(D177).
 
 ### `TranscriptPathPolicy.swift`
 Which transcript paths the app will open: only those under `~/.claude`, after
@@ -1447,7 +1452,7 @@ dialog (`returned`).
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 728
+### `StateReducer.swift` · 768
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1455,8 +1460,9 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 2. **is it a subagent lifecycle event?** ← before the rule that discards
 3. does it come from a subagent? → discard
 4. is it `SessionEnd`? → remove
-5. map event → state, or discover a new session
-6. protection from late signals (`shouldKeep`)
+5. a compaction on a row only the session file lit → rest (D177)
+6. map event → state, or discover a new session
+7. protection from late signals (`shouldKeep`)
 
 > **Step 2 before step 3** is the subagent correction. Swapping them undoes it,
 > silently.
@@ -1697,11 +1703,17 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 211
+### `RemoteProbeScript.swift` · 233
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
 the session file, which is the frozen one.
+
+It reads the session's **own** transcript, found by its id when a worktree filed
+it elsewhere, and sends its tail; the decoder dates the session by the tail's last
+timestamp (`TranscriptActivity`), the files' dates only as a fallback. It used to
+take the newest file of the whole project folder, and Claude Code appends records
+with no timestamp to every open session: rows quiet for days read "10h".
 
 > **Why the work happens there.** Two of the three facts a row needs are only true
 > where the processes are: whether the pid is alive, and when the transcript last
@@ -1719,7 +1731,7 @@ Which sessions another machine's probe reports become rows before they speak
 (D137): a terminal's, with a conversation, while terminal sessions are shown; and
 the row each starts as.
 
-### `RemoteSessionsDecoder.swift` · 140
+### `RemoteSessionsDecoder.swift` · 154
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -1749,7 +1761,8 @@ where a probe sent the tail) is paused, otherwise working; the rest is idle.
 carry the question. **What you would break**: reading the field as a yes/no
 for `busy` draws a session paused on a background shell resting where the Mac
 draws it blue (build 3), and collapsing busy-with-the-turn-ended draws it
-resting or yellow.
+resting or yellow. Its `idle` carries the moment it began (`statusUpdatedAt`): a row lit only
+by the file goes back to rest when the file has said `idle` for a minute (D177).
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
 The extension's URI, the policy that sends it only to sessions the extension
@@ -2205,7 +2218,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 800 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 296 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStoreAdoption.swift` | 361 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -2252,7 +2265,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `RemoteFleet.swift` | 229 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again; the list read again on the remote poll's clock, since a host added from a terminal raises no notification here; a node's mod brought to this app's version at the check (D83) |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 100 | blocked when the signature is ad-hoc |
-| `LiveSessionReader.swift` | 135 | reads the live sessions; takes activity from the **transcript**, not the session file. A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
+| `LiveSessionReader.swift` | 142 | reads the live sessions; takes activity from the **transcript**, not the session file, and from the same tail whether the turn is open (D177). A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
 | `ConversationIndex.swift` | 124 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 344 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
@@ -2460,7 +2473,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1495 cases
+## `LampBoardTests/` — 1516 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2469,6 +2482,8 @@ script, before it was split. The most important ones:
 | Suite | Covers |
 |---|---|
 | `StateReducerSuite` · `ReducerFixesSuite` | the state machine, including the four semantic corrections |
+| `RemoteActivitySuite` | the probe run for real under `python3`: a remote session is dated by its own tail's last timestamp, never by a neighbour's file or bookkeeping |
+| `IdleCompactionSuite` | the morning a conversation compacted while idle stayed yellow, and the session file's `idle` that rests a yellow nothing will end (D177) |
 | `SubagentSuite` | counter and derived state |
 | `ColumnLayoutSuite` | grouping, the user's order, filtering, summary |
 | `RowNamesSuite` | a name shown over folder and title, stored by folder, blank restores; the label in the payload |
@@ -2671,7 +2686,7 @@ machine, a channel the machine ends, the link over ssh. `TerminalChecks` runs on
 second node with the Linux machine's versions: the terminal byte for byte, the read
 key's PTY refused, tmux through the terminal, Q7 with three clients, and the
 lights read over ssh (D176). Only `Scripts/test-nodelink.sh` runs them.
-`LampDChecks` runs the same battery against `lampd` installed on a node (D177): the
+`LampDChecks` runs the same battery against `lampd` installed on a node (D178): the
 read key's lines `lampd devices add` wrote, one rule for the files frame by frame
 against the phone's own look, the service stopped; only `Scripts/test-lampd.sh`
 runs it, with `Tests/NodeFixture/` (the session files' frames, `fixture.py` that
@@ -2686,7 +2701,7 @@ the app one version behind).
 | `WatchE2ESuite` | `lampboard watch` run for real: a failing command red with the command's own exit code and output, a succeeding one green with its own `--port`, `/watch` behind the token, the command left alone when no panel hears |
 | `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
-| `ParityE2ESuite` | the fake node's recorded hook flows played into the app, its lamp after every event held to the golden reductions `lampd` is held to (D177) |
+| `ParityE2ESuite` | the fake node's recorded hook flows played into the app, its lamp after every event held to the golden reductions `lampd` is held to (D178) |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a background session a row of its own in a folder an editor claims (D103), a renamed row, a signal from another machine, subagents; a background session found on disk with no hook, carrying its job's summary, its need and its attach id, losing them when the job goes and keeping its row (AV2) |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
@@ -2706,7 +2721,7 @@ the realignment is asynchronous.
 
 # lampd
 
-The Linux machine's service (D177, ADR-65 of the node's register). `LampDKit`
+The Linux machine's service (D178, ADR-65 of the node's register). `LampDKit`
 holds everything; `LampD` is its command line; `LampDTests` its suite, run on
 Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 
@@ -2730,6 +2745,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LampDDoctor.swift` | `doctor`: tools, the service and the age of its state, the phones' lines, the contract |
 | `LampDUsage.swift` | `usage`: the Core's allowance script run here |
 | `HookReplay.swift` | recorded hooks reduced as the tee will reduce them, for the parity with the Mac |
+| `LampDCompare.swift` | `compare`: the service's lamps against the phone's own look at the same files, on the machine itself |
 | `LampDInstall.swift` | the version, where the binary is linked from, a device's id from its name |
 
 # The companion mod
@@ -2825,12 +2841,12 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline; `--node` on a Linux machine, from lampd's copy, without running Claude Code for its version |
-| `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D177). Exits 3 without docker |
+| `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D178). Exits 3 without docker |
 | `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units marked with their commit; refuses a unit it did not write; `--uninstall` |
-| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D177): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
+| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/test-lampd-watchdog.sh` | `lampd` under `systemd --user` with the unit as installed: a loop stopped on purpose restarted within `WatchdogSec`, a stop with a phone attached quick. Exits 3 without systemd; attacked by `bite.sh --lampd` |
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits sixty-one violations and demands sixty-one catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits sixty-four violations and demands sixty-four catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

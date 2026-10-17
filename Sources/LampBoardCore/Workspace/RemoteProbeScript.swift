@@ -166,6 +166,9 @@ public enum RemoteProbeScript {
                 # Whether the turn ended (`TranscriptActivity.turnIsOpen`).
                 if entry.get("type") == "system" and entry.get("subtype"):
                     small["subtype"] = entry.get("subtype")
+                # A compaction's summary is not a prompt (D177).
+                if entry.get("isCompactSummary"):
+                    small["isCompactSummary"] = True
                 if message.get("model"):
                     small["message"] = {"model": message.get("model"), "stop_reason": message.get("stop_reason"),
                                         "usage": {
@@ -193,6 +196,8 @@ public enum RemoteProbeScript {
             "name": record.get("name"),
             "kind": record.get("kind"),
             "status": record.get("status"),
+            # Since when Claude Code has said so: how long an `idle` has held (D177).
+            "statusUpdatedAt": record.get("statusUpdatedAt"),
             "activityEpoch": int(activity),
             "contextTail": tail,
             # Only a terminal's session: an editor started from a pane hosts

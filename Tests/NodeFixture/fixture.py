@@ -86,13 +86,18 @@ def transcript_lines(session):
     usage = {"input_tokens": 12, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 41000}
     lines = [{"type": "user", "origin": {"kind": "human"}, "timestamp": spoke,
               "message": {"role": "user", "content": "Example request for " + session["id"][:8]}}]
-    if turn in ("open", "ended"):
+    if turn in ("open", "ended", "compacted"):
         lines.append({"type": "assistant", "timestamp": spoke,
                       "message": {"model": "claude-opus-4-5", "stop_reason": "tool_use" if turn == "open" else "end_turn",
                                   "role": "assistant", "content": [{"type": "text", "text": "Example answer"}],
                                   "usage": usage}})
-    if turn == "ended":
+    if turn in ("ended", "compacted"):
         lines.append({"type": "system", "subtype": "turn_duration", "timestamp": spoke})
+    if turn == "compacted":
+        # Claude Code compacting a conversation nobody is typing in: the summary
+        # is a `user` record nobody typed, and no prompt (D177).
+        lines.append({"type": "user", "isCompactSummary": True, "timestamp": spoke,
+                      "message": {"role": "user", "content": "Example summary of the conversation"}})
     return "\n".join(json.dumps(line) for line in lines) + "\n"
 
 

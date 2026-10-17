@@ -79,6 +79,14 @@ public enum ReducerAction: Sendable, Equatable {
     /// at work, `working` otherwise. Never amber: a dialog closed fires no hook,
     /// and an amber lit here would have no way back.
     case busy(sessionId: String, status: SessionStatus = .working)
+    /// Claude Code's own session file has said `idle` since `idleSince`, read at
+    /// `readAt`, and the transcript's tail shows a turn open or not (D177).
+    /// Rests a row still lit — working, or paused and lit by its file — once the
+    /// file's idle and the hooks' silence have both lasted
+    /// `AppConfig.fileRestOutweighsWorkingAfter`, the tail shows no turn open,
+    /// and the reading is newer than the hooks' last word. Touches no other row
+    /// and makes none.
+    case fileRest(sessionId: String, idleSince: Date, turnIsOpen: Bool?, readAt: Date)
     /// A command under `lampboard watch` started or ended (D70). The one action
     /// besides a hook that may create a row: it comes through the token.
     case watched(WatchReport)
@@ -142,6 +150,7 @@ extension ReducerAction {
         case .jobRead: return "jobRead"
         case .tooling: return "tooling"
         case .busy: return "busy"
+        case .fileRest: return "fileRest"
         case .watched: return "watched"
         case .rehome: return "rehome"
         case .adopt: return "adopt"
@@ -218,7 +227,26 @@ public enum StateReducer {
         case .busy(let sessionId, let status):
             guard let session = state.sessions[sessionId], session.baseStatus == .idle,
                   status == .working || status == .waiting else { return state }
-            return state.upserting(session.with(status: status, at: now))
+            // Lit by the file, yellow or blue: no hook of a turn will end it (D177).
+            return state.upserting(session.with(status: status, at: now).litByItsFile())
+
+        case .fileRest(let sessionId, let idleSince, let turnIsOpen, let readAt):
+            // The way back for a light no hook will end (D177). Claude Code
+            // writes `idle` only when no turn runs and nothing works for the
+            // session; the minute asks that both that word and the hooks'
+            // silence have held, so a prompt whose `busy` has not reached the
+            // file yet, or a reading taken before it, changes nothing. A blue
+            // the hooks gave is theirs to end; one the file lit is the file's.
+            let threshold = AppConfig.fileRestOutweighsWorkingAfter
+            guard let session = state.sessions[sessionId],
+                  session.baseStatus == .working || (session.baseStatus == .waiting && session.litByFile),
+                  turnIsOpen != true, readAt > session.updatedAt,
+                  now.timeIntervalSince(idleSince) >= threshold,
+                  now.timeIntervalSince(session.updatedAt) >= threshold
+            else { return state }
+            // At rest, not green: nothing says an answer arrived. And nothing in
+            // flight either, by the same file's word.
+            return state.upserting(session.withoutSubagents().with(status: .idle, at: now))
 
         case .jobRead(let sessionId, let job):
             guard let session = state.sessions[sessionId], session.origin == .background else { return state }
@@ -260,7 +288,11 @@ public enum StateReducer {
             guard state.admits(sessionId: session.id, evidenceAt: session.updatedAt) else {
                 return state
             }
-            return state.upserting(session).undismissing(sessionId: session.id)
+            // A Claude Code row adopted working was lit by its file: nothing
+            // else adopts a session (D177).
+            let adopted = session.baseStatus == .working && session.harness == .claudeCode && !session.wasFound
+                ? session.litByItsFile() : session
+            return state.upserting(adopted).undismissing(sessionId: session.id)
 
         case .dismiss(let sessionId):
             return state.dismissing(sessionId: sessionId, at: now)
@@ -372,6 +404,16 @@ public enum StateReducer {
 
         if signal.event == .sessionEnd {
             return state.removing(sessionId: signal.sessionId)
+        }
+
+        // A compaction with no turn the hooks know of: Claude Code compacted the
+        // conversation while nobody typed, its file said `busy` meanwhile, and
+        // that lit the row. The compaction is over, so is the only thing the
+        // yellow stood for. Back to rest, not green: there is no new answer
+        // (D177). A row the hooks made yellow keeps it, for the reason below.
+        if signal.isContextCompaction, let existing = state.sessions[signal.sessionId],
+           existing.baseStatus == .working, existing.litByFile {
+            return state.upserting(existing.with(status: .idle, at: now))
         }
 
         guard let newStatus = status(for: signal) else {
@@ -562,7 +604,9 @@ public enum StateReducer {
         case .sessionStart:
             // Context compaction fires mid-turn: treating it as the start of a
             // session would clear the yellow of a session that is working, and
-            // sink it to the bottom of the column into the bargain.
+            // sink it to the bottom of the column into the bargain. It also
+            // fires after a compaction of an idle conversation, which `apply`
+            // handles before this for the one row it can be (D177).
             return signal.isContextCompaction ? nil : .idle
 
         case .userPromptSubmit, .preToolUse, .postToolUse, .postToolUseFailure:

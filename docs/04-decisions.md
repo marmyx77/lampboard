@@ -6571,7 +6571,50 @@ opens its terminal, where the person answers. The Mac does not take amber from t
 no hook, so an amber lit there from the file would have nothing to put it out. An answer to read and red
 are still told only by hooks.
 
-## D177 · `lampd`, in the shade: the Linux machine's lights served from its own files
+## D177 · A conversation compacted while idle goes back to rest
+
+**Decided** (17 October 2026, 2.3.1). A row working on Claude Code's word alone (its session file said
+`busy`, D141, and no hook has spoken for a turn since) goes back to rest when a compaction ends: the
+`SessionStart` of source `compact` puts it at `idle`. Not green: no turn ran, so there is no new answer. A
+row the hooks made yellow keeps it through a compaction, because a compaction inside a turn is a pause in it.
+
+Beside it, a way back for any yellow nothing will end. When Claude Code's file has said `idle` for a minute,
+the hooks have said nothing for a minute, the reading is newer than their last word and the transcript's
+tail does not show a turn open, a working row goes to rest (`AppConfig.fileRestOutweighsWorkingAfter`). On
+this Mac from the file, on another machine from the probe, which now sends `statusUpdatedAt`.
+
+And the file's `busy` lights a row only while the tail does not show the turn ended, here as over ssh
+(as the phone's branch already did). The summary a compaction writes is a `user` record nobody typed: it no longer counts as a
+prompt when the tail is read.
+
+**Why.** Reported on 2.3.0 by its user, the morning of 17 October: a session on the always-on machine
+stayed yellow on the Mac, and a click did not clear it, while the phone showed it at rest. Its last turn had
+ended at 08:39:58. At 09:33:47 Claude Code (2.1.296 in that process; 2.1.300 is the same) began compacting
+it on its own: an idle conversation is compacted "before the prompt cache expired". The compaction takes the
+turn guard, the guard is what makes the session `isLoading`, and `isLoading` is what Claude Code writes as
+`busy`. So for 69 seconds the file said `busy` with no turn, and the probe lit the row. The hooks this
+machine registers saw one event: `SessionStart` with source `compact` at 09:34:56, which the reducer ignored
+by design. At 09:34:57 the file said `idle`, and nothing read that. `busy` could light a row and nothing
+could put it out, and a click clears only the colours that are news.
+
+**Measured.** In the session's transcript, `compact_boundary` (trigger `auto`, 68,939 ms) at 09:34:56, the
+summary, the `SessionStart:compact` hooks' attachments, then «Compacted while idle, before the prompt cache
+expired» at 09:34:57; its session file `idle` since then. In the binary: `compactConversation` takes
+`turn.guard.tryStart()`, `isLoading` is `isQueryActive || isExternalLoading`, and the file's status is
+`busy` when `isLoading`. Pre- and post-compaction hooks exist, but LampBoard registers neither. A compaction
+appends 320 KB after the turn's end in that transcript, more than any tail read here, so a tail after an idle
+compaction usually cannot see the turn close: the rest asks that it does not show one open, rather than that
+it shows one closed. The suite holds the recorded morning, the mid-turn compaction, and the rest's minute
+from both sides, and `bite.sh` breaks each.
+
+**Discarded:** taking the file's `idle` at once. A prompt reaches the panel before its `busy` reaches the file,
+and a reading in between would rest a turn that has just begun. Also discarded: letting the compaction rest
+any working row whose hooks have been quiet, since a compaction inside a turn is itself quiet for a minute or
+more.
+
+**Signal to revisit:** a hook that says a compaction was idle, or a session file that says why it is busy.
+
+## D178 · `lampd`, in the shade: the Linux machine's lights served from its own files
 
 **Decided** (17 October 2026), as the first step of W3 of the mobile plan (ADR-65 of the node's register,
 approved with E1–E5 on 15 October, and E10 as amended on 17 October): the Linux machine gets a service of

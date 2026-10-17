@@ -134,7 +134,8 @@ public enum RemoteSessionsDecoder {
             fileStatus: LiveSession.FileStatus(word: string(record, "status")),
             turnIsOpen: (record["contextTail"] as? String).flatMap {
                 TranscriptActivity.turnIsOpen(inTailChunk: $0, isWholeFile: true)
-            }
+            },
+            idleSince: LiveSessionParser.idleSince(status: record["status"], updatedAt: record["statusUpdatedAt"])
         )
     }
 

@@ -373,6 +373,25 @@ enum RemoteSessionsSuite {
             )
         },
 
+        // Claude Code's file says `busy` while background agents run after a
+        // turn ended; the tail the probe sends says whether the turn is open.
+        TestCase("Busy in the file with its turn ended is not working: the row stays neutral") { t in
+            func record(_ tail: String) -> String {
+                let object: [String: Any] = [
+                    "pid": 7, "sessionId": "aaaaaaaa-3333", "cwd": "/home/dev/a", "activityEpoch": 1,
+                    "status": "busy", "contextTail": tail,
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: [object])) ?? Data()
+                return String(decoding: data, as: UTF8.self)
+            }
+            let ended = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"end_turn","usage":{"input_tokens":1}}}"#
+                + "\n" + #"{"type":"system","subtype":"turn_duration","timestamp":"2025-10-01T08:00:01Z"}"#
+            t.expectEqual(decode(record(ended)).first?.isBusy, false,
+                          "a session whose own turn ended is not yellow, whatever its file says")
+            let open = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"model":"claude-opus-4-5","stop_reason":"tool_use","usage":{"input_tokens":1}}}"#
+            t.expectEqual(decode(record(open)).first?.isBusy, true, "a turn on a tool, busy in the file: working")
+        },
+
         // MARK: What deserves a row
 
         // Found by building the remote path, and it was never about remote. An SDK

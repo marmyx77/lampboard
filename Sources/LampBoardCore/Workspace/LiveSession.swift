@@ -59,6 +59,13 @@ public struct LiveSession: Sendable, Equatable {
     /// (`TranscriptActivity.turnIsOpen`), where a probe sent that tail: `nil`
     /// when nothing says — no tail read, or no turn in it.
     public let turnIsOpen: Bool?
+    /// Since when Claude Code's file has said `idle`, from its `statusUpdatedAt`;
+    /// `nil` for any other word, or a file that does not date it (D177).
+    public let idleSince: Date?
+
+    /// `busy` in the file with no closed turn in the tail: a turn at work, the
+    /// word the Mac's own reading took for working before the four words (D177).
+    public var isBusy: Bool { fileStatus == .busy && turnIsOpen != false }
 
     /// The four words Claude Code writes as a session's `status`, and room for a
     /// fifth. Claude Code 2.1.300 checks the field against exactly these four
@@ -147,7 +154,8 @@ public struct LiveSession: Sendable, Equatable {
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
-            fileStatus: word, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen
+            fileStatus: word, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen,
+            idleSince: idleSince
         )
     }
 
@@ -164,7 +172,21 @@ public struct LiveSession: Sendable, Equatable {
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, fileStatus: fileStatus,
-            turnIsOpen: turnIsOpen
+            turnIsOpen: turnIsOpen, idleSince: idleSince
+        )
+    }
+
+    /// The same session with what its transcript's tail says of its turn: the
+    /// file's `busy` reads as at work only while that turn is not seen to have
+    /// ended (`statusFromFile`). Claude Code also writes `busy` for background
+    /// agents after a turn, and while it compacts a conversation nobody is
+    /// typing in (D177). A tail that cannot say leaves the file's word alone.
+    public func with(turnIsOpen isOpen: Bool?) -> LiveSession {
+        LiveSession(
+            pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
+            name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
+            fileStatus: fileStatus, turnIsOpen: isOpen, idleSince: idleSince
         )
     }
 
@@ -183,11 +205,13 @@ public struct LiveSession: Sendable, Equatable {
         tmux: TmuxPlace? = nil,
         hasTranscript: Bool = false,
         fileStatus: FileStatus = .idle,
-        turnIsOpen: Bool? = nil
+        turnIsOpen: Bool? = nil,
+        idleSince: Date? = nil
     ) {
         self.turnIsOpen = turnIsOpen
         self.hasTranscript = hasTranscript
         self.fileStatus = fileStatus
+        self.idleSince = idleSince
         self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
@@ -273,7 +297,17 @@ public enum LiveSessionParser {
             modifiedAt: modifiedAt,
             procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init),
             jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty,
-            fileStatus: LiveSession.FileStatus(word: object["status"] as? String)
+            fileStatus: LiveSession.FileStatus(word: object["status"] as? String),
+            idleSince: idleSince(status: object["status"], updatedAt: object["statusUpdatedAt"])
         )
+    }
+
+    /// When an `idle` began, from the file's `statusUpdatedAt` in milliseconds
+    /// (D177). Any other word, or no moment, is no rest to measure.
+    public static func idleSince(status: Any?, updatedAt: Any?) -> Date? {
+        guard (status as? String) == "idle", let millis = (updatedAt as? NSNumber)?.doubleValue, millis > 0 else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: millis / 1000)
     }
 }
