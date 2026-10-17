@@ -1,0 +1,126 @@
+{
+  "capability" : {
+    "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+    "environment" : "sandbox",
+    "token" : "abababababababababababababababababababababababababababababababab",
+    "version" : 1
+  },
+  "envelopeKeys" : {
+    "device" : "phone-1",
+    "devicePublic" : "D6poTtKIZ7l/Smot7l34zpdOdrcBjj8iocTPJnhXDyA=",
+    "source" : "node-1",
+    "sourcePrivate" : "ERERERERERERERERERERERERERERERERERERERERERE="
+  },
+  "envelopeMaxBytes" : 3072,
+  "envelopeVersion" : 1,
+  "generatedBy" : "relay/vectors (LampBoardCore)",
+  "refused" : [
+    {
+      "coreRefusal" : "readable",
+      "name" : "plaintext-path",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "eyJhdCI6IjIwMjUtMTAtMDlUMDg6NTM6MjBaIiwiYm9keSI6IkVkaXQgL1VzZXJzL2Rldi9wcm9qZWN0LWFscGhhL1NvdXJjZXMvU2VjcmV0LnN3aWZ0Iiwiam91cm5hbCI6ImpvdXJuYWwtYSIsInNlcSI6NSwic2Vzc2lvbiI6IjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMSIsInNvdXJjZSI6IkV4YW1wbGUgTm9kZSIsInRpdGxlIjoicHJvamVjdC1hbHBoYSIsInYiOjF9",
+        "environment" : "sandbox",
+        "kind" : "alert",
+        "priority" : 5,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      }
+    },
+    {
+      "coreRefusal" : "tooLarge",
+      "name" : "too-large",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "B4oNkBOWGZwfoiWoK64xtDe6PcBDxknMT9JV2FveYeRn6m3wc/Z5/H8ChQiLDpEUlxqdIKMmqSyvMrU4uz7BRMdKzVDTVtlc32LlaOtu8XT3ev2AA4YJjA+SFZgbniGkJ6otsDO2Obw/wkXIS85R1FfaXeBj5mnsb/J1+Hv+gQSHCo0QkxaZHJ8ipSirLrE0tzq9QMNGyUzPUtVY217hZOdq7XDzdvl8/4IFiAuOEZQXmh2gI6YprC+yNbg7vkHER8pN0FPWWdxf4mXoa+5x9Hf6fQCDBokMjxKVGJseoSSnKq0wsza5PL9CxUjLTtFU11rdYONm6WzvcvV4+34BhAeKDZATlhmcH6IlqCuuMbQ3uj3AQ8ZJzE/SVdhb3mHkZ+pt8HP2efx/AoUIiw6RFJcanSCjJqksrzK1OLs+wUTHSs1Q01bZXN9i5WjrbvF093r9gAOGCYwPkhWYG54hpCeqLbAztjm8P8JFyEvOUdRX2l3gY+Zp7G/ydfh7/oEEhwqNEJMWmRyfIqUoqy6xNLc6vUDDRslMz1LVWNte4WTnau1w83b5fP+CBYgLjhGUF5odoCOmKawvsjW4O75BxEfKTdBT1lncX+Jl6GvucfR3+n0AgwaJDI8SlRibHqEkpyqtMLM2uTy/QsVIy07RVNda3WDjZuls73L1ePt+AYQHig2QE5YZnB+iJagrrjG0N7o9wEPGScxP0lXYW95h5GfqbfBz9nn8fwKFCIsOkRSXGp0goyapLK8ytTi7PsFEx0rNUNNW2VzfYuVo627xdPd6/YADhgmMD5IVmBueIaQnqi2wM7Y5vD/CRchLzlHUV9pd4GPmaexv8nX4e/6BBIcKjRCTFpkcnyKlKKsusTS3Or1Aw0bJTM9S1VjbXuFk52rtcPN2+Xz/ggWIC44RlBeaHaAjpimsL7I1uDu+QcRHyk3QU9ZZ3F/iZehr7nH0d/p9AIMGiQyPEpUYmx6hJKcqrTCzNrk8v0LFSMtO0VTXWt1g42bpbO9y9Xj7fgGEB4oNkBOWGZwfoiWoK64xtDe6PcBDxknMT9JV2FveYeRn6m3wc/Z5/H8ChQiLDpEUlxqdIKMmqSyvMrU4uz7BRMdKzVDTVtlc32LlaOtu8XT3ev2AA4YJjA+SFZgbniGkJ6otsDO2Obw/wkXIS85R1FfaXeBj5mnsb/J1+Hv+gQSHCo0QkxaZHJ8ipSirLrE0tzq9QMNGyUzPUtVY217hZOdq7XDzdvl8/4IFiAuOEZQXmh2gI6YprC+yNbg7vkHER8pN0FPWWdxf4mXoa+5x9Hf6fQCDBokMjxKVGJseoSSnKq0wsza5PL9CxUjLTtFU11rdYONm6WzvcvV4+34BhAeKDZATlhmcH6IlqCuuMbQ3uj3AQ8ZJzE/SVdhb3mHkZ+pt8HP2efx/AoUIiw6RFJcanSCjJqksrzK1OLs+wUTHSs1Q01bZXN9i5WjrbvF093r9gAOGCYwPkhWYG54hpCeqLbAztjm8P8JFyEvOUdRX2l3gY+Zp7G/ydfh7/oEEhwqNEJMWmRyfIqUoqy6xNLc6vUDDRslMz1LVWNte4WTnau1w83b5fP+CBYgLjhGUF5odoCOmKawvsjW4O75BxEfKTdBT1lncX+Jl6GvucfR3+n0AgwaJDI8SlRibHqEkpyqtMLM2uTy/QsVIy07RVNda3WDjZuls73L1ePt+AYQHig2QE5YZnB+iJagrrjG0N7o9wEPGScxP0lXYW95h5GfqbfBz9nn8fwKFCIsOkRSXGp0goyapLK8ytTi7PsFEx0rNUNNW2VzfYuVo627xdPd6/YADhgmMD5IVmBueIaQnqi2wM7Y5vD/CRchLzlHUV9pd4GPmaexv8nX4e/6BBIcKjRCTFpkcnyKlKKsusTS3Or1Aw0bJTM9S1VjbXuFk52rtcPN2+Xz/ggWIC44RlBeaHaAjpimsL7I1uDu+QcRHyk3QU9ZZ3F/iZehr7nH0d/p9AIMGiQyPEpUYmx6hJKcqrTCzNrk8v0LFSMtO0VTXWt1g42bpbO9y9Xj7fgGEB4oNkBOWGZwfoiWoK64xtDe6PcBDxknMT9JV2FveYeRn6m3wc/Z5/H8ChQiLDpEUlxqdIKMmqSyvMrU4uz7BRMdKzVDTVtlc32LlaOtu8XT3ev2AA4YJjA+SFZgbniGkJ6otsDO2Obw/wkXIS85R1FfaXeBj5mnsb/J1+Hv+gQSHCo0QkxaZHJ8ipSirLrE0tzq9QMNGyUzPUtVY217hZOdq7XDzdvl8/4IFiAuOEZQXmh2gI6YprC+yNbg7vkHER8pN0FPWWdxf4mXoa+5x9Hf6fQCDBokMjxKVGJseoSSnKq0wsza5PL9CxUjLTtFU11rdYONm6WzvcvV4+34BhAeKDZATlhmcH6IlqCuuMbQ3uj3AQ8ZJzE/SVdhb3mHkZ+pt8HP2efx/AoUIiw6RFJcanSCjJqksrzK1OLs+wUTHSs1Q01bZXN9i5WjrbvF093r9gAOGCYwPkhWYG54hpCeqLbAztjm8P8JFyEvOUdRX2l3gY+Zp7G/ydfh7/oEEhwqNEJMWmRyfIqUoqy6xNLc6vUDDRslMz1LVWNte4WTnau1w83b5fP+CBYgLjhGUF5odoCOmKawvsjW4O75BxEfKTdBT1lncX+Jl6GvucfR3+n0AgwaJDI8SlRibHqEkpyqtMLM2uTy/QsVIy07RVNda3WDjZuls73L1ePt+AYQHig2QE5YZnB+iJagrrjG0N7o9wEPGScxP0lXYW95h5GfqbfBz9nn8fwKFCIsOkRSXGp0goyapLK8ytTi7PsFEx0rNUNNW2VzfYuVo627xdPd6/YADhgmMD5IVmBueIaQnqi2wM7Y5vD/CRchLzlHUV9pd4GPmaexv8nX4e/6BBIcKjRCTFpkcnyKlKKsusTS3Or1Aw0bJTM9S1VjbXuFk52rtcPN2+Xz/ggWIC44RlBeaHaAjpimsL7I1uDu+QcRHyk3QU9ZZ3F/iZehr7nH0d/p9AIMGiQyPEpUYmx6hJKcqrTCzNrk8v0LFSMtO0VTXWt1g42bpbO9y9Xj7fgGEB4oNkBOWGZwfoiWoK64xtDe6PcBDxknMT9JV2FveYeRn6m3wc/Z5/H8ChQiLDpEUlxqdIKMmqSyvMrU4uz7BRMdKzVDTVtlc32LlaOtu8XT3ev2AA4YJjA+SFZgbniGk",
+        "environment" : "sandbox",
+        "kind" : "alert",
+        "priority" : 5,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      }
+    },
+    {
+      "coreRefusal" : "badPriority",
+      "name" : "background-urgent",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "jcAqWqczerG32q1v/oiqg9cnoO+HMeq+kybQ9gqy06SeSp5k6tka6zdzXYyz1KNQaBypRzJ2Tsx1ydOHU4egGUnfv67t1ldNlyk7+pf4qEFQxMlRq98JFTS7dQY589rK8w4MWNn7fYSJYw2dLYYg0lyJeldPmytA+Gya40R/y+vi63e6ibyPpdGRM2wkCYlTyi7F8LSRPb1sy9xTPmDlMx4xGChCjWaHngtY8hNAy+YMp/gat8lBA4GT7NRKGa1rw8+7dKsS7UYtF8CTKTWanGIpt02llt1WXb8KMrglXNBOm8MyR/7TAIDLB+n7qzthguhWChkSnQG8FQ==",
+        "environment" : "sandbox",
+        "kind" : "background",
+        "priority" : 10,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      }
+    }
+  ],
+  "registration" : {
+    "capability" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+    "envelopeKey" : "D6poTtKIZ7l/Smot7l34zpdOdrcBjj8iocTPJnhXDyA=",
+    "environment" : "sandbox",
+    "liveActivityToken" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "token" : "abababababababababababababababababababababababababababababababab"
+  },
+  "requests" : [
+    {
+      "name" : "alert-permission",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "xxaRFogVasT4oMdmIlOEdjNdltpSOuLJf8OCIBmdAnklRJP/fGhFxqUQ70QhczkJy0VIHn8f5J9yc6Y+5tD2vBJ6BelplNq5hsis3FjZw2GC+iDF0y9gvUnNIbQUemyH4MHMIFhzB76ShwBsfD2TqbxDlIkVaKeeo35BAsmn7TgnYPD/VF6SRlc3Ly+3PEXeJ5kBvntKjgAo8780EQ7K+Ze8acy0pJoMSFRM+Wi8jYrvuzEsufD0b6W2mP5r163DZkuAwL6Dz8epAR43dt6WAY6X4cgUuvBCHQgYLh0L9N9qZHjUP3//Dpzdn4s=",
+        "environment" : "sandbox",
+        "kind" : "alert",
+        "priority" : 10,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      },
+      "secrets" : [
+        "project-alpha",
+        "A session is asking to run a command",
+        "00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "name" : "alert-turn-done",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "3RYLmsUSlN1FcbP9cOjYfTEtmQ85VXcNu7L932buOLW/nlMpqQiZxAwrSuQkxAqmckZRgZnRe9NExF/3vwgDIUfQ7kjpLbuXuwqGTbAjC4OhZVHuDqk2Fq5BU5G6XavyVdaR3jxNYvAgiGJsedEKRN7+KaeiVolKjWIa1dmJY4Q/puIl+hZSMpWUZW5CzGxfp2igxHH4yC61boVOo1M0hV/85qeLxMybHSysk9ipIIbh9zq0GhpMdJOaZ0wZhib717hWXr4bebM0vwTAz6wb+jlzXZevOooX",
+        "environment" : "sandbox",
+        "kind" : "alert",
+        "priority" : 5,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      },
+      "secrets" : [
+        "project-alpha",
+        "The turn is done",
+        "00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "name" : "background-counts",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
+        "envelope" : "aeIURDEoMbfhFrDMw8ZTMDtL9mMoRzoxkDTyTKkER7k8CTu9uFPHnOqjl7Z6eS8IW+H1r76VdgkD0uJ7gLUV7zAss2l/o+0HzCv+anp0Z4Trcux7KHW+cNa9m8qqX+WP7pDDectQvskkcaKifwJvORFepitwagEGdUr4xR9EmAD6sdtxDJ8+qs0j/czcdAtEKwYzhtTNZhOquXDAb32ElABwN5Yp",
+        "environment" : "sandbox",
+        "kind" : "background",
+        "priority" : 5,
+        "token" : "abababababababababababababababababababababababababababababababab"
+      },
+      "secrets" : [
+        "counts",
+        "amber 1 red 0 green 2"
+      ]
+    },
+    {
+      "name" : "liveactivity-counts",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheS1sYQ==",
+        "envelope" : "NZbnsTmyHfDmlI9j/eo8zDy5Rj1wWIOCLt0tkFZ99ykG6By94Mpaghsbht+t275cq1UNqK/Ru/2WJwPxRCDoWc/K6faKQcvTHvM9imsO8RS0IEcWNdqsIR1clhQ8IcGn61OrJdjOb6IjAcoTO5J+3lIzHZgakdvBM1BoCZf26ycxdxV+BNGwRKvRQki5T0EAnL+tbGL8HZ6pNOwyuDI6N1xDUj25",
+        "environment" : "sandbox",
+        "kind" : "liveactivity",
+        "priority" : 5,
+        "token" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      },
+      "secrets" : [
+        "counts",
+        "amber 1 red 0 green 2"
+      ]
+    }
+  ]
+}
