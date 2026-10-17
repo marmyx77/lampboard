@@ -140,6 +140,9 @@ extension PanelController {
                 self.liveRefused("The VS Code process on \(host) had already ended, or is another one now. Nothing was moved.")
             case .stillRunning:
                 self.liveRefused("The VS Code process on \(host) is still running after ten seconds. Nothing was started, so the conversation has one writer.")
+            case .locked:
+                // Only the lock a device's Move takes says this (W3); the Mac's own takes it from 2.4.
+                self.liveRefused("Another device is moving this conversation on \(host) now. Nothing was moved.")
             case nil:
                 self.liveRefused("LampBoard could not reach \(host) to end the VS Code process. Nothing was moved.")
             }
