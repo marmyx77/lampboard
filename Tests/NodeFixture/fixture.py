@@ -291,6 +291,11 @@ def actions():
         json.dump({"pid": child.pid, "sessionId": BOX_SESSION, "cwd": os.path.join(HOME, "work", "docs"),
                    "entrypoint": "cli", "kind": "interactive", "status": "idle", "procStart": start,
                    "peerProtocol": 1, "messagingSocketPath": socket_path}, handle)
+    # A conversation, so that its session earns a row a person can find by name.
+    box_transcripts = os.path.join(PROJECTS, encoded(os.path.join(HOME, "work", "docs")))
+    os.makedirs(box_transcripts, exist_ok=True)
+    with open(os.path.join(box_transcripts, BOX_SESSION + ".jsonl"), "w") as handle:
+        handle.write(transcript_lines({"id": BOX_SESSION}))
     key = os.path.join(SESSIONS, "%d.%s.key" % (child.pid, "ab12cd34"))
     with open(key, "w") as handle:
         json.dump({"peerToken": token, "procStart": start}, handle)
