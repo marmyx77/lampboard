@@ -67,7 +67,7 @@ Measured on an M-series Mac, 29 August 2026.
 
 | Gate | Claims | Tier | Proven by | Runs in | Time |
 |---|---|---|---|---|---|
-| Domain suite (1516 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
+| Domain suite (1518 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
 | End-to-end suite (187 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
@@ -97,7 +97,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits sixty-four violations and demands sixty-four catches. It takes 26
+`bite.sh` commits sixty-five violations and demands sixty-five catches. It takes 26
 seconds.
 
 ## The two platform gates

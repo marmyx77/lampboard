@@ -181,6 +181,7 @@ public enum ContextWindows {
         "claude-haiku-4-5": 200_000,
         "claude-3-5-haiku": 200_000,
         "claude-3-7-sonnet": 200_000,
+        "claude-haiku-5-5": 1_000_000,
     ]
 
     /// The window, or `nil` — which means no percentage rather than a guess.

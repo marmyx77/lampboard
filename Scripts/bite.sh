@@ -657,6 +657,16 @@ s = open(p).read()
 open(p, "w").write(s.replace("statusFromFile == .awaiting ? .idle : statusFromFile", "statusFromFile", 1))
 PY
 
+# The context windows live twice: the contract check-contract.sh holds against
+# Claude Code's binary, and the table the panel divides by. One copy corrected
+# alone (Claude Code 2.1.302 and claude-haiku-5-5, 17/10/2026) must turn red.
+protect Sources/LampBoardCore/Transcript/ContextReading.swift
+attack_swift "a context window corrected in one copy of the table only" "the contract says" 1 <<'PY'
+p = "Sources/LampBoardCore/Transcript/ContextReading.swift"
+s = open(p).read()
+open(p, "w").write(s.replace('"claude-haiku-5-5": 1_000_000,\n', "", 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

@@ -386,7 +386,8 @@
       "claude-sonnet-4-6": 200000,
       "claude-haiku-4-5": 200000,
       "claude-3-5-haiku": 200000,
-      "claude-3-7-sonnet": 200000
+      "claude-3-7-sonnet": 200000,
+      "claude-haiku-5-5": 1000000
     },
     "_note": [
       "claude-opus-4-6 and claude-sonnet-4-6 carry native_1m:!0 in the registry",

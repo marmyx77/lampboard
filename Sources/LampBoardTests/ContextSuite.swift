@@ -30,6 +30,22 @@ enum ContextSuite {
     private static let prompt = #"{"type":"user","message":{"role":"user","content":"go on"}}"#
     private static let compaction = #"{"type":"system","subtype":"compact_boundary","compactMetadata":{"preTokens":999298}}"#
 
+    /// The contract's table, read from the repository this file sits in.
+    private static func contractWindows() -> [String: Int]? {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        guard let data = try? Data(contentsOf: root.appendingPathComponent("Contracts/required-fields.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let section = json["modelContextWindows"] as? [String: Any],
+              let windows = section["windows"] as? [String: Any] else { return nil }
+        var table: [String: Int] = [:]
+        for (model, value) in windows {
+            guard let number = value as? NSNumber else { return nil }
+            table[model] = number.intValue
+        }
+        return table
+    }
+
     static let suite = TestSuite("Context saturation", [
 
         TestCase("The three input fields are the context, and they are summed") { t in
@@ -100,6 +116,31 @@ enum ContextSuite {
             // looser rule would strip them and lose the model.
             t.expectEqual(ContextWindows.window(for: "claude-3-5-haiku"), 200_000, "kept whole")
             t.expectEqual(ContextWindows.stripped("claude-3-5-haiku"), "claude-3-5-haiku", "unchanged")
+        },
+
+        TestCase("The window table is the contract's, entry for entry") { t in
+            // Two copies of one table: `Contracts/required-fields.json`, which
+            // check-contract.sh holds against Claude Code's binary, and this one,
+            // which the panel divides by. On 17/10/2026 Claude Code 2.1.302
+            // shipped `claude-haiku-5-5`; the contract on the node failed, and had
+            // only one copy been corrected, a ring would have stayed empty with
+            // every check green.
+            let contract = contractWindows()
+            t.expect(contract != nil, "Contracts/required-fields.json has modelContextWindows.windows")
+            guard let contract else { return }
+            for (model, window) in contract.sorted(by: { $0.key < $1.key }) {
+                t.expectEqual(ContextWindows.byModel[model], window, "\(model): the contract says \(window)")
+            }
+            for model in ContextWindows.byModel.keys.sorted() where contract[model] == nil {
+                t.expect(false, "\(model) is in ContextWindows.byModel and not in the contract")
+            }
+        },
+
+        TestCase("Haiku 5.5 has its own window") { t in
+            // Read out of Claude Code 2.1.302: a million. Its parent by the
+            // point-release rule would be `claude-haiku-5`, which does not exist.
+            t.expectEqual(ContextWindows.window(for: "claude-haiku-5-5"), 1_000_000, "haiku 5.5")
+            t.expectNil(ContextWindows.inheritedParent(of: "claude-haiku-5-5"), "its own entry, not a parent's")
         },
 
         TestCase("A point release inherits its parent's window") { t in
