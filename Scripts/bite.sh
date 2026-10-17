@@ -667,6 +667,45 @@ s = open(p).read()
 open(p, "w").write(s.replace('"claude-haiku-5-5": 1_000_000,\n', "", 1))
 PY
 
+chapter "A device's actions on another machine"
+
+# End from a phone (W3, L.H6): the process is found by its session file, and a
+# pid reused since the file was written is another program. Without the start
+# check the script ends whatever now has that pid, and the suite must say so.
+protect Sources/LampBoardCore/Live/RemoteEnd.swift
+attack_swift "End that signals a reused pid" "a reused pid: not it" 1 <<'PY'
+p = "Sources/LampBoardCore/Live/RemoteEnd.swift"
+s = open(p).read()
+open(p, "w").write(s.replace(" and started_at(pid) == start:", ":", 1))
+PY
+
+# Move with its lock (H1.5-3): a second Move of the same conversation, from
+# another device or the Mac, ends nothing while the first holds the lock.
+protect Sources/LampBoardCore/Live/RemoteMove.swift
+attack_swift "a second Move that does not see the first one's lock" "the second is refused" 1 <<'PY'
+p = "Sources/LampBoardCore/Live/RemoteMove.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        if not take():\n", "        if False:\n", 1))
+PY
+
+# Resume only what no process holds (H1.4-7, R5-3): a second writer forks the
+# conversation. A check that always finds it free must turn the suite red.
+protect Sources/LampBoardCore/Live/NodeActions.swift
+attack_swift "a Resume of a conversation a live process holds" "held: refused before tmux is touched" 1 <<'PY'
+p = "Sources/LampBoardCore/Live/NodeActions.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("                sys.exit(4)\n", "                sys.exit(0)\n", 1))
+PY
+
+# Never a second `claude attach` (D130): the lock held by whoever waits for the
+# attach. Taken away, a second window attaches beside the first.
+protect Sources/LampBoardCore/Live/BackgroundAttach.swift
+attack_swift "a second claude attach beside the first" "the second is refused" 1 <<'PY'
+p = "Sources/LampBoardCore/Live/BackgroundAttach.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)", "pass", 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 
@@ -918,6 +957,38 @@ attack_platform Scripts/test-lampd.sh "minClient raised without a word" "it answ
 p = "Sources/LampBoardCore/V1/V1Protocol.swift"
 s = open(p).read()
 open(p, "w").write(s.replace("public static let minClient = 1", "public static let minClient = 2", 1))
+PY
+
+chapter "A phone's actions on a fake node"
+
+# Attachments by SFTP (H1.2-9): a new file only. Without SSH_FXF_EXCL a second
+# copy under a name already there overwrites the first.
+protect Sources/LampBoardNodeLink/NodeConnection.swift
+attack_platform Scripts/test-lampd.sh "an attachment copied over a file already there" "a second copy under the same name is refused" <<'PY'
+p = "Sources/LampBoardNodeLink/NodeConnection.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("flags: [.write, .create, .forceCreate]", "flags: [.write, .create, .truncate]", 1))
+PY
+
+# `@name` arrives once (W3): a box script that writes the message twice is a
+# conversation that reads it twice.
+protect Sources/LampBoardCore/Peer/RemotePeerScripts.swift
+attack_platform Scripts/test-lampd.sh "a message written into the box twice" "the message arrived once" <<'PY'
+p = "Sources/LampBoardCore/Peer/RemotePeerScripts.swift"
+s = open(p).read()
+i = s.index('                box.sendall((json.dumps({"type": "user"')
+j = s.index("\n", s.index('.encode("utf-8"))', i)) + 1
+line = s[i:j]
+open(p, "w").write(s[:j] + line + s[j:])
+PY
+
+# End from a phone closes a tmux session only when one of its panes holds the
+# conversation's process: a name alone is not enough.
+protect Sources/LampBoardCore/Live/RemoteEnd.swift
+attack_platform Scripts/test-lampd.sh "End that closes whatever tmux session it is named" "a tmux session that does not hold the conversation is not closed" <<'PY'
+p = "Sources/LampBoardCore/Live/RemoteEnd.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if not set(int(p) for p in panes if p.isdigit()) & set(ancestors(pid)):", "if False:", 1))
 PY
 
 chapter "lampd's contract timer"

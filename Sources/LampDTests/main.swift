@@ -13,6 +13,7 @@ let suites: [TestSuite] = [
     DevicesSuite.suite,
     NodeSourceSuite.suite,
     SmallSuites.preferences,
+    SmallSuites.projects,
     SmallSuites.config,
     SmallSuites.replay,
     V1Conformance.suite(against: NodeMemoryTarget(mode: .live)),

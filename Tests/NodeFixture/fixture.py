@@ -17,6 +17,10 @@ gate's container makes.
     fixture.py frame <n>     the node as frame n describes it
     fixture.py flip          the first session of frame 0 between busy and idle
     fixture.py clean         every process and file this made, gone
+    fixture.py actions       what a phone's actions need besides frame 0: the
+                             sessions' folders, a project with files, a fake
+                             `claude` on PATH, a session with a message box
+    fixture.py box-log       the messages that box took, one JSON line each
 """
 import json, os, signal, subprocess, sys, time
 
@@ -192,6 +196,139 @@ def clean():
     print("clean")
 
 
+# ── What a phone's actions need (W3) ─────────────────────────────────────────
+
+BOX_LOG = os.path.join(HOME, ".lampd-fixture", "box.log")
+BOX_SESSION = "b2000000-0000-4000-8000-000000000001"
+
+# A `claude` that does what the actions need of it and nothing else: started
+# with a conversation's id it writes its session file as Claude Code does (its
+# own pid and start) and stays until it is asked to end; `attach <job>` notes
+# itself and stays. Never the real one: this is a fake node.
+FAKE_CLAUDE = r'''#!/usr/bin/env python3
+import json, os, signal, sys, time
+home = os.path.expanduser("~")
+args = sys.argv[1:]
+def start_of(pid):
+    with open("/proc/%d/stat" % pid) as stat:
+        return stat.read().rsplit(")", 1)[1].split()[19]
+if args[:1] == ["attach"] and len(args) > 1:
+    with open(os.path.join(home, ".lampd-fixture", "attach.log"), "a") as log:
+        log.write("%d %s\n" % (os.getpid(), args[1]))
+    print("attached " + args[1], flush=True)
+    while True:
+        time.sleep(1)
+session = None
+for flag in ("--session-id", "--resume"):
+    if flag in args and args.index(flag) + 1 < len(args):
+        session = args[args.index(flag) + 1]
+if session is None:
+    print("fake claude: nothing to do", flush=True)
+    sys.exit(1)
+pid = os.getpid()
+path = os.path.join(home, ".claude", "sessions", "%d.json" % pid)
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as handle:
+    json.dump({"pid": pid, "sessionId": session, "cwd": os.getcwd(), "entrypoint": "cli", "kind": "interactive",
+               "status": "idle", "procStart": start_of(pid)}, handle)
+folder = os.path.join(home, ".claude", "projects",
+                      "-" + "".join(c if c.isascii() and c.isalnum() else "-" for c in os.getcwd().lstrip("/")))
+os.makedirs(folder, exist_ok=True)
+with open(os.path.join(folder, session + ".jsonl"), "a") as handle:
+    handle.write(json.dumps({"type": "user", "origin": {"kind": "human"}, "timestamp": "2027-01-15T08:00:00Z",
+                             "message": {"role": "user", "content": "Example start"}}) + "\n")
+def bye(*_):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    sys.exit(0)
+signal.signal(signal.SIGTERM, bye)
+signal.signal(signal.SIGHUP, bye)
+print("fake claude " + session + " " + ("--resume" if "--resume" in args else "new"), flush=True)
+while True:
+    time.sleep(1)
+'''
+
+
+def actions():
+    """The folders frame 0's sessions work in, a project with files, the fake
+    `claude` first on PATH, and a session whose message box writes down what it
+    takes (the box of Claude Code 2.1.224 and later, D81)."""
+    for name in ("api", "web", "docs", "billing", "search", "mobile", "old", "old2", "blank", "sdk", "batch", "twin",
+                 "site", "editor"):
+        os.makedirs(os.path.join(HOME, "work", name), exist_ok=True)
+    api = os.path.join(HOME, "work", "api")
+    os.makedirs(os.path.join(api, "src"), exist_ok=True)
+    os.makedirs(os.path.join(api, ".git", "info"), exist_ok=True)
+    with open(os.path.join(api, "README.md"), "w") as handle:
+        handle.write("# Example API\n\nA project for the **phone's** file view.\n\n- one\n- two\n")
+    with open(os.path.join(api, "src", "main.py"), "w") as handle:
+        handle.write("print('example')\n")
+    os.makedirs(os.path.join(HOME, ".local", "bin"), exist_ok=True)
+    claude = os.path.join(HOME, ".local", "bin", "claude")
+    with open(claude, "w") as handle:
+        handle.write(FAKE_CLAUDE)
+    os.chmod(claude, 0o755)
+    # The box: a process that listens, and the files that name it.
+    state = load_state()
+    old = state.get("box")
+    if old and alive(old):
+        stop(old)
+    socket_path = "/tmp/lb-box-%d.sock" % os.getpid()
+    token = "exampletoken%d" % os.getpid()
+    child = subprocess.Popen([sys.executable, os.path.abspath(__file__), "box", BOX_SESSION, socket_path, token],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+    for _ in range(50):
+        if os.path.exists(socket_path):
+            break
+        time.sleep(0.1)
+    start = proc_start(child.pid)
+    os.makedirs(SESSIONS, exist_ok=True)
+    with open(os.path.join(SESSIONS, "%d.json" % child.pid), "w") as handle:
+        json.dump({"pid": child.pid, "sessionId": BOX_SESSION, "cwd": os.path.join(HOME, "work", "docs"),
+                   "entrypoint": "cli", "kind": "interactive", "status": "idle", "procStart": start,
+                   "peerProtocol": 1, "messagingSocketPath": socket_path}, handle)
+    key = os.path.join(SESSIONS, "%d.%s.key" % (child.pid, "ab12cd34"))
+    with open(key, "w") as handle:
+        json.dump({"peerToken": token, "procStart": start}, handle)
+    os.chmod(key, 0o600)
+    if os.path.exists(BOX_LOG):
+        os.remove(BOX_LOG)
+    state["box"] = child.pid
+    save_state(state)
+    print("actions: folders, project, fake claude, box %d" % child.pid)
+
+
+def box(session, socket_path, token):
+    """The message box: one line of auth with the token, then messages, each
+    written down as it came. It answers nothing, as Claude Code's does not."""
+    import socket as sockets
+    server = sockets.socket(sockets.AF_UNIX, sockets.SOCK_STREAM)
+    if os.path.exists(socket_path):
+        os.remove(socket_path)
+    server.bind(socket_path)
+    server.listen(4)
+    while True:
+        connection, _ = server.accept()
+        data = b""
+        while True:
+            chunk = connection.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+        connection.close()
+        lines = [json.loads(line) for line in data.decode("utf-8").splitlines() if line.strip()]
+        if not lines or lines[0].get("type") != "auth" or lines[0].get("token") != token:
+            continue
+        with open(BOX_LOG, "a") as log:
+            for line in lines[1:]:
+                if line.get("type") == "user":
+                    log.write(json.dumps({"session": session, "from": line.get("from"),
+                                          "content": line.get("message", {}).get("content")}) + "\n")
+
+
 if __name__ == "__main__":
     refuse_unless_fake()
     command = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -201,5 +338,11 @@ if __name__ == "__main__":
         flip()
     elif command == "clean":
         clean()
+    elif command == "actions":
+        actions()
+    elif command == "box" and len(sys.argv) == 5:
+        box(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif command == "box-log":
+        sys.stdout.write(open(BOX_LOG).read() if os.path.exists(BOX_LOG) else "")
     else:
         sys.exit(__doc__)

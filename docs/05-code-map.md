@@ -1,21 +1,21 @@
 # Code map
 
-~92,900 lines of Swift across twelve targets. For each file: what it contains, why
+~94,200 lines of Swift across twelve targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,677 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,100 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,501 lines · 147 files   1519 cases, instantaneous
+  LampBoardCore/  29,221 lines · 215 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,096 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  21,772 lines · 148 files   1530 cases, instantaneous
   LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
+  LampBoardNodeLink/  1,502 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
-  NodeLinkCheck/    1,111 lines · 5 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,509 lines · 20 files   lampd: the Linux machine's service
-  LampD/              191 lines · 1 files   lampd's command line
-  LampDTests/         620 lines · 6 files   lampd's suite, on Linux
+  NodeLinkCheck/    1,362 lines · 6 files   NodeLink, and lampd, against a real ssh
+  LampDKit/         2,570 lines · 21 files   lampd: the Linux machine's service
+  LampD/              216 lines · 1 files   lampd's command line
+  LampDTests/         641 lines · 6 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -1635,11 +1635,38 @@ The read-only transcript's source (D147, D165): where a session on another machi
 transcript, the `tail -F` that follows it there under `sh`, and a buffer that
 keeps whole lines only, the last 800.
 
-### `RemoteMove.swift` · 60
+### `RemoteMove.swift` · 151
 «Move to LampBoard…» from another machine (D166): the script piped to `python3`
 over ssh that ends a VS Code process there only while it is still the one its
 session file names — the same pid at the same start, from `/proc` on Linux and
 from `ps` in UTC on a Mac, a zombie counted as ended — and what it answers.
+That reading of a start is `startedFunction`, shared with `RemoteEnd` and the
+Resume's check. A device's Move (W3) runs under a lock, `~/.lampboard/moving/<id>`
+made with `mkdir`: a second Move while it is held is `locked` and ends nothing;
+the lock goes at once when nothing ended, after the take-up otherwise
+(`unlock`), and one older than five minutes is taken over.
+
+### `RemoteEnd.swift` · 101
+«End session…» from a device that knows the conversation and not its process
+(W3): the script finds the session file there, ends its process only if it is
+still the one that wrote it (a reused pid is `not-it`), and closes a tmux session
+only when one of its panes holds that process. **What you would break**: a pid
+reused since is another program, and gets SIGTERM.
+
+### `NodeActions.swift` · 231
+What a device asks of a machine with its action key (W3, §2.6 of the mobile plan),
+named as the Mac's bridge will take them in W5: start or resume in tmux (Resume
+refused while a live process holds the conversation), End, Move and its lock,
+Browse, past conversations, the project's tree, a file, git, the attachments
+folder for SFTP, `@name` into the box, the look, `lampd projects`. Each command
+built from the Mac's own remote scripts, every value checked, Bypass from the
+start refused until it is turned on where it is kept. `NodeTerminalCommand`: a
+background session's attach and a project's shell.
+
+### `BackgroundAttach.swift` · 50
+`claude attach <job>` on another machine (L.A8, R1-24), never a second one
+(D130): a lock file held by the process that waits for the attach, let go when it
+ends whatever ends it; a second window or device is told so and attaches nothing.
 
 ### `RemoteFolders.swift` · 48
 The folders of another machine, browsed over ssh to attach a project there (D165):
@@ -1661,11 +1688,11 @@ LampBoard chose (`--session-id`), a past one is taken up by its own
 (`--resume`); only an id is ever written into the script. The permission mode
 chosen in Settings travels with the start and adds Claude Code's flag (D169).
 
-### `ProjectList.swift` · 98
+### `ProjectList.swift` · 123
 The projects attached to the Hub (D163): a folder on this Mac or on another
 machine, kept with or without a session; only an absolute folder on a machine
 ssh can be given. The list the Hub shows: the attached ones in their order, then
-the folders the sessions are in, the latest first, each with its sessions. Its
+the folders the sessions are in, the latest first, each with its sessions — from the Mac's state, or from a device's rows (`Seen`). Its
 file read back keeps only what is valid.
 
 ### `PastConversations.swift` · 42
@@ -1776,7 +1803,7 @@ what it may read of a project, and what a file dropped on a session becomes. The
 session itself is its own terminal at the Hub's centre (D162). The App's `Hub/`
 draws them.
 
-### `ProjectAccess.swift` · 215
+### `ProjectAccess.swift` · 254
 The Hub's look into a session's project (D156): a tree, a file, what git says, a
 search, a shell — on this Mac from the disk, on another machine through the
 panel's own ssh, never through the session's mod. Every path is held inside the
@@ -2473,7 +2500,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1519 cases
+## `LampBoardTests/` — 1530 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2566,6 +2593,7 @@ script, before it was split. The most important ones:
 | `PlanciaHeaderSuite` | machine, surface and agent, model, context, cost in that order; what is not known left out; Claude's model ids read as names, anything else as it came |
 | `SessionActivitySuite` | a session found by its id, or by LampMaster's eight characters only when they name one; what each session has been doing, tool by tool and turn by turn |
 | `TranscriptPreviewSuite` | the last thing said, read from a transcript's tail (moved here from the Plancia's suite, D165) |
+| `NodeActionsSuite` | a device's actions (W3): no command from an argument that is not one; Bypass refused until turned on; End leaving a reused pid's program running and ending the process its file names; a second Move refused by the first one's lock, a stale lock taken over; Resume refused while a live process holds the conversation; a second `claude attach` refused while the first is open; the look naming each process with its start; the attachments folder made inside the project, refused through a link out |
 | `RemoteMoveSuite` | moving a conversation from another machine: only a start time that is one, never init; a process that is not the one named is left alone, the one named is ended |
 | `RemoteFoldersSuite` | another machine's folders: a listing that starts at home or an absolute path, quoted, and refuses anything else; the answer in Finder's order, hidden ones left out |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
@@ -2688,7 +2716,12 @@ key's PTY refused, tmux through the terminal, Q7 with three clients, and the
 lights read over ssh (D176). Only `Scripts/test-nodelink.sh` runs them.
 `LampDChecks` runs the same battery against `lampd` installed on a node (D178): the
 read key's lines `lampd devices add` wrote, one rule for the files frame by frame
-against the phone's own look, the service stopped; only `Scripts/test-lampd.sh`
+against the phone's own look, the service stopped, and `ActionChecks`: the phone's
+actions as the app takes them (a tagged tmux session and its row, Resume of a held
+conversation refused, End refusing a reused pid, two Moves at once and the lock,
+`@name` arriving once in a box, one `claude attach`, Browse, files, SFTP
+attachments that never overwrite, `lampd projects`, the project's shell, a
+low-power command through the read key); only `Scripts/test-lampd.sh`
 runs it, with `Tests/NodeFixture/` (the session files' frames, `fixture.py` that
 plays them, the recorded hook flows and their golden reductions, and the reader of
 the app one version behind).
@@ -2745,6 +2778,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LampDDoctor.swift` | `doctor`: tools, the service and the age of its state, the phones' lines, the contract |
 | `LampDUsage.swift` | `usage`: the Core's allowance script run here |
 | `HookReplay.swift` | recorded hooks reduced as the tee will reduce them, for the parity with the Mac |
+| `ProjectsStore.swift` | `projects list`, `attach`, `detach`: the folders kept in the list, in the Hub's own file shape (`ProjectList`), under a lock; a path that is not a folder here refused |
 | `LampDCompare.swift` | `compare`: the service's lamps against the phone's own look at the same files, on the machine itself |
 | `LampDInstall.swift` | the version, where the binary is linked from, a device's id from its name |
 
@@ -2848,5 +2882,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits sixty-six violations and demands sixty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits seventy-three violations and demands seventy-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

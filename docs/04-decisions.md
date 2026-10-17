@@ -6675,3 +6675,51 @@ the owner, and from W5 from the Mac).
 **Signal to revisit:** the tee of W5 (`lampd.socket` on the 31000, the route table, `/mod` read), the push
 relay of W4, a new word in Claude Code's session file, or a transcript of hundreds of megabytes read for
 `transcript` (the window is 64 MB).
+
+## D179 · A device's actions on a machine, written once
+
+**Decided** (17 October 2026), as the third step of W3 of the mobile plan (§2.6, §5.3 «Actions, once»):
+the panel's actions on another machine — New session, Resume, End, Move, Projects, Browse, the project's
+files and shell, attachments, `@name`, a background session's attach — are asked by the phone with its
+action key, each built by the Core and none by the app.
+
+**What.**
+- `NodeAction` (`Sources/LampBoardCore/Live/NodeActions.swift`): the actions by name (`new-session`,
+  `resume`, `end`, `move`, `browse`, `peer-send`, …, the names the Mac's bridge takes in W5), each with its
+  arguments checked and its one `sh -c` built from the scripts the Mac already runs over ssh (`NewSession`,
+  `RemoteMove`, `RemoteFolders`, `RemoteProject`, `RemotePeerScripts`, `RemoteTranscripts`). A value that is
+  not what it should be gives no command. Starting in Bypass is refused until the person turns it on where
+  it is kept (the Mac writes it into `lampd` in W5, D169).
+- Resume refuses a conversation a live process holds, checked on the machine by its session file and the
+  process's start (R5-3): a second writer forks a conversation.
+- `RemoteEnd`: End from a device that knows the conversation and not its process. The session file is read
+  there; a pid reused since it was written is another program and gets nothing; a tmux session is closed only
+  when one of its panes holds that process.
+- The Move's lock: `~/.lampboard/moving/<id>`, made with `mkdir` on the session's machine, held from the end
+  of the editor's process to the take-up in tmux; a second Move meanwhile is `locked` and ends nothing; a
+  lock older than five minutes is taken over. The Mac 2.4 checks the same folder (W5).
+- `BackgroundAttach`: `claude attach <job>` under a lock file held by the process that waits for it, so a
+  second window or device is refused and no lock outlives its holder.
+- Attachments by SFTP, into the project's `.lampboard/allegati/` made and resolved by the same script the
+  Mac's copy uses, the file created with `SSH_FXF_EXCL`: never over one already there.
+- `lampd projects list|attach|detach`: the machine's projects kept by `lampd`, in the Hub's file shape.
+- The probe reports each session's `procStart`. It never had: the Mac's «Move to LampBoard…» from another
+  machine found no start, and said «Nothing to move» every time since D166.
+
+**Why.** One rule per action, wherever it is asked from: the Mac's remote scripts already hold what ending,
+moving and attaching must check, and a second copy in the app would drift from them as the probe's first
+copy did. Where a device needs more than the Mac did (a process it cannot see, two devices at once), the
+rule goes into the Core, so the Mac 2.4 gets it too.
+
+**Measured** on the fake node behind a real OpenSSH (`Scripts/test-lampd.sh`, `ActionChecks`) with a fake
+`claude` that writes its session file as the real one does: every action as the app takes it, and the bites:
+an attachment over a file already there, a message written twice, End closing a tmux session that does not
+hold the conversation, End signalling a reused pid, a second Move past the lock, a Resume of a held
+conversation, a second `claude attach` — each turns its check red.
+
+**Discarded:** actions run by `lampd` itself (`lampd act`): no use on a machine without it, and the phone's
+fallback reads such machines; a search of the process list for a running attach (two that arrive together
+both find none); copying attachments through a shell's standard input (Citadel's exec has no end of input).
+
+**Signal to revisit:** the Mac's bridge (W5), which takes the same names; a Claude Code that writes its
+session file otherwise; an editor's process that no longer ends on SIGTERM.

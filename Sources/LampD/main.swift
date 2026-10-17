@@ -27,6 +27,8 @@ import Darwin
 //   lampd look                        asks the service to look at the files now
 //   lampd compare                     the service's lamps against the phone's look, now
 //   lampd replay <flow.jsonl>         recorded hooks, reduced as the tee will
+//   lampd projects list | attach -- <folder> | detach -- <folder>
+//                                     the projects kept in the list (JSON, as the phone reads it)
 //   lampd version
 
 signal(SIGPIPE, SIG_IGN)
@@ -51,7 +53,7 @@ func option(_ name: String, in list: [String] = arguments) -> String? {
 func usage() -> Never {
     print("""
     usage: lampd serve | v1-stdio --device <id> [--role read|action] | devices add|list|revoke |
-           status | doctor | usage | look | replay <flow.jsonl> | version
+           status | doctor | usage | look | replay <flow.jsonl> | projects | version
     """)
     exit(2)
 }
@@ -174,6 +176,29 @@ case "compare":
     for line in lines.rows { print(line) }
     print(lines.summary)
     exit(lines.same ? 0 : 1)
+
+case "projects":
+    // What a device asks with its action key (W3): the list, as JSON, after
+    // every change. The folder comes after `--`, so a name that starts with a
+    // dash is a folder and never an option.
+    let store = ProjectsStore(paths: paths)
+    let rest = Array(arguments.dropFirst())
+    let folder = rest.firstIndex(of: "--").flatMap { $0 + 1 < rest.count ? rest[$0 + 1] : nil }
+    do {
+        switch rest.first {
+        case "list": break
+        case "attach":
+            guard let folder else { fail("projects attach -- <folder>") }
+            _ = try store.attach(folder)
+        case "detach":
+            guard let folder else { fail("projects detach -- <folder>") }
+            _ = try store.detach(folder)
+        default: fail("projects list | attach -- <folder> | detach -- <folder>")
+        }
+    } catch {
+        fail("\(error)", code: 1)
+    }
+    print(String(decoding: ProjectList.encode(store.list()), as: UTF8.self))
 
 case "version", "--version":
     print("lampd \(version)")

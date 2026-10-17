@@ -78,7 +78,8 @@ final class LampDTarget: V1ConformanceTarget {
 enum LampDChecks {
 
     static func suites(_ node: LampDNode, _ target: LampDTarget) -> [TestSuite] {
-        [V1Conformance.suite(against: target), keys(node, target), rule(node, target), stopped(node, target)]
+        [V1Conformance.suite(against: target), keys(node, target), rule(node, target), stopped(node, target),
+         ActionChecks.suite(node, target)]
     }
 
     // MARK: - The keys `lampd devices add` wrote

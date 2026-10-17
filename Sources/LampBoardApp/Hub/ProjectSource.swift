@@ -24,11 +24,7 @@ struct ProjectSource: Sendable, Equatable {
         if let host {
             guard let script = RemoteProject.list(root: root, relative: relative),
                   let out = await Self.ssh(host, script) else { return [] }
-            return Self.sorted(out.split(separator: "\n").compactMap { line in
-                let name = String(line)
-                guard name != "./", name != "../", !name.isEmpty else { return nil }
-                return name.hasSuffix("/") ? Entry(name: String(name.dropLast()), isFolder: true) : Entry(name: name, isFolder: false)
-            })
+            return Self.sorted(RemoteProject.entries(out).map { Entry(name: $0.name, isFolder: $0.isFolder) })
         }
         guard let folder = resolved(relative) else { return [] }
         let urls = (try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: folder),

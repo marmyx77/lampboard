@@ -12,8 +12,9 @@ import NIOSSH
 /// pinned before a single byte of ours is sent, and the key decides which kind
 /// of connection comes back: a read key gets a `ReadConnection`, which can only
 /// open `v1`; an action key gets an `ActionConnection`, which can also run a
-/// command and open a terminal (`NodeTerminal`, D176). There is no SFTP
-/// (Citadel's `openSFTP` has no deadline of its own, E12).
+/// command, open a terminal (`NodeTerminal`, D176) and write a new file by SFTP
+/// (W3: attachments), every step of it under a deadline of ours — Citadel's
+/// `openSFTP` has none that holds (E12).
 ///
 /// Citadel's streaming exec needs macOS 15; the Mac app does not use NodeLink,
 /// and iOS 17 and Linux have it.
@@ -87,6 +88,14 @@ public final class ActionConnection: @unchecked Sendable {
     public func openTerminal(command: String, size: TerminalSize, term: String = "xterm-256color") async throws -> NodeTerminal {
         try await NodeTerminal.open(link.endpoint, hostKey: link.hostKey, key: link.key, command: command,
                                     size: size, term: term, deadlines: link.deadlines)
+    }
+
+    /// Writes `bytes` as a new file at `path` by SFTP, creating it and refusing
+    /// one that is there already (`SSH_FXF_EXCL`: a link at that name is not
+    /// followed either). The folder is the caller's to have made and checked
+    /// first; nothing here makes or resolves one.
+    public func upload(_ bytes: [UInt8], toNewFile path: String) async throws {
+        try await link.upload(bytes, toNewFile: path)
     }
 
     public func close() async { await link.close() }
@@ -173,6 +182,39 @@ final class SSHLink: @unchecked Sendable {
             }
             return NodeCommandResult(output: String(decoding: output, as: UTF8.self), exitCode: exitCode)
         }
+    }
+
+    func upload(_ bytes: [UInt8], toNewFile path: String) async throws {
+        guard path.hasPrefix("/"), !path.contains("\0") else { throw NodeLinkError.failed("not an absolute path: \(path)") }
+        let client = self.client
+        let deadlines = self.deadlines
+        let sftp: SFTPClient
+        do {
+            sftp = try await NodeDeadline.run(deadlines.open, "opening SFTP",
+                                              late: { (late: SFTPClient) in Task { try? await late.close() } }) {
+                try await client.openSFTP()
+            }
+        } catch {
+            throw Self.describe(error, "opening SFTP")
+        }
+        do {
+            let file = try await NodeDeadline.run(deadlines.open, "creating the file") {
+                try await sftp.openFile(filePath: path, flags: [.write, .create, .forceCreate])
+            }
+            // A deadline that grows with the file: ten seconds, and one more for every 256 KiB.
+            let seconds = deadlines.write + Double(bytes.count) / 262_144
+            try await NodeDeadline.run(seconds, "writing the file") {
+                try await file.write(ByteBuffer(bytes: bytes))
+            }
+            try await NodeDeadline.run(deadlines.close, "closing the file") { try await file.close() }
+        } catch {
+            _ = try? await NodeDeadline.run(deadlines.close, "closing SFTP") { try await sftp.close() }
+            if let sftpError = error as? SFTPError, case .errorStatus(let status) = sftpError {
+                throw NodeLinkError.refused("the machine refused the file: \(status.message)")
+            }
+            throw Self.describe(error, "writing the file")
+        }
+        _ = try? await NodeDeadline.run(deadlines.close, "closing SFTP") { try await sftp.close() }
     }
 
     func close() async {

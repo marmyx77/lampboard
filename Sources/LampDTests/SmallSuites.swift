@@ -45,6 +45,26 @@ enum SmallSuites {
         },
     ])
 
+    static let projects = TestSuite("lampd: the projects kept in the list", [
+
+        TestCase("A folder of this machine is kept once, a path that is not one is refused, a detached one goes") { t in
+            let base = NSTemporaryDirectory() + "lampd-projects-\(UUID().uuidString.prefix(8))"
+            defer { try? FileManager.default.removeItem(atPath: base) }
+            let folder = base + "/work/app"
+            try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+            let store = ProjectsStore(path: base + "/state/projects.json")
+            t.expectEqual(store.list(), [], "none at first, no file")
+            t.expectEqual((try? store.attach(folder, at: F.t0))?.map(\.path), [folder], "kept")
+            t.expectEqual((try? store.attach(folder + "/", at: F.t0 + 1))?.count, 1, "the same folder once, slash or not")
+            t.expectThrows(ProjectsStore.ProjectsError.notAFolder("work/app")) { _ = try store.attach("work/app") }
+            t.expectThrows(ProjectsStore.ProjectsError.notAFolder(base + "/nothing")) { _ = try store.attach(base + "/nothing") }
+            let data = FileManager.default.contents(atPath: base + "/state/projects.json") ?? Data()
+            t.expectEqual(ProjectList.decode(data).map(\.path), [folder], "the Hub's own file shape")
+            t.expectEqual((try? store.detach(folder))?.count, 0, "detached")
+            t.expectEqual(store.list(), [], "and gone from the file")
+        },
+    ])
+
     static let config = TestSuite("lampd: configuration", [
 
         TestCase("No file is the defaults; a bad value is said and the default kept") { t in

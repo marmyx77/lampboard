@@ -212,7 +212,7 @@ docker run -d --init --name "$NODE" --network "$NET" --network-alias node \
         rm -f /etc/ssh/ssh_host_*
         ssh-keygen -q -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key
         mkdir -p /run/sshd
-        printf "Port 2222\nHostKey /etc/ssh/ssh_host_ed25519_key\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nPubkeyAuthentication yes\nPermitRootLogin no\nUsePAM no\nAllowUsers dev\nClientAliveInterval 15\nClientAliveCountMax 3\n" > /etc/ssh/sshd_config
+        printf "Port 2222\nHostKey /etc/ssh/ssh_host_ed25519_key\nSubsystem sftp /usr/lib/openssh/sftp-server\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nPubkeyAuthentication yes\nPermitRootLogin no\nUsePAM no\nAllowUsers dev\nClientAliveInterval 15\nClientAliveCountMax 3\n" > /etc/ssh/sshd_config
         exec /usr/sbin/sshd -D -e
     ' > /dev/null || failed "the node did not start"
 

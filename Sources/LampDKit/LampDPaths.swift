@@ -61,6 +61,8 @@ public struct LampDPaths: Equatable, Sendable {
     public var journalFile: String { stateDirectory + "/journal.jsonl" }
     public var rowsFile: String { stateDirectory + "/rows.json" }
     public var preferencesFile: String { stateDirectory + "/preferences.json" }
+    /// The projects the person keeps in the list (`lampd projects`).
+    public var projectsFile: String { stateDirectory + "/projects.json" }
     public var devicesFile: String { stateDirectory + "/devices.json" }
     public var contractFile: String { stateDirectory + "/contract.json" }
     public var allowanceFile: String { stateDirectory + "/allowance.json" }

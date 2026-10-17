@@ -160,11 +160,45 @@ public enum RemoteProject {
     /// The same script runs here with `/bin/sh` and there through ssh.
     public static func attach(root: String, name: String) -> String? {
         guard !name.isEmpty, name == ProjectAttachments.attachmentName(name, taken: []) else { return nil }
-        let folder = quote(ProjectAttachments.folder)
         let file = "\"$d\"/" + quote(name)
+        return attachmentsPrelude(root: root) + "&& [ ! -e \(file) ] && [ ! -L \(file) ] && cat > \(file) " + excludeFromGit
+    }
+
+    /// The attachments folder made and resolved for a copy that does not go
+    /// through a shell (SFTP, from a phone: W3 of the mobile plan): the same
+    /// folder, refused out of the project in the same words as `attach`; it
+    /// prints the folder's real path, then the names already in it, one a line.
+    /// The copy then makes `<that path>/<a new name>`, refusing one that exists.
+    public static func attachmentsFolder(root: String) -> String {
+        attachmentsPrelude(root: root) + excludeFromGit + " && printf '%s\\n' \"$d\" && ls -1A -- \"$d\""
+    }
+
+    /// What `attachmentsFolder` printed: the folder, and the names taken.
+    public static func attachmentsListing(_ output: String) -> (folder: String, taken: Set<String>)? {
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        guard let folder = lines.first, folder.hasPrefix("/"), folder.hasSuffix("/" + ProjectAttachments.folder) else { return nil }
+        return (folder, Set(lines.dropFirst()))
+    }
+
+    /// Into the project, its attachments folder made, resolved, and inside it.
+    private static func attachmentsPrelude(root: String) -> String {
+        let folder = quote(ProjectAttachments.folder)
         return "cd -- \(quote(root)) && r=$(pwd -P) && [ ! -L .lampboard ] && [ ! -L \(folder) ] && mkdir -p -- \(folder) && d=$(cd -- \(folder) && pwd -P) "
-            + "&& case \"$d/\" in \"$r\"/*) ;; *) exit 3 ;; esac && [ ! -e \(file) ] && [ ! -L \(file) ] && cat > \(file) "
-            + "&& { [ ! -d .git/info ] || grep -qxF '.lampboard/' .git/info/exclude 2>/dev/null || echo '.lampboard/' >> .git/info/exclude; }"
+            + "&& case \"$d/\" in \"$r\"/*) ;; *) exit 3 ;; esac "
+    }
+
+    /// `.lampboard/` written once into git's exclude.
+    private static let excludeFromGit =
+        "&& { [ ! -d .git/info ] || grep -qxF '.lampboard/' .git/info/exclude 2>/dev/null || echo '.lampboard/' >> .git/info/exclude; }"
+
+    /// The entries of a folder as `list` prints them (`ls -1Ap`): a folder ends
+    /// in `/`; `.` and `..` are not entries.
+    public static func entries(_ listing: String) -> [(name: String, isFolder: Bool)] {
+        listing.split(separator: "\n").compactMap { line in
+            let name = String(line)
+            guard name != "./", name != "../", !name.isEmpty else { return nil }
+            return name.hasSuffix("/") ? (String(name.dropLast()), true) : (name, false)
+        }
     }
 
     /// The names already in the attachments folder, one per line.
@@ -181,11 +215,16 @@ public enum ProjectShell {
 
     public static func command(root: String, host: String?, shell: String, environment: [String: String]) -> LiveCommand {
         if let host {
-            let script = "cd -- \(RemoteProject.quote(root)) && exec \"${SHELL:-/bin/sh}\" -l"
+            let script = remoteScript(root: root)
             return LiveCommand(executable: "/usr/bin/ssh", arguments: SSHHardening.options + ["-t", "--", host, script],
                                directory: nil, environment: environment)
         }
         return LiveCommand(executable: shell, arguments: ["-l"], directory: root, environment: environment)
+    }
+
+    /// What the other machine runs: the person's own login shell, in the folder.
+    public static func remoteScript(root: String) -> String {
+        "cd -- \(RemoteProject.quote(root)) && exec \"${SHELL:-/bin/sh}\" -l"
     }
 }
 

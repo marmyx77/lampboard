@@ -123,6 +123,9 @@ public enum RemoteSessionsDecoder {
             kind: string(record, "kind"),
             modifiedAt: spoken ?? Date(timeIntervalSince1970: epoch),
             host: host,
+            // Clock ticks on Linux, a start time on a Mac: one of the two words
+            // Claude Code writes, kept as it came for the Move to check again there.
+            procStart: string(record, "procStart") ?? (record["procStart"] as? NSNumber).map { "\($0.intValue)" },
             context: context,
             tmux: tmux(record["tmux"]),
             hasTranscript: !((record["contextTail"] as? String) ?? "").isEmpty,

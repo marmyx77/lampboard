@@ -190,6 +190,10 @@ public enum RemoteProbeScript {
             tail = ""
         out.append({
             "pid": pid,
+            # The start the file names, checked above against the process: what
+            # a Move from another machine needs to end that process and no other
+            # (D166, W3). Without it the Mac's Move from elsewhere found nothing.
+            "procStart": record.get("procStart"),
             "sessionId": record.get("sessionId"),
             "cwd": cwd,
             "entrypoint": record.get("entrypoint"),

@@ -62,9 +62,34 @@ public enum ProjectList {
     /// The attached projects in their order, then the folders the sessions are
     /// in that nobody attached, the most recent first; each with its sessions.
     public static func entries(attached: [AttachedProject], state: TrafficLightState, seenLimit: Int = 12) -> [Entry] {
-        var sessions: [String: [SessionState]] = [:]
-        for session in state.sessions.values {
-            sessions[key(path: session.workspace.path, host: session.workspace.host), default: []].append(session)
+        entries(attached: attached,
+                sessions: state.sessions.values.map { Seen(id: $0.id, path: $0.workspace.path, host: $0.workspace.host,
+                                                            updatedAt: $0.updatedAt) },
+                seenLimit: seenLimit)
+    }
+
+    /// A session as the list needs it: where it works, and when it last did.
+    /// What a device has of a machine's rows (W3 of the mobile plan), without
+    /// the Mac's whole state.
+    public struct Seen: Equatable, Sendable {
+        public let id: String
+        public let path: String
+        public let host: String?
+        public let updatedAt: Date
+
+        public init(id: String, path: String, host: String?, updatedAt: Date) {
+            self.id = id
+            self.path = path
+            self.host = host
+            self.updatedAt = updatedAt
+        }
+    }
+
+    /// The same list from the sessions alone.
+    public static func entries(attached: [AttachedProject], sessions seen: [Seen], seenLimit: Int = 12) -> [Entry] {
+        var sessions: [String: [Seen]] = [:]
+        for session in seen {
+            sessions[key(path: session.path, host: session.host), default: []].append(session)
         }
         func entry(path: String, host: String?, attached: Bool) -> Entry {
             let here = (sessions[key(path: path, host: host)] ?? []).sorted { $0.updatedAt > $1.updatedAt }
@@ -72,13 +97,13 @@ public enum ProjectList {
         }
         let kept = attached.map { entry(path: $0.path, host: $0.host, attached: true) }
         let keys = Set(kept.map(\.id))
-        let seen = sessions.compactMap { key, list -> Entry? in
+        let found = sessions.compactMap { key, list -> Entry? in
             guard !keys.contains(key), let first = list.first else { return nil }
-            return entry(path: first.workspace.path, host: first.workspace.host, attached: false)
+            return entry(path: first.path, host: first.host, attached: false)
         }
         .sorted { ($0.lastActive ?? .distantPast) > ($1.lastActive ?? .distantPast) }
         .prefix(seenLimit)
-        return kept + seen
+        return kept + found
     }
 
     public static func decode(_ data: Data) -> [AttachedProject] {
