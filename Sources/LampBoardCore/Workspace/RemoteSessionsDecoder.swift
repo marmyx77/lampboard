@@ -99,7 +99,12 @@ public enum RemoteSessionsDecoder {
         guard pid > 0 else { return nil }
 
         // The node's clock, not this machine's: the whole point of asking it.
+        // When the conversation last spoke, read from its tail by the rule this
+        // Mac applies to its own transcripts (`TranscriptActivity`); the files'
+        // dates only when nothing in the tail carries a time, as here.
         let epoch = (record["activityEpoch"] as? NSNumber)?.doubleValue ?? 0
+        let spoken = (record["contextTail"] as? String)
+            .flatMap { TranscriptActivity.lastTimestamp(inTailChunk: $0, isWholeFile: true) }
 
         // The same scanner the Mac runs on its own transcripts, over the
         // miniature the probe sent. One rule, one implementation, one set of
@@ -116,7 +121,7 @@ public enum RemoteSessionsDecoder {
             entrypoint: string(record, "entrypoint"),
             name: string(record, "name"),
             kind: string(record, "kind"),
-            modifiedAt: Date(timeIntervalSince1970: epoch),
+            modifiedAt: spoken ?? Date(timeIntervalSince1970: epoch),
             host: host,
             context: context,
             tmux: tmux(record["tmux"]),

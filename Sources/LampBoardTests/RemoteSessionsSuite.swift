@@ -365,7 +365,8 @@ enum RemoteSessionsSuite {
         // it has to run on the other machine. If these two ever disagree, activity
         // silently falls back to the session file — which is the frozen one.
         TestCase("The probe reads activity from the transcript, not the session file") { t in
-            t.expect(RemoteProbeScript.script.contains("*.jsonl"), "it must stat transcripts")
+            t.expect(RemoteProbeScript.script.contains("os.path.getmtime(own)"), "it must stat the session's own transcript")
+            t.expect(!RemoteProbeScript.script.contains("+ \"/*.jsonl\""), "and never every transcript of its folder")
             t.expect(
                 RemoteProbeScript.script.contains("[^a-zA-Z0-9]"),
                 "and encode the folder the way TranscriptLocator does"

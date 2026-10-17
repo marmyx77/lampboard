@@ -121,6 +121,7 @@ let suites: [TestSuite] = [
     SubagentSuite.suite,
     AwaitingReleaseSuite.suite,
     RemoteSessionsSuite.suite,
+    RemoteActivitySuite.suite,
     WaitingSuite.suite,
     AccessTokenSuite.suite,
     SessionsPayloadSuite.suite,

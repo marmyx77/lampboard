@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,754 lines · 196 files  pure logic, zero AppKit
+  LampBoardCore/  25,772 lines · 196 files  pure logic, zero AppKit
   LampBoardApp/    30,141 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  19,129 lines · 134 files   1369 cases, instantaneous
+  LampBoardTests/  19,253 lines · 135 files   1373 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -1687,11 +1687,17 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 220
+### `RemoteProbeScript.swift` · 233
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
 the session file, which is the frozen one.
+
+It reads the session's **own** transcript, found by its id when a worktree filed
+it elsewhere, and sends its tail; the decoder dates the session by the tail's last
+timestamp (`TranscriptActivity`), the files' dates only as a fallback. It used to
+take the newest file of the whole project folder, and Claude Code appends records
+with no timestamp to every open session: rows quiet for days read "10h".
 
 > **Why the work happens there.** Two of the three facts a row needs are only true
 > where the processes are: whether the pid is alive, and when the transcript last
@@ -1708,7 +1714,7 @@ from a row called "experiment" whose window was called `simlab` (D51).
 Which sessions another machine's probe reports become rows before they speak
 (D137): a terminal's, with a conversation, while terminal sessions are shown.
 
-### `RemoteSessionsDecoder.swift` · 149
+### `RemoteSessionsDecoder.swift` · 154
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -2317,7 +2323,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1369 cases
+## `LampBoardTests/` — 1373 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2326,6 +2332,7 @@ script, before it was split. The most important ones:
 | Suite | Covers |
 |---|---|
 | `StateReducerSuite` · `ReducerFixesSuite` | the state machine, including the four semantic corrections |
+| `RemoteActivitySuite` | the probe run for real under `python3`: a remote session is dated by its own tail's last timestamp, never by a neighbour's file or bookkeeping |
 | `IdleCompactionSuite` | the morning a conversation compacted while idle stayed yellow, and the session file's `idle` that rests a yellow nothing will end (D177) |
 | `SubagentSuite` | counter and derived state |
 | `ColumnLayoutSuite` | grouping, the user's order, filtering, summary |
@@ -2549,5 +2556,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty-three violations and demands thirty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty-five violations and demands thirty-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

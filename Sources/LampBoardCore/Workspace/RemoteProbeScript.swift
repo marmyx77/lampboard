@@ -113,19 +113,30 @@ public enum RemoteProbeScript {
         if not alive(pid, record.get("procStart")):
             continue
         cwd = record.get("cwd") or ""
-        # The session file is written once at startup and never touched again, so
-        # on its own it reports how long the session has been open, not when it
-        # last did anything. The transcript is the real signal.
+        sid = str(record.get("sessionId") or "")
+        # The session's own transcript, where `TranscriptLocator` derives it, or
+        # wherever a session in a git worktree filed it under its session id.
+        # Never the folder's other files: a project's folder holds every
+        # conversation ever had there, and one of them speaking made all of its
+        # sessions read as active (measured on the phone's first build: rows
+        # quiet for a day and a half said "13m").
+        own = os.path.expanduser("~/.claude/projects/") + encoded(cwd) + "/" + sid + ".jsonl"
+        if sid and not os.path.isfile(own):
+            found = glob.glob(os.path.expanduser("~/.claude/projects/*/") + glob.escape(sid) + ".jsonl")
+            own = found[0] if found else own
+        # Only the fallback, as on the Mac's own reading (`LiveSessionReader`):
+        # when the conversation last spoke is in its tail, sent below, and the
+        # decoder reads it there with `TranscriptActivity`, one rule for both
+        # machines. Neither file date is that: tooling around a session rewrites
+        # both while nothing is said.
         try:
             activity = os.path.getmtime(path)
         except OSError:
             continue
-        folder = os.path.expanduser("~/.claude/projects/") + encoded(cwd)
-        for transcript in glob.glob(folder + "/*.jsonl"):
-            try:
-                activity = max(activity, os.path.getmtime(transcript))
-            except OSError:
-                pass
+        try:
+            activity = max(activity, os.path.getmtime(own))
+        except OSError:
+            pass
         # A miniature of the transcript's tail, in the same shape as the real
         # thing, so that the Mac reads a remote session with exactly the code it
         # reads a local one with. The rule for what these records mean, which
@@ -133,17 +144,19 @@ public enum RemoteProbeScript {
         # floor, stays in one place: on the machine we actually update. This
         # side only projects the fields that rule reads, and judges nothing.
         tail = ""
-        own = folder + "/" + str(record.get("sessionId") or "") + ".jsonl"
         try:
+            # `TranscriptActivity.tailLimit`: as much as the Mac reads of its own.
             size = os.path.getsize(own)
             with open(own, "rb") as handle:
-                handle.seek(max(0, size - 32768))
+                handle.seek(max(0, size - 65536))
                 chunk = handle.read().decode("utf-8", "ignore")
             kept, replies = [], 0
             for line in reversed(chunk.split("\\n")):
                 try:
                     entry = json.loads(line)
                 except Exception:
+                    continue
+                if not isinstance(entry, dict):
                     continue
                 message = entry.get("message") or {}
                 usage = message.get("usage") or {}
