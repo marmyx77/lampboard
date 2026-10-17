@@ -873,7 +873,7 @@ declaring success.
 |---|---|---|
 | `StopFailure` | `ready` (green) | `failed`. A turn cut short by a rate limit produced nothing to read. Exception: `max_output_tokens`, where the text exists and is merely incomplete |
 | `Notification(idle_prompt)` | `ready` (green) | nothing. It is an inactivity timer, not an answer: it invented answers that never arrived |
-| `SessionStart(source: compact)` | `idle` (red) | nothing. Compaction fires **mid-turn**: it cleared the yellow of a working session |
+| `SessionStart(source: compact)` | `idle` (red) | nothing. Compaction fires **mid-turn**: it cleared the yellow of a working session. The one exception is a row only the session file's `busy` lit, which a compaction of an idle conversation does (D177) |
 | `Notification(elicitation_dialog)` | ignored | `awaiting`. An MCP dialog blocks as much as a permission request |
 
 **Lesson.** Every event has to be mapped by asking *what it proves*, not *what

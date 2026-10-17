@@ -126,7 +126,11 @@ public enum RemoteSessionsDecoder {
             isBusy: string(record, "status") == "busy"
                 && (record["contextTail"] as? String).flatMap {
                     TranscriptActivity.turnIsOpen(inTailChunk: $0, isWholeFile: true)
-                } != false
+                } != false,
+            idleSince: LiveSessionParser.idleSince(status: record["status"], updatedAt: record["statusUpdatedAt"]),
+            turnIsOpen: (record["contextTail"] as? String).flatMap {
+                TranscriptActivity.turnIsOpen(inTailChunk: $0, isWholeFile: true)
+            }
         )
     }
 

@@ -148,6 +148,16 @@ public struct SessionState: Sendable, Equatable, Identifiable {
     /// is the only moment it knows about itself.
     public let firstSeenAt: Date
 
+    /// `true` while the row is working on Claude Code's word alone: its session
+    /// file said `busy` (D141), and no hook has spoken for a turn since.
+    ///
+    /// Kept because that word has no way back of its own. A turn the hooks
+    /// opened ends with a `Stop`; a row the file lit has no turn the hooks know
+    /// of, so nothing ends it. On 2.3.0 a conversation Claude Code compacted
+    /// while idle lit its row this way, and the row stayed yellow (D177).
+    /// Any change of status through the hooks clears it.
+    public let litByFile: Bool
+
     public init(
         id: String,
         status: SessionStatus,
@@ -170,8 +180,10 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         runningTool: RunningTool? = nil,
         backgroundJob: BackgroundJob? = nil,
         unreadAnswers: Int = 0,
-        firstSeenAt: Date? = nil
+        firstSeenAt: Date? = nil,
+        litByFile: Bool = false
     ) {
+        self.litByFile = litByFile
         self.unreadAnswers = max(0, unreadAnswers)
         self.backgroundJob = backgroundJob
         self.costUSD = costUSD
@@ -266,8 +278,15 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             statusSince: newStatus == baseStatus ? statusSince : now,
             // A turn that stops working takes its running tool with it: an "end"
             // the mod never sent must not make the next turn look stuck for hours.
-            runningTool: newStatus != .working && runningTool != nil ? .some(nil) : nil
+            runningTool: newStatus != .working && runningTool != nil ? .some(nil) : nil,
+            litByFile: false
         )
+    }
+
+    /// Copy working on Claude Code's file's word alone (D141, D177).
+    public func litByItsFile() -> SessionState {
+        guard !litByFile else { return self }
+        return replacing(litByFile: true)
     }
 
     /// Copy with a new failure cause.
@@ -512,7 +531,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
         costUSD: Double?? = nil,
         runningTool: RunningTool?? = nil,
         backgroundJob: BackgroundJob?? = nil,
-        unreadAnswers: Int? = nil
+        unreadAnswers: Int? = nil,
+        litByFile: Bool? = nil
     ) -> SessionState {
         SessionState(
             id: id,
@@ -536,7 +556,8 @@ public struct SessionState: Sendable, Equatable, Identifiable {
             runningTool: runningTool ?? self.runningTool,
             backgroundJob: backgroundJob ?? self.backgroundJob,
             unreadAnswers: unreadAnswers ?? self.unreadAnswers,
-            firstSeenAt: firstSeenAt
+            firstSeenAt: firstSeenAt,
+            litByFile: litByFile ?? self.litByFile
         )
     }
 }

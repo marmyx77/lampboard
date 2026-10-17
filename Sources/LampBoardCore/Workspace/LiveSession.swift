@@ -55,6 +55,13 @@ public struct LiveSession: Sendable, Equatable {
     /// What Claude Code itself says of the session in its file: `busy` while a
     /// turn is in progress, a subagent's included (D141).
     public let isBusy: Bool
+    /// Since when Claude Code's file has said `idle`, from its `statusUpdatedAt`;
+    /// `nil` for any other word, or a file that does not date it (D177).
+    public let idleSince: Date?
+    /// Whether the tail of the session's own transcript ends inside a turn
+    /// (`TranscriptActivity.turnIsOpen`), where it was read; `nil` when nothing
+    /// says — no tail read, or no turn in it.
+    public let turnIsOpen: Bool?
 
     /// For a background session, the Agent View's id for it: the folder under
     /// `~/.claude/jobs/` and what `claude attach` takes (AV2). Kept only when it
@@ -68,7 +75,23 @@ public struct LiveSession: Sendable, Equatable {
         LiveSession(
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
-            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, isBusy: isBusy,
+            idleSince: idleSince, turnIsOpen: turnIsOpen
+        )
+    }
+
+    /// The same session with what its transcript's tail says of its turn.
+    ///
+    /// `busy` holds only while that turn is not seen to have ended: Claude Code
+    /// also writes `busy` for background agents after a turn, and while it
+    /// compacts a conversation nobody is typing in (D177), and neither is a turn
+    /// at work. A tail that cannot say leaves the file's word alone.
+    public func with(turnIsOpen isOpen: Bool?) -> LiveSession {
+        LiveSession(
+            pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
+            name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
+            context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
+            isBusy: isBusy && isOpen != false, idleSince: idleSince, turnIsOpen: isOpen
         )
     }
 
@@ -86,10 +109,14 @@ public struct LiveSession: Sendable, Equatable {
         jobId: String? = nil,
         tmux: TmuxPlace? = nil,
         hasTranscript: Bool = false,
-        isBusy: Bool = false
+        isBusy: Bool = false,
+        idleSince: Date? = nil,
+        turnIsOpen: Bool? = nil
     ) {
         self.hasTranscript = hasTranscript
         self.isBusy = isBusy
+        self.idleSince = idleSince
+        self.turnIsOpen = turnIsOpen
         self.tmux = tmux
         self.jobId = jobId.flatMap { BackgroundJobParser.isSafe(id: $0) ? $0 : nil }
         self.context = context
@@ -175,7 +202,17 @@ public enum LiveSessionParser {
             modifiedAt: modifiedAt,
             procStart: (object["procStart"] as? String) ?? (object["procStart"] as? Int).map(String.init),
             jobId: (object["jobId"] as? String)?.trimmed.nilIfEmpty,
-            isBusy: (object["status"] as? String) == "busy"
+            isBusy: (object["status"] as? String) == "busy",
+            idleSince: idleSince(status: object["status"], updatedAt: object["statusUpdatedAt"])
         )
+    }
+
+    /// When an `idle` began, from the file's `statusUpdatedAt` in milliseconds
+    /// (D177). Any other word, or no moment, is no rest to measure.
+    public static func idleSince(status: Any?, updatedAt: Any?) -> Date? {
+        guard (status as? String) == "idle", let millis = (updatedAt as? NSNumber)?.doubleValue, millis > 0 else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: millis / 1000)
     }
 }

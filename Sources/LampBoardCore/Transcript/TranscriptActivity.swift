@@ -70,6 +70,12 @@ public enum TranscriptActivity {
                   let record = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
             switch record["type"] as? String {
+            // The summary a compaction writes is a `user` record nobody typed
+            // (D177). Taken for a prompt, it opened a turn on a conversation
+            // Claude Code had compacted while idle; the records before it say
+            // whether a turn was running when the compaction began.
+            case "user" where record["isCompactSummary"] as? Bool == true:
+                continue
             case "user":
                 return true
             case "assistant":

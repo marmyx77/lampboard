@@ -522,7 +522,35 @@ protect Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift
 attack_swift "a remote session working on its file's word alone" "is not yellow, whatever its file says" 1 <<'PY'
 p = "Sources/LampBoardCore/Workspace/RemoteSessionsDecoder.swift"
 s = open(p).read()
-open(p, "w").write(s.replace("                } != false\n", "                } != nil || true\n", 1))
+open(p, "w").write(s.replace("                } != false,\n", "                } != nil || true,\n", 1))
+PY
+
+# A conversation Claude Code compacts while idle says `busy` in its file
+# meanwhile, and that lit its row yellow for good on 2.3.0 (D177). The
+# compaction's end must rest a row only the file lit: without the rule the
+# recorded morning stays yellow and the suite must turn red.
+protect Sources/LampBoardCore/Reducer/StateReducer.swift
+attack_swift "an idle compaction that leaves its row working" "an idle compaction leaves the row at rest" 1 <<'PY'
+p = "Sources/LampBoardCore/Reducer/StateReducer.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("existing.baseStatus == .working, existing.litByFile {", "existing.baseStatus == .working, existing.litByFile, false {", 1))
+PY
+
+# And the way back when no hook comes at all: Claude Code's own `idle`, held a
+# minute. With the threshold removed, the file's rest never outweighs a yellow.
+protect Sources/LampBoardCore/Config/AppConfig.swift
+attack_swift "a yellow the file's idle never rests" "outweighs a yellow nothing renews" 1 <<'PY'
+p = "Sources/LampBoardCore/Config/AppConfig.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("fileRestOutweighsWorkingAfter: TimeInterval = 60", "fileRestOutweighsWorkingAfter: TimeInterval = .infinity", 1))
+PY
+
+# Nor at once: a reading taken between a prompt and its `busy` must not rest it.
+protect Sources/LampBoardCore/Config/AppConfig.swift
+attack_swift "a yellow the file's first idle rests at once" "is not yet a rest" 1 <<'PY'
+p = "Sources/LampBoardCore/Config/AppConfig.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("fileRestOutweighsWorkingAfter: TimeInterval = 60", "fileRestOutweighsWorkingAfter: TimeInterval = 0", 1))
 PY
 
 # Whatever happened above, the binaries must match the sources again.

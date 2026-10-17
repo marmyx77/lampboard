@@ -50,7 +50,12 @@ struct LiveSessionReader {
         guard let session = try? LiveSessionParser.parse(data: data, modifiedAt: modifiedAt) else {
             return nil
         }
-        return session.with(modifiedAt: lastActivity(of: session, fallback: modifiedAt))
+        let tail = transcriptTail(of: session)
+        return session
+            .with(modifiedAt: lastActivity(of: session, tail: tail, fallback: modifiedAt))
+            // Whether its turn is open, from the same tail (D177): `busy` holds
+            // only while it is not seen closed.
+            .with(turnIsOpen: tail.flatMap { TranscriptActivity.turnIsOpen(inTailChunk: $0.text, isWholeFile: $0.whole) })
     }
 
     /// When this session last did anything.
@@ -80,7 +85,7 @@ struct LiveSessionReader {
     /// The mtime stays as the fallback for a tail with nothing timestamped in it,
     /// which is a file being written heavily enough that something is genuinely
     /// happening to it.
-    private func lastActivity(of session: LiveSession, fallback: Date) -> Date {
+    private func lastActivity(of session: LiveSession, tail: (text: String, whole: Bool)?, fallback: Date) -> Date {
         let candidate = TranscriptLocator.candidateURL(
             sessionId: session.sessionId, cwd: session.cwd
         )
@@ -89,7 +94,9 @@ struct LiveSessionReader {
         // every one of these rows back where they were. When the transcript says
         // when it last spoke, that **is** the answer, and a file being touched is
         // not a second opinion about it.
-        if let spoken = lastSpokenMoment(atPath: candidate.path) { return spoken }
+        if let tail, let spoken = TranscriptActivity.lastTimestamp(inTailChunk: tail.text, isWholeFile: tail.whole) {
+            return spoken
+        }
         guard let attributes = try? FileManager.default.attributesOfItem(
             atPath: candidate.path
         ), let modified = attributes[.modificationDate] as? Date else {
@@ -98,8 +105,10 @@ struct LiveSessionReader {
         return max(modified, fallback)
     }
 
-    /// Reads the end of the transcript and asks Core when it last said anything.
-    private func lastSpokenMoment(atPath path: String) -> Date? {
+    /// The end of the session's transcript, read once for both questions Core
+    /// answers from it: when it last said anything, and whether its turn is open.
+    private func transcriptTail(of session: LiveSession) -> (text: String, whole: Bool)? {
+        let path = TranscriptLocator.candidateURL(sessionId: session.sessionId, cwd: session.cwd).path
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
         guard let size = (try? handle.seekToEnd()) else { return nil }
@@ -110,9 +119,7 @@ struct LiveSessionReader {
               let data = try? handle.readToEnd(), !data.isEmpty
         else { return nil }
 
-        return TranscriptActivity.lastTimestamp(
-            inTailChunk: String(decoding: data, as: UTF8.self), isWholeFile: wholeFile
-        )
+        return (String(decoding: data, as: UTF8.self), wholeFile)
     }
 
     /// The pid's process started when the file says: otherwise the pid was

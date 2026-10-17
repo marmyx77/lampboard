@@ -1,13 +1,13 @@
 # Code map
 
-~80,400 lines of Swift across five targets. For each file: what it contains, why
+~80,800 lines of Swift across five targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  25,634 lines · 196 files  pure logic, zero AppKit
-  LampBoardApp/    30,119 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  18,920 lines · 133 files   1354 cases, instantaneous
+  LampBoardCore/  25,754 lines · 196 files  pure logic, zero AppKit
+  LampBoardApp/    30,141 lines · 164 files   shell: AppKit, network, windows
+  LampBoardTests/  19,129 lines · 134 files   1369 cases, instantaneous
   LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
   TestKit/            369 lines · 4 files   minimal assertions
 ```
@@ -29,7 +29,7 @@ Everything that **decides** lives here.
 
 ## `Config/`
 
-### `AppConfig.swift` · 649
+### `AppConfig.swift` · 688
 Every constant in the project. Port, paths, thresholds, excluded entrypoints.
 
 `homeDirectory` honors `LAMPBOARD_HOME` and is the root of **every** path: it
@@ -94,7 +94,7 @@ Exists for Codex and not for Claude Code, and that asymmetry is a finding: the
 Claude binary builds its notification as `Claude needs your permission to use
 ${tool}` and carries no `tool_input` at all.
 
-### `SessionState.swift` · 542
+### `SessionState.swift` · 563
 The state of one session. **Immutable**: every transition produces a new instance
 through `replacing(…)`, which uses double optionals to tell "leave it alone"
 apart from "clear it".
@@ -440,6 +440,11 @@ timestamp at all.
 So the answer comes from the last record that carries one. A record with no
 timestamp is not a moment, whatever it did to the file, and a row that invents
 activity is worse than a row that says nothing.
+
+`turnIsOpen` reads the same tail for whether a turn is running: open after a
+prompt, a tool call or a tool's result, closed after the model ended its turn.
+The summary a compaction writes is a `user` record nobody typed and is skipped
+(D177).
 
 ### `TranscriptPathPolicy.swift`
 Which transcript paths the app will open: only those under `~/.claude`, after
@@ -1440,7 +1445,7 @@ dialog (`returned`).
 
 ## `Reducer/`
 
-### `StateReducer.swift` · 728
+### `StateReducer.swift` · 768
 `(state, action) → new state`. The densest file in the project.
 
 The order of the checks in `apply`, and it is **not arbitrary**:
@@ -1448,8 +1453,9 @@ The order of the checks in `apply`, and it is **not arbitrary**:
 2. **is it a subagent lifecycle event?** ← before the rule that discards
 3. does it come from a subagent? → discard
 4. is it `SessionEnd`? → remove
-5. map event → state, or discover a new session
-6. protection from late signals (`shouldKeep`)
+5. a compaction on a row only the session file lit → rest (D177)
+6. map event → state, or discover a new session
+7. protection from late signals (`shouldKeep`)
 
 > **Step 2 before step 3** is the subagent correction. Swapping them undoes it,
 > silently.
@@ -1681,7 +1687,7 @@ becomes an argument to `ssh` — one starting with a dash would be read as
 once into the preferences on upgrade (D24). The hosts themselves live in the
 Settings window.
 
-### `RemoteProbeScript.swift` · 211
+### `RemoteProbeScript.swift` · 220
 The script that runs **on** the other machine, in one piece and under test. It is a
 promise made to a machine we do not control, and the shape it prints is what
 `RemoteSessionsDecoder` parses — if the two drift, activity silently falls back to
@@ -1702,7 +1708,7 @@ from a row called "experiment" whose window was called `simlab` (D51).
 Which sessions another machine's probe reports become rows before they speak
 (D137): a terminal's, with a conversation, while terminal sessions are shown.
 
-### `RemoteSessionsDecoder.swift` · 140
+### `RemoteSessionsDecoder.swift` · 149
 The other machine's answer, entering the domain. Validates like
 `HookPayloadDecoder`, with one difference: **a single bad record is skipped, not
 thrown**. The output comes from a Claude Code version we do not control, and one
@@ -1723,7 +1729,8 @@ The table of recognized editors: declared name, bundle, process name.
 ### `IDEWindow.swift` · `LiveSession.swift`
 The two parsers for the on-disk files. A live file's `jobId` — a background
 session's folder under `~/.claude/jobs/` — is kept only when it is fit for a
-shell (AV2).
+shell (AV2). Its `idle` carries the moment it began (`statusUpdatedAt`), and its
+`busy` holds only while the transcript's tail does not show the turn ended (D177).
 
 ### `SessionDeepLink.swift` · `AppleScriptString.swift`
 The extension's URI, the policy that sends it only to sessions the extension
@@ -2055,7 +2062,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | File | Lines | What |
 |---|---|---|
 | `StateStore.swift` | 800 | `@MainActor`, `@Published`, periodic realignment; the Codex probe is started here and awaited nowhere |
-| `StateStoreAdoption.swift` | 341 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
+| `StateStoreAdoption.swift` | 361 | where a remote conversation sits in tmux, preferring that process when another holds it too, and every place that holds it (D166); where an unclaimed hook belongs — a terminal tab's file, or a background session's, admitted with terminal sessions off and never an editor's (D103) — and the rows nobody announced: the Claude Code sessions already running, Codex from an open rollout, Claude Desktop from its index and transcript. All obey the same two rules — what a probe could not see is never read as gone, and a state nobody reported is never dressed up as one that was |
 | `BackgroundJobReader.swift` | 46 | a background row's job file, the one its live file names, read on each poll while a background row exists — never the whole folder, which keeps every job ever run; a file past 256 KB or naming another session is no job, and a job gone clears the row's (D104) |
 | `DesktopCodeSessionFinder.swift` | 45 | the Code tab id of a row's conversation, found at the click (D107): every index under `claude-code-sessions`, the folder resolved first because a listing does not follow a link, a file parsed only when its bytes hold the session's id |
 | `ClaudeDesktopScanner.swift` | 242 | finds the Claude Desktop conversations running here. Presence is the index and the transcript, never the agent process: that process lives one turn, so a row built on it vanished at the moment there was an answer to read |
@@ -2102,7 +2109,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `RemoteFleet.swift` | 229 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again; the list read again on the remote poll's clock, since a host added from a terminal raises no notification here; a node's mod brought to this app's version at the check (D83) |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 100 | blocked when the signature is ad-hoc |
-| `LiveSessionReader.swift` | 135 | reads the live sessions; takes activity from the **transcript**, not the session file. A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
+| `LiveSessionReader.swift` | 142 | reads the live sessions; takes activity from the **transcript**, not the session file, and from the same tail whether the turn is open (D177). A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
 | `ConversationIndex.swift` | 124 | whether a session has ever held a conversation, which is what a row stands for. The derived path first, then a search by session id across the project folders, because a session in a git worktree files its transcript where the derivation does not look (D44) |
 | `FinderReveal.swift` | 28 | opens a Finder window **inside** the folder, not on it (D33) |
 | `AccountLimitsReader.swift` | 344 | asks Anthropic how much of the allowance is gone, signed with the token Claude Code keeps in the keychain, and for every account the Claude application runs Claude Code as on this Mac (D53). **Borrows it, never renews it**: spending the refresh token could sign the person out of Claude Code, so an aged-out token means the strip goes quiet. Read through `/usr/bin/security`, the tool Claude Code writes it with, so macOS asks nothing (D52) |
@@ -2310,7 +2317,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1354 cases
+## `LampBoardTests/` — 1369 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2319,6 +2326,7 @@ script, before it was split. The most important ones:
 | Suite | Covers |
 |---|---|
 | `StateReducerSuite` · `ReducerFixesSuite` | the state machine, including the four semantic corrections |
+| `IdleCompactionSuite` | the morning a conversation compacted while idle stayed yellow, and the session file's `idle` that rests a yellow nothing will end (D177) |
 | `SubagentSuite` | counter and derived state |
 | `ColumnLayoutSuite` | grouping, the user's order, filtering, summary |
 | `RowNamesSuite` | a name shown over folder and title, stored by folder, blank restores; the label in the payload |
@@ -2541,5 +2549,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits thirty violations and demands thirty catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits thirty-three violations and demands thirty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

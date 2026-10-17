@@ -630,6 +630,13 @@ public enum AppConfig {
     /// Locks are not always removed when the window closes.
     public static let ideLockMaxAge: TimeInterval = 60 * 60 * 24 * 7
 
+    /// How long Claude Code's file must have said `idle`, and the hooks said
+    /// nothing, before that word rests a row still working (D177). Longer than
+    /// two remote polls, so one reading taken between a prompt and its `busy`
+    /// cannot do it; short enough that a yellow nothing will end is gone
+    /// within a minute or two.
+    public static let fileRestOutweighsWorkingAfter: TimeInterval = 60
+
     /// A session with no signals for longer than this interval is dropped from the column.
     public static let sessionStaleAfter: TimeInterval = 60 * 60 * 12
 

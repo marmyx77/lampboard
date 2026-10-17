@@ -285,9 +285,24 @@ extension StateStore {
         }
     }
 
-    /// Claude Code's own `busy` lights a row known only as idle (D141).
+    /// Claude Code's own `busy` lights a row known only as idle (D141), and its
+    /// own `idle` rests one still working (D177). `now` is when the files were
+    /// read: the start of a probe, or this Mac's poll.
     func lightBusy(_ sessions: [LiveSession], at now: Date) {
         for session in sessions where session.isBusy { apply(.busy(sessionId: session.sessionId), now: now) }
+        restFromFiles(sessions, at: now)
+    }
+
+    /// The way back for a yellow no hook will end (D177): a row still working
+    /// whose file has said `idle` for a minute, with the hooks as quiet.
+    func restFromFiles(_ sessions: [LiveSession], at now: Date) {
+        for session in sessions {
+            guard let idleSince = session.idleSince, state.sessions[session.sessionId]?.baseStatus == .working else {
+                continue
+            }
+            apply(.fileRest(sessionId: session.sessionId, idleSince: idleSince,
+                            turnIsOpen: session.turnIsOpen, readAt: now), now: now)
+        }
     }
 
     /// The sessions resting on `host`, found rather than announced (D137): a
