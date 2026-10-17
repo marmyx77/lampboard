@@ -258,7 +258,7 @@ def actions():
     `claude` first on PATH, and a session whose message box writes down what it
     takes (the box of Claude Code 2.1.224 and later, D81)."""
     for name in ("api", "web", "docs", "billing", "search", "mobile", "old", "old2", "blank", "sdk", "batch", "twin",
-                 "site", "editor", "uinew"):
+                 "site", "editor", "uinew", "uinew-iphone", "uinew-ipad"):
         os.makedirs(os.path.join(HOME, "work", name), exist_ok=True)
     api = os.path.join(HOME, "work", "api")
     os.makedirs(os.path.join(api, "src"), exist_ok=True)
