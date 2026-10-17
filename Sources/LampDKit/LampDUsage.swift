@@ -53,4 +53,27 @@ public enum LampDUsage {
         if reading.throttled { out.append("the usage service answered 429 to one of the tokens") }
         return out
     }
+
+    /// Writes a reading where `lampd usage --cached` and the phone (W3b) find it.
+    public static func save(_ reading: Reading, to path: String) {
+        let object: [String: Any] = [
+            "at": ISO8601DateFormatter().string(from: reading.at),
+            "lines": lines(reading, at: reading.at),
+            "problem": reading.problem ?? NSNull(),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return }
+        try? AtomicFile.write(data, to: path)
+    }
+
+    /// The service's own refresher, only when the configuration turns it on: one
+    /// reading every `interval`, on a thread of its own and never on the main
+    /// loop, which the watchdog times.
+    public static func refresh(paths: LampDPaths, name: String, every interval: TimeInterval = AppConfig.usagePollInterval) {
+        Thread.detachNewThread {
+            while true {
+                save(read(paths: paths, name: name), to: paths.allowanceFile)
+                Thread.sleep(forTimeInterval: interval)
+            }
+        }
+    }
 }

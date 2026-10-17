@@ -158,7 +158,7 @@ command for sshd) and `NodeLinkCheck`.
 
 ### `LampBoardE2E` — the real chain
 
-186 cases. They launch **the production binary** against a fake home and talk to
+187 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.

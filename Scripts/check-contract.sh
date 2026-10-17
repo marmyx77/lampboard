@@ -23,8 +23,19 @@
 #   ./Scripts/check-contract.sh            static checks only — seconds, free
 #   ./Scripts/check-contract.sh --live     also runs a real probe session
 #   ./Scripts/check-contract.sh --record   re-records the golden baseline
+#   ./Scripts/check-contract.sh --node     on a Linux machine with lampd, from the
+#                                          copy lampd-install.sh puts there (E5)
 #
 # The live probe spends a few tokens: it runs two tiny `claude -p` sessions.
+#
+# NEEDS: python3; `strings` from binutils for the sections that read Claude
+# Code's binary, which say "could not look" where it is missing.
+#
+# ON A NODE (--node), for lampd's contract timer: Claude Code is never run for
+# its version, which is read from where the native installer keeps it
+# (~/.local/share/claude/versions/<version>); the editor's lock files and the
+# companion mod's own reading are the Mac's, not this machine's, and are not
+# asked for. Combine with --live for the probe sessions.
 
 set -euo pipefail
 
@@ -34,12 +45,17 @@ SPEC="$CONTRACTS/required-fields.json"
 GOLDEN="$CONTRACTS/golden/hooks.jsonl"
 
 MODE="static"
-case "${1:-}" in
-    --live)   MODE="live" ;;
-    --record) MODE="record" ;;
-    "")       ;;
-    *) echo "unknown option: $1"; exit 2 ;;
-esac
+NODE=0
+for argument in "$@"; do
+    case "$argument" in
+        --live)   MODE="live" ;;
+        --record) MODE="record" ;;
+        --node)   NODE=1 ;;
+        *) echo "unknown option: $argument"; exit 2 ;;
+    esac
+done
+HAVE_STRINGS=0
+command -v strings >/dev/null 2>&1 && HAVE_STRINGS=1
 
 # Every check increments one of these. A run that ends with CHECKS at zero is a
 # run that verified nothing, and it must fail rather than print a reassuring
@@ -69,7 +85,16 @@ head_ "Claude Code"
 # `command -v` first: under `set -euo pipefail` a missing binary would kill the
 # script with exit 127 right here, before the "claude not found" branch below
 # ever ran. Found by a reviewer reading the script as a stranger would.
-INSTALLED="$( (command -v claude >/dev/null 2>&1 && claude --version 2>/dev/null | awk '{print $1}') || true )"
+if [ "$NODE" = 1 ]; then
+    # Read, not run: where the native installer keeps the binary names its version.
+    RESOLVED="$(readlink -f "$(command -v claude 2>/dev/null)" 2>/dev/null || true)"
+    case "$RESOLVED" in
+        */claude/versions/*) INSTALLED="$(basename "$RESOLVED")" ;;
+        *) INSTALLED="" ;;
+    esac
+else
+    INSTALLED="$( (command -v claude >/dev/null 2>&1 && claude --version 2>/dev/null | awk '{print $1}') || true )"
+fi
 EXPECTED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["verifiedAgainst"])' "$SPEC")"
 
 if [ -z "$INSTALLED" ]; then
@@ -134,7 +159,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 head_ "Files on disk"
 
-python3 - "$SPEC" <<'PY' && ok "lock and session files carry the fields we read" || bad "see above"
+CONTRACT_NODE="$NODE" python3 - "$SPEC" <<'PY' && ok "lock and session files carry the fields we read" || bad "see above"
 import json, os, sys, glob
 spec = json.load(open(sys.argv[1]))
 home = os.path.expanduser("~")
@@ -155,7 +180,9 @@ def check(pattern, fields, label):
     if missing:
         problems.append(f"{label} {os.path.basename(sample)} lacks: {', '.join(missing)}")
 
-check(f"{home}/.claude/ide/*.lock", spec["lockFileFields"], "IDE lock")
+# On a node an editor's lock exists only while a Remote-SSH window is open.
+if os.environ.get("CONTRACT_NODE") != "1":
+    check(f"{home}/.claude/ide/*.lock", spec["lockFileFields"], "IDE lock")
 check(f"{home}/.claude/sessions/*.json", spec["sessionFileFields"], "session file")
 
 for p in problems:
@@ -204,6 +231,8 @@ head_ "Hook event inventory"
 # appearing, or one we register being renamed out from under us.
 if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
     skip "claude binary not found - the hook event inventory was not examined"
+elif [ "$HAVE_STRINGS" = 0 ]; then
+    skip "strings (binutils) is not here - the hook event inventory was not examined"
 else
     python3 - "$SPEC" "$CLAUDE_BIN" <<'INVPY' && ok "the event list is the one recorded, and every event we register exists" || bad "the hook event inventory moved - see above"
 import json, re, subprocess, sys
@@ -453,7 +482,7 @@ head_ "Where a session actually gets compacted"
 # `trigger: "auto"` is a session that hit the ceiling; the last reply before it
 # is our reading at that moment. A reading above 100% of the recorded window
 # would mean the denominator is too small — that is what this fails on.
-COMPACTION_REPORT="$(Scripts/measure-compaction.py 2>&1)" && COMPACTION_STATUS=0 || COMPACTION_STATUS=$?
+COMPACTION_REPORT="$(python3 "$ROOT/Scripts/measure-compaction.py" 2>&1)" && COMPACTION_STATUS=0 || COMPACTION_STATUS=$?
 
 case "$COMPACTION_STATUS" in
     0) ok "every reading sits inside its model's window"
@@ -474,6 +503,8 @@ head_ "Background work (the reason a working session is not green)"
 # it lives in the binary where nobody owes us a deprecation.
 if [ -z "${CLAUDE_BIN:-}" ] || [ ! -f "${CLAUDE_BIN:-}" ]; then
     skip "claude binary not found - the background-work contract was not examined"
+elif [ "$HAVE_STRINGS" = 0 ]; then
+    skip "strings (binutils) is not here - the background-work contract was not examined"
 else
     python3 - "$SPEC" "$CLAUDE_BIN" <<'BGPY' && ok "the in-flight list is still filtered the way the column assumes" || bad "the background-work contract moved - see above"
 import json, re, subprocess, sys
@@ -731,7 +762,7 @@ if [ "$MODE" = "live" ] || [ "$MODE" = "record" ]; then
     LINES="$(wc -l < "$TMP/recording.jsonl" | tr -d ' ')"
     if [ "$LINES" = "0" ]; then
         bad "the probe captured nothing — no conclusion can be drawn from this run"
-        note "check that `claude` is authenticated and can run non-interactively"
+        note "check that 'claude' is authenticated and can run non-interactively"
     else
         ok "$LINES hook invocations captured"
 
@@ -929,6 +960,9 @@ else
         note "Contracts/assumptions.md, mod.api, says what stops arriving."
     fi
 
+    if [ "$NODE" = 1 ]; then
+        note "the mod's own reading is checked on the Mac, where its sources are"
+    else
     VALIDATE="$( (cd "$ROOT" && claude plugin validate --strict --json ./mod 2>/dev/null) || true )"
     if REPORT="$(printf '%s' "$VALIDATE" | python3 -c '
 import json, re, sys
@@ -959,6 +993,7 @@ sys.exit(1 if problems else 0)
         ok "Claude Code reads the mod as recorded ($REPORT)"
     else
         bad "the mod is not what the contract records: $REPORT"
+    fi
     fi
 fi
 

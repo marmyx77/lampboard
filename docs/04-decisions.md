@@ -6570,3 +6570,65 @@ opens its terminal, where the person answers. The Mac does not take amber from t
 (`statusForAHeardRow`): its hooks carry the question and its way back, and a dialog the person closes fires
 no hook, so an amber lit there from the file would have nothing to put it out. An answer to read and red
 are still told only by hooks.
+
+## D177 · `lampd`, in the shade: the Linux machine's lights served from its own files
+
+**Decided** (17 October 2026), as the first step of W3 of the mobile plan (ADR-65 of the node's register,
+approved with E1–E5 on 15 October, and E10 as amended on 17 October): the Linux machine gets a service of
+its own that serves the phone `v1`, before it takes any hook.
+
+**What.**
+- `LampDKit` and the `lampd` command (`Sources/LampDKit/`, `Sources/LampD/`): `NodeSource`, a `V1Source`
+  whose rows are made from one look at Claude Code's files every five seconds. The look is the Core's own
+  probe (`V1ProbeReading.command()`, `RemoteProbeScript`), run on the machine instead of over ssh, and its
+  rows are `V1ProbeSource.rows(from:)`: the lamp of a row (busy, shell, waiting, idle, the turn, when the
+  session last spoke) is decided once, for the phone's look and for `lampd`. `lampd` adds only what a
+  machine knows of itself: a background session's job, and the person's choices.
+- A numbered journal kept on disk (`NodeJournal`): a restart keeps its name and numbers, so a phone that
+  held number 412 asks for what came after 412. A journal whose events outran the rows that include them
+  starts again under another name rather than give a number twice.
+- The person's choices about the rows (`RowPreferences`: name, mute, hidden, place, read, taken off), each
+  with the date it was set, for the Mac 2.4's one-time merge (§2.12). A row taken off comes back when its
+  session speaks after it.
+- `lampd serve`, under `systemd --user` (`deploy/lampd/lampd.service`): `Type=notify`, `READY=1` once its
+  Unix socket is bound and the first look done, `WATCHDOG=1` from the main loop alone; connections are
+  served by threads of their own with bounded queues, so a slow phone never holds the loop; SIGTERM tells
+  every connection `bye`. No network port, no hook: the 31000 stays the Mac's tunnel until W5.
+- `lampd v1-stdio`, the command a read key's line forces: it carries bytes to the service's socket, and
+  with the service stopped it reads the files itself, with the same `NodeSource`, for as long as the
+  channel lasts. `hello` gains `mode` (`live` or `files`): the phone keeps its lights with the read key
+  alone, says "reading files", and never asks for Face ID. A client one version behind ignores the field.
+- `lampd devices add|list|revoke`: the phone's two keys as two lines of `authorized_keys` ending in
+  `lampboard-device:<id>:read|action` — the read key `restrict,from=…,command="…/lampd v1-stdio --device
+  <id>"`, the action key `restrict,pty,from=…`; `from=` is the tailnet and the machine's own networks
+  unless given. Every other line is given back byte for byte, and a rewrite that would move one is refused.
+- `lampd status`, `doctor`, `usage`, `look`, `replay`; `Scripts/lampd-install.sh` installs the static
+  binary, the units marked with their commit, and the contract's runner.
+- The wire contract names `awaiting` among the statuses: it is the word the read endpoint writes for
+  amber, and the contract said `blocked`, a word no source writes. The reference fixture never had an
+  amber row, so nothing had noticed.
+
+**Why.** The Mac's tunnel to the Linux machine drops several times a day, and with it every event of that
+machine's sessions (ADR-65's measure); the phone, meanwhile, reads the machine every ten seconds over ssh
+with the action key. A service on the machine itself, reading the same files with the same rule, serves the
+phone at once, through a key that can do nothing else, and is the place the hooks will reach in W5.
+
+**Measured** in a container with the Linux machine's versions, behind a real OpenSSH (`Scripts/test-lampd.sh`):
+the conformance battery passes against `lampd v1-stdio`; on three frames of recorded session files `lampd`
+and the phone's look give every session the same lamp; the read key gets `v1` and no terminal, another
+network's phone and a revoked one stay out, the house's lines are untouched; with the service stopped the
+read key still gets the same lights, `mode: files`; the recorded hook flows reduce to the golden files the
+Mac's end-to-end suite holds the app to; the app's Core of commit `0cb9a9c` reads `lampd` and still looks
+over ssh. Under `systemd --user` with the unit as installed (`Scripts/test-lampd-watchdog.sh`), a loop stopped
+on purpose is restarted in 38 s with `WatchdogSec=30`, the age in `hello` climbing meanwhile; a stop with a
+phone attached takes 58 ms and the phone is told `bye`.
+
+**Discarded:** a reader of the session files written again in Swift (the copy that drifts; the probe's
+Python is the Core's and already runs on every machine with Claude Code); `v1-stdio` exiting 69 without the
+service (E10 as first written: the lights would go out with the service); the heartbeat on a thread of its
+own (S-G v2: a frozen loop is never restarted); writing the phone's lines from the phone (R2: trust goes from
+the owner, and from W5 from the Mac).
+
+**Signal to revisit:** the tee of W5 (`lampd.socket` on the 31000, the route table, `/mod` read), the push
+relay of W4, a new word in Claude Code's session file, or a transcript of hundreds of megabytes read for
+`transcript` (the window is 64 MB).

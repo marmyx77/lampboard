@@ -72,6 +72,7 @@ public final class LampDService: @unchecked Sendable {
         log.write("serving \(paths.socket) as \(config.name)")
         Thread.detachNewThread { [self] in acceptLoop() }
         Thread.detachNewThread { [self] in pollLoop() }
+        if config.allowance { LampDUsage.refresh(paths: paths, name: config.name) }
         mainLoop()
         shutDown()
         return 0

@@ -803,7 +803,7 @@ attack_platform Scripts/test-lampd.sh "v1-stdio that exits 69 when the service i
 p = "Sources/LampDKit/LampDStdio.swift"
 s = open(p).read()
 old = "        let log = LampDLog(file:"
-open(p, "w").write(s.replace(old, "        exit(69)\n" + old, 1))
+open(p, "w").write(s.replace(old, "        if !device.isEmpty { exit(69) }\n" + old, 1))
 PY
 
 # The read key's line allowing a terminal: OpenSSH must be seen opening it.
@@ -846,7 +846,7 @@ PY
 
 # The journal replaying, after a reconnection, the event the phone holds.
 protect Sources/LampDKit/NodeJournal.swift
-attack_platform Scripts/test-lampd.sh "a journal that replays the event the phone already holds" "in order, no hole" <<'PY'
+attack_platform Scripts/test-lampd.sh "a journal that replays the event the phone already holds" "the event after what the phone held" <<'PY'
 p = "Sources/LampDKit/NodeJournal.swift"
 s = open(p).read()
 open(p, "w").write(s.replace("return .events(log.filter { $0.seq > since })", "return .events(log.filter { $0.seq >= since })", 1))
@@ -869,6 +869,38 @@ attack_platform Scripts/test-lampd.sh "minClient raised without a word" "it answ
 p = "Sources/LampBoardCore/V1/V1Protocol.swift"
 s = open(p).read()
 open(p, "w").write(s.replace("public static let minClient = 1", "public static let minClient = 2", 1))
+PY
+
+chapter "lampd's contract timer"
+
+# The four defects of the contract check read for the node in W0 (E5), each
+# put back: the timer's run on a node must say so.
+protect Scripts/check-contract.sh
+attack_platform Scripts/test-contract-node.sh "a note in backticks that runs claude" "claude was run with no arguments" <<'PY'
+p = "Scripts/check-contract.sh"
+s = open(p).read()
+open(p, "w").write(s.replace("check that 'claude' is authenticated", "check that `claude` is authenticated", 1))
+PY
+
+protect Scripts/check-contract.sh
+attack_platform Scripts/test-contract-node.sh "a script called by a path relative to the checkout" "a script called by a path relative to the checkout" <<'PY'
+p = "Scripts/check-contract.sh"
+s = open(p).read()
+open(p, "w").write(s.replace('python3 "$ROOT/Scripts/measure-compaction.py"', "python3 Scripts/measure-compaction.py", 1))
+PY
+
+protect Scripts/check-contract.sh
+attack_platform Scripts/test-contract-node.sh "strings used where nobody asked whether it is there" "it crashed instead of saying so" <<'PY'
+p = "Scripts/check-contract.sh"
+s = open(p).read()
+open(p, "w").write(s.replace('elif [ "$HAVE_STRINGS" = 0 ]; then\n    skip "strings (binutils) is not here - the hook event inventory was not examined"\n', "", 1))
+PY
+
+protect Scripts/check-contract.sh
+attack_platform Scripts/test-contract-node.sh "the editor's lock asked for on a node" "red for ever on a node" <<'PY'
+p = "Scripts/check-contract.sh"
+s = open(p).read()
+open(p, "w").write(s.replace('if os.environ.get("CONTRACT_NODE") != "1":', "if True:", 1))
 PY
 
 chapter "lampd's watchdog"

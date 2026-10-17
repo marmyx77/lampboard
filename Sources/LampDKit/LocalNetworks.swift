@@ -56,7 +56,7 @@ public enum LocalNetworks {
     static func network(ip: UInt32, mask: UInt32) -> String? {
         let prefix = mask.nonzeroBitCount
         guard prefix > 0, prefix <= 32, mask == (prefix == 32 ? UInt32.max : ~(UInt32.max >> UInt32(prefix))) else { return nil }
-        if ip >> 22 == (100 << 2 | 1) { return nil } // 100.64.0.0/10
+        if ip >> 22 == (100 << 2 | 1) { return nil } // the tailnet's /10, listed whole
         let base = ip & mask
         let octets = [base >> 24, (base >> 16) & 0xFF, (base >> 8) & 0xFF, base & 0xFF].map { String($0) }
         return octets.joined(separator: ".") + "/\(prefix)"

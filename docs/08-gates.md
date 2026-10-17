@@ -69,7 +69,7 @@ Measured on an M-series Mac, 29 August 2026.
 |---|---|---|---|---|---|
 | Domain suite (1495 cases) | the pure logic behaves | filesystem | `bite.sh --swift` breaks a comparison and demands exit 1 | CI, `test.sh` | 1.9 s |
 | The instrument (19 proofs) | the assertions can fail | filesystem | `bite.sh --swift`, three mutations of TestKit | every suite run, first | in the above |
-| End-to-end suite (186 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
+| End-to-end suite (187 cases) | the real binary, over HTTP, against a fake home | filesystem | the suite launches the shipped binary; a broken build cannot pass it | CI, `test.sh` | 42 s |
 | Figures in the code map | every stated line count, file count and case count | filesystem | `bite.sh` drifts a figure, then rewords the table away | CI, `test.sh` | 0.5 s (all nine) |
 | Links between documents | every relative link and anchor resolves | filesystem | `bite.sh` breaks a link, then deletes a guarded document | CI, `test.sh` | ” |
 | Figures outside the code map | README and docs state the same numbers | filesystem | `bite.sh` drifts one, then rewords the sentence away | CI, `test.sh` | ” |
@@ -85,6 +85,9 @@ Measured on an M-series Mac, 29 August 2026.
 | The Core builds and tests on Linux | the Core and the domain suite build on Linux, warnings as errors, and every case passes there; a write into a closed pipe does not end the process (D173) | filesystem | `bite.sh --linux` imports Darwin into the Core with no condition | a machine with docker, `Scripts/test-linux.sh`: **not** the test Mac | 25 s warm, 2 min cold |
 | One protocol, every source | every `v1` source passes the conformance battery over a byte stream, held to a contract written by hand: hello and the state's age, a stream with no hole and no double across a reconnection, the low-power actions and nothing else (D174) | filesystem | `bite.sh --swift` renames a row's field in what the source writes and demands the battery name it | CI, `test.sh`, `Scripts/test-linux.sh` | in the domain suite |
 | NodeLink over ssh | the `v1` conformance battery passes against the reference node behind a real OpenSSH, through NodeLink; a changed host key is refused before anything is opened; a read key asking for anything else gets `v1` and its command never runs; an unknown key is refused; a silent machine costs the deadline; the link resumes over ssh (D175). On a second node with the Linux machine's versions (OpenSSH 9.6p1, tmux 3.4): the terminal carries 10 MiB byte for byte and 1 MiB written whole, the read key's PTY is refused, a command's end is a normal one; through tmux a key reaches the pane and `window-change` resizes; with three clients the phone takes the size and the background rule gives it back to the Mac; the lights read over ssh make rows, follow changes and write nothing (D176) | filesystem | `bite.sh --nodelink` drops the read key's forced command, lets any host key in, renames a row's field, loses a byte of every terminal piece, lets the read key's line open a PTY, takes the detach out of the background rule, and makes the look at the lights write a file | a machine with docker, `Scripts/test-nodelink.sh`: **not** the test Mac | ~1.5 min warm, a few cold |
+| lampd on a fake node | `lampd`, built static as installed, behind a real OpenSSH with the Linux machine's versions (D177): its own suite; the conformance battery against `lampd v1-stdio`; one rule for the files — on three frames of recorded session files `lampd` and the phone's look give every session the same lamp; the read key `lampd devices add` wrote gets `v1` and no terminal, another network's phone and a revoked one stay out, the house's own lines are untouched; with the service stopped the read key still gets the lights, `mode: files`; the recorded hook flows reduce to the golden files the Mac's end-to-end suite is held to; the Core of the app one version behind reads it | filesystem | `bite.sh --lampd` gives `lampd` a rule of its own for the files, makes `v1-stdio` exit 69 without the service, lets the read key's line open a PTY, drops a phone's `from=`, leaves a revoked phone's lines, drops the house's comments, replays an event twice, inverts the downgrade rule for an answer, and raises `minClient` | a machine with docker, `Scripts/test-lampd.sh`: **not** the test Mac | ~1.5 min warm, ~5 cold |
+| lampd's watchdog | under `systemd --user`, with the settings of `deploy/lampd/lampd.service`, a loop stopped on purpose is killed and restarted within `WatchdogSec` while the age in `hello` climbs, and a stop with a phone attached tells it `bye` and is quick (D177, E10) | filesystem | `bite.sh --lampd` sends the heartbeat from a thread of its own | a Linux machine with `systemd --user`, `Scripts/test-lampd-watchdog.sh` | ~45 s |
+| The contract on a node | lampd's contract timer runs the check from its installed copy on a machine without binutils: Claude Code is never run for its version, nothing crashes on a missing tool or a path relative to the checkout, nothing is red for ever because the machine is not a Mac (E5) | filesystem | `bite.sh --lampd` puts back each of the four defects: a note in backticks, a relative path, `strings` unasked, the editor's lock required | a machine with docker, `Scripts/test-contract-node.sh` | ~5 s |
 | Every package is pinned | each package the dependency graph reaches has a pin in the committed `Package.resolved`, at the version the graph uses, and the build moved none (D175) | filesystem | `bite.sh --pins` removes BigInt's pin | `test.sh` | a few seconds |
 | The Mac app links only its own | the app reaches no product of another package, as the manifest reads on a Mac: the ssh stack is NodeLink's alone (D175) | filesystem | `bite.sh --links` makes the app name NodeLink | `test.sh` | 2 s |
 | The tree is as it was found | the checks restore what they damage | filesystem | `git status` after everything | CI | instant |
@@ -94,7 +97,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits forty-seven violations and demands forty-seven catches. It takes 26
+`bite.sh` commits sixty-one violations and demands sixty-one catches. It takes 26
 seconds.
 
 ## The two platform gates
@@ -134,6 +137,17 @@ and announced; `Scripts/bite.sh --linux` is how it is proved, on a machine with
 docker. A change to the Core is not done until that has run, and a change to
 NodeLink not until `Scripts/test-nodelink.sh` and `Scripts/bite.sh --nodelink`
 have.
+
+`lampd` (D177) has three scripts of the same kind. `Scripts/test-lampd.sh` builds
+the static binary with `Scripts/lampd-build.sh`, puts it on a node with the Linux
+machine's versions as `Scripts/lampd-install.sh` would, lets `lampd devices add`
+write the phone's lines into an `authorized_keys` that already holds the house's
+own, plays Claude Code's session files frame by frame (`Tests/NodeFixture/`), and
+asks it, through NodeLink, everything the phone will. `Scripts/test-lampd-watchdog.sh`
+runs the binary under this machine's `systemd --user` in a transient unit with the
+repository unit's settings and a home of its own. `Scripts/test-contract-node.sh`
+runs the contract check as the timer does. A change to `lampd` is not done until
+the three and `Scripts/bite.sh --lampd` have run.
 
 ## The rule
 

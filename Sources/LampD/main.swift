@@ -23,7 +23,7 @@ import Darwin
 //   lampd devices revoke <id>
 //   lampd status                      what the running service says of itself
 //   lampd doctor                      everything lampd depends on, read only
-//   lampd usage                       this machine's allowance, asked once
+//   lampd usage [--cached]            this machine's allowance, asked once (or as last kept)
 //   lampd look                        asks the service to look at the files now
 //   lampd replay <flow.jsonl>         recorded hooks, reduced as the tee will
 //   lampd version
@@ -130,6 +130,16 @@ case "doctor":
     exit(lines.contains { $0.verdict == .red } ? 1 : 0)
 
 case "usage":
+    if arguments.contains("--cached") {
+        // What the service's refresher last wrote ("allowance": true in the configuration).
+        guard let data = FileManager.default.contents(atPath: paths.allowanceFile),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            fail("no reading kept: the service asks only with \"allowance\": true in \(paths.configFile)", code: 1)
+        }
+        print("read at \(object["at"] as? String ?? "?")")
+        for line in object["lines"] as? [String] ?? [] { print(line) }
+        exit(0)
+    }
     let reading = LampDUsage.read(paths: paths, name: config.name)
     for line in LampDUsage.lines(reading) { print(line) }
     exit(reading.reports.isEmpty ? 1 : 0)

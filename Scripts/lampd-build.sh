@@ -103,9 +103,9 @@ cp "$SRC/Package.resolved" "$CACHE/Package.resolved" 2>/dev/null
 BIN="$CACHE/build/out/Products/Release-staticlinux-x86_64/LampD"
 [ -f "$BIN" ] || BIN="$(find "$CACHE/build" -path '*release*' -name LampD -type f -perm -u+x 2>/dev/null | head -1)"
 [ -n "$BIN" ] && [ -f "$BIN" ] || failed "the build said yes and left no binary"
-run strip -o /tmp/h/lampd.stripped "/src/.build/${BIN#"$CACHE/build/"}" || failed "the binary could not be stripped"
-install -m 0755 "$CACHE/home/lampd.stripped" "$OUT/lampd" || failed "the binary could not be put in $OUT"
-rm -f "$CACHE/home/lampd.stripped"
+run strip -o /src/.build/lampd.stripped "/src/.build/${BIN#"$CACHE/build/"}" || failed "the binary could not be stripped"
+install -m 0755 "$CACHE/build/lampd.stripped" "$OUT/lampd" || failed "the binary could not be put in $OUT"
+rm -f "$CACHE/build/lampd.stripped"
 
 # Static, or it is not what the unit expects to run.
 file "$OUT/lampd" 2>/dev/null | grep -q 'statically linked' || failed "$OUT/lampd is not statically linked"

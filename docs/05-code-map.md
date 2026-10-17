@@ -1,18 +1,21 @@
 # Code map
 
-~88,500 lines of Swift across nine targets. For each file: what it contains, why
+~92,300 lines of Swift across twelve targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  28,526 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  28,550 lines · 212 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,076 lines · 164 files   shell: AppKit, network, windows
   LampBoardTests/  21,070 lines · 145 files   1495 cases, instantaneous
-  LampBoardE2E/    5,395 lines · 23 files   186 cases, the real binary
-  ProtocolConformance/  626 lines · 3 files   the v1 battery, any source
+  LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
+  ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,460 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
-  NodeLinkCheck/      773 lines · 4 files   NodeLink against a real ssh
+  NodeLinkCheck/    1,111 lines · 5 files   NodeLink, and lampd, against a real ssh
+  LampDKit/         2,430 lines · 19 files   lampd: the Linux machine's service
+  LampD/              173 lines · 1 files   lampd's command line
+  LampDTests/         608 lines · 6 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -1833,7 +1836,7 @@ event or a refusal code this build does not know — from bytes that are no repl
 the first is passed over (an event's number still counts), only the second ends
 the connection. Otherwise an app one version behind reconnects for ever.
 
-### `V1Source.swift` · 74
+### `V1Source.swift` · 94
 What a machine provides to be served: identity and status, a snapshot, the events
 after a number, a transcript, and the actions — already validated.
 
@@ -2668,8 +2671,14 @@ machine, a channel the machine ends, the link over ssh. `TerminalChecks` runs on
 second node with the Linux machine's versions: the terminal byte for byte, the read
 key's PTY refused, tmux through the terminal, Q7 with three clients, and the
 lights read over ssh (D176). Only `Scripts/test-nodelink.sh` runs them.
+`LampDChecks` runs the same battery against `lampd` installed on a node (D177): the
+read key's lines `lampd devices add` wrote, one rule for the files frame by frame
+against the phone's own look, the service stopped; only `Scripts/test-lampd.sh`
+runs it, with `Tests/NodeFixture/` (the session files' frames, `fixture.py` that
+plays them, the recorded hook flows and their golden reductions, and the reader of
+the app one version behind).
 
-## `LampBoardE2E/` — 186 cases
+## `LampBoardE2E/` — 187 cases
 
 | Suite | Covers |
 |---|---|
@@ -2677,6 +2686,7 @@ lights read over ssh (D176). Only `Scripts/test-nodelink.sh` runs them.
 | `WatchE2ESuite` | `lampboard watch` run for real: a failing command red with the command's own exit code and output, a succeeding one green with its own `--port`, `/watch` behind the token, the command left alone when no panel hears |
 | `PidReuseE2ESuite` | a live `sleep` named by a session file with the wrong start makes no row, with its own start makes one |
 | `LifecycleSuite` | the states walked over HTTP |
+| `ParityE2ESuite` | the fake node's recorded hook flows played into the app, its lamp after every event held to the golden reductions `lampd` is held to (D177) |
 | `CoverageSuite` | integrated terminal, terminal rows outside every workspace, a background session a row of its own in a folder an editor claims (D103), a renamed row, a signal from another machine, subagents; a background session found on disk with no hook, carrying its job's summary, its need and its attach id, losing them when the job goes and keeping its row (AV2) |
 | `ScaleSuite` | adoption, twenty-two sessions, dead process |
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
@@ -2693,6 +2703,34 @@ how to run the commands and the hook script, and waits with `waitUntil` because
 the realignment is asynchronous.
 
 ---
+
+# lampd
+
+The Linux machine's service (D177, ADR-65 of the node's register). `LampDKit`
+holds everything; `LampD` is its command line; `LampDTests` its suite, run on
+Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
+
+| File | What it holds |
+|---|---|
+| `LampDPaths.swift` | the home (`LAMPBOARD_HOME` or `HOME`), the state, configuration and runtime folders, the socket; `AtomicFile`, `FileLock` |
+| `LampDConfig.swift` | `~/.config/lampd/config.json`: the machine's name, the look's interval, the allowance and the live contract probe, both off |
+| `LocalProbe.swift` | one look: the Core's probe command run here, read back by the Core's parser; the background jobs' files |
+| `NodeRows.swift` | the rows of a look, made by `V1ProbeSource.rows(from:)`, with a job's words and the person's choices; what one rule for the files rests on |
+| `NodeSource.swift` | the `V1Source`: looks absorbed into events, choices applied at once, transcripts, devices; serves `live` and `files` alike |
+| `NodeJournal.swift` | the numbered journal on disk: a restart keeps its name and numbers; events past the rows start a new one |
+| `RowPreferences.swift` | name, mute, hidden, place, read, taken off, each with its date, and the file under a lock |
+| `NodeTranscripts.swift` | the last messages of a conversation and how many were not sent, read with `TranscriptTail` |
+| `AuthorizedKeys.swift` | the phone's two lines, their marker, and a rewrite that refuses to move any other line |
+| `DevicesStore.swift` | `devices add`, `list`, `revoke`: the lines and the register under one lock; a link refused, the file's mode kept |
+| `LocalNetworks.swift` | `from=` by default: the tailnet and this machine's own networks |
+| `UnixSocket.swift` | the socket calls, and `sd_notify` without libsystemd |
+| `LampDService.swift` | `lampd serve`: the main loop and its heartbeat, connections with bounded queues, `bye` on SIGTERM, the log |
+| `LampDStdio.swift` | `lampd v1-stdio`: bytes to the service, or the files read in the same process when it is stopped |
+| `LampDStatus.swift` | what `status` says and the Quadro reads; the contract's stamp |
+| `LampDDoctor.swift` | `doctor`: tools, the service and the age of its state, the phones' lines, the contract |
+| `LampDUsage.swift` | `usage`: the Core's allowance script run here |
+| `HookReplay.swift` | recorded hooks reduced as the tee will reduce them, for the parity with the Mac |
+| `LampDInstall.swift` | the version, where the binary is linked from, a device's id from its name |
 
 # The companion mod
 
@@ -2786,8 +2824,13 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-nodelink.sh` | NodeLink over a real OpenSSH (D175): builds NodeLink and `V1ReferenceNode` in the pinned `swift` image, starts a node in a second container with the read key forced to the reference node's `stdio`, and runs `NodeLinkCheck` — the conformance battery and the key bites — on a network of its own. Needs docker, so not on the test Mac: exits 3 there. Attacked by `bite.sh --nodelink`: the forced command dropped, any host key let in, a row's field renamed |
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
-| `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline |
+| `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline; `--node` on a Linux machine, from lampd's copy, without running Claude Code for its version |
+| `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D177). Exits 3 without docker |
+| `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units marked with their commit; refuses a unit it did not write; `--uninstall` |
+| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D177): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
+| `Scripts/test-lampd-watchdog.sh` | `lampd` under `systemd --user` with the unit as installed: a loop stopped on purpose restarted within `WatchdogSec`, a stop with a phone attached quick. Exits 3 without systemd; attacked by `bite.sh --lampd` |
+| `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits forty-seven violations and demands forty-seven catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits sixty-one violations and demands sixty-one catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
