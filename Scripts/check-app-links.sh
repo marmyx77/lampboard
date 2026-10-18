@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Says what the Mac app links, as the manifest reads on a Mac, and fails if it
-# links anything from another package.
+# links anything from another package but the ssh server's own stack.
 #
 # WHY THIS EXISTS
 # The package now declares an ssh stack — Citadel, a fork of swift-nio-ssh,
@@ -17,8 +17,14 @@
 # way. The vendored SwiftTerm and Clarc are targets of this package (D129) and
 # count as ours.
 #
+# One exception since 2.4 (W5 of the mobile plan, §2.6): the ssh server inside
+# the app is swift-nio-ssh on swift-nio, the same pinned fork the phone's
+# client runs (S-R). The app may reach exactly those four products, and only
+# through `LampBoardMacSource`: Citadel, the client, stays out, and so does
+# anything a convenience would add.
+#
 # EXIT CODES
-#   0  the Mac app links nothing from another package
+#   0  the Mac app links nothing from another package but the server's stack
 #   1  it does, or the manifest could not be read
 #   3  not on a Mac: the manifest reads differently elsewhere, nothing was observed
 #
@@ -63,7 +69,12 @@ def edges(target):
             # byName naming something that is not one of ours is a product.
             yield ("product", name)
 
-seen, foreign, stack = set(), [], [(APP, [APP])]
+# The ssh server's stack (W5), and only where the server is.
+SERVER = "LampBoardMacSource"
+ALLOWED = {"NIOSSH (package swift-nio-ssh)", "NIOCore (package swift-nio)",
+           "NIOPosix (package swift-nio)", "Crypto (package swift-crypto)"}
+
+seen, foreign, allowed, stack = set(), [], [], [(APP, [APP])]
 while stack:
     name, path = stack.pop()
     if name in seen:
@@ -71,15 +82,19 @@ while stack:
     seen.add(name)
     for kind, other in edges(targets[name]):
         if kind == "product":
-            foreign.append(" → ".join(path + [other]))
+            if name == SERVER and other in ALLOWED:
+                allowed.append(other)
+            else:
+                foreign.append(" → ".join(path + [other]))
         else:
             stack.append((other, path + [other]))
 
 print(f"    {APP} reaches {len(seen) - 1} targets of this package: {', '.join(sorted(seen - {APP}))}", file=sys.stderr)
+print(f"    and, through {SERVER}, the server's stack: {', '.join(sorted(allowed))}", file=sys.stderr)
 for line in foreign:
     print(f"    links another package's product: {line}", file=sys.stderr)
 sys.exit(1 if foreign else 0)
 PY
 status=$?
 [ "$status" -eq 0 ] || failed "the Mac app links a product of another package"
-printf '\033[32m✓\033[0m the Mac app links nothing from another package\n'
+printf '\033[32m✓\033[0m the Mac app links nothing from another package but the ssh server'"'"'s stack\n'

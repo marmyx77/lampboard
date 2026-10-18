@@ -276,3 +276,41 @@ enum MacSourceSuite {
         },
     ])
 }
+
+/// The two Mac defects W3 left to 2.4, and the badge that replaced `R`.
+enum MacPanelSuite {
+    static let suite = TestSuite("The Mac's own Move lock and the machine's initial", [
+
+        TestCase("The panel's Move and a phone's Move take the same lock") { t in
+            let home = MacFixtures.temporaryDirectory("move")
+            let session = MacFixtures.sid(5)
+            t.expect(MoveLock.take(session: session, home: home), "the panel takes it")
+            t.expect(!MoveLock.take(session: session, home: home), "a second Move from the panel is refused")
+            // The phone's Move through the bridge: the node's script, run on this Mac.
+            guard let script = RemoteMove.lockedScript(pid: 999_999, procStart: "Mon Oct 12 10:00:00 2026", session: session) else {
+                return t.fail("no script")
+            }
+            let phone = MacProcess.run(["/usr/bin/env", "python3", "-B", "-c", script], environment: ["HOME=" + home, "PATH=/usr/bin:/bin"])
+            t.expectEqual(phone.output.trimmingCharacters(in: .whitespacesAndNewlines), "locked", "the phone's Move is told: \(phone.output)")
+            MoveLock.release(session: session, home: home)
+            let after = MacProcess.run(["/usr/bin/env", "python3", "-B", "-c", script], environment: ["HOME=" + home, "PATH=/usr/bin:/bin"])
+            t.expectEqual(after.output.trimmingCharacters(in: .whitespacesAndNewlines), "not-it", "free again: no such process, and nothing ended")
+        },
+
+        TestCase("A lock older than five minutes is taken over") { t in
+            let home = MacFixtures.temporaryDirectory("move")
+            let session = MacFixtures.sid(6)
+            t.expect(MoveLock.take(session: session, home: home), "taken")
+            t.expect(MoveLock.take(session: session, home: home, now: Date().addingTimeInterval(RemoteMove.lockLasts + 1)),
+                     "a Move cut off half-way does not refuse every later one")
+        },
+
+        TestCase("A remote row's badge is its machine's initial, not R") { t in
+            t.expectEqual(MachineMark.initial(host: "bestia"), "B", "a name")
+            t.expectEqual(MachineMark.initial(host: "marco@build.example.com"), "B", "the account is not the machine")
+            t.expectEqual(MachineMark.initial(host: "dev-box"), "D", "a dash")
+            t.expectEqual(MachineMark.initial(host: "192.0.2.10"), "1", "an address")
+            t.expectEqual(MachineMark.initial(host: "@"), "R", "nothing to take: R, as before")
+        },
+    ])
+}

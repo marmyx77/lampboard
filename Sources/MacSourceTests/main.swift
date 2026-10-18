@@ -13,27 +13,39 @@ signal(SIGPIPE, SIG_IGN)
 Instrument.prove()
 
 let filter = CommandLine.arguments.dropFirst().first
-var suites: [TestSuite] = [
+let suites: [TestSuite] = [
     MacRequestSuite.suite,
     MacPolicySuite.suite,
     MacPairingSuite.suite,
     MacDevicesSuite.suite,
     MacSourceSuite.suite,
+    MacPanelSuite.suite,
     V1Conformance.suite(against: MacMemoryTarget()),
 ]
 
-let harness: MacHarness
-do {
-    harness = try MacHarness()
-} catch {
-    FileHandle.standardError.write(Data("MacSourceTests: the server did not start: \(error)\n".utf8))
+/// The server's suites: NodeLink, the phone of these checks, needs macOS 15.
+@available(macOS 15.0, *)
+func runWithServer(_ suites: [TestSuite]) -> Int32 {
+    let harness: MacHarness
+    do {
+        harness = try MacHarness()
+    } catch {
+        FileHandle.standardError.write(Data("MacSourceTests: the server did not start: \(error)\n".utf8))
+        return 1
+    }
+    let all = suites + [
+        V1Conformance.suite(against: MacSSHTarget(harness)),
+        MacServerSuite.suite(harness),
+        MacBridgeSuite.suite(harness),
+    ]
+    let code = TestRunner.runAndReport(all, filter: filter)
+    harness.stop()
+    return code
+}
+
+if #available(macOS 15.0, *) {
+    exit(runWithServer(suites))
+} else {
+    FileHandle.standardError.write(Data("MacSourceTests: needs macOS 15\n".utf8))
     exit(1)
 }
-suites += [
-    V1Conformance.suite(against: MacSSHTarget(harness)),
-    MacServerSuite.suite(harness),
-    MacBridgeSuite.suite(harness),
-]
-let code = TestRunner.runAndReport(suites, filter: filter)
-harness.stop()
-exit(code)

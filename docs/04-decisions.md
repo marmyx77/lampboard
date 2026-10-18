@@ -6723,3 +6723,70 @@ both find none); copying attachments through a shell's standard input (Citadel's
 
 **Signal to revisit:** the Mac's bridge (W5), which takes the same names; a Claude Code that writes its
 session file otherwise; an editor's process that no longer ends on SIGTERM.
+
+## D180 · The Mac as a source for the phone: an ssh server inside the app
+
+**Decided** (18 October 2026), as the groundwork of W5 of the mobile plan (§2.4, §2.6, §6.2; Q6, Q7, Q17): the
+Mac serves its own sessions to a paired iPhone or iPad the way a node does, the same `v1` from the same Core,
+through an ssh server that lives inside LampBoard and opens nothing else.
+
+**What.**
+- `LampBoardMacSource`, a target without AppKit, built and tried on Linux as well as on the Mac:
+  `MacV1Source`, the column as `GET /sessions` already publishes it, numbered into a journal of the run and
+  served by `V1Service` (one protocol, two sources); `MacSSHServer` on swift-nio-ssh, the fork and commit the
+  phone's client runs (S-R): its own port, kept between launches; only P-256 keys paired with this Mac, read
+  again from `~/.lampboard/mobile/devices.json` at every login, so Forget locks a device out at once; the
+  `pair` account with a one-time code of twelve characters, two minutes, used once, closed after three wrong
+  ones; every refusal from one address held longer than the last; TCP keepalive 10 s then 3 × 5 s (E14).
+- `MacPolicy`, the whole rule in one place: the read key opens `v1` and nothing else; the action key opens
+  `v1` (the devices are a `v1` message) and, **only while «Terminal and actions from iPhone & iPad» is on**
+  (off by default, Q17), a terminal after a `pty-req` and the named actions. A shell, a subsystem but `v1`, an
+  exec line `MacRequest` cannot read: refused, with nothing run.
+- The PTY bridge: `forkpty` and `execve` of exactly the command the Hub runs, in the app's context (the PATH
+  with Homebrew, the app's permissions); tmux always with `-u` — the app from the Dock has no `LANG`, and
+  without it tmux writes a tab, a ❯ or an emoji as `_`, which broke the background rule's own reading of its
+  clients before it broke a screen. `window-change` resizes; the channel closing hangs the client up. The
+  background rule of Q7 is a named request (E14): the phone's own tmux clients, by the pids of the bridge's
+  children, get `ignore-size` and are detached.
+- Named actions are `NodeAction`, the node's, built on the Mac from a name and checked arguments
+  (`MacActionCall`): New, Resume, End, Move of the Mac's VS Code, Browse, files, git, the mailbox. `projects`
+  stays a node's and attachments wait for SFTP. Bypass from the start is refused until the Mac's own setting
+  allows it (D169).
+- A background session is never attached twice: `MacAttachLedger` holds who has each job; a job the Hub has
+  open is shared with the phone (its screen, its output, the phone's keys into it), and one a phone holds is
+  not opened by the Hub.
+- The Move's lock (D179) on this Mac too: the panel's own Move takes `~/.lampboard/moving/<id>` as a phone's
+  does through the bridge, and a Move from the panel to another machine takes it there and lets it go once
+  the conversation is taken up.
+- Settings › iPhone & iPad (orange-edged, D125): devices with their fingerprints, Forget and Forget all, the QR
+  code (`lampboard://pair?…`: the Mac's name, never its host name, the host key, addresses, port, code) and
+  the switch. The person confirms each device on the Mac, with its keys' fingerprints. Bonjour announces
+  `_lampboard._tcp` with a short fingerprint; the server listens only while a device is paired or a code shown.
+- A remote row's badge is its machine's initial, not `R` (Marco's yes of 17 October, L.C5).
+- The app links swift-nio-ssh, swift-nio and swift-crypto through this target alone; Citadel stays out
+  (`Scripts/check-app-links.sh`).
+
+**Why.** Marco asked for an app that someone with only a Mac can use (Q14 and his note of 15 October): the Mac is a source of the
+first rank, and the person who has only a Mac must not have to turn on Remote Login, which opens every
+account of the Mac with a password to the network and runs commands outside the app's permissions (§2.6).
+One server, written once against the same `V1Service` and the same `NodeAction` as the node, leaves no rule
+true on one source and false on the other.
+
+**Measured** by `MacSourceTests` (67 cases, on Linux and on the Mac) with a phone made of NodeLink: the
+conformance battery in memory and over a real ssh, every door of the server tried with the wrong key,
+sixty connections of random bytes before authentication, 10 MiB byte for byte through the bridge, the
+attaches counted; by `MobileE2ESuite` against the app itself (the battery included); eleven bites in
+`bite.sh --macsource` and one in `--links`.
+
+**Discarded:** Remote Login (above); `v1` over HTTPS with a pinned certificate (S-R made it needless); the
+bridge's bytes inside `v1` (S-S: a session channel and `window-change` suffice); Foundation's `Process` for the
+bridge's short commands — on Linux it left a tmux client a zombie nobody reaped, so `posix_spawn` and
+`waitpid`, with output to a file a tmux server may keep open without holding anyone up.
+
+**Left for the rest of W5, with their seams:** the relay client for the Mac's rows (`MacSourceActions.register`
+says «no notifications yet»), presence in `lampd` (Q8), the tunnel on 31001 and `lampd` in tee, the read state
+and the preferences written into `lampd` (`MacRows` names a node's rows as the node's, owned by the Mac until
+`nodesWithLampd` says otherwise), the phone's keys carried to the nodes, the iOS app's side of pairing.
+
+**Signal to revisit:** a phone that cannot reach the Mac's port (a firewall the person runs); Bonjour names
+that leak a person's name; a background session shared by two phones at once.

@@ -32,6 +32,7 @@ final class TestClock: @unchecked Sendable {
 /// The Mac's server in this process, on loopback, with a home of its own, one
 /// paired phone, and a tmux server of its own (`-L lb-mac-…`): never the
 /// person's tmux, never `~/.lampboard`.
+@available(macOS 15.0, *)
 final class MacHarness: @unchecked Sendable {
     let home: String
     let devices: MacDevices
@@ -275,6 +276,7 @@ final class ChannelStream: V1ByteStream, @unchecked Sendable {
 
 /// The Mac's server reached over a real ssh, as the conformance battery's
 /// target: every connection a new one, with the phone's key of that role.
+@available(macOS 15.0, *)
 final class MacSSHTarget: V1ConformanceTarget {
     let name = "the Mac's server over ssh"
     let pingInterval: TimeInterval = 0.5

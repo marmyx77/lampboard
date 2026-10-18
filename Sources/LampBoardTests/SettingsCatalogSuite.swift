@@ -2,16 +2,16 @@ import LampBoardCore
 import Foundation
 import TestKit
 
-/// The Settings window's nine sections (U3), and the rule that every switch has
+/// The Settings window's ten sections (U3, and iPhone & iPad in W5), and the rule that every switch has
 /// one name: the one it has in Settings is the one it has in every menu.
 enum SettingsCatalogSuite {
 
     static let suite = TestSuite("Settings catalogue", [
 
-        TestCase("Nine sections, in the order a person looks for things") { t in
+        TestCase("Ten sections, in the order a person looks for things") { t in
             t.expectEqual(SettingsCatalog.sections.map(\.title), [
                 "Panel", "Clicks & keys", "Alerts", "Claude Code & Codex", "Acting from the panel",
-                "LampMaster", "Other Macs", "Privacy & data", "About & help",
+                "LampMaster", "Other Macs", "iPhone & iPad", "Privacy & data", "About & help",
             ])
         },
 
@@ -24,7 +24,7 @@ enum SettingsCatalogSuite {
         },
 
         TestCase("What acts on the sessions or leaves the Mac is marked") { t in
-            t.expectEqual(SettingsCatalog.sections.filter(\.warns).map(\.title), ["Acting from the panel", "LampMaster"])
+            t.expectEqual(SettingsCatalog.sections.filter(\.warns).map(\.title), ["Acting from the panel", "LampMaster", "iPhone & iPad"])
         },
 
         TestCase("A switch in a menu is called what Settings calls it") { t in

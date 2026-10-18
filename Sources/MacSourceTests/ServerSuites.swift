@@ -11,6 +11,7 @@ import TestKit
 
 /// The doors of the Mac's server, each tried with the wrong key (the gate
 /// «Server ssh del Mac» and «Chiavi ristrette» of §6.2).
+@available(macOS 15.0, *)
 enum MacServerSuite {
 
     static func suite(_ harness: MacHarness) -> TestSuite {

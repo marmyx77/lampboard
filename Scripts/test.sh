@@ -43,6 +43,13 @@ echo
 echo "▸ End-to-end tests (port $PORT)"
 .build/debug/LampBoardE2E --port "$PORT" "$@"
 
+# The Mac as a source for the phone (W5): the server inside the app, reached by
+# a phone made of NodeLink over a real ssh, on loopback. Its suite also runs on
+# Linux, where it needs no Mac.
+echo
+echo "▸ The Mac as a source for the phone"
+"$ROOT/Scripts/test-mac-source.sh"
+
 # The Core as the iPhone and iPad app will take it: built for the simulator, with
 # warnings as errors. A Mac-only API reaching the Core compiles here without a
 # word, and this is where it is heard. Its Linux counterpart needs a container

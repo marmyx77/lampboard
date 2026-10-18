@@ -125,8 +125,10 @@ extension PanelController {
             confirmTitle: "Move"
         ) else { return }
         // The dialog may have stayed open for minutes: everything again, now.
+        // Under the Move's lock on that machine (W3c): a phone moving the same
+        // conversation at the same moment is told, and ends nothing.
         guard let again = record(), again.pid == found.pid, again.procStart == found.procStart,
-              let script = RemoteMove.script(pid: Int32(again.pid), procStart: start) else { return }
+              let script = RemoteMove.lockedScript(pid: Int32(again.pid), procStart: start, session: session.id) else { return }
         movingElsewhere.insert(session.id)
         let id = session.id, folder = again.cwd
         Task { @MainActor [weak self] in
@@ -141,7 +143,7 @@ extension PanelController {
             case .stillRunning:
                 self.liveRefused("The VS Code process on \(host) is still running after ten seconds. Nothing was started, so the conversation has one writer.")
             case .locked:
-                // Only the lock a device's Move takes says this (W3); the Mac's own takes it from 2.4.
+                // Another device's Move holds the lock (W3c); the Mac's takes it too since 2.4.
                 self.liveRefused("Another device is moving this conversation on \(host) now. Nothing was moved.")
             case nil:
                 self.liveRefused("LampBoard could not reach \(host) to end the VS Code process. Nothing was moved.")

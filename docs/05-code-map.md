@@ -1,16 +1,18 @@
 # Code map
 
-~96,600 lines of Swift across twelve targets. For each file: what it contains, why
+~101,000 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  30,168 lines · 219 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,084 lines · 164 files   shell: AppKit, network, windows
+  LampBoardCore/  30,518 lines · 220 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    30,780 lines · 168 files   shell: AppKit, network, windows
   LampBoardTests/  22,192 lines · 150 files   1557 cases, instantaneous
-  LampBoardE2E/    5,525 lines · 24 files   187 cases, the real binary
+  LampBoardE2E/    5,750 lines · 25 files   193 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
-  LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
+  LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
+  LampBoardMacSource/  1,906 lines · 12 files   the Mac as a source: its ssh server, pairing, bridge
+  MacSourceTests/   1,098 lines · 6 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
   LampDKit/         3,116 lines · 23 files   lampd: the Linux machine's service
@@ -61,8 +63,8 @@ and Quit. The App only draws what it is given (`MenuEntriesView`).
 
 ### `SettingsCatalog.swift` · 159
 Every setting, its section, its group, its one name and the line saying what it
-does: nine sections, from Panel to About & help, the two that act on the sessions
-or leave the Mac marked. The Settings window draws from it, and a menu that offers
+does: ten sections, from Panel to About & help, the three that act on the sessions
+or leave the Mac marked (iPhone & iPad since W5). The Settings window draws from it, and a menu that offers
 a switch takes its name from here (D125).
 
 ## `Models/`
@@ -1957,6 +1959,17 @@ of `Retry-After`, `refused`, `unreachable`), which a source puts in `hello`
 Mac and iOS, `curl` in `lampd`. **What you would break**: a 410 read as a plain
 refusal keeps sending to a phone that uninstalled the app, for ever.
 
+### `MacBridge.swift` · 340
+The Mac as a source, from both ends (W5, D180): `MacRequest`, the closed
+vocabulary of the Mac's ssh server — `v1`, `pair`, `attach <target>`, `action
+<call>`, `background`, `palette`, the arguments as base64 JSON read back only
+through the checks a node's command goes through (`MacTerminalTarget`,
+`MacActionCall` into `NodeAction`); `MacPairingInvitation`, the QR code's
+`lampboard://pair?…` with the Mac's name, host key, addresses, port and the
+one-time code (`MacPairingCode`, twelve characters nobody misreads); the
+pairing request and reply. **What you would break**: a parse that accepts a
+line it does not name is a command from the phone on the Mac.
+
 ## `Push/`
 
 What a source decides to notify (W4 of the mobile plan, §2.9), written once so
@@ -2114,15 +2127,23 @@ there, the hooks are registered — and it names the link that broke.
 The live view (D130): background sessions in a terminal of LampBoard's own. Its
 chat and its files were removed in favour of the Hub (D165).
 
-### `LiveSurface.swift` · 228
+### `LiveSurface.swift` · 256
 The only file that knows SwiftTerm. `LiveSurface` is what the window sees, an
-`NSView` and a few verbs (start, paste, appearance, screen text, end);
-`SwiftTermSurface` implements it. Option types characters, as on any Mac
+`NSView` and a few verbs (start, paste, appearance, screen text, end, and since
+W5 the program's output handed on and bytes typed in, for a phone sharing the
+terminal); `SwiftTermSurface` implements it, over `SharedTerminalView`. Option types characters, as on any Mac
 keyboard, because an Italian one reaches @ and # through Option. A paste is
 wrapped in bracketed-paste marks when the program asked for them, so `@path`
 never arrives as an Enter. Ending sends SIGHUP to the process group, then SIGTERM
 and SIGKILL: SwiftTerm's own `terminate()` closes the pty and can leave the child.
 
+
+### `HubShares.swift` · 85
+The Hub's terminals on background sessions, offered to the Mac's bridge (W5): a
+phone that asks for a job the Hub has open shares that terminal — its screen,
+then its output as it comes, its keys typed in — and no second `claude attach`
+starts (D130). Read by the server's threads, every touch of a surface sent to
+the main queue.
 ### `LiveFrameView.swift` · 164
 The frame: the theme's backdrop, a header with the session's lamp, name and state,
 and the rounded card the terminal sits on, the card's colour being the terminal's
@@ -2190,7 +2211,7 @@ the Dock when it was minimised (a panel's click does not activate LampBoard, and
 macOS 14 may not), redraws the sidebar when the panel changes — an order, a name,
 a mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 117
+### `HubSetup.swift` · 134
 Builds the Hub and wires it to the panel, the live view and the Dock.
 
 ### `HubModel.swift` · 370
@@ -2297,6 +2318,8 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 720 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
+| `MobileServer.swift` | 348 | this Mac as a source for iPhone and iPad (W5, D180): the server inside the app, listening only while a device is paired or a pairing code is shown, on a port kept between launches; the column fed to `MacV1Source` as it changes, with each row's place in tmux, mode and order; a device's low-power actions carried out on the main actor; the pairing window and its QR code; the person's yes asked with the device's fingerprints; Forget and Forget all ending the device's connections; Bonjour `_lampboard._tcp` with the short fingerprint |
+| `MobileSettings.swift` | 84 | the switch «Terminal and actions from iPhone & iPad» (off, Q17) and the server's port, beside the preferences; the host key in the login Keychain, or a file in a fake home |
 | `ActivityRecorder.swift` | 34 | what each session has been doing: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
 | `PermissionDesk.swift` | 229 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
@@ -2479,6 +2502,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 | File | Lines | What |
 |---|---|---|
+| `MobilePane.swift` | 97 | Settings › iPhone & iPad (W5): the paired devices with their fingerprints, Forget and Forget all, the QR code with its two minutes, and the switch for terminals and actions |
 | `PanelController.swift` | 766 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 165 | the switches that reach outside the panel — presence, terminal sessions, launch at login, sending messages with its dialog and the delivery hook it registers (D81) — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 101 | what waits, wired in (D74, D124): its cards from the store and the asks the panel holds — LampMaster's suggestions stay out, they are its star in the bar —, Allow, Deny and a question's choice handed to the permission desk, `O` raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when an ask under a row comes or goes and every thirty seconds for rows that fold by time; the line said on return put away at the panel's first gesture; the «Resting» line opened or folded |
@@ -2516,7 +2540,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `MenuBarLamp.swift` | 239 | one `NSStatusItem`: the column's most urgent state as a drawn lamp, blinking only while something needs a person, and able to say whether it was drawn at all; with the counter switched on, `wanting · working` beside it |
 | `AppMenu.swift` | 59 | the main menu (D138): Edit and Window, so ⌘C, ⌘V and ⌘A reach the window with the keys; hidden while an accessory, the menu bar while a live window gives LampBoard a Dock icon; no ⌘Q |
 | `MenuAction.swift` | 21 | an `NSMenuItem` target that runs a closure, because target/action is Objective-C dispatch and a Swift class silently answers nothing |
-| `SettingsView.swift` | 150 | the Settings window's content (D125): the nine sections of `SettingsCatalog` down the side, the chosen one on the right with an orange line when it acts on the sessions or leaves the Mac; the group box, a setting's row (name and control on a line, what it does under them, from the catalogue) and a switch's |
+| `SettingsView.swift` | 150 | the Settings window's content (D125): the ten sections of `SettingsCatalog` down the side, the chosen one on the right with an orange line when it acts on the sessions or leaves the Mac; the group box, a setting's row (name and control on a line, what it does under them, from the catalogue) and a switch's |
 | `WelcomeWindow.swift` | 212 | the welcome (D126): seven screens on the person's own sessions, opened at the first launch whatever is installed and from Settings › About & help; `--getting-started [n]` opens it on a step. `WelcomeModel` reads the Mac every second while it is open, so a session that speaks or a permission granted moves its screen on |
 | `CapabilitiesWindow.swift` | 134 | «What LampBoard can do» (D127): the six groups, a badge for what needs the helper, *Try* doing the gesture in the real panel — the bar opened with its first characters typed, the samples, the legend — and *Turn on…* opening the switch in Settings, installing the helper first when it is the helper's |
 | `PanelTips.swift` | 70 | the tip at the top of the panel (D127): asked when the state changes and every half minute, never in the demo, only while the panel is on screen and the bar not being typed in; gone by itself when its thing is over; two lines and *Got it*, one line with a bulb in the narrow panel; remeasured, never rebuilt; shown tips kept by name with when |
@@ -2576,7 +2600,7 @@ script, before it was split. The most important ones:
 | `RestingFoldSuite` | rows at rest for twelve hours folded into one line in the user's order, opened under it, a working session keeping its project out, a bound key still finding a folded row, nothing folded without a clock or under the filter, «resting» as the word (D124) |
 | `BarCountSuite` | the bar's count by kind and by session, plural, a held ask counted, the held asks by session for the lines under the rows (D124) |
 | `MenusSuite` | the ⋯'s eight entries with ⌘, on Settings, what is on checked, the hidden projects only when there are some; a row's eight with Quiet and More, nothing needing this Mac's files on a remote row, Don't blink only where something blinks; the lamp's, its summary, the other home (D125) |
-| `SettingsCatalogSuite` | nine sections in order, one id and one name per setting and a line for each, the two marked sections, a menu's switch named as Settings names it (D125) |
+| `SettingsCatalogSuite` | ten sections in order, one id and one name per setting and a line for each, the three marked sections, a menu's switch named as Settings names it (D125) |
 | `WelcomeSuite` | the seven screens and their buttons, Codex named only where it is, the samples marked and under their own folder, their colours playing out, added to the column's state and never to the store's (D126) |
 | `DemoScriptSuite` | the demo's script holding nothing real and catching what would be, a beat as the hook's payload, LampMaster's demo card, the allowance line, the permission and the answers it plays (D64, D120) |
 | `LearnSuite` | a tip the first time its thing is on screen and none otherwise, each once, one a day, the most urgent first, every sentence within two lines, holding only while its thing does; the catalogue's six groups, one name each, each capability tried, turned on or found, the helper's marked (D127) |
@@ -2691,7 +2715,9 @@ no time. The reference source in memory is the first target.
 The app's ssh client (D175), with the terminal since D176: Citadel on swift-nio-ssh,
 both pinned to the commit read in W0 of the mobile plan. The iPhone and iPad app
 and the Linux checks use it; **the Mac app does not link it**, and
-`Scripts/check-app-links.sh` fails the gate if it ever does. Built for the iOS
+`Scripts/check-app-links.sh` fails the gate if it ever does. `MacLink.swift` is
+the phone's side of the Mac as a source (W5): pairing from the QR code with
+the `pair` account, and the Mac's terminals and named actions. Built for the iOS
 simulator by `Scripts/test-ios.sh`, tested on the Mac and on Linux by the domain
 suite, and over a real OpenSSH by `Scripts/test-nodelink.sh`.
 
@@ -2772,7 +2798,21 @@ machine with a test key, never in a gate: 10 MiB byte for byte, the background
 rule's cycles leaving no client, the first frame cold and warm, all on a tmux server
 of its own (`-L lb-…`, refused otherwise), never the person's.
 
-## `LampBoardE2E/` — 187 cases
+## `LampBoardMacSource/` and `MacSourceTests/` — the Mac as a source
+
+The Mac's side of iPhone & iPad (W5, D180), without AppKit so that it is built
+and tried on Linux too. `MacV1Source` is the column as a `v1` source, served by
+the Core's `V1Service`; `MacSSHServer` and `MacChannel` the ssh server inside
+the app on swift-nio-ssh (paired P-256 keys only, the `pair` account inside its
+window, every refusal held longer than the last, TCP keepalive as E14 asks);
+`MacPolicy` who may ask what; `MacPty` the PTY bridge; `MacRunner` what runs,
+from a target or a `NodeAction`, with tmux always given `-u`; `MacAttachLedger`
+the attaches of background sessions, never two; `MacDevices` the paired devices;
+`MacPairingWindow` and `MacAuthThrottle`; `MoveLock` the Move's lock on this Mac;
+`MachineMark` the initial on a remote row. `MacSourceTests` reaches the server
+in the same process with a phone made of NodeLink (`Scripts/test-mac-source.sh`).
+
+## `LampBoardE2E/` — 193 cases
 
 | Suite | Covers |
 |---|---|
@@ -2789,6 +2829,7 @@ of its own (`-L lb-…`, refused otherwise), never the person's.
 | `PermissionE2ESuite` | a permission key of its own, not the token; an ask without the key's proof, or proven with the token, answered `ask`, unsigned; a new installation answering `ask` at once; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once; a question waiting for a choice, answered signed, Allow refused for it |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own; `/handoff` refusing a missing token, a `GET` and a proof made with the token, and taking one made with the permission key; the decision board pinned, listed and taken off from the command line, a port in its words kept, its file 0600; `/mod/decisions` answering a proven session with its repository's board, signed, nothing without the proof or with the token as key, no answer for a session it does not know, nothing pinned for one with no repository (D105) |
 | `TrialE2ESuite` | the demo playing the script into the states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `demo-script` printing a script that holds nothing real (D126) |
+| `MobileE2ESuite` | the Mac as a source on the real app (W5): a phone paired before launch reads the column the hooks made through the app's own ssh server; an unpaired key and the read key's terminal refused; nothing but `v1` with the switch off; the `v1` conformance battery against the app; nothing listens once it quits |
 | `TokenLifecycleSuite` | reuse, regeneration, corrupted token, **the launch repair** in a home of its own, an installation under the previous name brought forward |
 | `LampMasterE2ESuite` | `mcp install` registering through `claude`'s own command and `uninstall-hooks` taking it out; `lampboard mcp` started as Claude Code starts it, answering from the cards without the asker and behind the notice; `who_knows` naming a twenty-day-old conversation from the search index without its words; a question that keeps only the real source and costs nothing the second time; a round against a fake `claude` that writes down its standard input and arguments, a failure another project met before reaching its frame as a precedent from the index (D92), a kind passed over for two weeks switched off with why (D95), the bench replaying a saved round and naming what the new answer lost (D102): the frame on the pipe and never on the command line, the validator dropping an invented quote, the skip when nothing changed, the day's ceiling, the deadline, an answer outside the schema, switched off, the token; a failure repeated three times bringing a quick round with Sonnet at the turn's end, and a second turn's end within the minute bringing none |
 
@@ -2915,10 +2956,11 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/embed-mod.py` | writes the files under `mod/` into the `ModFiles*.swift` sources the app installs the mod from (D66), and the version and the list in `ModFiles.swift`; run after editing the mod, or `ModFilesSuite` fails |
 | `Scripts/check-mod.sh` | the companion mod as Claude Code reads it, through `claude plugin validate`: a module that breaks one rule is dropped whole and silently from every session (D112); part of `test.sh`, attacked by `bite.sh` |
 | `Scripts/make-pkg.sh` | the installer package a fleet manager deploys, wrapped around the bundle `release.sh` already stapled: a disk image has no version field and an MDM needs one to read. Refuses to produce an unsigned package, and needs a Developer ID **Installer** certificate, which is not the one that signs the app |
-| `Scripts/test.sh` | both suites, the Core and NodeLink built for iOS, what the Mac app links, the pins, then the documentation check |
+| `Scripts/test.sh` | both suites, the Mac as a source, the Core and NodeLink built for iOS, what the Mac app links, the pins, then the documentation check |
 | `Scripts/test-ios.sh` | builds the Core, then NodeLink, for the iOS simulator with warnings as errors (D173, D175); the packages' clones are kept between runs. Exits 3 where there is no iOS SDK. Part of `test.sh`, attacked by `bite.sh` with an `import AppKit` |
-| `Scripts/check-app-links.sh` | reads the manifest as a Mac does and fails if the Mac app reaches a product of another package: the ssh stack is NodeLink's alone (D175). Exits 3 off a Mac. Part of `test.sh`, attacked by `bite.sh --links` with the app naming NodeLink |
+| `Scripts/check-app-links.sh` | reads the manifest as a Mac does and fails if the Mac app reaches a product of another package but the ssh server's four (swift-nio-ssh, swift-nio, swift-crypto) through `LampBoardMacSource` (D175, D180): Citadel stays NodeLink's. Exits 3 off a Mac. Part of `test.sh`, attacked by `bite.sh --links` with the app naming NodeLink |
 | `Scripts/check-pins.sh` | every package the dependency graph reaches has a pin in the committed `Package.resolved`, at the version the graph uses, and the build did not move one. SwiftPM itself says nothing when a pin is missing (measured). Exits 3 where there is no swift. Part of `test.sh`, attacked by `bite.sh --pins` with BigInt's pin removed |
+| `Scripts/test-mac-source.sh` | the Mac as a source for the phone (W5): `MacSourceTests` on a Mac, or in the pinned `swift` image elsewhere (no AppKit needed); exits 3 with neither. Part of `test.sh`, attacked by `bite.sh --macsource` |
 | `Scripts/test-nodelink.sh` | NodeLink over a real OpenSSH (D175): builds NodeLink and `V1ReferenceNode` in the pinned `swift` image, starts a node in a second container with the read key forced to the reference node's `stdio`, and runs `NodeLinkCheck` — the conformance battery and the key bites — on a network of its own. Needs docker, so not on the test Mac: exits 3 there. Attacked by `bite.sh --nodelink`: the forced command dropped, any host key let in, a row's field renamed |
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
@@ -2931,5 +2973,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits eighty-three violations and demands eighty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits ninety-five violations and demands ninety-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

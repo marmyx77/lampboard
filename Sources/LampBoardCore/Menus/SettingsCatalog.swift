@@ -4,7 +4,7 @@ import Foundation
 ///
 /// In 1.0 the switches were in four places — the panel's ⋯, the Settings window,
 /// Getting started and a row's menu — and one switch had three names in three of
-/// them. They are now in one window of nine sections, each with a line under it
+/// them. They are now in one window of ten sections, each with a line under it
 /// saying what it does, and a menu that offers a switch uses the name it has here.
 /// The window draws from this list; the words live nowhere else.
 public enum SettingsCatalog {
@@ -22,6 +22,7 @@ public enum SettingsCatalog {
         case sendMessages, answerPrompts, safetyCatch, sessionPermissions
         case lampMaster, lampMasterEvery, lampMasterModel, lampMasterAsk, lampMasterMuted
         case otherMacs
+        case mobileDevices, mobilePair, mobileTerminals
         case usage, updates, searchIndex
         case version, gettingStarted, samples, capabilities, legend, clearList
     }
@@ -134,6 +135,15 @@ public enum SettingsCatalog {
         Section(title: "Other Macs", warns: false, groups: [
             Group(title: "Machines over ssh", items: [
                 i(.otherMacs, "Machines", "Their sessions appear as rows, through a tunnel over your own ssh. The machine needs key login, python3 and curl."),
+            ]),
+        ]),
+        Section(title: "iPhone & iPad", warns: true, groups: [
+            Group(title: "Paired devices", items: [
+                i(.mobileDevices, "Paired devices", "iPhones and iPads that read this Mac's sessions through its own ssh server, on your network or your tailnet. Forget one and it is locked out at once."),
+                i(.mobilePair, "Pair an iPhone or iPad", "Shows a code to scan with LampBoard on the device, for two minutes. You confirm the device here before it is paired."),
+            ]),
+            Group(title: "From the device", items: [
+                i(.mobileTerminals, "Terminal and actions from iPhone & iPad", "Lets a paired device open this Mac's sessions in a terminal and start, resume, end or move them, asking for Face ID each time. Off until you turn it on."),
             ]),
         ]),
         Section(title: "Privacy & data", warns: false, groups: [

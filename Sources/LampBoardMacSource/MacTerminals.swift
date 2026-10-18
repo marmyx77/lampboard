@@ -86,7 +86,7 @@ public struct MacRunner: Sendable {
 
     /// Always with `-u`: the app opened from the Dock has no `LANG`, and
     /// without it tmux writes a tab, a ❯ or an emoji in a name as `_` (S-S,
-    /// «tmux senza locale») — a name read that way would never match.
+    /// the memory of a tmux without a locale) — a name read that way would never match.
     func tmuxArguments(_ arguments: [String]) -> [String] {
         tmux + (arguments.first == "-u" ? arguments : ["-u"] + arguments)
     }
@@ -186,7 +186,11 @@ public enum MacProcess {
         guard let executable = argv.first, executable.hasPrefix("/") else { return Result(status: 127, output: "not an absolute path") }
         let outputPath = NSTemporaryDirectory() + "lampboard-mac-\(getpid())-\(UInt64.random(in: 0...UInt64.max)).out"
         defer { unlink(outputPath) }
+        #if canImport(Darwin)
+        var actions: posix_spawn_file_actions_t?
+        #else
         var actions = posix_spawn_file_actions_t()
+        #endif
         posix_spawn_file_actions_init(&actions)
         defer { posix_spawn_file_actions_destroy(&actions) }
         posix_spawn_file_actions_addopen(&actions, 0, "/dev/null", O_RDONLY, 0)

@@ -38,13 +38,29 @@ protocol LiveSurface: AnyObject {
     /// Files dropped on the terminal, before their paths are typed; `true`
     /// when taken (copied to another machine, D165).
     var onFileDrop: (([URL]) -> Bool)? { get set }
+    /// What the program prints, handed on as it arrives: a phone sharing this
+    /// terminal through the Mac's bridge (W5), so a background session never
+    /// gets a second `claude attach`.
+    var onOutput: (([UInt8]) -> Void)? { get set }
+    /// Bytes into the program as the keyboard would send them.
+    func type(_ bytes: [UInt8])
+}
+
+/// SwiftTerm's terminal, with what the program prints handed on as well.
+final class SharedTerminalView: LocalProcessTerminalView {
+    var onOutput: (([UInt8]) -> Void)?
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        super.dataReceived(slice: slice)
+        onOutput?(Array(slice))
+    }
 }
 
 /// The SwiftTerm implementation.
 @MainActor
 final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDelegate {
 
-    private let terminal: LocalProcessTerminalView
+    private let terminal: SharedTerminalView
     private var ended = false
     /// The child's pid and start time, kept from the moment it ran: a pid is
     /// reused by the system, and only the pair says it is still ours.
@@ -53,7 +69,7 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
     var onExit: ((Int32?) -> Void)?
 
     override init() {
-        terminal = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        terminal = SharedTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         super.init()
         terminal.processDelegate = self
         // Option types characters, as it does everywhere else on a Mac: on an
@@ -68,6 +84,16 @@ final class SwiftTermSurface: NSObject, LiveSurface, LocalProcessTerminalViewDel
         get { terminal.fileDropHandler }
         set { terminal.fileDropHandler = newValue }
     }
+    var onOutput: (([UInt8]) -> Void)? {
+        get { terminal.onOutput }
+        set { terminal.onOutput = newValue }
+    }
+
+    func type(_ bytes: [UInt8]) {
+        guard isRunning, !ended else { return }
+        terminal.send(data: bytes[...])
+    }
+
     var pid: pid_t { terminal.process?.shellPid ?? 0 }
     var isRunning: Bool { terminal.process?.running ?? false }
 

@@ -11,6 +11,7 @@ import TestKit
 
 /// The PTY bridge and the named actions (§2.6, S-S, E7, E14), on a tmux server
 /// of the harness's own.
+@available(macOS 15.0, *)
 enum MacBridgeSuite {
 
     static func suite(_ harness: MacHarness) -> TestSuite {

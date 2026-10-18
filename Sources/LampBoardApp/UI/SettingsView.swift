@@ -7,6 +7,7 @@ struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     @ObservedObject var fleet: RemoteFleet
     let lampMaster: LampMasterService
+    @ObservedObject var mobile: MobileServer
 
     var body: some View {
         HStack(spacing: 0) {
@@ -18,6 +19,8 @@ struct SettingsView: View {
                     if let current = SettingsCatalog.sections.first(where: { $0.title == model.section }), current.warns {
                         Label(current.title == "LampMaster"
                               ? "Sends parts of your conversations to Anthropic, with your own sign-in."
+                              : current.title == "iPhone & iPad"
+                              ? "Paired devices see this Mac's sessions; terminals and actions are off until you turn them on."
                               : "Sending and answering are off until you turn them on; the safety catch is on.",
                               systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
@@ -69,6 +72,7 @@ struct SettingsView: View {
             LampMasterSettings(service: lampMaster)
         }
         case "Other Macs": OtherMacsPane(fleet: fleet)
+        case "iPhone & iPad": MobilePane(server: mobile)
         case "Privacy & data": PrivacyPane(model: model)
         default: AboutPane(model: model)
         }
@@ -77,7 +81,7 @@ struct SettingsView: View {
     private func tint(_ section: SettingsCatalog.Section) -> Color {
         switch section.title {
         case "Panel", "Clicks & keys": return .blue
-        case "Alerts", "Acting from the panel": return .orange
+        case "Alerts", "Acting from the panel", "iPhone & iPad": return .orange
         case "Claude Code & Codex": return .green
         case "LampMaster": return StatusPalette.lampMasterTint
         default: return .gray

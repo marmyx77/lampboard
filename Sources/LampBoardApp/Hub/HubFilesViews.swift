@@ -1,6 +1,7 @@
 import AppKit
 import ClarcChatKit
 import LampBoardCore
+import LampBoardMacSource
 import SwiftUI
 
 /// The third column: the project's tree, a search, and what each file is to
@@ -16,8 +17,8 @@ struct HubFilesView: View {
                     Text((source.root as NSString).lastPathComponent.uppercased())
                         .font(.system(size: 10, weight: .semibold, design: .monospaced)).kerning(0.8)
                         .foregroundStyle(HubPalette.muted).lineLimit(1)
-                    if source.isRemote {
-                        Text("R").font(.system(size: 9, weight: .bold)).padding(.horizontal, 3)
+                    if let host = source.host {
+                        Text(MachineMark.initial(host: host)).font(.system(size: 9, weight: .bold)).padding(.horizontal, 3)
                             .background(RoundedRectangle(cornerRadius: 3).fill(HubPalette.line))
                     }
                     Spacer()

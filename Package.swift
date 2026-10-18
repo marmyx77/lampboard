@@ -24,8 +24,10 @@ let crypto: [Target.Dependency] = []
 // is pinned to what was measured in W0 of the mobile plan, Citadel and its fork
 // of swift-nio-ssh to a commit rather than a range, because a fork of a third
 // party is read once and then must not move under us (S-C, S-R). Only the
-// targets that talk ssh name them; the Mac app links none of them, and
-// Scripts/check-app-links.sh is the gate that says so.
+// targets that talk ssh name them. The Mac app links none of them but the ssh
+// server's own stack, through LampBoardMacSource (W5): swift-nio-ssh,
+// swift-nio and swift-crypto, never Citadel. Scripts/check-app-links.sh is the
+// gate that says so.
 let sshPackages: [Package.Dependency] = [
     // 0.12.1
     .package(url: "https://github.com/orlandos-nl/Citadel.git", revision: "ae8562f895de06ccb86fdb1cbb65fd99c8976e12"),
@@ -188,7 +190,8 @@ let package = Package(
         // domain tests would slow down a suite that has to stay instantaneous.
         .executableTarget(
             name: "LampBoardE2E",
-            dependencies: ["LampBoardCore", "TestKit"],
+            // NodeLink as the phone the app's own ssh server is tried with (W5).
+            dependencies: ["LampBoardCore", "TestKit", "LampBoardMacSource", "LampBoardNodeLink", "ProtocolConformance"],
             swiftSettings: strict
         ),
     ]
