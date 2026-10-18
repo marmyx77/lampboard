@@ -57,6 +57,7 @@ final class RemoteFleet: ObservableObject {
     private var tunnels: [String: RemoteTunnel] = [:]
     private var preferenceWatcher: NSObjectProtocol?
     private var preferencePoll: Timer?
+    private var presenceTimer: Timer?
 
     init(preferences: Preferences, localPort: UInt16) {
         self.preferences = preferences
@@ -87,6 +88,14 @@ final class RemoteFleet: ObservableObject {
         preferencePoll = Timer.scheduledTimer(withTimeInterval: AppConfig.remotePollInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.followPreferences() }
         }
+        // Presence renewed on every link (W5): `lampd` reads a `here` not renewed
+        // as the Mac gone.
+        presenceTimer = Timer.scheduledTimer(withTimeInterval: MacNodeLink.presenceRefresh, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.broadcast(MacToNode(presence: self.presence, at: Date()))
+            }
+        }
     }
 
     func stop() {
@@ -94,6 +103,8 @@ final class RemoteFleet: ObservableObject {
         preferenceWatcher = nil
         preferencePoll?.invalidate()
         preferencePoll = nil
+        presenceTimer?.invalidate()
+        presenceTimer = nil
         for tunnel in tunnels.values { tunnel.stop() }
         tunnels = [:]
     }

@@ -5,13 +5,13 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,324 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,448 lines · 173 files   shell: AppKit, network, windows
+  LampBoardCore/  31,329 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,459 lines · 173 files   shell: AppKit, network, windows
   LampBoardTests/  22,448 lines · 152 files   1577 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
-  LampBoardMacSource/  2,341 lines · 13 files   the Mac as a source: its ssh server, pairing, bridge
+  LampBoardMacSource/  2,343 lines · 13 files   the Mac as a source: its ssh server, pairing, bridge
   MacSourceTests/   1,475 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh

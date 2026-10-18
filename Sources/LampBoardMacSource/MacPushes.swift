@@ -134,7 +134,7 @@ public final class MacPushes: @unchecked Sendable {
     /// What the column's rows send now. Only the rows this Mac owns count, for
     /// the alerts and for the counts alike: a node's `lampd` counts its own.
     public func after(rows all: [V1Row], at now: Date) {
-        guard let relay, let key else { return }
+        guard let relay, let key, locked({ !devices.isEmpty }) else { return }
         let rows = PushOwnership.rows(all, ownedBy: identity.name)
         var work: [Work] = []
         locked {
@@ -171,6 +171,8 @@ public final class MacPushes: @unchecked Sendable {
         }
         for item in work { send(item, at: now, relay: relay) }
         let due = locked { () -> Bool in
+            // Nobody registered: the relay is not asked anything, not even how it is.
+            if devices.isEmpty { return false }
             if !work.isEmpty { lastHealthCheck = now; return false }
             if let until = health?.holdUntil, until > now { return false }
             return lastHealthCheck.map { now.timeIntervalSince($0) >= Self.healthEvery } ?? true
