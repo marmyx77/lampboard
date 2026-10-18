@@ -5,7 +5,7 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,350 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  31,345 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    31,466 lines · 173 files   shell: AppKit, network, windows
   LampBoardTests/  22,448 lines · 152 files   1577 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
