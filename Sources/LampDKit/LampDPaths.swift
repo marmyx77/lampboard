@@ -74,6 +74,10 @@ public struct LampDPaths: Equatable, Sendable {
     public var macStateFile: String { stateDirectory + "/mac.json" }
     /// Written by `lampd release`: the hooks' port is the Mac's again until removed.
     public var releasedFile: String { stateDirectory + "/hooks-released" }
+    /// The link `systemctl --user enable lampd.socket` makes (`lampd-install.sh
+    /// --tee`): the hooks' port is wanted here, even while the Mac's tunnel
+    /// still holds it.
+    public var socketEnabledLink: String { home + "/.config/systemd/user/sockets.target.wants/lampd.socket" }
     /// The token the hooks send and the port they post to, as the Mac's repair
     /// wrote them on this machine (D48): `lampd` adopts both, never writes them.
     public var hookTokenFile: String { home + "/.lampboard/token" }

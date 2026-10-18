@@ -97,6 +97,16 @@ public final class LampDService: @unchecked Sendable {
         log.write("hooks heard on 127.0.0.1:\(bound.port), passed on to the Mac on \(tee.macPort)\(tee.adoptedToken == nil ? "; no token on this machine yet" : ", with the token the hooks already send")")
     }
 
+    /// The hooks' port is lampd's: held in tee, or wanted — `lampd.socket`
+    /// enabled by `--tee` and never released — while the Mac's tunnel still
+    /// holds it, so the tunnel steps aside and the socket's retry takes it.
+    /// In the shade, or after `lampd release`, the port stays the Mac's.
+    var wantsHookPort: Bool {
+        if tee != nil { return true }
+        let files = FileManager.default
+        return !files.fileExists(atPath: paths.releasedFile) && files.fileExists(atPath: paths.socketEnabledLink)
+    }
+
     /// `lampd release`: the hooks' port goes back to the Mac, and stays its
     /// own until the file is removed (§2.15, the way back).
     func releaseHookPort() {
@@ -258,14 +268,14 @@ public final class LampDService: @unchecked Sendable {
         case "mac-ping":
             // `lampd mac-link`'s beat: the Mac's link is up, and the answer
             // says whether this service is serving from a fresh state, and
-            // whether it holds the hooks' port in tee (the Mac's tunnel moves
-            // next to it only then).
+            // whether the hooks' port is lampd's (the Mac's tunnel moves next
+            // to it only then).
             let now = Date()
             source.macLinkSeen(at: now)
             let status = source.status(at: now)
             let age = status.lastProbeAt.map { now.timeIntervalSince($0) } ?? .infinity
             let line = age <= max(3 * config.probeInterval, 15)
-                ? "ok \(status.journal) \(status.seq)\(tee == nil ? "" : " hooks")" : "stale the last look was \(age.isFinite ? "\(Int(age)) s ago" : "never")"
+                ? "ok \(status.journal) \(status.seq)\(wantsHookPort ? " hooks" : "")" : "stale the last look was \(age.isFinite ? "\(Int(age)) s ago" : "never")"
             UnixSocket.sendAll(fd, Array((line + "\n").utf8))
             close(fd)
         case "mac":

@@ -5,7 +5,7 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,353 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  31,354 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    31,466 lines · 173 files   shell: AppKit, network, windows
   LampBoardTests/  22,464 lines · 152 files   1578 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
@@ -15,7 +15,7 @@ Sources/
   MacSourceTests/   1,492 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,143 lines · 29 files   lampd: the Linux machine's service
+  LampDKit/         4,157 lines · 29 files   lampd: the Linux machine's service
   LampD/              267 lines · 1 files   lampd's command line
   LampDTests/         1,332 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions

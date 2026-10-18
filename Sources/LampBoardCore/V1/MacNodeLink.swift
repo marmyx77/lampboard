@@ -136,10 +136,11 @@ public struct NodeToMac: Codable, Equatable, Sendable {
     public var seq: Int?
     /// Why not, when not serving: "not running", "no answer in 1 s"…
     public var reason: String?
-    /// Whether `lampd` holds the hooks' port in tee and passes the hooks on to
-    /// the next one. A service serving the phone without it (installed
-    /// without `--tee`, or after `lampd release`) owns the node's rows, yet the
-    /// hooks' port stays the Mac's tunnel's: nobody else would hear the hooks.
+    /// Whether the hooks' port is `lampd`'s: held in tee, or wanted
+    /// (`lampd.socket` enabled by `--tee`, never released) while the Mac's
+    /// tunnel still holds it. A service serving the phone without it (in the
+    /// shade, or after `lampd release`) owns the node's rows, yet the hooks'
+    /// port stays the Mac's tunnel's: nobody else would hear the hooks.
     public var hooks: Bool?
     /// The person's choices about the node's rows, when they changed and once
     /// at the start of the link.
@@ -202,7 +203,7 @@ public struct MacNodeLinkWatch: Equatable, Sendable {
         if serving {
             healthyInARow += 1
             // Healthy owns the rows; the port moves only to a `lampd` that
-            // holds it in tee, and comes back the beat it says it does not.
+            // holds or wants it in tee, and comes back the beat it says it does not.
             port = healthyInARow >= MacNodeLink.healthyAfter && line.hooks == true ? .secondary : .primary
         } else {
             healthyInARow = 0

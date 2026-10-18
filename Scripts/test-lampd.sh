@@ -360,6 +360,18 @@ tee_check "a Mac 2.3's tunnel on the hooks' port: lampd leaves it, says why, and
     'as_dev "lampd status" | grep -q "not held: 127.0.0.1:$HOOKS is taken" && [ "$(row $BUSY | cut -d" " -f2)" = "sessionFile" ]'
 tee_check "and the hooks still reach that Mac" \
     'as_dev "$TEE hook $HOOKS UserPromptSubmit $BUSY" | grep -q "^200" && as_dev "grep -q /signal /tmp/mac23.log"'
+# What the Mac 2.4 reads from mac-link while its tunnel still holds the port: in
+# the shade (no --tee) the port stays the Mac's; with lampd.socket enabled
+# (--tee) the beat says the port is wanted, the tunnel steps aside and the
+# socket's retry takes the port.
+beat_now() { as_dev "sleep 3 | timeout 2 lampd mac-link 2>/dev/null | head -n 1"; }
+WANTS="~/.config/systemd/user/sockets.target.wants"
+tee_check "in the shade the beat leaves the hooks' port to the Mac's tunnel" \
+    'beat_now | grep -q "\"serving\":true" && ! beat_now | grep -q "\"hooks\":true"'
+as_dev "mkdir -p $WANTS && touch $WANTS/lampd.socket"
+tee_check "with lampd.socket enabled (--tee) the beat says the port is wanted, so the tunnel steps aside" \
+    'beat_now | grep -q "\"hooks\":true"'
+as_dev "rm -f $WANTS/lampd.socket"
 as_dev 'kill "$(cat /tmp/lampd.pid)" "$(cat /tmp/mac23.pid)"; for i in $(seq 1 50); do kill -0 "$(cat /tmp/lampd.pid)" 2>/dev/null || break; sleep 0.1; done'
 as_dev "LAMPD_HOOK_PORT=$HOOKS setsid nohup lampd serve >> /tmp/lampd-tee.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
 for _ in $(seq 1 100); do as_dev "lampd status > /dev/null 2>&1" && break; sleep 0.2; done

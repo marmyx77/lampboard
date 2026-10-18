@@ -6871,9 +6871,11 @@ account's); a Mac that never repeats its presence; a mod route the table refuses
   own again at the first beat that says `lampd` is not serving, or after two seconds of silence — only when
   that port is free, which with systemd's socket means `lampd` gave up (`TunnelPort`, E2). A tunnel asked to
   move asks the node again and moves only if the answer differs: no restart loop on a socket held by systemd.
-  Each beat also says whether `lampd` holds the hooks' port in tee (`hooks`, found at integration): a `lampd`
-  serving without it — installed without `--tee`, or after `lampd release` — still owns its rows, but the
-  tunnel stays on, or comes back to, the hooks' port, which nobody else would hear.
+  Each beat also says whether the hooks' port is `lampd`'s (`hooks`, found at integration): held in tee, or
+  wanted — `lampd.socket` enabled by `--tee` and never released — while the tunnel still holds it, so the
+  tunnel steps aside and the socket's retry takes the port. A `lampd` serving without it — in the shade, or
+  after `lampd release` — still owns its rows, but the tunnel stays on, or comes back to, the hooks' port,
+  which nobody else would hear.
 - **What `lampd` forwards** carries `X-LampBoard-Event`: the same event taken twice is answered `already
   taken` and counted once (E3); a route of the Mac's own — `/next`, `/open`, `/new`, `/chat`, the asks' list and
   answers, LampMaster, the Hub — forwarded by a node is refused (R2, «il nodo non comanda il Mac», on the
