@@ -52,6 +52,18 @@ public enum LampDDoctor {
             say(.yellow, "claude is not on PATH: no session will be found until it is installed")
         }
         if let problem = configProblem { say(.yellow, problem) }
+        // The notifications (W4): curl carries them to the relay.
+        if config.notifications {
+            let host = config.relay.host ?? config.relay.absoluteString
+            if let curl = CurlRelayTransport.find() { say(.green, "notifications go to \(host) through \(curl)") }
+            else { say(.red, "notifications are on but curl is not installed: no phone will be alerted") }
+            let devices = NodePushes.loadDevices(paths).count
+            say(devices > 0 ? .green : .yellow, devices > 0
+                ? "\(devices) device\(devices == 1 ? "" : "s") registered for notifications"
+                : "no device has registered for notifications yet (the app does it when they are turned on)")
+        } else {
+            say(.yellow, "notifications are off in \(paths.configFile)")
+        }
 
         // The service, and how old what it knows is.
         if let answer = LampDStatus.ask(paths.socket, line: "status", timeout: 5),
