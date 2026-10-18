@@ -1,21 +1,21 @@
 # Code map
 
-~94,500 lines of Swift across twelve targets. For each file: what it contains, why
+~96,600 lines of Swift across twelve targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  29,284 lines · 216 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  30,168 lines · 219 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,084 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  21,800 lines · 148 files   1532 cases, instantaneous
-  LampBoardE2E/    5,468 lines · 24 files   187 cases, the real binary
-  ProtocolConformance/  630 lines · 3 files   the v1 battery, any source
+  LampBoardTests/  22,192 lines · 150 files   1557 cases, instantaneous
+  LampBoardE2E/    5,525 lines · 24 files   187 cases, the real binary
+  ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,602 lines · 21 files   lampd: the Linux machine's service
+  LampDKit/         3,093 lines · 23 files   lampd: the Linux machine's service
   LampD/              216 lines · 1 files   lampd's command line
-  LampDTests/         657 lines · 6 files   lampd's suite, on Linux
+  LampDTests/         855 lines · 7 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -1852,13 +1852,13 @@ and once out of step stays failed. `pieces` cuts writes at 32 KiB: swift-nio-ssh
 does not split a write larger than the channel's window (S-R, 9.5 MB sent nothing
 in 30 s).
 
-### `V1Requests.swift` · 172
+### `V1Requests.swift` · 242
 What a client asks — `hello`, `state`, `events since`, `transcript`, `cmd`,
 `push.register`, `devices` — and what each must hold. The commands are only the
 low-power actions (R4): nothing a read key sends can start, stop or answer
 anything, and anything else does not even decode.
 
-### `V1Replies.swift` · 315
+### `V1Replies.swift` · 368
 What a source says: `hello` with **the age of its state** (the failure this
 project's Linux machine is known for is a service alive on a state nobody
 refreshed), the state with its journal and `null` rows for "never known" (D21),
@@ -1927,20 +1927,57 @@ keeps its rows, unreachable, with the time of its last answer; the person's
 choices survive every reading. **What you would break**: a guessed amber from a
 transcript is a light that lies (D1).
 
-### `PushEnvelope.swift` · 145
+### `PushEnvelope.swift` · 240
 What a notification really says, sealed for the relay to carry without reading
 (§2.8 of the mobile plan): X25519 between the phone and each source, HKDF bound
 to the pair, ChaCha20-Poly1305. `PushReplayGuard` is the extension's memory: an
 envelope shows once, never late, never from the future. It is keyed on the pair
 whose key opened the envelope, never on what the content says of itself, and a
 source's new journal is a new count: a restart with nothing kept must not turn
-every notification after it into a "replay".
+every notification after it into a "replay". The content carries the news
+(`PushEvent`: what the extension picks the category and the interruption level
+from), the source's counts for the badge, the widget and the Live Activity, and
+the quiet flag of the other devices' copy (Q9).
 
-### `RelayRequest.swift` · 80
+### `RelayRequest.swift` · 110
 The client side of the push relay: the capability a token was given, the three
 kinds of push, and the request a source hands over — refused before it leaves
-when it is too large, when a background push asks for priority 10, or when its
-bytes contain what the envelope was meant to hide.
+when it is too large, when a background push asks for priority 10, when an
+alert carries a Live Activity's fields, or when its bytes contain what the
+envelope was meant to hide. A Live Activity push always names a stale date
+(fifteen minutes when nothing else is said), its event and, for an end, when it
+leaves the Lock Screen.
+
+### `RelayClient.swift` · 256
+The relay's routes from the side of a source and of the phone: challenge,
+capability, the Live Activity's capability, push, `/health`. Every answer
+becomes one `RelayOutcome` (`ok`, `gone` for APNs 410, `quota` with the seconds
+of `Retry-After`, `refused`, `unreachable`), which a source puts in `hello`
+(`V1RelayHealth`). The bytes go through a `RelayTransport`: `URLSession` on the
+Mac and iOS, `curl` in `lampd`. **What you would break**: a 410 read as a plain
+refusal keeps sending to a phone that uninstalled the app, for ever.
+
+## `Push/`
+
+What a source decides to notify (W4 of the mobile plan, §2.9), written once so
+that `lampd` now and the Mac in W5 ring the same way.
+
+### `PushPlanner.swift` · 315
+The Mac's `SessionNotifier` as a pure function over `v1` rows: transitions only
+(the first look records, ten amber rows at start are zero notifications); amber
+after four seconds in the same spell, once; red on the transition; a finished
+turn only for a device that asked; the row's mute, the device's muted projects
+and «until»; presence (a device used in the last 45 s shows the column itself,
+so nothing rings) and the focus hold that says what waited in one line; the
+device last used rings, the others get a quiet copy after two minutes if the row
+has not moved (Q9). Its memory is `Codable`, kept by the source across restarts.
+**What you would break**: the memory emptied at the first look is ten
+notifications for what was already so — `bite.sh` commits exactly that.
+
+### `RowsAwayLedger.swift` · 63
+«While you were away» for a source that speaks in rows: finished turns and
+failures counted as they happen, said once in that device's `hello.away`, and
+nothing when the column already shows it all.
 
 ## `Node/`
 
@@ -2505,7 +2542,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1532 cases
+## `LampBoardTests/` — 1557 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2773,7 +2810,9 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LampDConfig.swift` | `~/.config/lampd/config.json`: the machine's name, the look's interval, the allowance and the live contract probe, both off |
 | `LocalProbe.swift` | one look: the Core's probe command run here, read back by the Core's parser; the background jobs' files |
 | `NodeRows.swift` | the rows of a look, made by `V1ProbeSource.rows(from:)`, with a job's words and the person's choices; what one rule for the files rests on |
-| `NodeSource.swift` | the `V1Source`: looks absorbed into events, choices applied at once, transcripts, devices; serves `live` and `files` alike |
+| `NodeSource.swift` | the `V1Source`: looks absorbed into events, choices applied at once, transcripts, devices, push registrations; serves `live` and `files` alike |
+| `NodePushes.swift` | the relay's client (W4): registrations kept `0600` by whichever process takes them, the envelope key made once under a lock, the Core's planner after each look with its memory on disk, alerts, counts and Live Activity updates sealed per device and sent on a queue of their own; the relay's answer in `hello`, `Retry-After` respected, a gone token dropped. Only the service sends |
+| `CurlRelayTransport.swift` | the relay's bytes through the machine's `curl`, the body on standard input: certificates and proxies are the system's, nothing secret on a command line |
 | `NodeJournal.swift` | the numbered journal on disk: a restart keeps its name and numbers; events past the rows start a new one |
 | `RowPreferences.swift` | name, mute, hidden, place, read, taken off, each with its date, and the file under a lock |
 | `NodeTranscripts.swift` | the last messages of a conversation and how many were not sent, read with `TranscriptTail` |
@@ -2886,10 +2925,11 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline; `--node` on a Linux machine, from lampd's copy, without running Claude Code for its version |
 | `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D178). Exits 3 without docker |
 | `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units and `deploy/tmux/lampboard.conf` (as `~/.config/lampd/tmux.conf`, read by a line of the person's own `~/.tmux.conf`, never written) marked with their commit; refuses a unit it did not write; `--uninstall` |
+| `Scripts/test-parity-e2e.sh` | the Mac app's parity with `lampd`'s golden files on its own (`LampBoardE2E parity`), each recorded session with a process, through two sweeps; exits 3 off a Mac; attacked by `bite.sh --parity` |
 | `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the node's tmux with the repository's options, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/test-lampd-watchdog.sh` | `lampd` under `systemd --user` with the unit as installed: a loop stopped on purpose restarted within `WatchdogSec`, a stop with a phone attached quick. Exits 3 without systemd; attacked by `bite.sh --lampd` |
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits seventy-five violations and demands seventy-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits eighty-two violations and demands eighty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
