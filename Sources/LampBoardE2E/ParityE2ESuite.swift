@@ -20,7 +20,7 @@ enum ParityE2ESuite {
         let activeSubagents: Int
     }
 
-    static let flows = ["demo-standard", "e2e-cycle", "late-signals"]
+    static let flows = ["demo-standard", "e2e-cycle", "late-signals", "idle-compaction"]
 
     static func suite(_ app: AppUnderTest) -> TestSuite {
         TestSuite("E2E · parity with lampd on recorded flows", flows.map { flow in

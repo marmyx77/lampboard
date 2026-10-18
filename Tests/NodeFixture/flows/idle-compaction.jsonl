@@ -1,0 +1,10 @@
+{"at":0,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"UserPromptSubmit","session_id":"idle-compaction-01"}}
+{"at":1,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"PreToolUse","session_id":"idle-compaction-01","tool_input":{"command":"npm test"},"tool_name":"Bash"}}
+{"at":2,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"PostToolUse","session_id":"idle-compaction-01","tool_input":{"command":"npm test"},"tool_name":"Bash"}}
+{"at":3,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"Stop","last_assistant_message":"The tests pass.","session_id":"idle-compaction-01"}}
+{"at":10,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/notes","hook_event_name":"UserPromptSubmit","session_id":"idle-compaction-02"}}
+{"at":11,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/notes","hook_event_name":"PreToolUse","session_id":"idle-compaction-02","tool_input":{"file_path":"/home/dev/work/notes/a.md"},"tool_name":"Read"}}
+{"at":12,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/notes","hook_event_name":"SessionStart","session_id":"idle-compaction-02","source":"compact"}}
+{"at":13,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/notes","hook_event_name":"PostToolUse","session_id":"idle-compaction-02","tool_input":{"file_path":"/home/dev/work/notes/a.md"},"tool_name":"Read"}}
+{"at":3300,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/events","hook_event_name":"SessionStart","session_id":"idle-compaction-01","source":"compact"}}
+{"at":3310,"entrypoint":"cli","payload":{"cwd":"/home/dev/work/notes","hook_event_name":"Stop","last_assistant_message":"Done.","session_id":"idle-compaction-02"}}

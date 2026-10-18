@@ -129,17 +129,27 @@ public final class NodePushes: @unchecked Sendable {
 
     // MARK: - After each look
 
-    /// What the rows of one look send. Called by the service only.
-    public func after(rows: [V1Row], at now: Date) {
+    /// The pseudo-device that stands for the person at the Mac (Q8): present
+    /// while the Mac says so, so the planner treats the column as seen — nobody's
+    /// phone rings, an amber stays unannounced and rings when the Mac goes away
+    /// — and never a device anything is sent to.
+    public static let macAtTheDesk = "mac-at-the-desk"
+
+    /// What the rows of one look send. Called by the service only. `macHere`:
+    /// the person is at the Mac (`lampd mac-link`, Q8), whose own banners ring
+    /// for these rows; the phone does not ring as well (§6.2 «Nessuna doppia
+    /// notifica»).
+    public func after(rows: [V1Row], at now: Date, macHere: Bool = false) {
         guard let relay, let key else { return }
         var work: [(device: String, request: RelayPushRequest, kind: PushKind, event: PushEvent?, session: String?)] = []
         locked {
             reloadDevicesIfChanged()
-            let pushDevices = devices.map { id, registered in
+            var pushDevices = devices.map { id, registered in
                 PushDevice(id: id, preferences: registered.registration.preferences ?? .standard,
                            usedAt: used[id]?.at, focusedSession: used[id]?.session)
             }
-            for device in pushDevices where !device.isPresent(at: now) {
+            if macHere { pushDevices.append(PushDevice(id: Self.macAtTheDesk, usedAt: now)) }
+            for device in pushDevices where !device.isPresent(at: now) && device.id != Self.macAtTheDesk {
                 let id = device.id
                 if ledgers[id] == nil { ledgers[id] = RowsAwayLedger(since: now, rows: rows) } else { ledgers[id]?.observe(rows) }
             }

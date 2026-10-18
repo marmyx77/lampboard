@@ -1,0 +1,62 @@
+[
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "idle-compaction-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PreToolUse",
+    "session" : "idle-compaction-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PostToolUse",
+    "session" : "idle-compaction-01",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "idle-compaction-01",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "UserPromptSubmit",
+    "session" : "idle-compaction-02",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PreToolUse",
+    "session" : "idle-compaction-02",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "idle-compaction-02",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "PostToolUse",
+    "session" : "idle-compaction-02",
+    "status" : "working"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "SessionStart",
+    "session" : "idle-compaction-01",
+    "status" : "ready"
+  },
+  {
+    "activeSubagents" : 0,
+    "event" : "Stop",
+    "session" : "idle-compaction-02",
+    "status" : "ready"
+  }
+]

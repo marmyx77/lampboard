@@ -39,16 +39,74 @@ public final class LampDService: @unchecked Sendable {
     private var looks = 0
     private var connections: [ObjectIdentifier: Connection] = [:]
     private var listener: Int32 = -1
+    /// The hooks' port in tee (W5): `nil` until the service holds it.
+    public private(set) var tee: HookTee?
+    /// Why the hooks' port is not held, when it is not: `status` and `doctor` say it.
+    public private(set) var hookPortProblem: String?
+    /// The port the hooks' listener is bound to, when held.
+    public private(set) var hookPort: UInt16?
+    private let hookPortOverride: UInt16?
 
     public init(paths: LampDPaths, config: LampDConfig, version: String, log: LampDLog,
-                probeEnvironment: [String: String?] = [:], testHooks: Bool = false) {
+                probeEnvironment: [String: String?] = [:], testHooks: Bool = false, hookPortOverride: UInt16? = nil) {
         self.paths = paths
         self.config = config
         self.log = log
         self.testHooks = testHooks
+        self.hookPortOverride = hookPortOverride
         probe = LocalProbe(paths: paths, environment: probeEnvironment)
         source = NodeSource(identity: config.identity, mode: .live, paths: paths, version: version, startedAt: Date(),
                             relay: config.relayClient(), log: { [log] in log.write($0) })
+    }
+
+    // MARK: - The hooks' port (W5, §2.3)
+
+    /// Takes the hooks' port: the socket `lampd.socket` passed (E1), or, for the
+    /// checks only, one bound here. Without either the service still serves the
+    /// phone from the files, and says why the hooks are not heard.
+    private func takeHookPort() {
+        let primary = HookPortFile.primary(paths: paths)
+        var fd: Int32?
+        if let passed = LoopbackTCP.passedBySystemd() {
+            if FileManager.default.fileExists(atPath: paths.releasedFile) {
+                close(passed)
+                hookPortProblem = "released with lampd release: the hooks' port is the Mac's"
+            } else {
+                fd = passed
+            }
+        } else if let port = hookPortOverride {
+            fd = LoopbackTCP.listen(port: port)
+            if fd == nil { hookPortProblem = "127.0.0.1:\(port) is taken: the Mac's tunnel or another lampd holds it" }
+        } else {
+            hookPortProblem = "lampd.socket passed no port: \(primary) is the Mac's tunnel's (lampd in the shade)"
+        }
+        guard let fd, let bound = LoopbackTCP.boundAddress(fd) else { return }
+        guard bound.host == "127.0.0.1" else {
+            // §6.2 «Porta degli hook su loopback»: anything else is refused, never served.
+            close(fd)
+            hookPortProblem = "the hooks' port came bound on \(bound.host), not 127.0.0.1: refused"
+            log.write(hookPortProblem ?? "")
+            return
+        }
+        let tee = HookTee(hooks: source.hooks, macPort: MacNodeLink.secondaryPort(of: bound.port), tokenFile: paths.hookTokenFile,
+                          log: { [log] in log.write($0) }, changed: { [source] in source.changed(at: $0) })
+        self.tee = tee
+        hookPort = bound.port
+        hookPortProblem = nil
+        tee.serve(fd)
+        log.write("hooks heard on 127.0.0.1:\(bound.port), passed on to the Mac on \(tee.macPort)\(tee.adoptedToken == nil ? "; no token on this machine yet" : ", with the token the hooks already send")")
+    }
+
+    /// `lampd release`: the hooks' port goes back to the Mac, and stays its
+    /// own until the file is removed (§2.15, the way back).
+    func releaseHookPort() {
+        try? LampDPaths.makeDirectory(paths.stateDirectory)
+        _ = FileManager.default.createFile(atPath: paths.releasedFile, contents: Data(), attributes: [.posixPermissions: 0o600])
+        tee?.stop()
+        tee = nil
+        hookPort = nil
+        hookPortProblem = "released with lampd release: the hooks' port is the Mac's"
+        log.write("the hooks' port released")
     }
 
     /// Runs until SIGTERM or SIGINT; the exit code.
@@ -65,6 +123,7 @@ public final class LampDService: @unchecked Sendable {
             return 1
         }
         listener = fd
+        takeHookPort()
         stopOnSignals()
         // One look before saying ready, so that the first phone gets rows; the
         // socket is bound before READY=1 (E10).
@@ -166,6 +225,7 @@ public final class LampDService: @unchecked Sendable {
         for connection in open { connection.close(reason: "lampd is stopping") }
         let deadline = Date().addingTimeInterval(2)
         for connection in open { connection.waitUntilWritten(before: deadline) }
+        tee?.stop()
         if listener >= 0 {
             shutdown(listener, Int32(SHUT_RDWR))
             close(listener)
@@ -183,7 +243,8 @@ public final class LampDService: @unchecked Sendable {
     }
 
     private func handle(_ fd: Int32) {
-        guard let header = UnixSocket.readLine(fd) else { close(fd); return }
+        // A line from the Mac can carry the panel's choices for a thousand rows.
+        guard let header = UnixSocket.readLine(fd, limit: MacNodeLink.maxLine * 2) else { close(fd); return }
         let words = header.split(separator: " ").map(String.init)
         switch words.first {
         case "v1":
@@ -194,8 +255,43 @@ public final class LampDService: @unchecked Sendable {
             let done = requestLook(timeout: 20)
             UnixSocket.sendAll(fd, Array("\(done ? "ok" : "late") \(source.status(at: Date()).seq)\n".utf8))
             close(fd)
+        case "mac-ping":
+            // `lampd mac-link`'s beat: the Mac's link is up, and the answer
+            // says whether this service is serving from a fresh state.
+            let now = Date()
+            source.macLinkSeen(at: now)
+            let status = source.status(at: now)
+            let age = status.lastProbeAt.map { now.timeIntervalSince($0) } ?? .infinity
+            let line = age <= max(3 * config.probeInterval, 15)
+                ? "ok \(status.journal) \(status.seq)" : "stale the last look was \(age.isFinite ? "\(Int(age)) s ago" : "never")"
+            UnixSocket.sendAll(fd, Array((line + "\n").utf8))
+            close(fd)
+        case "mac":
+            let now = Date()
+            let text = words.count >= 2 ? String(decoding: Data(base64Encoded: words[1]) ?? Data(), as: UTF8.self) : ""
+            let answer: String
+            if let line = MacNodeLink.decode(MacToNode.self, text) {
+                switch source.takeFromMac(line, at: now) {
+                case .success: answer = "ok"
+                case .failure(let error): answer = "refused \(error)"
+                }
+            } else {
+                answer = "refused not a line from the Mac"
+            }
+            UnixSocket.sendAll(fd, Array((answer + "\n").utf8))
+            close(fd)
+        case "rows":
+            // The rows as the phone has them, for the checks and for a person
+            // asking why a lamp is what it is.
+            let data = (try? V1Codec.encoder().encode(source.currentRows)) ?? Data("[]".utf8)
+            UnixSocket.sendAll(fd, Array(data) + [0x0A])
+            close(fd)
+        case "release":
+            releaseHookPort()
+            UnixSocket.sendAll(fd, Array("ok\n".utf8))
+            close(fd)
         case "status":
-            let report = LampDStatus.report(source: source, config: config, paths: paths, at: Date())
+            let report = LampDStatus.report(source: source, config: config, paths: paths, at: Date(), service: self)
             UnixSocket.sendAll(fd, Array(((try? report.json()) ?? "{}").utf8) + [0x0A])
             close(fd)
         default:

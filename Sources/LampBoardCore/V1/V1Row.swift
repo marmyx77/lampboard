@@ -192,9 +192,17 @@ public enum V1StateBasis: String, Codable, Sendable, CaseIterable {
     /// (green) and a failure (red) are told only by hooks, and never show.
     case sessionFile
 
+    /// Heard from the hooks as they happen, on a machine whose `lampd` holds
+    /// the hooks' port (W5): green, red and the question as the Mac has them.
+    /// The file still lights a row the hooks left at rest and rests one they
+    /// left working (D177). A client one version behind reads no basis.
+    case hooks
+
     /// What the phone does not know of a row read this way, in words it can show.
     public var unknowns: [String] {
         switch self {
+        case .hooks:
+            return []
         case .sessionFile:
             return [
                 "read from the session's own file, not heard: an answer to read and a failure do not show",

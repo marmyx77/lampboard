@@ -26,17 +26,36 @@ public struct LampDStatus: Equatable, Sendable {
     public let stateAgeSeconds: Double?
     public let lastProbeProblem: String?
     public let contract: ContractStamp?
+    /// Who holds the hooks' port (W5): «lampd on 127.0.0.1:31000», or why not.
+    public var hooks: String?
+    /// What the tee passed on, and what nobody took.
+    public var tee: HookTee.Stats?
+    /// Where the person is, as the Mac said (Q8), and what it means here.
+    public var mac: String?
+    public var settings: MacNodeSettings?
 
-    public static func report(source: NodeSource, config: LampDConfig, paths: LampDPaths, at now: Date) -> LampDStatus {
+    public static func report(source: NodeSource, config: LampDConfig, paths: LampDPaths, at now: Date,
+                              service: LampDService? = nil) -> LampDStatus {
         let status = source.status(at: now)
         let age = V1StateAge(seq: status.seq, lastEventAt: status.lastEventAt, lastProbeAt: status.lastProbeAt, at: now)
-        return LampDStatus(
+        var report = LampDStatus(
             version: status.version, name: config.name, mode: source.mode, pid: getpid(), startedAt: status.startedAt,
             binaryModifiedAt: status.binaryModifiedAt, configModifiedAt: status.configModifiedAt,
             journal: status.journal, seq: status.seq, rows: source.snapshot(at: now).rows?.count,
             lastEventAt: status.lastEventAt, lastProbeAt: status.lastProbeAt, stateAgeSeconds: age.seconds,
             lastProbeProblem: source.lastProbe.problem, contract: ContractStamp.load(paths.contractFile)
         )
+        if let service {
+            if let port = service.hookPort, let tee = service.tee {
+                report.hooks = "lampd on 127.0.0.1:\(port), passed on to the Mac on \(tee.macPort)"
+                report.tee = tee.stats
+            } else {
+                report.hooks = "not held: \(service.hookPortProblem ?? "unknown")"
+            }
+        }
+        report.mac = source.macDescription(at: now)
+        report.settings = status.settings
+        return report
     }
 
     public func json() throws -> String {
@@ -52,6 +71,19 @@ public struct LampDStatus: Equatable, Sendable {
         object["stateAgeSeconds"] = stateAgeSeconds
         object["lastProbeProblem"] = lastProbeProblem
         object["contract"] = contract?.object
+        object["hooks"] = hooks
+        if let tee {
+            object["tee"] = ["received": tee.received, "forwarded": tee.forwarded, "undelivered": tee.undelivered,
+                             "refused": tee.refused] as [String: Any]
+        }
+        object["mac"] = mac
+        if let settings {
+            var fields: [String: Any] = [:]
+            fields["permissionMode"] = settings.permissionMode
+            fields["sendMessages"] = settings.sendMessages
+            fields["palette"] = settings.palette == nil ? nil : "set"
+            object["settings"] = fields
+        }
         let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         return String(decoding: data, as: UTF8.self)
     }
