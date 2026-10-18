@@ -13,9 +13,9 @@ Sources/
   LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         3,116 lines · 23 files   lampd: the Linux machine's service
-  LampD/              216 lines · 1 files   lampd's command line
-  LampDTests/         878 lines · 7 files   lampd's suite, on Linux
+  LampDKit/         3,138 lines · 23 files   lampd: the Linux machine's service
+  LampD/              231 lines · 1 files   lampd's command line
+  LampDTests/         896 lines · 7 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2807,7 +2807,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | File | What it holds |
 |---|---|
 | `LampDPaths.swift` | the home (`LAMPBOARD_HOME` or `HOME`), the state, configuration and runtime folders, the socket; `AtomicFile`, `FileLock` |
-| `LampDConfig.swift` | `~/.config/lampd/config.json`: the machine's name, the look's interval, the allowance and the live contract probe, both off |
+| `LampDConfig.swift` | `~/.config/lampd/config.json`: the machine's name (`lampd name`, «Linux» until a person names it, never the host name), the look's interval, the allowance and the live contract probe, both off, the notifications and their relay |
 | `LocalProbe.swift` | one look: the Core's probe command run here, read back by the Core's parser; the background jobs' files |
 | `NodeRows.swift` | the rows of a look, made by `V1ProbeSource.rows(from:)`, with a job's words and the person's choices; what one rule for the files rests on |
 | `NodeSource.swift` | the `V1Source`: looks absorbed into events, choices applied at once, transcripts, devices, push registrations; serves `live` and `files` alike |

@@ -92,4 +92,26 @@ public struct LampDConfig: Equatable, Sendable {
     }
 
     public var identity: V1SourceIdentity { V1SourceIdentity(kind: .node, name: name) }
+
+    /// Writes the machine's name into the configuration at `path`, keeping
+    /// every other key as it was (`lampd name <name>`). The service reads it at
+    /// its next start. The default stays «Linux» rather than the host name
+    /// (host names carry personal data): a person names the machine once.
+    public static func setName(_ name: String, at path: String) throws -> String {
+        guard let checked = validName(name) else {
+            throw LampDError.invalid("a name is 1 to 40 characters, with no control characters")
+        }
+        var object: [String: Any] = [:]
+        if let data = FileManager.default.contents(atPath: path) {
+            guard let existing = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                throw LampDError.invalid("\(path) is not a JSON object: nothing was changed")
+            }
+            object = existing
+        }
+        object["name"] = checked
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        try LampDPaths.makeDirectory((path as NSString).deletingLastPathComponent)
+        try AtomicFile.write(data + Data("\n".utf8), to: path)
+        return checked
+    }
 }

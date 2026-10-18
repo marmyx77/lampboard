@@ -27,7 +27,7 @@
 # the owner's own gesture.
 #
 # USAGE
-#   Scripts/lampd-install.sh [--binary <path>] [--no-start] [--dry-run]
+#   Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--no-start] [--dry-run]
 #   Scripts/lampd-install.sh --uninstall      units, binaries and the phones'
 #                                             lines go; state and configuration stay
 
@@ -43,13 +43,17 @@ BINARY=""
 START=1
 DRY=0
 UNINSTALL=0
+NAME=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --binary) BINARY="$2"; shift 2 ;;
         --no-start) START=0; shift ;;
         --dry-run) DRY=1; shift ;;
         --uninstall) UNINSTALL=1; shift ;;
-        *) echo "usage: Scripts/lampd-install.sh [--binary <path>] [--no-start] [--dry-run] | --uninstall" >&2; exit 2 ;;
+        # The machine's name on the phones, written into its configuration
+        # (`lampd name`): «Linux» until a person names it.
+        --name) NAME="${2:?--name needs a name}"; shift 2 ;;
+        *) echo "usage: Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--no-start] [--dry-run] | --uninstall" >&2; exit 2 ;;
     esac
 done
 
@@ -161,6 +165,10 @@ if [ "$DRY" = 0 ]; then
     ls -1dt "$LIB"/*-* 2>/dev/null | grep -v '/contract' | tail -n +4 | while read -r old; do
         [ "$old" != "$DEST" ] && rm -rf "$old" && say "removed $old"
     done
+fi
+
+if [ -n "$NAME" ]; then
+    run "$BIN_LINK" name "$NAME"
 fi
 
 if [ "$START" = 1 ]; then

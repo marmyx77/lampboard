@@ -24,6 +24,7 @@ import Darwin
 //   lampd status                      what the running service says of itself
 //   lampd doctor                      everything lampd depends on, read only
 //   lampd usage [--cached]            this machine's allowance, asked once (or as last kept)
+//   lampd name [<name>]               the machine's name on the phones, shown or set
 //   lampd look                        asks the service to look at the files now
 //   lampd compare                     the service's lamps against the phone's look, now
 //   lampd replay <flow.jsonl>         recorded hooks, reduced as the tee will
@@ -53,7 +54,7 @@ func option(_ name: String, in list: [String] = arguments) -> String? {
 func usage() -> Never {
     print("""
     usage: lampd serve | v1-stdio --device <id> [--role read|action] | devices add|list|revoke |
-           status | doctor | usage | look | replay <flow.jsonl> | projects | version
+           status | doctor | usage | look | replay <flow.jsonl> | projects | name [<name>] | version
     """)
     exit(2)
 }
@@ -118,6 +119,20 @@ case "status":
         exit(1)
     }
     print(answer)
+
+case "name":
+    // The machine's name on the phone: shown, or set (the service takes it at
+    // its next start; `systemctl --user restart lampd`).
+    if arguments.count < 2 {
+        print(config.name)
+        exit(0)
+    }
+    do {
+        let name = try LampDConfig.setName(arguments.dropFirst().joined(separator: " "), at: paths.configFile)
+        print("this machine is now «\(name)» for the phones; restart the service: systemctl --user restart lampd")
+    } catch {
+        fail("\(error)", code: 2)
+    }
 
 case "look":
     guard let answer = LampDStatus.ask(paths.socket, line: "look", timeout: 25) else { fail("the service does not answer", code: 1) }

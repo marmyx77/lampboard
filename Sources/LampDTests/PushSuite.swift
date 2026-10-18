@@ -207,6 +207,24 @@ enum PushSuite {
             t.expectNil(service.away(for: device, at: F.t0 + 901), "once")
         },
 
+        TestCase("The machine is named once, and every other setting stays as it was") { t in
+            let paths = F.home("name")
+            defer { F.remove(paths) }
+            t.expectEqual(LampDConfig.load(paths.configFile).config.name, "Linux", "no name: never the host name")
+            try? LampDPaths.makeDirectory(paths.configDirectory)
+            try? AtomicFile.write(Data(#"{"probeInterval": 7, "notifications": false}"#.utf8), to: paths.configFile)
+            t.expectEqual(try? LampDConfig.setName("  Bestia ", at: paths.configFile), "Bestia", "trimmed")
+            let config = LampDConfig.load(paths.configFile).config
+            t.expectEqual(config.name, "Bestia", "named")
+            t.expectEqual(config.identity.name, "Bestia", "and so it says in hello")
+            t.expectEqual(config.probeInterval, 7, "the rest kept")
+            t.expectEqual(config.notifications, false, "the rest kept")
+            t.expectThrows(LampDError.invalid("a name is 1 to 40 characters, with no control characters"), "a bad name") {
+                _ = try LampDConfig.setName(String(repeating: "x", count: 41), at: paths.configFile)
+            }
+            t.expectEqual(LampDConfig.load(paths.configFile).config.name, "Bestia", "and a bad name changes nothing")
+        },
+
         TestCase("The relay's address: https, or http only to a private network") { t in
             t.expectNotNil(LampDConfig.validRelay("https://push.lampboard.site"), "the public one")
             t.expectNotNil(LampDConfig.validRelay("http://172.17.0.1:18080"), "a check's own, on a private network")
