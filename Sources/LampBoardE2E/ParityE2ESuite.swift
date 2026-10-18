@@ -53,18 +53,33 @@ enum ParityE2ESuite {
                     payload.removeValue(forKey: "transcript_path")
                     app.sendHook(payload, entrypoint: event["entrypoint"] as? String ?? "cli")
                     let expected = golden[index]
+                    let sent = Date()
+                    var seen: [String] = []
                     let reached = app.waitUntil(timeout: 3) {
                         let session = app.session(id: id(original))
+                        let word = "\(session?.status ?? "absent")/\(session?.activeSubagents ?? 0)"
+                        if seen.last?.hasSuffix(" " + word) != true {
+                            seen.append(String(format: "%.2fs %@", Date().timeIntervalSince(sent), word))
+                        }
                         return (session?.status ?? "absent") == expected.status
                             && (session?.activeSubagents ?? 0) == expected.activeSubagents
                     }
                     if !reached {
                         let session = app.session(id: id(original))
+                        // What the app went through while it was waited for, and the
+                        // live session files a sweep would have kept alive.
+                        let live = (try? FileManager.default.contentsOfDirectory(
+                            atPath: app.home.appendingPathComponent(".claude/sessions").path)) ?? []
                         mismatches.append("step \(index + 1) \(expected.event): the app says \(session?.status ?? "absent")"
-                                          + "/\(session?.activeSubagents ?? 0), lampd says \(expected.status)/\(expected.activeSubagents)")
+                                          + "/\(session?.activeSubagents ?? 0), lampd says \(expected.status)/\(expected.activeSubagents)"
+                                          + " (seen: \(seen.joined(separator: ", ")); live files: \(live.sorted().joined(separator: ", ")))")
                     }
                 }
-                a.expect(mismatches.isEmpty, "the Mac and lampd disagree: \(mismatches.joined(separator: "; "))")
+                // With LAMPBOARD_DEBUG set, what the app itself said about these rows.
+                let debug = (try? String(contentsOf: app.home.appendingPathComponent(".lampboard/debug.log"), encoding: .utf8)) ?? ""
+                let said = debug.split(separator: "\n").filter { $0.contains("lost") || $0.contains("parity-") }.suffix(12)
+                a.expect(mismatches.isEmpty, "the Mac and lampd disagree: \(mismatches.joined(separator: "; "))"
+                         + (said.isEmpty ? "" : "\n" + said.joined(separator: "\n")))
             }
         })
     }
