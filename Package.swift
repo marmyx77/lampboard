@@ -152,10 +152,31 @@ let package = Package(
             // Upstream is written with the main actor as its default isolation.
             swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-suppress-warnings", "-default-isolation", "MainActor"])]
         ),
+        // The Mac as a source for the phone (W5 of the mobile plan, §2.6): the
+        // `v1` source over the panel's rows, the ssh server inside the app, the
+        // pairing, the PTY bridge and the named actions. No AppKit, so that it
+        // builds and is checked on Linux too. It names swift-nio-ssh and
+        // swift-nio, never Citadel: Scripts/check-app-links.sh holds the app to
+        // exactly these.
+        .target(
+            name: "LampBoardMacSource",
+            dependencies: ["LampBoardCore", .product(name: "NIOSSH", package: "swift-nio-ssh"),
+                           .product(name: "NIOCore", package: "swift-nio"), .product(name: "NIOPosix", package: "swift-nio"),
+                           .product(name: "Crypto", package: "swift-crypto")],
+            swiftSettings: strict
+        ),
+        // Its suite, with a phone made of NodeLink: the conformance battery and
+        // the bites of the server over a real ssh, in one process. Runs on the
+        // Mac gate and on Linux.
+        .executableTarget(
+            name: "MacSourceTests",
+            dependencies: ["LampBoardCore", "LampBoardMacSource", "LampBoardNodeLink", "ProtocolConformance", "TestKit"],
+            swiftSettings: strict
+        ),
         // AppKit/SwiftUI shell: floating panel, HTTP server, window focus.
         .executableTarget(
             name: "LampBoardApp",
-            dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],
+            dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit"],
             swiftSettings: strict,
             // The system's SQLite, for the search index's FTS5 (0.7): nothing bundled.
             linkerSettings: [.linkedLibrary("sqlite3")]
