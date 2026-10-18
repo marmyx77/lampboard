@@ -12,7 +12,7 @@ Sources/
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
   LampBoardMacSource/  1,914 lines · 12 files   the Mac as a source: its ssh server, pairing, bridge
-  MacSourceTests/   1,299 lines · 7 files   the server reached by a phone made of NodeLink
+  MacSourceTests/   1,308 lines · 7 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
   LampDKit/         3,116 lines · 23 files   lampd: the Linux machine's service
