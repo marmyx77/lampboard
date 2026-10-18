@@ -27,7 +27,7 @@ final class StateStore: ObservableObject {
 
     private let windowReader: IDEWindowReader
     let liveSessionReader: LiveSessionReader
-    private let clock: () -> Date
+    let clock: () -> Date
     private let snapshots: SnapshotBox?
     private let preferences: Preferences
     /// Finds Codex sessions that will never send a signal.
@@ -117,6 +117,12 @@ final class StateStore: ObservableObject {
     /// session that spoke through the tunnel after the probe started is not
     /// "missing from the answer", it is newer than the question.
     private var remoteAnsweredAt: [String: Date] = [:]
+    /// When each host last answered a read, and whether the last read did (W5:
+    /// a node's rows on the phone carry their age and reachability).
+    private(set) var remoteSight: [String: (answeredAt: Date?, reachable: Bool)] = [:]
+    /// A choice made in the panel about another machine's row, for that
+    /// machine's `lampd` (W5, §2.12): read, unread, taken off. Set by the app.
+    var onNodeChoice: ((V1Command, String) -> Void)?
 
     /// `true` while a pass over the hosts is running off the main actor. A pass
     /// slower than the timer is skipped, not queued: two unreachable hosts would
@@ -144,33 +150,6 @@ final class StateStore: ObservableObject {
         apply(.forget(origin: .terminal), now: clock())
     }
 
-    /// Adopts the Codex sessions a live process is holding a rollout open for.
-    ///
-    /// They arrive this way because they arrive no other way. Codex inside the
-    /// ChatGPT app registers our hooks, marks them trusted, runs a full session
-    /// and sends nothing: measured, with eight events configured and not one line
-    /// in the log. A row for it has to be found rather than announced.
-    ///
-    /// Three rules hold the honesty of it together.
-    ///
-    /// The folder comes from the rollout's own first record, never from anything
-    /// sent to us. That is the replacement for the admission gate, not its
-    /// removal: the old bound was a Claude Code window lock, which a machine
-    /// running only Codex does not have.
-    ///
-    /// The state is **idle**, which here means the absence of information rather
-    /// than a claim, exactly as it does for a Claude session adopted from disk. An
-    /// open descriptor proves a conversation is loaded in a live program; it does
-    /// not prove the model is doing anything, and the editor extension was
-    /// observed holding open a rollout whose last record was a year old. Reading
-    /// turns out of the rollout is a separate capability and needs fixtures, a
-    /// gate and a version, because the format is declared unstable by the people
-    /// who write it.
-    ///
-    /// And a probe that could not answer removes nothing. `lsof` stats every open
-    /// descriptor, so a network mount whose server has gone away stops it: that is
-    /// absence of evidence, and this project already draws the same line for a
-    /// remote host that has gone quiet.
     /// Reads the conversation's title off the main actor and remembers it.
     ///
     /// For any session that has none yet, wherever it runs. It used to be for
@@ -285,6 +264,7 @@ final class StateStore: ObservableObject {
             remoteSessions.removeValue(forKey: gone)
             remoteWindows.removeValue(forKey: gone)
             remoteAnsweredAt.removeValue(forKey: gone)
+            remoteSight.removeValue(forKey: gone)
         }
 
         guard !hosts.isEmpty else {
@@ -317,6 +297,7 @@ final class StateStore: ObservableObject {
         isProbing = false
         for (host, report) in answers {
             guard let report else {
+                remoteSight[host] = (remoteAnsweredAt[host], false)
                 // No answer. Keep what we had and say so once.
                 Diagnostics.log("remote \(host): no answer, keeping \(remoteSessions[host]?.count ?? 0) known rows")
                 continue
@@ -331,6 +312,7 @@ final class StateStore: ObservableObject {
             }
             remoteSessions[host] = sessions
             remoteAnsweredAt[host] = askedAt
+            remoteSight[host] = (askedAt, true)
             adoptRemoteSessions(sessions, host: host, at: askedAt)
             lightBusy(sessions, at: askedAt)
 
@@ -535,8 +517,10 @@ final class StateStore: ObservableObject {
 
     /// The user opened the session: the unread states are cleared.
     func markSeen(sessionId: String) {
+        tellNode(.markSeen, sessionId)
         apply(.markSeen(sessionId: sessionId), now: clock())
     }
+
 
     /// Takes one row off the column, at the user's request.
     ///
@@ -545,11 +529,13 @@ final class StateStore: ObservableObject {
     /// its tab — so the reducer keeps the moment and admits it again only on
     /// something newer. See `TrafficLightState.dismissed`.
     func dismiss(sessionId: String) {
+        tellNode(.dismiss, sessionId)
         apply(.dismiss(sessionId: sessionId), now: clock())
     }
 
     /// Remedy for one click too many: the row goes back to "there is something to read".
     func markUnread(sessionId: String) {
+        tellNode(.markUnread, sessionId)
         apply(.markUnread(sessionId: sessionId), now: clock())
     }
 

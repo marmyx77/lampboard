@@ -790,12 +790,16 @@ TENS = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty",
         6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety"}
 
 def spell(n):
+    if n >= 100:
+        hundreds, rest = divmod(n, 100)
+        return f"{ONES[hundreds]} hundred" + (f" and {spell(rest)}" if rest else "")
     if n < 20:
         return ONES[n]
     tens, ones = divmod(n, 10)
     return TENS[tens] if ones == 0 else f"{TENS[tens]}-{ONES[ones]}"
 
-VALUE = {spell(n): n for n in range(1, 100)}
+# Past ninety-nine since W5: "one hundred and three".
+VALUE = {spell(n): n for n in range(1, 1000)}
 
 if not os.path.exists("Scripts/bite.sh"):
     print("    Scripts/bite.sh is gone — there is no count to compare against", file=sys.stderr)
@@ -815,8 +819,9 @@ if count == 0:
     )
 
 FILES = ["docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"]
-STATEMENT = re.compile(r"commits ([a-z]+(?:-[a-z]+)?) violations", re.I)
-CATCHES = re.compile(r"demands ([a-z]+(?:-[a-z]+)?) catches", re.I)
+WORDS = r"([a-z]+(?:-[a-z]+)?(?: hundred(?: and [a-z]+(?:-[a-z]+)?)?)?)"
+STATEMENT = re.compile(rf"commits\s+{WORDS} violations", re.I)
+CATCHES = re.compile(rf"demands\s+{WORDS} catches", re.I)
 
 stating = 0
 for f in FILES:

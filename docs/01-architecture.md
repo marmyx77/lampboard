@@ -134,7 +134,7 @@ The practical rule: if a function contains an `if` answering a domain question
 
 ### `LampBoardTests` — domain
 
-1565 cases, instantaneous. They verify Core, on the Mac and on Linux
+1577 cases, instantaneous. They verify Core, on the Mac and on Linux
 (`Scripts/test-linux.sh`). Among them, the `v1` conformance battery from
 `ProtocolConformance`: a library rather than suites of the runner's own,
 because it is meant to be pointed at any source a byte stream reaches — the
@@ -158,7 +158,7 @@ command for sshd) and `NodeLinkCheck`.
 
 ### `LampBoardE2E` — the real chain
 
-193 cases. They launch **the production binary** against a fake home and talk to
+196 cases. They launch **the production binary** against a fake home and talk to
 it over HTTP, the way the hooks do. They go as far as running `hook.sh` with the
 payload on stdin: in between sit bash, `curl`, the socket, the parser, the
 decoder and the reducer.

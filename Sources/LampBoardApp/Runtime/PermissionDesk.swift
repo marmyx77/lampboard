@@ -46,7 +46,10 @@ final class PermissionDesk: ObservableObject {
     /// Called on the server's queue, never on the main actor, since it waits.
     /// An ask not proven with the permission key is answered `ask`, unsigned:
     /// the mod trusts only a signed answer, so that is its dialog either way.
-    nonisolated func check(_ body: Data, nonce: String?, proof: String?, key: String) -> String {
+    /// - Parameter away: the person said away, or the screen stayed locked
+    ///   (D114): the ask goes back to its dialog at once, in the terminal where
+    ///   the phone answers it, instead of waiting 55 s on a panel nobody sees (W5).
+    nonisolated func check(_ body: Data, nonce: String?, proof: String?, key: String, away: Bool = false) -> String {
         let ask = PermissionGate.Verdict.ask.rawValue
         guard let request = PermissionGate.decode(body, at: Date()) else {
             Diagnostics.log("check: an ask that does not read")
@@ -57,6 +60,10 @@ final class PermissionDesk: ObservableObject {
         else {
             Diagnostics.log("check: \(request.callId) not proven with the key (nonce \(nonce != nil), proof \(proof?.count ?? 0))")
             return ask
+        }
+        guard PermissionGate.holds(away: away) else {
+            Diagnostics.log("check: \(request.callId) to its dialog at once: the person is away")
+            return PermissionGate.signed(.ask, key: key, nonce: nonce)
         }
         let admitted = DispatchSemaphore(value: 0)
         let box = Box()
@@ -83,7 +90,7 @@ final class PermissionDesk: ObservableObject {
     /// The server's side of a question (D86): proven with the key under its
     /// own prefix, held like a permission, answered with the chosen option's
     /// index — or `ask`, the session's own dialog.
-    nonisolated func question(_ body: Data, nonce: String?, proof: String?, key: String) -> String {
+    nonisolated func question(_ body: Data, nonce: String?, proof: String?, key: String, away: Bool = false) -> String {
         let ask = PermissionGate.Verdict.ask.rawValue
         guard let request = QuestionGate.decode(body, at: Date()) else {
             Diagnostics.log("question: one that does not read")
@@ -95,6 +102,7 @@ final class PermissionDesk: ObservableObject {
             Diagnostics.log("question: \(request.callId) not proven with the key")
             return ask
         }
+        guard PermissionGate.holds(away: away) else { return QuestionGate.signed(choice: nil, key: key, nonce: nonce) }
         guard let reply = hold(request) else { return QuestionGate.signed(choice: nil, key: key, nonce: nonce) }
         _ = reply.done.wait(timeout: .now() + QuestionGate.answerWithin + 2)
         return QuestionGate.signed(choice: reply.choice, key: key, nonce: nonce)

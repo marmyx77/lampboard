@@ -6790,3 +6790,65 @@ and the preferences written into `lampd` (`MacRows` names a node's rows as the n
 
 **Signal to revisit:** a phone that cannot reach the Mac's port (a firewall the person runs); Bonjour names
 that leak a person's name; a background session shared by two phones at once.
+
+## D182 · The Mac beside a node's `lampd`: one owner per row, presence, choices both ways
+
+**Decided** (W5 of the mobile plan, §2.3, §2.4, §2.6, §2.9, §2.12; D181 is `lampd` in tee).
+- **The tunnel's own connection carries the link.** The ssh that holds the reverse forward runs `lampd
+  mac-link` on the node instead of nothing (`MacNodeLink.remoteCommand`); where `lampd` is not installed the
+  command waits in silence and the tunnel is the one it was. Heartbeats come back every 0.3 s on ssh's output;
+  the Mac's lines (`MacToNode`) go down its input. No second connection, no port, nothing new on the node.
+- **The port.** `~/.lampboard/port` and the hooks keep the uid's port. The tunnel binds the next one while
+  `lampd` holds the hooks' port (its socket bound before the connect, or three healthy beats), and the hooks'
+  own again at the first beat that says `lampd` is not serving, or after two seconds of silence — only when
+  that port is free, which with systemd's socket means `lampd` gave up (`TunnelPort`, E2). A tunnel asked to
+  move asks the node again and moves only if the answer differs: no restart loop on a socket held by systemd.
+- **What `lampd` forwards** carries `X-LampBoard-Event`: the same event taken twice is answered `already
+  taken` and counted once (E3); a route of the Mac's own — `/next`, `/open`, `/new`, `/chat`, the asks' list and
+  answers, LampMaster, the Hub — forwarded by a node is refused (R2, «il nodo non comanda il Mac», on the
+  Mac's side as well as `lampd`'s).
+- **D48 with `lampd` present rewrites nothing**: `lampd` adopted the token for the hooks' port, and a repair
+  over it would put out every live session's colours there.
+- **One owner per row (§2.9).** While a node's `lampd` answers, its rows are its own (`MacRows`, `owner`), and
+  the Mac's relay client sends neither their alerts nor their counts (`PushOwnership`). A node without a
+  healthy `lampd` keeps the Mac as owner, as for the public with nodes over a tunnel.
+- **The Mac as the relay's client** (`MacPushes`): `PushPlanner`, the rule `lampd` follows, over the rows it
+  owns; registrations and the envelope key `0600` in the paired devices' folder; the relay's last word in
+  `hello`.
+- **Presence (Q8).** At the Mac every device counts as in hand: nothing rings on the phone, the panel shows
+  and rings; a row still waiting when the person leaves rings then. Away (the menu, or the screen locked three
+  minutes, D114) and asleep are told to every node's `lampd` at once and at each new link. Before the Mac
+  sleeps: one alert when something waits («The Mac is going to sleep; 2 sessions are waiting for you»), and
+  the Live Activity pushed with its stale date now, grey.
+- **Ask at once when away.** While the person is away, an ask or a question the mod proves goes back to its
+  dialog at once, signed, instead of waiting 55 s on a panel nobody sees (D80 unchanged at the Mac): the dialog
+  is in the terminal the phone reaches, and the node's amber starts without the Mac's hold.
+- **The person's choices both ways (§2.12).** The panel's renames, hides, mutes and reorders of a node's rows
+  go to its `lampd` as `v1` commands, found by difference so every path of the panel counts; read, unread and
+  taken off go as they happen. The node's choices come back and change the panel, and become the baseline,
+  so nothing echoes. A read is applied once, and never to an answer newer than the one read. Once per node
+  the panel's own copy is merged in; the panel kept no dates, so its values carry `.distantPast` and the
+  node's own — written from the phone — always win where they exist.
+- **The Mac's settings for the phone** — the permission mode new sessions start in (D169), *Send messages*
+  (D172), the palette — in its own `hello` and written to every node, so the phone offers Bypass from the start
+  and `@name` on a node only as the Mac allows.
+- **Keys carried to the nodes at pairing (§2.4).** The confirmation offers «Also on <node>» for each node with a
+  healthy `lampd`, ticked; after the yes the Mac runs `lampd devices add` there over its own ssh (an argument
+  list, no shell) and hands the phone, in the pairing's reply, the node's address and the host keys of its
+  own `known_hosts` (a revoked line never): trust carried, not guessed. Forget revokes the device on each node.
+
+**Why.** Each rule is the plan's (§2.3 points 2–4, §2.9, §2.12) made a function in the Core, so the gate bites
+it without ssh or a clock: a Mac and a node both ringing for one amber at the desk was the cost W4 accepted
+until this decision.
+
+**Measured** by `MacNodeSyncSuite` (domain, Linux and Mac), `MacPushesSuite` (Mac source, Linux and Mac),
+`NodeLinkE2ESuite` and the away case of `PermissionE2ESuite` against the real app; eight bites (six in
+`--swift`, two in `--macsource`). The end-to-end path through a real `lampd mac-link` is the integration's.
+
+**Discarded:** a probe every 0.3 s over a new ssh each time (a process and a handshake three times a second
+per node); a second ssh for the link (a second thing to keep alive and to fail separately); dating the panel's
+choices at the migration (it would undo what the person did on the phone since).
+
+**Signal to revisit:** a node whose ssh refuses a command with `-R` (a `ForceCommand`); two Macs paired with one
+node (each would be an owner of nothing and both would say presence); a phone that read on a node while the
+Mac slept and the panel's green still on after the wake.

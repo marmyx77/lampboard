@@ -25,8 +25,27 @@ import Foundation
 /// delay, reset to the minimum after a run that lasted. `ExitOnForwardFailure`
 /// makes a refused bind an exit with a reason instead of a tunnel that looks up
 /// and carries nothing.
+///
+/// **With `lampd` on the node (W5, §2.3).** The tunnel's ssh runs `lampd
+/// mac-link` instead of nothing (`MacNodeLink.remoteCommand`): its heartbeats
+/// come back on ssh's standard output and decide the port (`MacNodeLinkWatch`,
+/// `TunnelPort`) — next to the hooks' port while `lampd` holds that one in tee,
+/// the hooks' own when `lampd` gives up and the port is free — and whether
+/// `lampd` owns the node's rows. Down its standard input go the Mac's lines:
+/// presence, settings, the panel's choices (`MacToNode`). Where `lampd` is not
+/// installed the command waits in silence, and the tunnel is the one it was.
 @MainActor
 final class RemoteTunnel {
+
+    /// What the link to `lampd` says, for the fleet.
+    enum LinkNews {
+        /// `lampd` turned healthy, or stopped being so.
+        case health(Bool)
+        /// A link answered for the first time on this connection: what the Mac
+        /// keeps telling the node is to be told again.
+        case linked
+        case preferences(RowPreferences)
+    }
 
     enum State: Equatable {
         case starting
@@ -54,6 +73,17 @@ final class RemoteTunnel {
     let host: String
     private let localPort: UInt16
     private let onChange: @MainActor (State) -> Void
+    private let onLink: @MainActor (LinkNews) -> Void
+    /// The port the running forward asked for, on the node.
+    private(set) var boundPort: UInt16?
+    private var watch = MacNodeLinkWatch()
+    private(set) var lampdHealthy = false
+    private var linkedThisConnection = false
+    private var input: FileHandle?
+    private var tick: Timer?
+    private var lastReconsider: Date?
+    /// A restart asked by the link, not an exit: relaunched at once.
+    private var restarting = false
 
     private(set) var state: State = .stopped {
         didSet {
@@ -71,14 +101,23 @@ final class RemoteTunnel {
     /// Increases on every `stop()`, so an answer that arrives after one is ignored.
     private var generation = 0
 
-    init(host: String, localPort: UInt16, onChange: @escaping @MainActor (State) -> Void) {
+    init(host: String, localPort: UInt16, onChange: @escaping @MainActor (State) -> Void,
+         onLink: @escaping @MainActor (LinkNews) -> Void = { _ in }) {
         self.host = host
         self.localPort = localPort
         self.onChange = onChange
+        self.onLink = onLink
     }
 
     func start() {
         wantsToRun = true
+        if tick == nil {
+            let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.tickLink() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            tick = timer
+        }
         launch()
     }
 
@@ -87,9 +126,94 @@ final class RemoteTunnel {
         generation += 1
         retryTimer?.invalidate()
         retryTimer = nil
+        tick?.invalidate()
+        tick = nil
         if let process, process.isRunning { process.terminate() }
         process = nil
+        input = nil
+        boundPort = nil
+        setHealthy(false)
         state = .stopped
+    }
+
+    /// One line to `lampd mac-link`; dropped when no link runs (the fleet says
+    /// it all again at the next `.linked`).
+    func send(_ message: MacToNode) {
+        guard message.problem == nil, let line = MacNodeLink.encode(message), let input else { return }
+        // The write throws on a closed pipe instead of raising SIGPIPE (F_SETNOSIGPIPE at spawn).
+        try? input.write(contentsOf: Data((line + "\n").utf8))
+    }
+
+    // MARK: - The link
+
+    /// A line from `lampd mac-link`, on the main actor.
+    fileprivate func received(_ line: NodeToMac) {
+        let now = Date()
+        if line.serving != nil {
+            watch.beat(line, at: now)
+            if line.serving == true, !linkedThisConnection {
+                linkedThisConnection = true
+                onLink(.linked)
+            }
+        }
+        if let preferences = line.preferences?.preferences { onLink(.preferences(preferences)) }
+        follow(at: now)
+    }
+
+    private func tickLink() {
+        let now = Date()
+        watch.tick(at: now)
+        follow(at: now)
+    }
+
+    /// The watch's word on health and port, carried out.
+    private func follow(at now: Date) {
+        setHealthy(watch.lampdHealthy(at: now))
+        guard let boundPort, process != nil else { return }
+        let onSecondary = boundPort != primaryPort
+        let wantsSecondary = watch.port == .secondary
+        guard onSecondary != wantsSecondary else { return }
+        // Asked again at most every few seconds: the node decides, from who
+        // holds the hooks' port now (`TunnelPort`), whether a restart helps.
+        if let lastReconsider, now.timeIntervalSince(lastReconsider) < 5 { return }
+        lastReconsider = now
+        restart()
+    }
+
+    private var primaryPort: UInt16?
+
+    private func setHealthy(_ healthy: Bool) {
+        guard healthy != lampdHealthy else { return }
+        lampdHealthy = healthy
+        Diagnostics.log("tunnel \(host): lampd \(healthy ? "healthy: it owns the node's rows" : "not healthy: the Mac owns them")")
+        onLink(.health(healthy))
+    }
+
+    /// Asks the node again and relaunches if the port it should hold changed.
+    private func restart() {
+        let host = self.host
+        let expected = generation
+        let watched = watch.port
+        Task.detached(priority: .utility) { [weak self] in
+            let prepared = RemoteCommand.runPythonForObject(on: host, script: RemoteInstallScripts.prepareTunnel)
+            await MainActor.run { [weak self] in
+                guard let self, self.wantsToRun, self.generation == expected, case .success(let answer) = prepared,
+                      let choice = Self.choice(answer, watch: watched), case .bind(let port) = choice,
+                      port != self.boundPort, let process = self.process else { return }
+                Diagnostics.log("tunnel \(host): moving to port \(port)")
+                self.restarting = true
+                process.terminate()
+            }
+        }
+    }
+
+    /// What `prepareTunnel` answered, read into the port rule.
+    nonisolated static func choice(_ answer: [String: Any], watch: MacNodeLinkWatch.Port) -> TunnelPort.Choice? {
+        guard let uid = (answer["uid"] as? NSNumber)?.intValue else { return nil }
+        return TunnelPort.choose(primary: AppConfig.remotePort(forUID: uid),
+                                 primaryBound: (answer["bound"] as? [String]) ?? [],
+                                 secondaryBound: (answer["boundSecondary"] as? [String]) ?? [],
+                                 lampdInstalled: (answer["lampd"] as? Bool) ?? false, watch: watch)
     }
 
     // MARK: - Internal
@@ -130,20 +254,17 @@ final class RemoteTunnel {
                 case .success(let answer):
                     if let problem = answer["problem"] as? String {
                         self.exited(status: -1, stderr: "~/.lampboard there \(problem)")
-                    } else if let uid = (answer["uid"] as? NSNumber)?.intValue {
-                        let port = AppConfig.remotePort(forUID: uid)
-                        let bound = (answer["bound"] as? [String]) ?? []
-                        if !bound.isEmpty {
+                    } else if let uid = (answer["uid"] as? NSNumber)?.intValue,
+                              let choice = Self.choice(answer, watch: self.watch.port) {
+                        self.primaryPort = AppConfig.remotePort(forUID: uid)
+                        switch choice {
+                        case .wait(let reason):
                             // Somebody is there already: a ghost of the last
                             // connection, another Mac's tunnel, or a stranger.
                             // Asking anyway would fail after the fact; wait instead.
                             self.delay = AppConfig.remoteTunnelRetryMax
-                            self.exited(
-                                status: -1,
-                                stderr: "port \(port) is taken there (\(bound.joined(separator: ", ")))",
-                                culprit: localDiagnosis
-                            )
-                        } else {
+                            self.exited(status: -1, stderr: reason, culprit: localDiagnosis)
+                        case .bind(let port):
                             self.spawn(port: port)
                         }
                     } else {
@@ -170,12 +291,21 @@ final class RemoteTunnel {
             "-o", "ServerAliveCountMax=2",
             "-o", "ConnectTimeout=\(Int(AppConfig.remoteProbeTimeout))",
             "-R", "127.0.0.1:\(port):127.0.0.1:\(localPort)",
-            host,
+            host, MacNodeLink.remoteCommand,
         ]
-        let errors = Pipe()
-        ssh.standardOutput = FileHandle.nullDevice
+        let errors = Pipe(), output = Pipe(), feed = Pipe()
+        ssh.standardOutput = output
         ssh.standardError = errors
-        ssh.standardInput = FileHandle.nullDevice
+        ssh.standardInput = feed
+        // A write after ssh is gone throws instead of raising SIGPIPE.
+        _ = fcntl(feed.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
+        let reader = LinkReader { [weak self] line in
+            Task { @MainActor [weak self] in self?.received(line) }
+        }
+        output.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { handle.readabilityHandler = nil } else { reader.consume(data) }
+        }
 
         ssh.terminationHandler = { [weak self] finished in
             let text = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
@@ -198,6 +328,9 @@ final class RemoteTunnel {
             return
         }
         process = ssh
+        input = feed.fileHandleForWriting
+        boundPort = port
+        linkedThisConnection = false
         startedAt = Date()
 
         // ssh says nothing on success. If it is still running after the connect
@@ -249,7 +382,16 @@ final class RemoteTunnel {
 
     private func exited(status: Int32, stderr: String, culprit: String? = nil) {
         process = nil
+        input = nil
+        boundPort = nil
         guard wantsToRun else { return }
+        if restarting {
+            // The link asked for another port: no back-off, no "down" to say.
+            restarting = false
+            startedAt = nil
+            launch()
+            return
+        }
 
         let lasted = startedAt.map { Date().timeIntervalSince($0) } ?? 0
         startedAt = nil
@@ -286,5 +428,30 @@ final class RemoteTunnel {
         }
         if text.isEmpty { return "ssh exited (\(status))" }
         return String(text.prefix(100))
+    }
+}
+
+/// Splits ssh's standard output into `lampd mac-link`'s lines, off the main
+/// thread; a line too long or that does not read is dropped.
+private final class LinkReader: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer = Data()
+    private let deliver: @Sendable (NodeToMac) -> Void
+
+    init(deliver: @escaping @Sendable (NodeToMac) -> Void) { self.deliver = deliver }
+
+    func consume(_ data: Data) {
+        var lines: [String] = []
+        lock.lock()
+        buffer.append(data)
+        while let newline = buffer.firstIndex(of: 0x0A) {
+            lines.append(String(decoding: buffer[buffer.startIndex..<newline], as: UTF8.self))
+            buffer.removeSubrange(buffer.startIndex...newline)
+        }
+        if buffer.count > MacNodeLink.maxLine { buffer.removeAll() }
+        lock.unlock()
+        for line in lines {
+            if let message = MacNodeLink.decode(NodeToMac.self, line) { deliver(message) }
+        }
     }
 }

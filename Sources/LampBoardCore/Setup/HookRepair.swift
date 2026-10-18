@@ -38,6 +38,15 @@ public enum HookRepair {
         case stale(Shape)
     }
 
+    /// The verdict for a node's hooks once the node said whether `lampd` is
+    /// installed there (W5, §2.3 point 4): with `lampd` present the repair never
+    /// rewrites `hook.sh` nor its token. `lampd` adopted that token for the
+    /// hooks' port; a new one, or a script pointed elsewhere, would put out the
+    /// colours of every live session over there.
+    public static func remote(_ verdict: Verdict?, lampdInstalled: Bool) -> Verdict? {
+        lampdInstalled ? nil : verdict
+    }
+
     /// - Parameters:
     ///   - settings: the hooks file as read.
     ///   - scriptPath: where our script lives on that machine, as the file names it.

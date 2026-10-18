@@ -67,10 +67,11 @@ enum PermissionE2ESuite {
 
     static func suite(binaryURL: URL, port: UInt16) -> TestSuite {
         // `on: nil` leaves the switch as a new installation has it.
-        func instance(on: Bool?, _ t: Assertions, _ body: (AppUnderTest) -> Void) {
+        func instance(on: Bool?, away: Bool = false, _ t: Assertions, _ body: (AppUnderTest) -> Void) {
             let app = AppUnderTest(binaryURL: binaryURL, port: port)
             let domain = "com.lampboard.app.test.\(app.home.lastPathComponent)"
             if let on { UserDefaults(suiteName: domain)?.set(on, forKey: "permissions.panel") }
+            if away { UserDefaults(suiteName: domain)?.set(true, forKey: "away.manual") }
             UserDefaults(suiteName: domain)?.synchronize()
             defer {
                 app.stop()
@@ -103,6 +104,20 @@ enum PermissionE2ESuite {
                     let reply = check(app, call: "toolu_off", nonce: nonce)
                     t.expectEqual(reply, PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce))
                     t.expect(Date().timeIntervalSince(started) < 3, "no wait")
+                }
+            },
+
+            TestCase("switched on but away, an ask and a question go back to their dialog at once, signed (W5)") { t in
+                instance(on: true, away: true, t) { app in
+                    usleep(500_000)
+                    let started = Date()
+                    t.expectEqual(check(app, call: "toolu_away", nonce: nonce),
+                                  PermissionGate.signed(.ask, key: app.checkKeyValue ?? "", nonce: nonce),
+                                  "ask: the terminal, where the phone answers it")
+                    t.expectEqual(question(app, call: "toolu_away_q", nonce: nonce),
+                                  QuestionGate.signed(choice: nil, key: app.checkKeyValue ?? "", nonce: nonce))
+                    t.expect(Date().timeIntervalSince(started) < 3, "no 55 seconds on a panel nobody sees")
+                    t.expectEqual(app.raw(method: "GET", path: AppConfig.checkPath).body, "[]", "nothing held")
                 }
             },
 

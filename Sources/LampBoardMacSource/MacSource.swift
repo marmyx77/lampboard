@@ -85,7 +85,8 @@ public final class MacV1Source: V1Source, @unchecked Sendable {
     public func status(at now: Date) -> V1SourceStatus {
         locked {
             V1SourceStatus(version: version, startedAt: startedAt, journal: journal, seq: seq,
-                           lastEventAt: log.last?.at, lastProbeAt: lastUpdateAt)
+                           lastEventAt: log.last?.at, lastProbeAt: lastUpdateAt, relay: actions.relayHealth(),
+                           settings: actions.settings())
         }
     }
 
@@ -114,6 +115,7 @@ public final class MacV1Source: V1Source, @unchecked Sendable {
     public func perform(_ command: V1Command, by peer: V1Peer, at now: Date) -> V1Failure? {
         if command.action == .focus {
             locked { focusedAt[peer.device] = now }
+            actions.focused(peer.device, command.session, now)
             return nil
         }
         if let id = command.session, locked({ rows[id] == nil }) {
@@ -175,6 +177,13 @@ public struct MacSourceActions: Sendable {
     public var devices: @Sendable (V1DevicesRequest) -> Result<[V1Device], V1Failure>
     /// A push registration (W4); `nil` while the Mac sends none.
     public var register: @Sendable (V1PushRegistration, V1Peer) -> Result<V1PushAccepted, V1Failure>?
+    /// A device said it is in use (`focus`), in a session or in the column (W5).
+    public var focused: @Sendable (_ device: String, _ session: String?, _ at: Date) -> Void
+    /// The relay's last word to this Mac, for `hello` (W5).
+    public var relayHealth: @Sendable () -> V1RelayHealth?
+    /// The Mac's settings the phone needs (W5): the permission mode, *Send
+    /// messages*, the palette.
+    public var settings: @Sendable () -> MacNodeSettings?
 
     public init(
         perform: @escaping @Sendable (V1Command, V1Peer) -> V1Failure?,
@@ -182,12 +191,18 @@ public struct MacSourceActions: Sendable {
             path.flatMap { MacTranscripts.read(session: session, path: $0, limit: limit) }
         },
         devices: @escaping @Sendable (V1DevicesRequest) -> Result<[V1Device], V1Failure>,
-        register: @escaping @Sendable (V1PushRegistration, V1Peer) -> Result<V1PushAccepted, V1Failure>? = { _, _ in nil }
+        register: @escaping @Sendable (V1PushRegistration, V1Peer) -> Result<V1PushAccepted, V1Failure>? = { _, _ in nil },
+        focused: @escaping @Sendable (String, String?, Date) -> Void = { _, _, _ in },
+        relayHealth: @escaping @Sendable () -> V1RelayHealth? = { nil },
+        settings: @escaping @Sendable () -> MacNodeSettings? = { nil }
     ) {
         self.perform = perform
         self.transcript = transcript
         self.devices = devices
         self.register = register
+        self.focused = focused
+        self.relayHealth = relayHealth
+        self.settings = settings
     }
 }
 

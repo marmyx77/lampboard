@@ -330,11 +330,79 @@ public struct MacPairingReply: Codable, Equatable, Sendable {
     public let device: String?
     public let mac: String?
     public let error: String?
+    /// The nodes the Mac carried the device's keys to (§2.4, W5), each with the
+    /// host key the Mac already trusts for it: trust carried, never guessed.
+    /// Absent from a Mac one version behind.
+    public let nodes: [MacPairedNode]?
 
-    public init(ok: Bool, device: String? = nil, mac: String? = nil, error: String? = nil) {
+    public init(ok: Bool, device: String? = nil, mac: String? = nil, error: String? = nil, nodes: [MacPairedNode]? = nil) {
         self.ok = ok
         self.device = device
         self.mac = mac
         self.error = error
+        self.nodes = nodes
+    }
+}
+
+/// A node the Mac put a phone's keys on, at pairing (W5, §2.4): `lampd devices
+/// add` ran there over the Mac's own ssh, and the phone is handed what it needs
+/// to reach it without a second pairing.
+public struct MacPairedNode: Codable, Equatable, Sendable {
+    /// The node as the Mac names it (its ssh host): the name the rows carry.
+    public let name: String
+    /// Where the Mac's ssh reaches it (`HostName`), its port and account.
+    public let address: String
+    public let port: Int
+    public let user: String
+    /// The node's host keys as the Mac's `known_hosts` holds them,
+    /// `<type> <base64>`: the phone pins these, never what it is first shown.
+    public let hostKeys: [String]
+    /// The id `lampd` gave the phone there, for its revocation.
+    public let device: String?
+
+    public init(name: String, address: String, port: Int, user: String, hostKeys: [String], device: String?) {
+        self.name = name
+        self.address = address
+        self.port = port
+        self.user = user
+        self.hostKeys = hostKeys
+        self.device = device
+    }
+}
+
+/// What the Mac reads of its own ssh, to hand a node over (W5): the address,
+/// port and account `ssh -G` resolves, and the host keys `ssh-keygen -F` finds.
+public enum MacSSHFacts {
+
+    /// `ssh -G <host>`'s answer: lowercase keys, one per line.
+    public static func resolved(_ text: String) -> (address: String, port: Int, user: String)? {
+        var values: [String: String] = [:]
+        for line in text.split(separator: "\n") {
+            let words = line.split(separator: " ", maxSplits: 1).map(String.init)
+            if words.count == 2, values[words[0]] == nil { values[words[0]] = words[1] }
+        }
+        guard let address = values["hostname"], !address.isEmpty, let user = values["user"], !user.isEmpty else { return nil }
+        return (address, values["port"].flatMap(Int.init) ?? 22, user)
+    }
+
+    /// The `[host]:port` or `host` that `known_hosts` keys an entry by.
+    public static func knownHostsName(address: String, port: Int) -> String {
+        port == 22 ? address : "[\(address)]:\(port)"
+    }
+
+    /// `ssh-keygen -F`'s lines: `<host or hash> <type> <base64>`, comments
+    /// skipped; each key once, as `<type> <base64>`.
+    public static func hostKeys(_ text: String) -> [String] {
+        var out: [String] = []
+        for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+            let words = line.split(separator: " ").map(String.init)
+            // A marked line is a revoked key or a certificate authority: never a pin.
+            if words.first?.hasPrefix("@") == true { continue }
+            guard words.count >= 3, words[1].hasPrefix("ssh-") || words[1].hasPrefix("ecdsa-"),
+                  Data(base64Encoded: words[2]) != nil else { continue }
+            let key = words[1] + " " + words[2]
+            if !out.contains(key) { out.append(key) }
+        }
+        return out
     }
 }

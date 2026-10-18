@@ -462,7 +462,7 @@ import re
 # added, and a bite that needs maintaining is a bite that gets deleted.
 p = "docs/08-gates.md"
 s = open(p).read()
-said = re.search(r"commits ([a-z]+(?:-[a-z]+)?) violations", s).group(1)
+said = re.search(r"commits ([a-z]+(?:-[a-z]+)?(?: hundred(?: and [a-z]+(?:-[a-z]+)?)?)?) violations", s).group(1)
 other = "ninety-nine" if said != "ninety-nine" else "ninety-eight"
 open(p, "w").write(s.replace(f"commits {said} violations", f"commits {other} violations", 1))
 PY
@@ -474,8 +474,8 @@ import re
 # had one guard that was green because it could not run.
 for p in ("docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"):
     s = open(p).read()
-    s = re.sub(r"commits ([a-z]+(?:-[a-z]+)?) violations", r"commits violations", s)
-    s = re.sub(r"demands ([a-z]+(?:-[a-z]+)?) catches", r"demands catches", s)
+    s = re.sub(r"commits ([a-z]+(?:-[a-z]+)?(?: hundred(?: and [a-z]+(?:-[a-z]+)?)?)?) violations", r"commits violations", s)
+    s = re.sub(r"demands ([a-z]+(?:-[a-z]+)?(?: hundred(?: and [a-z]+(?:-[a-z]+)?)?)?) catches", r"demands catches", s)
     open(p, "w").write(s)
 PY
 
@@ -754,6 +754,59 @@ s = open(p).read()
 open(p, "w").write(s.replace("fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)", "pass", 1))
 PY
 
+# W5, the Mac's side of a node with lampd (§2.3, §2.9, §2.12, §6.2). The
+# tunnel that does not step aside for lampd's socket would wait for ever on its
+# own hooks' port.
+protect Sources/LampBoardCore/V1/MacNodeSync.swift
+attack_swift "a tunnel that never steps aside for lampd's socket" "lampd holding the hooks' port" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("watch == .secondary || (lampdInstalled && !primaryBound.isEmpty)", "watch == .secondary", 1))
+PY
+
+# «Il nodo non comanda il Mac» on the Mac's side: a route of the Mac's own,
+# forwarded by a node's lampd, taken as if it came from this Mac.
+protect Sources/LampBoardCore/V1/MacNodeSync.swift
+attack_swift "a Mac that takes its own routes from a node" "Il nodo non comanda il Mac" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
+s = open(p).read()
+open(p, "w").write(s.replace('            return .refuse("\\(path) is the Mac\'s own route: never from another machine")\n', "            return .take\n", 1))
+PY
+
+# E3: an event that arrived both ways during a switch counted twice.
+protect Sources/LampBoardCore/V1/MacNodeSync.swift
+attack_swift "an event forwarded twice counted twice" "An event lampd forwarded counts once" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        guard seen.insert(id).inserted else { return false }\n", "        seen.insert(id)\n", 1))
+PY
+
+# D48 with lampd: the repair that rewrites hook.sh and its token over the one
+# lampd adopted would put out every live session's colours there.
+protect Sources/LampBoardCore/Setup/HookRepair.swift
+attack_swift "the D48 repair rewriting the hooks of a node with lampd" "D48 with lampd on the node" 1 <<'PY'
+p = "Sources/LampBoardCore/Setup/HookRepair.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        lampdInstalled ? nil : verdict\n", "        verdict\n", 1))
+PY
+
+# "Ask at once when away": an ask held 55 s on a panel nobody sees.
+protect Sources/LampBoardCore/Permission/PermissionGate.swift
+attack_swift "an ask held for the panel while the person is away" "held for the panel only while the person is at the Mac" 1 <<'PY'
+p = "Sources/LampBoardCore/Permission/PermissionGate.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("public static func holds(away: Bool) -> Bool { !away }", "public static func holds(away: Bool) -> Bool { true }", 1))
+PY
+
+# Read both ways: a read of yesterday's answer on the phone putting out
+# today's green in the panel.
+protect Sources/LampBoardCore/V1/MacNodeSync.swift
+attack_swift "a read of an earlier answer putting out a newer one" "never a newer answer" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if row.readySince.map({ readAt >= $0 }) ?? true { update.read.append(row.id) }", "update.read.append(row.id)", 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 
@@ -928,6 +981,23 @@ attack_platform Scripts/test-mac-source.sh "a field of a row renamed, seen throu
 p = "Sources/LampBoardCore/V1/V1Row.swift"
 s = open(p).read().replace("        case source, owner\n", "        case source, owner = \"ownedBy\"\n", 1)
 open(p, "w").write(s)
+PY
+
+# «Nessuna doppia notifica» on the Mac's side (§6.2): the owner rule taken
+# away, the Mac rings for a node's row its lampd already rings for.
+protect Sources/LampBoardCore/V1/MacNodeSync.swift
+attack_platform Scripts/test-mac-source.sh "the Mac ringing for rows a node's lampd owns" "the node's row, owned by its lampd, never" <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        rows.filter { $0.owner == owner }\n", "        rows\n", 1))
+PY
+
+# Q8: the phone ringing for the Mac's rows while the person sits at the Mac.
+protect Sources/LampBoardMacSource/MacPushes.swift
+attack_platform Scripts/test-mac-source.sh "the phone ringing while the person is at the Mac" "At the Mac nothing rings on the phone" <<'PY'
+p = "Sources/LampBoardMacSource/MacPushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("let atTheMac = currentPresence == .here", "let atTheMac = false", 1))
 PY
 
 fi

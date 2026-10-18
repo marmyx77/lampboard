@@ -121,6 +121,7 @@ public enum RemoteInstallScripts {
         "curl": shutil.which("curl") is not None,
         "directoryProblem": own_directory(os.path.join(home, "\(directoryName)")),
         "modVersion": mod_version(),
+        "lampd": \(lampdInstalled),
         "error": error,
     }, sys.stdout)
     """
@@ -228,8 +229,10 @@ public enum RemoteInstallScripts {
     uid = os.getuid()
     port = \(portFormula)
     problem = own_directory(os.path.join(home, "\(directoryName)"))
+    secondary = port + 1
     json.dump({"home": home, "uid": uid, "port": port, "problem": problem,
-               "bound": bound_addresses(port)}, sys.stdout)
+               "bound": bound_addresses(port), "secondary": secondary,
+               "boundSecondary": bound_addresses(secondary), "lampd": \(lampdInstalled)}, sys.stdout)
     """
 
     /// After the tunnel connects, and on every check: **where** the forward was
@@ -254,8 +257,16 @@ public enum RemoteInstallScripts {
         """
     }
 
+    /// Whether `lampd` is installed there, where `Scripts/lampd-install.sh` puts
+    /// it (W5): the tunnel then runs `lampd mac-link`, starts next to the hooks'
+    /// port when that is held, and the D48 repair leaves the hooks alone.
+    private static let lampdInstalled =
+        #"os.access(os.path.join(os.path.expanduser("~"), ".local/bin/lampd"), os.X_OK)"#
+
     /// The port, as Python computes it there: kept textually identical to
     /// `AppConfig.remotePort(forUID:)` so both sides agree without a round trip.
+    /// The tunnel's second port, when `lampd` holds this one, is the next
+    /// (`MacNodeLink.secondaryPort`, `AppConfig.remoteSecondaryPort`).
     private static let portFormula = "30000 + max(uid, 0) % 20000"
 
     private static var directoryName: String {

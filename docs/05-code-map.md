@@ -1,18 +1,18 @@
 # Code map
 
-~101,700 lines of Swift across fourteen targets. For each file: what it contains, why
+~103,500 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  30,945 lines · 222 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,792 lines · 168 files   shell: AppKit, network, windows
-  LampBoardTests/  22,294 lines · 151 files   1565 cases, instantaneous
-  LampBoardE2E/    5,750 lines · 25 files   193 cases, the real binary
+  LampBoardCore/  31,324 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,448 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  22,448 lines · 152 files   1577 cases, instantaneous
+  LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
-  LampBoardMacSource/  1,914 lines · 12 files   the Mac as a source: its ssh server, pairing, bridge
-  MacSourceTests/   1,321 lines · 7 files   the server reached by a phone made of NodeLink
+  LampBoardMacSource/  2,341 lines · 13 files   the Mac as a source: its ssh server, pairing, bridge
+  MacSourceTests/   1,475 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
   LampDKit/         2,972 lines · 23 files   lampd: the Linux machine's service
@@ -21,7 +21,7 @@ Sources/
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
-No file exceeds 797 lines. The limit the project sets itself is 800.
+No file exceeds 799 lines. The limit the project sets itself is 800.
 
 Two more targets were not written here: `Vendor/SwiftTerm`, about 36,000 lines,
 the terminal emulator behind the live view, and `Vendor/Clarc`, about 4,600
@@ -1959,7 +1959,7 @@ of `Retry-After`, `refused`, `unreachable`), which a source puts in `hello`
 Mac and iOS, `curl` in `lampd`. **What you would break**: a 410 read as a plain
 refusal keeps sending to a phone that uninstalled the app, for ever.
 
-### `MacBridge.swift` · 340
+### `MacBridge.swift` · 408
 The Mac as a source, from both ends (W5, D180): `MacRequest`, the closed
 vocabulary of the Mac's ssh server — `v1`, `pair`, `attach <target>`, `action
 <call>`, `background`, `palette`, the arguments as base64 JSON read back only
@@ -1967,8 +1967,11 @@ through the checks a node's command goes through (`MacTerminalTarget`,
 `MacActionCall` into `NodeAction`); `MacPairingInvitation`, the QR code's
 `lampboard://pair?…` with the Mac's name, host key, addresses, port and the
 one-time code (`MacPairingCode`, twelve characters nobody misreads); the
-pairing request and reply. **What you would break**: a parse that accepts a
-line it does not name is a command from the phone on the Mac.
+pairing request and reply; since W5 the reply names the nodes the Mac carried
+the device's keys to (`MacPairedNode`: address, port, account and the host keys
+of the Mac's own `known_hosts`, read by `MacSSHFacts`, a revoked line never).
+**What you would break**: a parse that accepts a line it does not name is a
+command from the phone on the Mac.
 
 ### `MacNodeLink.swift` · 217
 The Mac and a node's `lampd` on the tunnel's own ssh connection (W5, §2.3,
@@ -1994,6 +1997,23 @@ field the value written last wins, at a tie the node's (`merged(with:)`).
 Here and not in `lampd` so that the Mac reads and writes the same shape.
 **What you would break**: a tie won by the Mac undoes what the person did from
 the phone the same second.
+
+### `MacNodeSync.swift` · 279
+The Mac's side of a node with `lampd` (W5, D182), its rules written as
+functions so each is tested and bitten without ssh or a clock. `TunnelPort`:
+the tunnel binds the hooks' port when free, the next one when `lampd` holds it
+or the beats say healthy, and waits when a stranger is there. `ForwardedByNode`
+with `EventLedger`: an event carrying `X-LampBoard-Event` taken once (E3), and
+the Mac's own routes — `/next`, `/open`, `/new`, `/chat`, the asks' list and
+answers, LampMaster, the Hub — refused when a node forwarded them (R2).
+`PushOwnership`: a source notifies only the rows it owns (gate «Nessuna doppia
+notifica»). `NodeChoices`: the panel's names, hides, mutes and order as `v1`
+commands to the node, the node's choices back as panel changes, a read applied
+once and never to a newer answer than the one read, and the one-time migration
+of the panel's copy with `.distantPast` dates so the node's own always win.
+`MacSleepNote`: the last word before the Mac sleeps, only when something
+waits. **What you would break**: a read applied without `readySince` puts out
+today's green because the phone read yesterday's.
 
 ## `Push/`
 
@@ -2052,6 +2072,12 @@ that is why the E2E suite didn't see the notification crash: it never went
 through that branch.
 
 `onMain(timeout:)` is the only writing crossing towards the main actor.
+
+### `AppDelegateNodes.swift` · 40
+Away and asleep in every mode, headless included (W5): `AwayMonitor` started
+before the interface, every change told to the nodes' `lampd` and to the
+phone's notifications (Q8); before the Mac sleeps the nodes hear `asleep` at
+once and the phone gets the last word, waiting a few seconds for the relay.
 
 ### `AppDelegateHub.swift` · 78
 The Hub's wiring apart from the delegate's start: its test routes on the server —
@@ -2343,11 +2369,11 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 720 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
-| `MobileServer.swift` | 360 | this Mac as a source for iPhone and iPad (W5, D180): the server inside the app, listening only while a device is paired or a pairing code is shown, on a port kept between launches; the column fed to `MacV1Source` as it changes, with each row's place in tmux, mode and order; a device's low-power actions carried out on the main actor; the pairing window and its QR code; the person's yes asked with the device's fingerprints; Forget and Forget all ending the device's connections; Bonjour `_lampboard._tcp` with the short fingerprint |
+| `MobileServer.swift` | 474 | this Mac as a source for iPhone and iPad (W5, D180, D182): the server inside the app, listening only while a device is paired or a pairing code is shown, on a port kept between launches; the column fed to `MacV1Source` as it changes, with each row's place in tmux, mode and order; a device's low-power actions carried out on the main actor; the pairing window and its QR code; the person's yes asked with the device's fingerprints; Forget and Forget all ending the device's connections, and revoking it on every node its keys were carried to; Bonjour `_lampboard._tcp` with the short fingerprint; the relay client for the rows this Mac owns (`MacPushes`), quiet while the person is at the Mac, its last word before sleep; each node's rows owned by its `lampd` while that is healthy, with their age; «Also on <node>» in the pairing's confirmation, and the Mac's settings (permission mode, *Send messages*, palette) for `hello` and for the nodes |
 | `MobileSettings.swift` | 84 | the switch «Terminal and actions from iPhone & iPad» (off, Q17) and the server's port, beside the preferences; the host key in the login Keychain, or a file in a fake home |
 | `ActivityRecorder.swift` | 34 | what each session has been doing: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
-| `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |
-| `PermissionDesk.swift` | 229 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off; the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
+| `AwayMonitor.swift` | 82 | "I'm away" (D114): said from the menu or by the screen locked three minutes (in a fake home only when told); the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot; every change told to the phone's notifications and to the nodes (W5); started headless too |
+| `PermissionDesk.swift` | 237 | Allow and Deny from the panel (D80): each ask the mod posts to `/check` held on the server's queue until the panel answers or its 55 seconds pass, refused at once (`ask`) while the switch is off or the person is away (W5, D182: the dialog at once, in the terminal the phone reaches); the answer from a click, a key or `/check/answer`, taken once; what waits published for the queue and listed by `GET /check`, and which asks went back to their dialog; a question held the same way and answered by the index of the option chosen, never by Allow or Deny (D86); `stage` books the trial's permission with nobody waiting on it, and `onAnswered` tells the tour (D120) |
 | `PanelKey.swift` | 87 | the panel's Ed25519 key (D152), which signs the Hub's commands and the panel's hello: the private half in the Keychain, where a session's Bash cannot read it without a dialog, the public half rewritten to `~/.lampboard/panel-key.pub` at every launch; under a fake home both halves are files, so a locked keychain never stops a suite; no key, and the Hub sends nothing rather than unsigned |
 | `HubCommandDesk.swift` | 74 | where the Hub's commands wait (D152): each signed, queued for its session, and the session woken through its message box so the mod collects at once from `GET /mod/inbox` — the wake carries nothing but its line, since a box is readable by the user's other processes; `GET /mod/hello` answered with the public key and its signature of the mod's nonce, so a reply's text goes only to the panel that holds the key (D153) |
 | `CommandBarModel.swift` | 258 | the bar's state: the text, its results, the selection, whether the field is open (the queue's keys stand down while it is), a "Send to" chosen only with sending on and the text kept when it did not go, an "Ask … without disturbing it" answered where LampMaster's answers show, the index asked a quarter-second after typing stops, the selection following its result when the list reorders, LampMaster's answer and whether it is still being asked, a handoff asked once at a time and the bar closed when it waits in the Plancia, "This week" read off the main actor, one at a time, and shown in the same place — dropped if the bar closed or the question changed before it came; the panel asked to remeasure on every change that can move the bar's height |
@@ -2378,8 +2404,11 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `SearchIndex.swift` | 438 | every conversation of this Mac, searchable (D88): SQLite FTS5 in `~/.lampboard/index.sqlite`, owner-only, the file itself never a link; each transcript read on from its last offset to its last complete line, 8 MB at most a pass, a shrunk one read again, a budgeted pass newest first within ninety days, only regular files in real project folders; a chunk kept whole or not at all, its offset read under the write lock, two writers waiting for each other; conversations whose transcript is gone pruned; excluded from backups, removable (`--reset`); the hits grouped after `bm25()`; the serial queue taken per file; the prompts since a date, only of conversations active since, for the week's summary (D90); the answers' times of the week, never their words, for the waiting (D109) |
 | `RemoteSessionReader.swift` | 113 | asks another machine over ssh; `nil` means no answer, `[]` means nothing running |
 | `RemoteCommand.swift` | 162 | runs a Python script on another machine over ssh: one shape, one set of timeouts, errors that name the fix; an answer longer than asked for stops ssh |
-| `RemoteTunnel.swift` | 290 | the reverse ssh tunnel per host, kept alive with backoff, on a connection of its own whatever the user's `ControlMaster` says (D83); `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac |
-| `RemoteFleet.swift` | 229 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again; the list read again on the remote poll's clock, since a host added from a terminal raises no notification here; a node's mod brought to this app's version at the check (D83) |
+| `RemoteTunnel.swift` | 457 | the reverse ssh tunnel per host, kept alive with backoff, on a connection of its own whatever the user's `ControlMaster` says (D83); `ExitOnForwardFailure` makes a taken port a reason, and `TunnelRefusal` says whether that reason is on this Mac; since W5 it runs `lampd mac-link` on the node, reads its heartbeats into `MacNodeLinkWatch`, moves to the next port while `lampd` holds the hooks' one and back when that is free, and writes the Mac's lines (`MacToNode`) down its standard input (D182) |
+| `RemoteFleet.swift` | 286 | every configured machine: its tunnel, its hooks, what it last said; follows the preference list live; every check repairs stale hooks over there, and a tunnel coming back up after a failed check asks again; the list read again on the remote poll's clock, since a host added from a terminal raises no notification here; a node's mod brought to this app's version at the check (D83); the nodes whose `lampd` answers on the link (`lampdHealthy`), the person's presence and the Mac's settings told to each at once and again at each new link, a node's choices handed to `NodeChoicesSync` (W5) |
+| `NodeChoicesSync.swift` | 107 | the person's choices about a node's rows kept in step with its `lampd` (W5, §2.12): the panel's renames, hides, mutes and reorders sent as commands by difference, the node's choices applied back without an echo, the panel's own copy merged once per node (`nodes.migrationsSent`) |
+| `NodeDeviceCarry.swift` | 66 | a phone's keys carried to a node at pairing and taken back at Forget (W5, §2.4): `lampd devices add` and `revoke` through Python's `subprocess` with an argument list over the Mac's ssh, and the node's address and host keys read from this Mac's own `ssh -G` and `known_hosts` |
+| `StateStoreNodes.swift` | 22 | read, unread and taken off in the panel told to the row's node; the same acts arriving from the node, told to nobody |
 | `PresenceFile.swift` | 91 | presence file, deleted on shutdown |
 | `LaunchAtLogin.swift` | 100 | blocked when the signature is ad-hoc |
 | `LiveSessionReader.swift` | 142 | reads the live sessions; takes activity from the **transcript**, not the session file, and from the same tail whether the turn is open (D177). A pid that is alive but started at another moment than the file records was handed to another process, and its session is dead (D68) |
@@ -2425,6 +2454,11 @@ the threads the hooks post on.
 
 `requiredLocalEndpoint` is the line that binds the socket to loopback.
 `acceptLocalOnly` does **not** do that.
+
+### `ForwardedEvents.swift` · 29
+What a node's `lampd` forwarded (W5, E3, R2): the server asks it first, and an
+event already taken is answered `already taken`, a route of the Mac's own `403`;
+the rule is `ForwardedByNode`'s, the memory bounded.
 
 ### `SignalServerHub.swift` · 153
 The Hub's command channel (D152), behind the token: `GET /mod/hello` proves the
@@ -2591,7 +2625,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1565 cases
+## `LampBoardTests/` — 1577 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2685,6 +2719,7 @@ script, before it was split. The most important ones:
 | `SessionActivitySuite` | a session found by its id, or by LampMaster's eight characters only when they name one; what each session has been doing, tool by tool and turn by turn |
 | `TranscriptPreviewSuite` | the last thing said, read from a transcript's tail (moved here from the Plancia's suite, D165) |
 | `NodeActionsSuite` | a device's actions (W3): no command from an argument that is not one; Bypass refused until turned on; End leaving a reused pid's program running and ending the process its file names; a second Move refused by the first one's lock, a stale lock taken over; Resume refused while a live process holds the conversation; a second `claude attach` refused while the first is open; the look naming each process with its start; the attachments folder made inside the project, refused through a link out |
+| `MacNodeSyncSuite` | the Mac's side of a node with `lampd` (W5): the tunnel's port beside `lampd`'s socket, a stranger waited for; an event forwarded twice taken once; the Mac's own routes refused through a node; the panel's choices as commands, a new row sending nothing; the migration losing to the phone's choices; read both ways, once, never a newer answer; D48 leaving the hooks of a node with `lampd`; an ask not held while away; the last word before sleep; what a node handed to the phone carries |
 | `MacNodeLinkSuite` | the Mac and `lampd` (W5): the tunnel's port goes to `lampd` after three healthy beats and comes back at the first no or after the silence; the secondary port is the next one; a line from the Mac carries one thing and never a device's focus; lines read back as written; Bypass from the start only when the Mac's mode is Bypass; the migration's merge, last written wins and a tie keeps the node's |
 | `RemoteMoveSuite` | moving a conversation from another machine: only a start time that is one, never init; a process that is not the one named is left alone, the one named is ended |
 | `RemoteFoldersSuite` | another machine's folders: a listing that starts at home or an absolute path, quoted, and refuses anything else; the answer in Finder's order, hidden ones left out |
@@ -2835,10 +2870,14 @@ window, every refusal held longer than the last, TCP keepalive as E14 asks);
 from a target or a `NodeAction`, with tmux always given `-u`; `MacAttachLedger`
 the attaches of background sessions, never two; `MacDevices` the paired devices;
 `MacPairingWindow` and `MacAuthThrottle`; `MoveLock` the Move's lock on this Mac;
-`MachineMark` the initial on a remote row. `MacSourceTests` reaches the server
-in the same process with a phone made of NodeLink (`Scripts/test-mac-source.sh`).
+`MachineMark` the initial on a remote row; `MacPushes` the Mac as the relay's
+client (W5, D182): `PushPlanner` over the rows it owns only, every device as in
+hand while the person is at the Mac, registrations and the envelope key 0600,
+and before sleep one alert when something waits and the Live Activity grey.
+`MacSourceTests` reaches the server in the same process with a phone made of
+NodeLink (`Scripts/test-mac-source.sh`).
 
-## `LampBoardE2E/` — 193 cases
+## `LampBoardE2E/` — 196 cases
 
 | Suite | Covers |
 |---|---|
@@ -2852,7 +2891,8 @@ in the same process with a phone made of NodeLink (`Scripts/test-mac-source.sh`)
 | `InstallationSuite` | `install-hooks`, **`hook.sh` actually executed**, both halves carry the token, an old Claude Code kept on the script, non-headless startup |
 | `NodeTranscriptE2ESuite` | the node's program run with `python3` in a fake home: the tail first, then only what was added, a shrunk file read again, a link and a path out of the projects not read (D94) |
 | `SearchE2ESuite` | `lampboard search` on a fake home's transcripts: a conversation found by its words and its name, by an unaccented word, never by a reminder; nothing found said; the index owner-only; `lampboard week` counting and naming this week's conversation, one ten days old left out, no prompt quoted |
-| `PermissionE2ESuite` | a permission key of its own, not the token; an ask without the key's proof, or proven with the token, answered `ask`, unsigned; a new installation answering `ask` at once; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once; a question waiting for a choice, answered signed, Allow refused for it |
+| `NodeLinkE2ESuite` | what a node's `lampd` forwards to the real app (W5): the same event twice taken once, another taken; `/next`, `/open`, `/new`, `/chat` and the asks' list refused with the event header and not without |
+| `PermissionE2ESuite` | a permission key of its own, not the token; switched on but away, an ask and a question back to their dialog at once, signed (W5); an ask without the key's proof, or proven with the token, answered `ask`, unsigned; a new installation answering `ask` at once; `/check/answer` and the list behind the token; switched off, `ask` at once; a malformed ask `ask`; switched on, an ask listed by `GET /check`, waiting, not released by another session's answer, released by its own, signed, which counts once; a question waiting for a choice, answered signed, Allow refused for it |
 | `ModE2ESuite` | `mod install`, a reinstall, a refused install that leaves nothing half in, and `uninstall-hooks`, through a fake `claude` that records its home; the carried files on disk; the port file written `0600`, `/mod` refusing a missing or wrong token and a body that is not a report, a measure landing on a hook's row as the session's own count without touching its colour, and making no row of its own; `/handoff` refusing a missing token, a `GET` and a proof made with the token, and taking one made with the permission key; the decision board pinned, listed and taken off from the command line, a port in its words kept, its file 0600; `/mod/decisions` answering a proven session with its repository's board, signed, nothing without the proof or with the token as key, no answer for a session it does not know, nothing pinned for one with no repository (D105) |
 | `TrialE2ESuite` | the demo playing the script into the states the reducer really produces, its Codex row still a Codex row after three sweeps, quitting it leaving no home and no process, `demo-script` printing a script that holds nothing real (D126) |
 | `MobileE2ESuite` | the Mac as a source on the real app (W5): a phone paired before launch reads the column the hooks made through the app's own ssh server; an unpaired key and the read key's terminal refused; nothing but `v1` with the switch off; the `v1` conformance battery against the app; nothing listens once it quits |
@@ -2999,5 +3039,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits ninety-five violations and demands ninety-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and three violations and demands one hundred and three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

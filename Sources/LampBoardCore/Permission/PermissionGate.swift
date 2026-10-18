@@ -20,6 +20,12 @@ public enum PermissionGate {
     /// The panel's time to answer: under the minute Claude Code gives a hook,
     /// with room for the answer to travel back.
     public static let answerWithin: TimeInterval = 55
+
+    /// Whether the panel holds an ask for its 55 seconds (D80). Not while the
+    /// person is away (D114, W5 "ask at once when away"): then the ask goes
+    /// back to the session's own dialog at once, where the phone reaches it in
+    /// the terminal, and the node's amber starts without waiting on the Mac.
+    public static func holds(away: Bool) -> Bool { !away }
     /// Asks waiting at once: past eight, an ask goes to its dialog at once,
     /// which is where it would have gone without the panel.
     public static let pendingMax = 8

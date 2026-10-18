@@ -190,7 +190,11 @@ final class MacChannel: ChannelInboundHandler, @unchecked Sendable {
                 do {
                     let device = try services.devices.add(request, at: services.now())
                     services.log("mac server: paired \(device.id) (\(device.name))")
-                    reply = MacPairingReply(ok: true, device: device.id, mac: services.macName)
+                    let nodes = await services.carryToNodes(device)
+                    let carried = Dictionary(nodes.compactMap { node in node.device.map { (node.name, $0) } },
+                                             uniquingKeysWith: { first, _ in first })
+                    if !carried.isEmpty { try? services.devices.setNodes(device.id, carried) }
+                    reply = MacPairingReply(ok: true, device: device.id, mac: services.macName, nodes: nodes.isEmpty ? nil : nodes)
                 } catch {
                     reply = MacPairingReply(ok: false, error: "\(error)")
                 }

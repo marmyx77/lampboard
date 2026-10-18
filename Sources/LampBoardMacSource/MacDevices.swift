@@ -20,6 +20,9 @@ public final class MacDevices: @unchecked Sendable {
         public var lastSeenAt: Date?
         /// The relay's capability for this device (W4), kept for the relay client.
         public var relayCapability: String?
+        /// The nodes its keys were carried to at pairing, and the id each
+        /// node's `lampd` gave it (W5): what Forget revokes there.
+        public var nodes: [String: String]?
 
         /// `SHA256:…` of each key, what Settings shows beside the name.
         public var readFingerprint: String { MacHostKey.fingerprint(openSSH: readKey) }
@@ -92,6 +95,16 @@ public final class MacDevices: @unchecked Sendable {
             devices.removeAll { $0.id == id }
             try save(devices)
             return true
+        }
+    }
+
+    /// Where a device's keys were carried, as each node named it.
+    public func setNodes(_ id: String, _ nodes: [String: String]) throws {
+        try locked {
+            var devices = load()
+            guard let index = devices.firstIndex(where: { $0.id == id }) else { return }
+            devices[index].nodes = nodes.isEmpty ? nil : nodes
+            try save(devices)
         }
     }
 

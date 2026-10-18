@@ -26,12 +26,17 @@ struct RemoteInspection {
     /// The companion mod LampBoard put there, by version; `nil` when none.
     var modVersion: String? = nil
     let error: String?
+    /// `lampd` installed there (W5): it holds the hooks' port in tee, with the
+    /// token it adopted, and the repair leaves the hooks alone.
+    var lampd = false
 
     var scriptPath: String { home + "/" + AppConfig.remoteHookScriptRelativePath }
     var legacyScriptPath: String { home + "/" + AppConfig.legacyRemoteHookScriptRelativePath }
 
     /// The loopback port the tunnel binds there for this user.
     var port: UInt16 { AppConfig.remotePort(forUID: uid) }
+    /// Where the tunnel lands when `lampd` holds `port` (W5).
+    var secondaryPort: UInt16 { AppConfig.remoteSecondaryPort(forUID: uid) }
 
     /// `true` when the lampboard hook is registered there — under either name.
     /// A node set up before the rename has working hooks, and telling its owner
@@ -48,8 +53,9 @@ struct RemoteInspection {
     /// read, which is not a verdict.
     func repairVerdict(token: String) -> HookRepair.Verdict? {
         guard let settings else { return nil }
-        // No message listener on a node, ever: the mailbox is local (D15).
-        return HookRepair.verdict(
+        // No message listener on a node, ever: the mailbox is local (D15). With
+        // `lampd` there, nothing is rewritten at all (W5).
+        return HookRepair.remote(HookRepair.verdict(
             settings: settings,
             scriptPath: scriptPath,
             legacyScriptPaths: [legacyScriptPath],
@@ -57,7 +63,7 @@ struct RemoteInspection {
             scriptText: hookScript ?? legacyHookScript,
             token: token,
             port: port
-        )
+        ), lampdInstalled: lampd)
     }
 }
 
@@ -100,7 +106,8 @@ enum RemoteHookInstaller {
                 hasCurl: (object["curl"] as? Bool) ?? false,
                 directoryProblem: object["directoryProblem"] as? String,
                 modVersion: (object["modVersion"] as? String).flatMap { ReleaseVersion($0) == nil ? nil : $0 },
-                error: object["error"] as? String
+                error: object["error"] as? String,
+                lampd: (object["lampd"] as? Bool) ?? false
             ))
         }
     }

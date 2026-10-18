@@ -17,6 +17,8 @@ final class AwayMonitor {
     /// Said on return, for the notification and for the panel to make room.
     /// Back: the line, or nil when the rows already say everything (U2).
     var onBack: (String?) -> Void = { _ in }
+    /// Away or back, as it changes (W5: the phone and the nodes are told).
+    var onAwayChange: (Bool) -> Void = { _ in }
     private let awayNow: AwayFlag
 
     init(store: StateStore, preferences: Preferences, flag: AwayFlag) {
@@ -44,13 +46,17 @@ final class AwayMonitor {
     }
 
     func update(now: Date = Date()) {
-        if PresenceFile.isScreenLocked { lockedSince = lockedSince ?? now } else { lockedSince = nil }
+        // A fake home is away only when told (its menu's switch): the test
+        // Mac's own screen lock must not decide a gate (W5 runs this headless).
+        let lockCounts = !AppConfig.isUsingHomeOverride || ProcessInfo.processInfo.environment["LAMPBOARD_AWAY_FROM_LOCK"] == "1"
+        if lockCounts && PresenceFile.isScreenLocked { lockedSince = lockedSince ?? now } else { lockedSince = nil }
         let away = preferences.awayManual || lockedSince.map { now.timeIntervalSince($0) >= AppConfig.awayAfterLock } ?? false
         if away, ledger == nil {
             // Gone: from now on what happens is counted, from the moment the lock began.
             ledger = AwayLedger(since: lockedSince ?? now, state: store.state)
             awayNow.set(true)
             store.awayNote = nil
+            onAwayChange(true)
         } else if !away, let gone = ledger {
             ledger = nil
             let names = { [store, preferences] (id: String) -> String in
@@ -58,6 +64,7 @@ final class AwayMonitor {
                 return RowActivity.flat(RowNames.name(of: session.workspace.key, in: preferences.rowNames) ?? session.displayName)
             }
             awayNow.set(false)
+            onAwayChange(false)
             let line = gone.summary(now: now, state: store.state, name: names)
             store.awayNote = line
             onBack(line)
