@@ -15,11 +15,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let fleet: RemoteFleet
     private let lampMaster: LampMasterService
+    private let mobile: MobileServer
     private let model: SettingsModel
 
-    init(fleet: RemoteFleet, lampMaster: LampMasterService, panel: @escaping () -> PanelController?) {
+    init(fleet: RemoteFleet, lampMaster: LampMasterService, mobile: MobileServer, panel: @escaping () -> PanelController?) {
         self.fleet = fleet
         self.lampMaster = lampMaster
+        self.mobile = mobile
         self.model = SettingsModel(panel: panel)
     }
 
@@ -44,7 +46,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         window.title = "LampBoard Settings"
         window.isReleasedWhenClosed = false
         window.contentMinSize = NSSize(width: 760, height: 460)
-        window.contentView = NSHostingView(rootView: SettingsView(model: model, fleet: fleet, lampMaster: lampMaster))
+        window.contentView = NSHostingView(rootView: SettingsView(model: model, fleet: fleet, lampMaster: lampMaster, mobile: mobile))
         window.delegate = self
         window.center()
 

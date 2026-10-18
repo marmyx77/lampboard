@@ -24,8 +24,10 @@ let crypto: [Target.Dependency] = []
 // is pinned to what was measured in W0 of the mobile plan, Citadel and its fork
 // of swift-nio-ssh to a commit rather than a range, because a fork of a third
 // party is read once and then must not move under us (S-C, S-R). Only the
-// targets that talk ssh name them; the Mac app links none of them, and
-// Scripts/check-app-links.sh is the gate that says so.
+// targets that talk ssh name them. The Mac app links none of them but the ssh
+// server's own stack, through LampBoardMacSource (W5): swift-nio-ssh,
+// swift-nio and swift-crypto, never Citadel. Scripts/check-app-links.sh is the
+// gate that says so.
 let sshPackages: [Package.Dependency] = [
     // 0.12.1
     .package(url: "https://github.com/orlandos-nl/Citadel.git", revision: "ae8562f895de06ccb86fdb1cbb65fd99c8976e12"),
@@ -152,10 +154,31 @@ let package = Package(
             // Upstream is written with the main actor as its default isolation.
             swiftSettings: [.swiftLanguageMode(.v5), .unsafeFlags(["-suppress-warnings", "-default-isolation", "MainActor"])]
         ),
+        // The Mac as a source for the phone (W5 of the mobile plan, §2.6): the
+        // `v1` source over the panel's rows, the ssh server inside the app, the
+        // pairing, the PTY bridge and the named actions. No AppKit, so that it
+        // builds and is checked on Linux too. It names swift-nio-ssh and
+        // swift-nio, never Citadel: Scripts/check-app-links.sh holds the app to
+        // exactly these.
+        .target(
+            name: "LampBoardMacSource",
+            dependencies: ["LampBoardCore", .product(name: "NIOSSH", package: "swift-nio-ssh"),
+                           .product(name: "NIOCore", package: "swift-nio"), .product(name: "NIOPosix", package: "swift-nio"),
+                           .product(name: "Crypto", package: "swift-crypto")],
+            swiftSettings: strict
+        ),
+        // Its suite, with a phone made of NodeLink: the conformance battery and
+        // the bites of the server over a real ssh, in one process. Runs on the
+        // Mac gate and on Linux.
+        .executableTarget(
+            name: "MacSourceTests",
+            dependencies: ["LampBoardCore", "LampBoardMacSource", "LampBoardNodeLink", "ProtocolConformance", "TestKit"],
+            swiftSettings: strict
+        ),
         // AppKit/SwiftUI shell: floating panel, HTTP server, window focus.
         .executableTarget(
             name: "LampBoardApp",
-            dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],
+            dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit"],
             swiftSettings: strict,
             // The system's SQLite, for the search index's FTS5 (0.7): nothing bundled.
             linkerSettings: [.linkedLibrary("sqlite3")]
@@ -167,7 +190,8 @@ let package = Package(
         // domain tests would slow down a suite that has to stay instantaneous.
         .executableTarget(
             name: "LampBoardE2E",
-            dependencies: ["LampBoardCore", "TestKit"],
+            // NodeLink as the phone the app's own ssh server is tried with (W5).
+            dependencies: ["LampBoardCore", "TestKit", "LampBoardMacSource", "LampBoardNodeLink", "ProtocolConformance"],
             swiftSettings: strict
         ),
     ]

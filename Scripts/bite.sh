@@ -41,6 +41,8 @@
 #   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
 #   ./Scripts/bite.sh --pins     only the pins of the packages (needs swift)
 #   ./Scripts/bite.sh --parity   only the Mac app's parity with lampd (needs a Mac)
+#   ./Scripts/bite.sh --macsource only the Mac as a source for the phone (a Mac,
+#                                or docker)
 
 set -uo pipefail   # deliberately not -e: half of what runs here is meant to fail
 
@@ -811,8 +813,121 @@ protect Package.swift
 attack_platform Scripts/check-app-links.sh "the Mac app made to link NodeLink" "LampBoardNodeLink → Citadel" <<'PY'
 p = "Package.swift"
 s = open(p).read()
-old = 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],'
-open(p, "w").write(s.replace(old, 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit", "LampBoardNodeLink"],', 1))
+old = 'dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit"],'
+open(p, "w").write(s.replace(old, 'dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit", "LampBoardNodeLink"],', 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--links" ]; then
+
+chapter "The Mac app links the ssh server's stack and nothing more"
+
+# Since 2.4 the app carries an ssh server (W5): swift-nio-ssh on swift-nio,
+# through LampBoardMacSource alone. Citadel, the client, reaching the app that
+# way must turn the check red as surely as through NodeLink.
+protect Package.swift
+attack_platform Scripts/check-app-links.sh "the Mac's server made to link Citadel" "LampBoardMacSource → Citadel" <<'PY'
+p = "Package.swift"
+s = open(p).read()
+old = 'dependencies: ["LampBoardCore", .product(name: "NIOSSH", package: "swift-nio-ssh"),'
+new = 'dependencies: ["LampBoardCore", .product(name: "Citadel", package: "Citadel"), .product(name: "NIOSSH", package: "swift-nio-ssh"),'
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--macsource" ]; then
+
+chapter "The Mac as a source for the phone (W5)"
+
+# Each door of the server inside the app, opened on purpose: the suite that
+# reaches it with a phone made of NodeLink must see it open (§6.2 of the mobile
+# plan: the Mac's ssh server, restricted keys, one protocol and two sources).
+protect Sources/LampBoardMacSource/MacPolicy.swift
+attack_platform Scripts/test-mac-source.sh "the read key let through to more than v1" "The read key opens v1 and nothing else" <<'PY'
+p = "Sources/LampBoardMacSource/MacPolicy.swift"
+s = open(p).read()
+open(p, "w").write(s.replace('return .refuse("the read key opens v1 and nothing else")', "return .allow", 1))
+PY
+
+protect Sources/LampBoardMacSource/MacPolicy.swift
+attack_platform Scripts/test-mac-source.sh "a terminal opened with the switch off (Q17)" "With the switch off" <<'PY'
+p = "Sources/LampBoardMacSource/MacPolicy.swift"
+s = open(p).read()
+old = "            guard terminalsOn else { return .refuse(offWords) }\n            return hasTerminal ? .allow"
+open(p, "w").write(s.replace(old, "            return hasTerminal ? .allow", 1))
+PY
+
+protect Sources/LampBoardMacSource/MacPairing.swift
+attack_platform Scripts/test-mac-source.sh "a pairing code that works twice" "One code, once" <<'PY'
+p = "Sources/LampBoardMacSource/MacPairing.swift"
+s = open(p).read()
+open(p, "w").write(s.replace('            if used { return .refused("this code was used already") }\n', "", 1))
+PY
+
+protect Sources/LampBoardMacSource/MacServer.swift
+attack_platform Scripts/test-mac-source.sh "a server that dies on bytes it cannot read" "crashed" <<'PY'
+p = "Sources/LampBoardMacSource/MacServer.swift"
+s = open(p).read()
+old = "    func errorCaught(context: ChannelHandlerContext, error: Error) {\n        context.close(promise: nil)\n    }\n}\n\n/// The keepalive"
+new = "    func errorCaught(context: ChannelHandlerContext, error: Error) {\n        fatalError(\"a byte the server could not read\")\n    }\n}\n\n/// The keepalive"
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+protect Sources/LampBoardMacSource/MacDevices.swift
+attack_platform Scripts/test-mac-source.sh "a forgotten device still let in from memory" "removed from the file by hand" <<'PY'
+p = "Sources/LampBoardMacSource/MacDevices.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if stamp == cachedStamp, stamp != nil { return cached }", "if !cached.isEmpty { return cached }", 1))
+PY
+
+protect Sources/LampBoardMacSource/MacTerminals.swift
+attack_platform Scripts/test-mac-source.sh "tmux run from the bridge without -u" "intact without LANG" <<'PY'
+p = "Sources/LampBoardMacSource/MacTerminals.swift"
+s = open(p).read()
+old = 'tmux + (arguments.first == "-u" ? arguments : ["-u"] + arguments)'
+open(p, "w").write(s.replace(old, 'tmux + arguments.filter { $0 != "-u" }', 1))
+PY
+
+protect Sources/LampBoardMacSource/MacTerminals.swift
+attack_platform Scripts/test-mac-source.sh "Q7 in the background without its detach (E14)" "Background (Q7" <<'PY'
+p = "Sources/LampBoardMacSource/MacTerminals.swift"
+s = open(p).read()
+old = '"-f", "ignore-size", ";",\n                                                       "detach-client", "-t", fields[1]]'
+open(p, "w").write(s.replace(old, '"-f", "ignore-size"]', 1))
+PY
+
+protect Sources/LampBoardMacSource/MacTerminals.swift
+attack_platform Scripts/test-mac-source.sh "a second claude attach let through (D130)" "Never a second claude attach" <<'PY'
+p = "Sources/LampBoardMacSource/MacTerminals.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        guard holders[job] == nil else { return false }\n", "", 1))
+PY
+
+protect Sources/LampBoardMacSource/MoveLock.swift
+attack_platform Scripts/test-mac-source.sh "the panel's Move ignoring the lock a phone's Move holds" "take the same lock" <<'PY'
+p = "Sources/LampBoardMacSource/MoveLock.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        if mkdir(lock, 0o700) == 0 { return true }", "        if mkdir(lock, 0o700) == 0 || errno == EEXIST { return true }", 1))
+PY
+
+protect Sources/LampBoardMacSource/MachineMark.swift
+attack_platform Scripts/test-mac-source.sh "a remote row marked R again" "machine's initial, not R" <<'PY'
+p = "Sources/LampBoardMacSource/MachineMark.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        return String(first).uppercased()", '        _ = first; return "R"', 1))
+PY
+
+# One protocol, two sources: a field renamed in what a source writes, seen
+# through the Mac's own server as it is seen through lampd's.
+protect Sources/LampBoardCore/V1/V1Row.swift
+attack_platform Scripts/test-mac-source.sh "a field of a row renamed, seen through the Mac's server" 'missing "owner"' <<'PY'
+p = "Sources/LampBoardCore/V1/V1Row.swift"
+s = open(p).read().replace("        case source, owner\n", "        case source, owner = \"ownedBy\"\n", 1)
+open(p, "w").write(s)
 PY
 
 fi
@@ -1142,7 +1257,7 @@ fi
 # ═════════════════════════════════════════════════════════════════════════════
 # Everywhere but the platform runs, as before they existed.
 if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ] \
-    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ] && [ "$WHAT" != "--parity" ]; then
+    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ] && [ "$WHAT" != "--parity" ] && [ "$WHAT" != "--macsource" ]; then
 
 chapter "The mod loads"
 

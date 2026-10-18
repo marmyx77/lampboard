@@ -1,4 +1,5 @@
 import LampBoardCore
+import LampBoardMacSource
 import SwiftUI
 
 /// The actions a row's context menu can perform.
@@ -313,16 +314,18 @@ struct TrafficLightRow: View {
     /// stands they cannot collide, because a signal that names a host skips the
     /// unclaimed-folder branch that makes a row terminal.
     ///
-    /// `R` and not the machine's name. The name was on the row until today and it
-    /// was the loudest thing on it: `@devmachine` is eleven characters out of a
-    /// field a project name has to fit in, identical on every row of that node,
+    /// The machine's initial and not its name. The name was on the row once and
+    /// it was the loudest thing on it: `@devmachine` is eleven characters out of
+    /// a field a project name has to fit in, identical on every row of that node,
     /// and `Acme Events @devmachine` reached the screen as `Acme …machine`. A
-    /// letter says *not here* in the width of a glyph; **which** machine is a
-    /// question one person asks at a time, and the card answers it in words.
+    /// letter says *not here* in the width of a glyph; it was `R` for every
+    /// machine until 2.4, and is now the machine's own initial (W5, L.C5), as the
+    /// phone draws it: with two machines the letter already says which one.
     private var place: some View {
         Group {
-            if row.workspace.isRemote {
-                Text("R")
+            if let host = row.workspace.host {
+                Text(MachineMark.initial(host: host))
+                    .accessibilityLabel("On \(host)")
                     .font(.system(size: 8.5, weight: .bold, design: .rounded))
                     .foregroundStyle(StatusPalette.badgeForeground)
                     .padding(.horizontal, 3)

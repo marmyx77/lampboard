@@ -1,5 +1,6 @@
 import AppKit
 import LampBoardCore
+import LampBoardMacSource
 import SwiftUI
 
 /// The live view's windows, one per background session (D130).
@@ -28,6 +29,11 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     }
 
     private var lives: [String: Live] = [:]
+    /// The background sessions' attaches, shared with the phone's bridge (W5):
+    /// one at a time per job, whoever opened it.
+    var attaches: MacAttachLedger?
+    /// The Hub's job terminals a phone may share.
+    var shares: HubShares?
     /// The conversations being moved here (D135).
     private var moving: Set<String> = []
     private var clock: Timer?
@@ -179,7 +185,15 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// A job's attach here is over: the bridge may take it, and no phone shares it.
+    private func letGo(_ target: LiveTarget) {
+        guard case .job(let id) = target else { return }
+        attaches?.release(id, by: .hub)
+        shares?.unregister(job: id)
+    }
+
     private func end(_ live: Live) {
+        letGo(live.target)
         live.surface.onExit = nil
         live.surface.end(waiting: false)
         LiveProcesses.forget(pid: live.surface.pid)
@@ -190,6 +204,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// A surface, its frame and the command that attaches it, not started.
     private func makeLive(_ target: LiveTarget) -> Live? {
         let job = target.key
+        // An iPhone or iPad has this background session open through the
+        // bridge: a second attach here would be a second writer (D130).
+        if case .job(let id) = target, attaches?.holder(of: id) == .bridge { return nil }
         guard let command = command(for: target) else { return nil }
         let theme = preferences.liveAppearance.theme
         let surface = makeSurface()
@@ -276,9 +293,17 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         var environment: [String: String?] = [:]
         for key in ProcessInfo.processInfo.environment.keys where command.environment[key] == nil { environment[key] = .some(nil) }
         for (key, value) in command.environment { environment[key] = value }
+        // The same lock a phone's Move takes through the bridge (W3c, W5): of
+        // two Moves of one conversation, one ends the process and one is told.
+        let home = AppConfig.homeDirectory.path
+        guard MoveLock.take(session: process.sessionId, home: home) else {
+            failed("Another device is moving this conversation now. Nothing was moved.")
+            return
+        }
         moving.insert(process.sessionId)
         let finish: @MainActor (String?) -> Void = { [weak self] message in
             self?.moving.remove(process.sessionId)
+            MoveLock.release(session: process.sessionId, home: home)
             if let message { failed(message) }
         }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -436,7 +461,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             guard let self, let live else { return }
             live.ended = true
             LiveProcesses.forget(pid: live.surface.pid)
+            self.letGo(live.target)
             self.refreshHeaders()
+        }
+        if case .job(let id) = live.target {
+            _ = attaches?.take(id, for: .hub)
+            shares?.register(job: id, surface: live.surface)
         }
         live.surface.start(command)
         LiveProcesses.record(pid: live.surface.pid, job: live.job)
@@ -567,6 +597,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
               let live = lives.values.first(where: { $0.window === window }) else { return }
+        letGo(live.target)
         live.surface.end(waiting: false)
         LiveProcesses.forget(pid: live.surface.pid)
         lives[live.job] = nil

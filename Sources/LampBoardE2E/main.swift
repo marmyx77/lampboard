@@ -95,6 +95,8 @@ let suites: [TestSuite] = [
     SearchE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 7),
     LiveViewE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 8),
     HubE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 9),
+    // iPhone & iPad (W5): the app's own ssh server, its ssh port 2000 above.
+    MobileE2ESuite.suite(binaryURL: binaryURL, port: testPort &+ 10),
     NodeTranscriptE2ESuite.suite(),
     // Deliberately last: it starts other instances against the same home and
     // changes their token, so everything before it must already be finished.

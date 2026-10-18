@@ -76,6 +76,10 @@ enum HubSetup {
         panel.startedTarget = { [weak model] id in model?.pending[id]?.target }
         panel.resumeElsewhere = { host, folder, id, name in
             launcher.launch(folder: folder, host: host, start: .resume(sessionId: id), name: name, checkBusy: false) { reason in
+                // The Move's lock over there goes once the conversation is taken
+                // up, or could not be (W3c: it holds until then, so no second Move
+                // starts a second writer meanwhile).
+                if let unlock = RemoteMove.unlock(session: id) { Task { _ = await ProjectSource.ssh(host, unlock) } }
                 if let reason { Alerts.tell(title: "The conversation was not taken up", message: reason) }
             }
         }

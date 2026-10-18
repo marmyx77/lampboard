@@ -36,8 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
     private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
-    private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster,
+    private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster, mobile: mobile,
                                                                panel: { [weak self] in self?.panelController })
+    /// This Mac as a source for iPhone and iPad (W5): listens only once a
+    /// device is paired or a pairing code is shown.
+    private lazy var mobile = MobileServer(store: store, snapshots: snapshots, preferences: preferences,
+                                           tmuxPlaces: { [localTmux] in localTmux.places })
     /// Built with the panel, because it counts what the panel is showing.
     private var legendWindow: LegendWindowController?
     /// The nonces of the handoffs taken (D91): a proof heard twice counts once.
@@ -123,6 +127,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startInterface()
         }
         localTmux.start()
+        live.attaches = mobile.attaches
+        live.shares = mobile.hubShares
+        mobile.start()
 
         // `--live <job>` opens a background session in the live view (D130): for
         // the pictures, and for the end-to-end suite, which cannot click. Against
@@ -413,6 +420,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.stop()
         lampMaster.stop()
         server?.stop()
+        // The phone's terminals end with the app; its server stops listening.
+        mobile.stop()
         // The presence file has to go: leaving it would say "I'm at the Mac"
         // forever, and the phone push notifications would never arrive again.
         presence?.stop()
