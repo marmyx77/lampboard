@@ -34,10 +34,12 @@ public final class NodeSource: V1Source, @unchecked Sendable {
     /// When each device said it was in use (`focus`): what decides which one
     /// rings (Q9, W4).
     public private(set) var focusedAt: [String: Date] = [:]
-    private var registrations: [String: V1PushRegistration] = [:]
+    /// The notifications: registrations in every mode, sending only in the
+    /// service's (`NodePushes.relay`).
+    public let pushes: NodePushes
 
     public init(identity: V1SourceIdentity, mode: V1ServingMode, paths: LampDPaths, version: String,
-                startedAt: Date, retention: Int = 1000) {
+                startedAt: Date, retention: Int = 1000, relay: RelayClient? = nil, log: @escaping (String) -> Void = { _ in }) {
         self.identity = identity
         self.mode = mode
         self.paths = paths
@@ -51,6 +53,7 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         preferencesFile = PreferencesFile(path: paths.preferencesFile)
         preferences = preferencesFile.load()
         devicesStore = DevicesStore(paths: paths)
+        pushes = NodePushes(identity: identity, paths: paths, relay: mode == .live ? relay : nil, log: log)
     }
 
     // MARK: - Looks
@@ -72,7 +75,13 @@ public final class NodeSource: V1Source, @unchecked Sendable {
             journal.confirm(at: look.at)
             journal.flush()
         }
+        // Outside the lock: sealing is quick, but a connection's `hello` must
+        // never wait on it.
+        pushes.after(rows: currentRows, at: look.at)
     }
+
+    /// The rows as the column shows them now.
+    public var currentRows: [V1Row] { locked { journal.rows.values.sorted { $0.id < $1.id } } }
 
     /// The rows the column shows, made events: one per row that changed, one
     /// per row that went.
@@ -103,7 +112,7 @@ public final class NodeSource: V1Source, @unchecked Sendable {
             V1SourceStatus(
                 version: version, startedAt: startedAt, binaryModifiedAt: LampDBinary.modifiedAt,
                 configModifiedAt: LampDBinary.modified(paths.configFile), journal: journal.name, seq: journal.seq,
-                lastEventAt: journal.lastEventAt, lastProbeAt: lastProbeAt, relay: nil, mode: mode
+                lastEventAt: journal.lastEventAt, lastProbeAt: lastProbeAt, relay: pushes.relayHealth, mode: mode
             )
         }
     }
@@ -125,6 +134,7 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         locked {
             if command.action == .focus {
                 focusedAt[peer.device] = now
+                pushes.used(by: peer.device, session: command.session, at: now)
                 return nil
             }
             if let id = command.session, journal.rows[id] == nil {
@@ -141,11 +151,13 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         }
     }
 
-    /// Kept for this connection only, until the push relay arrives (W4): the
-    /// service has nobody to send to yet, and says so rather than pretend.
-    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure? {
-        locked { registrations[peer.device] = registration }
-        return V1Failure(.unavailable, "this machine does not send notifications yet")
+    /// Kept on disk for the service, whichever process took it (§2.8).
+    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> Result<V1PushAccepted, V1Failure> {
+        pushes.register(registration, device: peer.device, at: now)
+    }
+
+    public func away(for peer: V1Peer, at now: Date) -> String? {
+        mode == .live ? pushes.away(for: peer.device, rows: currentRows, at: now) : nil
     }
 
     public func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure> {

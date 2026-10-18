@@ -12,6 +12,7 @@ Instrument.prove()
 let suites: [TestSuite] = [
     DevicesSuite.suite,
     NodeSourceSuite.suite,
+    PushSuite.suite,
     SmallSuites.preferences,
     SmallSuites.projects,
     SmallSuites.config,

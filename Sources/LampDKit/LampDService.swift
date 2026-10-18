@@ -47,7 +47,8 @@ public final class LampDService: @unchecked Sendable {
         self.log = log
         self.testHooks = testHooks
         probe = LocalProbe(paths: paths, environment: probeEnvironment)
-        source = NodeSource(identity: config.identity, mode: .live, paths: paths, version: version, startedAt: Date())
+        source = NodeSource(identity: config.identity, mode: .live, paths: paths, version: version, startedAt: Date(),
+                            relay: config.relayClient(), log: { [log] in log.write($0) })
     }
 
     /// Runs until SIGTERM or SIGINT; the exit code.
