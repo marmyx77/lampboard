@@ -12,7 +12,7 @@ public final class MacDevices: @unchecked Sendable {
 
     public struct Device: Codable, Equatable, Sendable {
         public let id: String
-        public let name: String
+        public var name: String
         /// `ecdsa-sha2-nistp256 <base64>`, as `String(openSSHPublicKey:)` writes it.
         public let readKey: String
         public let actionKey: String
@@ -20,6 +20,9 @@ public final class MacDevices: @unchecked Sendable {
         public var lastSeenAt: Date?
         /// The relay's capability for this device (W4), kept for the relay client.
         public var relayCapability: String?
+        /// The nodes its keys were carried to at pairing, and the id each
+        /// node's `lampd` gave it (W5): what Forget revokes there.
+        public var nodes: [String: String]?
 
         /// `SHA256:…` of each key, what Settings shows beside the name.
         public var readFingerprint: String { MacHostKey.fingerprint(openSSH: readKey) }
@@ -61,7 +64,11 @@ public final class MacDevices: @unchecked Sendable {
         return role(of: key)
     }
 
-    /// Adds the device a pairing asked for, under a new id.
+    /// Adds the device a pairing asked for, under a new id. The same device
+    /// pairing again with both its keys (the phone forgot this Mac, not its
+    /// keys) keeps its id and the nodes its keys were carried to, under the
+    /// name and capability it gives now; one key of a device beside a new one
+    /// is refused.
     public func add(_ request: MacPairingRequest, at now: Date) throws -> Device {
         if let problem = request.problem { throw MacSourceError.refused(problem) }
         guard let read = Self.canonical(request.readKey), let action = Self.canonical(request.actionKey) else {
@@ -69,6 +76,12 @@ public final class MacDevices: @unchecked Sendable {
         }
         return try locked {
             var devices = load()
+            if let index = devices.firstIndex(where: { $0.readKey == read && $0.actionKey == action }) {
+                devices[index].name = request.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                devices[index].relayCapability = request.relayCapability ?? devices[index].relayCapability
+                try save(devices)
+                return devices[index]
+            }
             guard !devices.contains(where: { [$0.readKey, $0.actionKey].contains(read) || [$0.readKey, $0.actionKey].contains(action) }) else {
                 throw MacSourceError.refused("one of these keys is already paired: forget that device first")
             }
@@ -92,6 +105,16 @@ public final class MacDevices: @unchecked Sendable {
             devices.removeAll { $0.id == id }
             try save(devices)
             return true
+        }
+    }
+
+    /// Where a device's keys were carried, as each node named it.
+    public func setNodes(_ id: String, _ nodes: [String: String]) throws {
+        try locked {
+            var devices = load()
+            guard let index = devices.firstIndex(where: { $0.id == id }) else { return }
+            devices[index].nodes = nodes.isEmpty ? nil : nodes
+            try save(devices)
         }
     }
 

@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let headless: Bool
 
     private let snapshots = SnapshotBox()
-    private lazy var store = StateStore(snapshots: snapshots)
+    lazy var store = StateStore(snapshots: snapshots)
     private let installer = HookInstaller()
     let preferences = Preferences()
 
@@ -35,13 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let localTmux = LocalTmuxPlaces()
     /// The remote machines: their tunnels and their hooks. Started in every mode,
     /// because a hook from another machine is as welcome headless as with the panel.
-    private lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
+    lazy var fleet = RemoteFleet(preferences: preferences, localPort: port)
     private lazy var settingsWindow = SettingsWindowController(fleet: fleet, lampMaster: lampMaster, mobile: mobile,
                                                                panel: { [weak self] in self?.panelController })
     /// This Mac as a source for iPhone and iPad (W5): listens only once a
     /// device is paired or a pairing code is shown.
-    private lazy var mobile = MobileServer(store: store, snapshots: snapshots, preferences: preferences,
-                                           tmuxPlaces: { [localTmux] in localTmux.places })
+    lazy var mobile = MobileServer(store: store, snapshots: snapshots, preferences: preferences, fleet: fleet,
+                                   tmuxPlaces: { [localTmux] in localTmux.places })
+    /// The person's choices about the nodes' rows, kept in step with their `lampd` (W5).
+    lazy var nodeChoices = NodeChoicesSync(store: store, preferences: preferences, fleet: fleet)
+    var sleepWatch: [NSObjectProtocol] = []
     /// Built with the panel, because it counts what the panel is showing.
     private var legendWindow: LegendWindowController?
     /// The nonces of the handoffs taken (D91): a proof heard twice counts once.
@@ -56,8 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The permissions the panel answers, when switched on (D80).
     private let permissions = PermissionDesk()
     private let decisions = DecisionBoardService()
-    private var away: AwayMonitor?
-    private let awayFlag = AwayFlag()
+    var away: AwayMonitor?
+    let awayFlag = AwayFlag()
     private let governor = GovernorService()
     /// Questions to live sessions without disturbing them (D82).
     private let askDesk = PeerAskDesk()
@@ -123,6 +126,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             askDesk.heard(report)
         }
 
+        // Away and asleep, in every mode (W5): the phone rings for this Mac's
+        // rows and the nodes' only when the person is not at the Mac (Q8).
+        startAway()
         if !headless {
             startInterface()
         }
@@ -175,6 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store.startPolling()
         fleet.start()
+        nodeChoices.start()
         lampMaster.port = port
         // A session asks another the person dragged into its terminal (D172), through
         // that session's mod (D82), here or on its machine; the answer framed as data.
@@ -375,7 +382,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         presence.start()
         self.presence = presence
 
-        let away = AwayMonitor(store: store, preferences: preferences, flag: awayFlag)
+        guard let away else { return }
         notifier?.isAway = { [weak away] in away?.isAway ?? false }
         away.onBack = { [weak self] line in
             if let line, self?.preferences.notificationsEnabled == true { self?.notifier?.deliverSummary(line) }
@@ -383,8 +390,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if let store = self?.store { self?.panelController?.resizeToFit(store.state) }
         }
         panelController?.away = away
-        away.start()
-        self.away = away
     }
 
 
@@ -501,10 +506,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onWatch: { [store] report in
                 Task { @MainActor in store.apply(.watched(report), now: Date()) }
             },
-            onCheck: { [permissions] body, nonce, proof, key in permissions.check(body, nonce: nonce, proof: proof, key: key) },
+            onCheck: { [permissions, awayFlag] body, nonce, proof, key in
+                permissions.check(body, nonce: nonce, proof: proof, key: key, away: awayFlag.isAway)
+            },
             onChecks: { [permissions] in permissions.listing },
             onCheckAnswer: { [permissions] body in permissions.answer(body: body) },
-            onQuestion: { [permissions] body, nonce, proof, key in permissions.question(body, nonce: nonce, proof: proof, key: key) },
+            onQuestion: { [permissions, awayFlag] body, nonce, proof, key in
+                permissions.question(body, nonce: nonce, proof: proof, key: key, away: awayFlag.isAway)
+            },
             onBand: { [weak self] asking in
                 Self.onMain(timeout: 1) { self?.bandItems(excluding: asking) } ?? Band.json([])
             },

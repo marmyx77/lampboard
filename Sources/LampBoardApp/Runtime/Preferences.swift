@@ -26,6 +26,7 @@ struct Preferences {
         static let remoteHosts = "remote.hosts"
         static let hiddenWorkspaces = "panel.hiddenWorkspaces"
         static let dismissedSessions = "panel.dismissedSessions"
+        static let nodeMigrationsSent = "nodes.migrationsSent"
         static let mutedWorkspaces = "notify.mutedWorkspaces"
         static let notificationsEnabled = "notify.enabled"
         static let notifyFinished = "notify.finished"
@@ -292,6 +293,12 @@ struct Preferences {
     var hiddenWorkspaces: Set<String> {
         get { readSet(Key.hiddenWorkspaces) }
         nonmutating set { writeSet(newValue, to: Key.hiddenWorkspaces) }
+    }
+
+    /// The nodes the panel's own choices were merged into once (W5, §2.12).
+    var nodeMigrationsSent: Set<String> {
+        get { readSet(Key.nodeMigrationsSent) }
+        nonmutating set { writeSet(newValue, to: Key.nodeMigrationsSent) }
     }
 
     /// Projects whose amber dot does not blink, by path.

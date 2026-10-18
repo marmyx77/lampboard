@@ -617,6 +617,12 @@ public enum AppConfig {
     public static func remotePort(forUID uid: Int) -> UInt16 {
         UInt16(30_000 + max(uid, 0) % 20_000)
     }
+    /// Where the tunnel lands on that machine when its `lampd` holds the hooks'
+    /// port in tee (W5, §2.3): the next one. The hooks never post here; `lampd`
+    /// forwards to it. `~/.lampboard/port` keeps `remotePort`.
+    public static func remoteSecondaryPort(forUID uid: Int) -> UInt16 {
+        MacNodeLink.secondaryPort(of: remotePort(forUID: uid))
+    }
     /// Claude Code's settings on a remote machine, relative to its home.
     public static let remoteClaudeSettingsRelativePath = ".claude/settings.json"
 

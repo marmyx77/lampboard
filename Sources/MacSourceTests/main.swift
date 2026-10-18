@@ -47,6 +47,7 @@ let suites: [TestSuite] = [
     MacDevicesSuite.suite,
     MacSourceSuite.suite,
     MacPanelSuite.suite,
+    MacPushesSuite.suite,
     V1Conformance.suite(against: MacMemoryTarget()),
 ]
 

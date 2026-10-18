@@ -59,6 +59,10 @@ public final class MacSSHServer: @unchecked Sendable {
         /// Asks the person, on the Mac, whether this device may pair: its name
         /// and the fingerprints of its keys. Nothing is paired without a yes.
         public var confirmPairing: @Sendable (MacPairingRequest) async -> Bool
+        /// After the yes, the device's keys carried to the nodes the person
+        /// ticked (W5, §2.4: `lampd devices add` over the Mac's own ssh). What
+        /// comes back goes to the phone in the reply.
+        public var carryToNodes: @Sendable (MacDevices.Device) async -> [MacPairedNode]
         /// The Mac's name, as the person gave it.
         public var macName: String
         public var log: @Sendable (String) -> Void
@@ -66,6 +70,7 @@ public final class MacSSHServer: @unchecked Sendable {
 
         public init(source: MacV1Source, devices: MacDevices, pairing: MacPairingWindow, runner: MacRunner,
                     terminalsOn: @escaping @Sendable () -> Bool, confirmPairing: @escaping @Sendable (MacPairingRequest) async -> Bool,
+                    carryToNodes: @escaping @Sendable (MacDevices.Device) async -> [MacPairedNode] = { _ in [] },
                     macName: String, log: @escaping @Sendable (String) -> Void = { _ in },
                     now: @escaping @Sendable () -> Date = { Date() }) {
             self.source = source
@@ -74,6 +79,7 @@ public final class MacSSHServer: @unchecked Sendable {
             self.runner = runner
             self.terminalsOn = terminalsOn
             self.confirmPairing = confirmPairing
+            self.carryToNodes = carryToNodes
             self.macName = macName
             self.log = log
             self.now = now

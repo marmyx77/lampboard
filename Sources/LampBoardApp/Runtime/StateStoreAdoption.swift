@@ -173,6 +173,34 @@ extension StateStore {
         Workspace(path: item.index.localFolders.first ?? item.index.folders.first ?? "")
     }
 
+    /// Adopts the Codex sessions a live process is holding a rollout open for.
+    ///
+    /// They arrive this way because they arrive no other way. Codex inside the
+    /// ChatGPT app registers our hooks, marks them trusted, runs a full session
+    /// and sends nothing: measured, with eight events configured and not one line
+    /// in the log. A row for it has to be found rather than announced.
+    ///
+    /// Three rules hold the honesty of it together.
+    ///
+    /// The folder comes from the rollout's own first record, never from anything
+    /// sent to us. That is the replacement for the admission gate, not its
+    /// removal: the old bound was a Claude Code window lock, which a machine
+    /// running only Codex does not have.
+    ///
+    /// The state is **idle**, which here means the absence of information rather
+    /// than a claim, exactly as it does for a Claude session adopted from disk. An
+    /// open descriptor proves a conversation is loaded in a live program; it does
+    /// not prove the model is doing anything, and the editor extension was
+    /// observed holding open a rollout whose last record was a year old. Reading
+    /// turns out of the rollout is a separate capability and needs fixtures, a
+    /// gate and a version, because the format is declared unstable by the people
+    /// who write it.
+    ///
+    /// And a probe that could not answer removes nothing. `lsof` stats every open
+    /// descriptor, so a network mount whose server has gone away stops it: that is
+    /// absence of evidence, and this project already draws the same line for a
+    /// remote host that has gone quiet.
+    ///
     /// Applies what the Codex probe found, and never asks for it here.
     ///
     /// The asking used to happen inline, on the actor that draws, every five

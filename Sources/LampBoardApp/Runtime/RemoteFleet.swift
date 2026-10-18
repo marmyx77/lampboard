@@ -39,12 +39,25 @@ final class RemoteFleet: ObservableObject {
 
     @Published private(set) var hosts: [String]
     @Published private(set) var status: [String: RemoteHostStatus] = [:]
+    /// The hosts whose `lampd` answers on the tunnel's link (W5): each owns its
+    /// own rows (§2.9), and the Mac stops notifying them.
+    @Published private(set) var lampdHealthy: Set<String> = []
+    /// The person's choices about a node's rows, as its `lampd` sent them.
+    var onNodePreferences: (String, RowPreferences) -> Void = { _, _ in }
+    /// A node's link answered on a new connection: the app sends what only it
+    /// knows (the one-time migration of the panel's choices).
+    var onLinked: (String) -> Void = { _ in }
+    /// Where the person is, and the settings the phone needs on the nodes:
+    /// told to every node now and again at each new link (§2.12, Q8).
+    private(set) var presence: MacPresence = .here
+    private(set) var nodeSettings: MacNodeSettings?
 
     private let preferences: Preferences
     private let localPort: UInt16
     private var tunnels: [String: RemoteTunnel] = [:]
     private var preferenceWatcher: NSObjectProtocol?
     private var preferencePoll: Timer?
+    private var presenceTimer: Timer?
 
     init(preferences: Preferences, localPort: UInt16) {
         self.preferences = preferences
@@ -75,6 +88,14 @@ final class RemoteFleet: ObservableObject {
         preferencePoll = Timer.scheduledTimer(withTimeInterval: AppConfig.remotePollInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.followPreferences() }
         }
+        // Presence renewed on every link (W5): `lampd` reads a `here` not renewed
+        // as the Mac gone.
+        presenceTimer = Timer.scheduledTimer(withTimeInterval: MacNodeLink.presenceRefresh, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.broadcast(MacToNode(presence: self.presence, at: Date()))
+            }
+        }
     }
 
     func stop() {
@@ -82,6 +103,8 @@ final class RemoteFleet: ObservableObject {
         preferenceWatcher = nil
         preferencePoll?.invalidate()
         preferencePoll = nil
+        presenceTimer?.invalidate()
+        presenceTimer = nil
         for tunnel in tunnels.values { tunnel.stop() }
         tunnels = [:]
     }
@@ -94,6 +117,7 @@ final class RemoteFleet: ObservableObject {
             tunnels[gone]?.stop()
             tunnels[gone] = nil
             status[gone] = nil
+            lampdHealthy.remove(gone)
         }
         for added in stored where !hosts.contains(added) {
             startTunnel(added)
@@ -125,6 +149,7 @@ final class RemoteFleet: ObservableObject {
         tunnels[host]?.stop()
         tunnels[host] = nil
         status[host] = nil
+        lampdHealthy.remove(host)
     }
 
     /// Runs one operation on a machine, off the main actor, and records the outcome.
@@ -141,6 +166,7 @@ final class RemoteFleet: ObservableObject {
 
             switch operation {
             case .check:
+                let tunnelPort = await MainActor.run { [weak self] in self?.tunnels[host]?.boundPort }
                 switch RemoteHookInstaller.inspect(host) {
                 case .success(let inspection):
                     hooks = inspection.hooksInstalled ? .installed : .absent
@@ -152,7 +178,8 @@ final class RemoteFleet: ObservableObject {
                     if let error = inspection.error { notes.append("settings.json unreadable: \(error)") }
                     // The one question only the node can answer: where is the port
                     // the hooks post to bound, and does it reach this Mac right now?
-                    switch RemoteHookInstaller.tunnelStatus(on: host, port: inspection.port) {
+                    if inspection.lampd { notes.append("lampd there: hooks left to it") }
+                    switch RemoteHookInstaller.tunnelStatus(on: host, port: tunnelPort ?? inspection.port) {
                     case .success(let tunnel): notes.append(tunnel.sentence)
                     case .failure(let error): notes.append("tunnel not checked: \(error.short)")
                     }
@@ -208,7 +235,7 @@ final class RemoteFleet: ObservableObject {
 
     private func startTunnel(_ host: String) {
         guard tunnels[host] == nil else { return }
-        let tunnel = RemoteTunnel(host: host, localPort: localPort) { [weak self] state in
+        let tunnel = RemoteTunnel(host: host, localPort: localPort, onChange: { [weak self] state in
             self?.modify(host) { $0.tunnel = state }
             // A node asleep at launch answered the check with a failure, and its
             // hooks were never looked at. The tunnel coming up is the moment it
@@ -216,9 +243,50 @@ final class RemoteFleet: ObservableObject {
             if case .up = state, let hooks = self?.status[host]?.hooks, case .failed = hooks {
                 self?.run(.check, on: host)
             }
-        }
+        }, onLink: { [weak self] news in
+            self?.heard(news, from: host)
+        })
         tunnels[host] = tunnel
         tunnel.start()
+    }
+
+    // MARK: - The link to each node's lampd (W5)
+
+    private func heard(_ news: RemoteTunnel.LinkNews, from host: String) {
+        switch news {
+        case .health(let healthy):
+            if healthy { lampdHealthy.insert(host) } else { lampdHealthy.remove(host) }
+        case .linked:
+            let now = Date()
+            tunnels[host]?.send(MacToNode(presence: presence, at: now))
+            if let nodeSettings { tunnels[host]?.send(MacToNode(settings: nodeSettings, at: now)) }
+            onLinked(host)
+        case .preferences(let preferences):
+            onNodePreferences(host, preferences)
+        }
+    }
+
+    /// Where the person is (Q8): every node hears it at once.
+    func setPresence(_ presence: MacPresence) {
+        guard presence != self.presence else { return }
+        self.presence = presence
+        broadcast(MacToNode(presence: presence, at: Date()))
+    }
+
+    /// The Mac's settings the phone reads from the nodes (§2.12).
+    func setNodeSettings(_ settings: MacNodeSettings) {
+        guard settings != nodeSettings else { return }
+        nodeSettings = settings
+        broadcast(MacToNode(settings: settings, at: Date()))
+    }
+
+    /// One line to one node's `lampd`, when its link is up.
+    func send(_ message: MacToNode, to host: String) {
+        tunnels[host]?.send(message)
+    }
+
+    private func broadcast(_ message: MacToNode) {
+        for tunnel in tunnels.values { tunnel.send(message) }
     }
 
     private func modify(_ host: String, _ change: (inout RemoteHostStatus) -> Void) {

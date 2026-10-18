@@ -26,7 +26,13 @@ final class MobileServer: ObservableObject {
     private let snapshots: SnapshotBox
     private let preferences: Preferences
     private let tmuxPlaces: () -> [String: TmuxPlace]
+    private let fleet: RemoteFleet
     private let deviceStore = MacDevices(directory: MobileSettings.directory)
+    /// This Mac's notifications to the paired devices (W5).
+    let pushes: MacPushes
+    /// The nodes the person ticked in the last pairing's confirmation, by the
+    /// request's read key.
+    private var carryChoice: [String: [String]] = [:]
     private let pairing = MacPairingWindow()
     private let source: MacV1Source
     private var server: MacSSHServer?
@@ -37,15 +43,21 @@ final class MobileServer: ObservableObject {
     /// The name the person gave this Mac, never its host name (S-P).
     let macName: String = Host.current().localizedName ?? "Mac"
 
-    init(store: StateStore, snapshots: SnapshotBox, preferences: Preferences, tmuxPlaces: @escaping () -> [String: TmuxPlace]) {
+    init(store: StateStore, snapshots: SnapshotBox, preferences: Preferences, fleet: RemoteFleet,
+         tmuxPlaces: @escaping () -> [String: TmuxPlace]) {
         self.store = store
         self.snapshots = snapshots
         self.preferences = preferences
+        self.fleet = fleet
         self.tmuxPlaces = tmuxPlaces
         let deviceStore = self.deviceStore
         let identity = V1SourceIdentity(kind: .mac, name: Host.current().localizedName ?? "Mac")
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
         let relay = PerformRelay()
+        let pushes = MacPushes(identity: identity, directory: MobileSettings.directory, relay: Self.relayClient(),
+                               log: { line in Diagnostics.log(line) })
+        self.pushes = pushes
+        let defaults = DefaultsBox(Preferences.sharedDefaults)
         source = MacV1Source(
             identity: identity, version: version, startedAt: Date(),
             actions: MacSourceActions(
@@ -56,10 +68,47 @@ final class MobileServer: ObservableObject {
                     DispatchQueue.main.async { MainActor.assumeIsolated { relay.target?.perform(command) } }
                     return nil
                 },
-                devices: { request in Self.devices(request, in: deviceStore) }
+                devices: { request in Self.devices(request, in: deviceStore) },
+                register: { registration, peer in pushes.register(registration, device: peer.device, at: Date()) },
+                focused: { device, session, at in pushes.used(by: device, session: session, at: at) },
+                relayHealth: { pushes.relayHealth },
+                settings: { Self.nodeSettings(Preferences(defaults: defaults.value)) }
             )
         )
         relay.target = self
+    }
+
+    /// The relay: `push.lampboard.site`, or in a fake home the one it names
+    /// (`LAMPBOARD_RELAY_URL`, the gate's own).
+    nonisolated static func relayClient() -> RelayClient {
+        if AppConfig.isUsingHomeOverride, let text = ProcessInfo.processInfo.environment["LAMPBOARD_RELAY_URL"],
+           let url = URL(string: text) {
+            return RelayClient(base: url, transport: URLSessionRelayTransport())
+        }
+        return RelayClient(transport: URLSessionRelayTransport())
+    }
+
+    /// The Mac's settings the phone needs, for this Mac and for its nodes (§2.12).
+    nonisolated static func nodeSettings(_ preferences: Preferences) -> MacNodeSettings {
+        let palette = String(decoding: MobilePalette.json(preferences.liveAppearance), as: UTF8.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return MacNodeSettings(permissionMode: preferences.sessionPermissions.rawValue,
+                               sendMessages: preferences.messageSendingEnabled, palette: palette)
+    }
+
+    // MARK: - Presence and sleep (Q8, §2.6)
+
+    /// Where the person is: the phone rings for this Mac's rows only away.
+    func setPresence(_ presence: MacPresence) {
+        guard pushes.presence != presence else { return }
+        pushes.presence = presence
+        publish()
+    }
+
+    /// The Mac is going to sleep: its last word to the phone, and the Live
+    /// Activity grey. Waits for the relay a few seconds at most.
+    func sleeping() {
+        pushes.sleeping(rows: source.currentRows, at: Date())
     }
 
     // MARK: - Starting and stopping
@@ -75,8 +124,25 @@ final class MobileServer: ObservableObject {
         watch = store.$state
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.publish() }
+        // A node's `lampd` turning healthy takes its rows off this Mac's
+        // notifications at once (§2.9), and giving up gives them back.
+        healthWatch = fleet.$lampdHealthy.removeDuplicates()
+            .sink { [weak self] _ in DispatchQueue.main.async { MainActor.assumeIsolated { self?.publish() } } }
+        settingsWatch = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.followSettings() }
+        }
+        followSettings()
         publish()
         listenIfNeeded()
+    }
+
+    private var healthWatch: AnyCancellable?
+    private var settingsWatch: NSObjectProtocol?
+
+    private func followSettings() {
+        fleet.setNodeSettings(Self.nodeSettings(preferences))
     }
 
     func stop() {
@@ -102,6 +168,7 @@ final class MobileServer: ObservableObject {
                 source: source, devices: deviceStore, pairing: pairing, runner: runner(),
                 terminalsOn: { [settings] in settings.terminalsOn },
                 confirmPairing: { [weak self] request in await self?.confirm(request) ?? false },
+                carryToNodes: { [weak self] device in await self?.carry(device) ?? [] },
                 macName: macName,
                 log: { line in Diagnostics.log(line) }
             )
@@ -196,8 +263,14 @@ final class MobileServer: ObservableObject {
 
     /// The person decides, here, with the device's fingerprints in front of them.
     private func confirm(_ request: MacPairingRequest) async -> Bool {
+        // The nodes with a healthy `lampd` can take the device's keys (§2.4).
+        let nodes = await MainActor.run { fleet.hosts.filter { fleet.lampdHealthy.contains($0) } }
         if AppConfig.isUsingHomeOverride {
-            return ProcessInfo.processInfo.environment["LAMPBOARD_MOBILE_CONFIRM"] == "yes"
+            let yes = ProcessInfo.processInfo.environment["LAMPBOARD_MOBILE_CONFIRM"] == "yes"
+            // A fake home carries to its own test nodes only when asked.
+            let carry = ProcessInfo.processInfo.environment["LAMPBOARD_MOBILE_CARRY"] == "1"
+            await MainActor.run { carryChoice[request.readKey] = yes && carry ? nodes : [] }
+            return yes
         }
         return await withCheckedContinuation { done in
             DispatchQueue.main.async { [weak self] in
@@ -207,9 +280,22 @@ final class MobileServer: ObservableObject {
                 alert.informativeText = "It will see this Mac's sessions. Check that these match what the device shows:\n\n"
                     + "Read key  \(MacHostKey.fingerprint(openSSH: request.readKey))\n"
                     + "Action key  \(MacHostKey.fingerprint(openSSH: request.actionKey))"
+                // «Also on <node>», ticked: the keys go there too, and the phone
+                // gets the node's host key from this Mac (§2.4).
+                let boxes = nodes.map { NSButton(checkboxWithTitle: "Also on \($0)", target: nil, action: nil) }
+                boxes.forEach { $0.state = .on }
+                if !boxes.isEmpty {
+                    let stack = NSStackView(views: boxes)
+                    stack.orientation = .vertical
+                    stack.alignment = .leading
+                    stack.frame = NSRect(x: 0, y: 0, width: 280, height: CGFloat(boxes.count) * 22)
+                    alert.accessoryView = stack
+                }
                 alert.addButton(withTitle: "Pair")
                 alert.addButton(withTitle: "Don\u{2019}t Pair")
                 let yes = alert.runModal() == .alertFirstButtonReturn
+                let chosen = zip(nodes, boxes).filter { $0.1.state == .on }.map(\.0)
+                MainActor.assumeIsolated { self?.carryChoice[request.readKey] = yes ? chosen : [] }
                 done.resume(returning: yes)
                 Task { @MainActor in
                     self?.devices = self?.deviceStore.all ?? []
@@ -219,9 +305,29 @@ final class MobileServer: ObservableObject {
         }
     }
 
+    /// After the yes: the keys to each node ticked, off the main actor.
+    private func carry(_ device: MacDevices.Device) async -> [MacPairedNode] {
+        let hosts = await MainActor.run { carryChoice.removeValue(forKey: device.readKey) ?? [] }
+        guard !hosts.isEmpty else { return [] }
+        return await Task.detached(priority: .userInitiated) {
+            hosts.compactMap { NodeDeviceCarry.add(device, on: $0) }
+        }.value
+    }
+
+    /// The device taken off every node its keys were carried to.
+    private func revokeOnNodes(_ devices: [MacDevices.Device]) {
+        let work = devices.flatMap { device in (device.nodes ?? [:]).map { (host: $0.key, id: $0.value) } }
+        for device in devices { pushes.forget(device: device.id) }
+        guard !work.isEmpty else { return }
+        Task.detached(priority: .utility) {
+            for item in work { NodeDeviceCarry.revoke(item.id, on: item.host) }
+        }
+    }
+
     // MARK: - Devices
 
     func forget(_ id: String) {
+        revokeOnNodes(deviceStore.all.filter { $0.id == id })
         _ = try? deviceStore.revoke(id)
         server?.disconnect(device: id)
         devices = deviceStore.all
@@ -229,6 +335,7 @@ final class MobileServer: ObservableObject {
     }
 
     func forgetAll() {
+        revokeOnNodes(deviceStore.all)
         let ids = deviceStore.all.map(\.id)
         try? deviceStore.forgetAll()
         for id in ids { server?.disconnect(device: id) }
@@ -270,7 +377,14 @@ final class MobileServer: ObservableObject {
                 permissionMode: store.permissionModes[session.id]
             )
         }
-        source.update(MacRows.rows(snapshots.current(), mac: source.identity, facts: facts), at: Date())
+        // A node's rows carry when the Mac last heard from it (W5), and are
+        // its own `lampd`'s to notify while that answers (§2.9).
+        var sights: [String: MacRows.HostSight] = [:]
+        for (host, sight) in store.remoteSight { sights[host] = MacRows.HostSight(probedAt: sight.answeredAt, reachable: sight.reachable) }
+        let now = Date()
+        source.update(MacRows.rows(snapshots.current(), mac: source.identity, facts: facts, hosts: sights,
+                                   nodesWithLampd: fleet.lampdHealthy), at: now)
+        pushes.after(rows: source.currentRows, at: now)
     }
 
     /// A low-power action from a device, on a row the column shows.

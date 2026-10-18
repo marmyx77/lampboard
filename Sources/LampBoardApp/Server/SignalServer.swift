@@ -98,6 +98,7 @@ final class SignalServer {
     var onModStream: ((String, String, String, Bool) -> Void)?
 
     private var listener: NWListener?
+    let forwarded = ForwardedEvents() // what a node's lampd forwarded (W5, E3, R2)
 
     init(
         port: UInt16 = AppConfig.listenPort,
@@ -248,6 +249,7 @@ final class SignalServer {
             Diagnostics.log("refused \(request.method) \(request.path): \(refusal)")
             return HTTPRequestParser.response(status: 403, reason: "Forbidden", body: refusal)
         }
+        if let answer = forwarded.answer(to: request) { return answer }
         switch request.path {
         case AppConfig.signalPath:
             return handleSignal(request)
