@@ -1,7 +1,9 @@
 #if canImport(Darwin)
 import Darwin
-#else
+#elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
 #endif
 import Foundation
 import LampBoardCore
@@ -168,10 +170,10 @@ enum MacServerSuite {
 /// A TCP connection that says something and leaves.
 enum RawTCP {
     static func send(_ bytes: [UInt8], to port: Int) {
-        #if canImport(Darwin)
-        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
-        #else
+        #if canImport(Glibc)
         let descriptor = socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
+        #else
+        let descriptor = socket(AF_INET, SOCK_STREAM, 0)
         #endif
         guard descriptor >= 0 else { return }
         defer { close(descriptor) }

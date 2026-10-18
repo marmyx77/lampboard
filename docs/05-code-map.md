@@ -1,18 +1,18 @@
 # Code map
 
-~101,000 lines of Swift across fourteen targets. For each file: what it contains, why
+~101,200 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
   LampBoardCore/  30,518 lines · 220 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    30,780 lines · 168 files   shell: AppKit, network, windows
+  LampBoardApp/    30,789 lines · 168 files   shell: AppKit, network, windows
   LampBoardTests/  22,192 lines · 150 files   1557 cases, instantaneous
   LampBoardE2E/    5,750 lines · 25 files   193 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
-  LampBoardMacSource/  1,906 lines · 12 files   the Mac as a source: its ssh server, pairing, bridge
-  MacSourceTests/   1,098 lines · 6 files   the server reached by a phone made of NodeLink
+  LampBoardMacSource/  1,914 lines · 12 files   the Mac as a source: its ssh server, pairing, bridge
+  MacSourceTests/   1,299 lines · 7 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
   LampDKit/         3,116 lines · 23 files   lampd: the Linux machine's service
@@ -2318,7 +2318,7 @@ palette is one for the whole app, so the Hub sets it when its window comes forwa
 | `SweepCost.swift` | 83 | where one realignment pass spent its time, phase by phase, and `SweepLog` keeping the worst and the average across passes. Added because an audit said the sweep was too slow and neither side could settle it by reading |
 | `ModReceiver.swift` | 94 | takes in what the companion mod reports: the ledger beside the column, a measure's context to the reducer as `reported` and its cost as `costed`, the default account's windows to the allowance strip. Never makes a row: a measure for a session the hooks have not announced is dropped. Writes `~/.lampboard/port` (`0600`, staged under a fresh name opened exclusively and without following links, then renamed) for the mod, which is one file for every Mac and reads the port where the hooks have it in their script |
 | `Preferences.swift` | 720 | `UserDefaults`, separate domain under `LAMPBOARD_HOME`; imports the previous name's domain once, before anything reads a preference |
-| `MobileServer.swift` | 348 | this Mac as a source for iPhone and iPad (W5, D180): the server inside the app, listening only while a device is paired or a pairing code is shown, on a port kept between launches; the column fed to `MacV1Source` as it changes, with each row's place in tmux, mode and order; a device's low-power actions carried out on the main actor; the pairing window and its QR code; the person's yes asked with the device's fingerprints; Forget and Forget all ending the device's connections; Bonjour `_lampboard._tcp` with the short fingerprint |
+| `MobileServer.swift` | 357 | this Mac as a source for iPhone and iPad (W5, D180): the server inside the app, listening only while a device is paired or a pairing code is shown, on a port kept between launches; the column fed to `MacV1Source` as it changes, with each row's place in tmux, mode and order; a device's low-power actions carried out on the main actor; the pairing window and its QR code; the person's yes asked with the device's fingerprints; Forget and Forget all ending the device's connections; Bonjour `_lampboard._tcp` with the short fingerprint |
 | `MobileSettings.swift` | 84 | the switch «Terminal and actions from iPhone & iPad» (off, Q17) and the server's port, beside the preferences; the host key in the login Keychain, or a file in a fake home |
 | `ActivityRecorder.swift` | 34 | what each session has been doing: the mod's reports and the hooks' turn ends folded into a `SessionActivity` per session, in memory, the 64 heard from most recently |
 | `AwayMonitor.swift` | 75 | "I'm away" (D114): said from the menu or by the screen locked three minutes; the ledger kept while away, notifications held, and on return the line as a notification and at the panel's foot |

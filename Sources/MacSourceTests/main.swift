@@ -12,6 +12,20 @@ setvbuf(stdout, nil, _IOLBF, 0)
 signal(SIGPIPE, SIG_IGN)
 Instrument.prove()
 
+// The fake phone on another machine (T1-linux), and what it needs.
+let commandLine = Array(CommandLine.arguments.dropFirst())
+switch commandLine.first {
+case "keys" where commandLine.count == 2:
+    exit(RemoteCommands.keys(commandLine[1]))
+case "devices" where commandLine.count == 3:
+    exit(RemoteCommands.devices(commandLine[1], commandLine[2]))
+case "remote":
+    if #available(macOS 15.0, *) { exit(RemoteCommands.remote(commandLine)) }
+    exit(2)
+default:
+    break
+}
+
 let filter = CommandLine.arguments.dropFirst().first
 let suites: [TestSuite] = [
     MacRequestSuite.suite,

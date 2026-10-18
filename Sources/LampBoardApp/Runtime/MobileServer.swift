@@ -66,6 +66,12 @@ final class MobileServer: ObservableObject {
 
     func start() {
         devices = deviceStore.all
+        // A fake home may open a pairing window at launch with a code it names,
+        // for a phone that pairs from another machine (the gate's T1 on Linux).
+        if AppConfig.isUsingHomeOverride, let code = ProcessInfo.processInfo.environment["LAMPBOARD_MOBILE_PAIR_CODE"],
+           MacPairingCode.isWellFormed(code) {
+            _ = pairing.open(at: Date(), code: code)
+        }
         watch = store.$state
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.publish() }
@@ -140,7 +146,10 @@ final class MobileServer: ObservableObject {
         let home = AppConfig.homeDirectory.path
         let environment = LiveLaunch.environment(base: ProcessInfo.processInfo.environment, home: home,
                                                  claude: LampMasterRunner.executable())
-        let tmux = LocalTmuxPlaces.executable() ?? "/opt/homebrew/bin/tmux"
+        // Under a fake home only the fake home's own tmux, as everywhere else:
+        // a test must never reach the person's sessions.
+        let tmux = LocalTmuxPlaces.executable()
+            ?? (AppConfig.isUsingHomeOverride ? home + "/.local/bin/tmux" : "/opt/homebrew/bin/tmux")
         // Read where they are kept, from the server's threads: UserDefaults is
         // safe to read from any thread, the panel's objects are not.
         let defaults = DefaultsBox(Preferences.sharedDefaults)
