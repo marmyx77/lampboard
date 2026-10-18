@@ -804,7 +804,7 @@ protect Sources/LampBoardCore/V1/MacNodeSync.swift
 attack_swift "a read of an earlier answer putting out a newer one" "never a newer answer" 1 <<'PY'
 p = "Sources/LampBoardCore/V1/MacNodeSync.swift"
 s = open(p).read()
-open(p, "w").write(s.replace("if row.readySince.map({ readAt >= $0 }) ?? true { update.read.append(row.id) }", "update.read.append(row.id)", 1))
+open(p, "w").write(s.replace("row.readySince.map({ readAt >= $0 })", "row.readySince.map({ readAt >= $0 || readAt < $0 })", 1))
 PY
 
 # Whatever happened above, the binaries must match the sources again.
