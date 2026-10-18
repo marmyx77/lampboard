@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let headless: Bool
 
     private let snapshots = SnapshotBox()
-    private lazy var store = StateStore(snapshots: snapshots)
+    lazy var store = StateStore(snapshots: snapshots)
     private let installer = HookInstaller()
     let preferences = Preferences()
 
