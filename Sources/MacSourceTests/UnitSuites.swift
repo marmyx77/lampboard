@@ -202,6 +202,23 @@ enum MacDevicesSuite {
             t.expect(devices.isEmpty, "none")
         },
 
+        TestCase("The same device pairing again with both its keys keeps its id and its nodes; half a match is refused") { t in
+            let devices = MacDevices(directory: MacFixtures.temporaryDirectory("devices"))
+            let read = ReadKey.generate().publicKey, action = ActionKey.generate().publicKey
+            guard let first = try? devices.add(MacPairingRequest(name: "Example iPhone", readKey: read, actionKey: action),
+                                               at: MacFixtures.t0) else { return t.fail("the device was not added") }
+            try? devices.setNodes(first.id, ["example-node": "lampd-1"])
+            let again = try? devices.add(MacPairingRequest(name: "Example iPhone (2)", readKey: read, actionKey: action,
+                                                           relayCapability: "cap"), at: MacFixtures.t0.addingTimeInterval(60))
+            t.expectEqual(again?.id, first.id, "the phone forgot this Mac, not its keys: the same device")
+            t.expectEqual(again?.name, "Example iPhone (2)", "under the name it gives now")
+            t.expectEqual(again?.relayCapability, "cap", "with its capability of now")
+            t.expectEqual(again?.nodes, ["example-node": "lampd-1"], "what Forget must revoke on the nodes is kept")
+            t.expectEqual(devices.all.count, 1, "one device, never two rows for one phone")
+            t.expectNil(try? devices.add(MacPairingRequest(name: "Half", readKey: read, actionKey: ActionKey.generate().publicKey),
+                                         at: MacFixtures.t0), "one key of a device beside a new one")
+        },
+
         TestCase("A device removed from the file by hand is refused at once") { t in
             let devices = MacDevices(directory: MacFixtures.temporaryDirectory("devices"))
             let read = ReadKey.generate()

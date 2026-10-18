@@ -6836,6 +6836,10 @@ that leak a person's name; a background session shared by two phones at once.
   healthy `lampd`, ticked; after the yes the Mac runs `lampd devices add` there over its own ssh (an argument
   list, no shell) and hands the phone, in the pairing's reply, the node's address and the host keys of its
   own `known_hosts` (a revoked line never): trust carried, not guessed. Forget revokes the device on each node.
+- **The same device pairing again** with both its keys (the phone forgot this Mac, not its keys) is the same
+  device: after the code and the person's yes it keeps its id and the nodes its keys were carried to, under the
+  name and capability it gives now, and the reply hands those nodes back without a second `lampd devices add`.
+  One key of a device beside a new one is still refused.
 
 **Why.** Each rule is the plan's (§2.3 points 2–4, §2.9, §2.12) made a function in the Core, so the gate bites
 it without ssh or a clock: a Mac and a node both ringing for one amber at the desk was the cost W4 accepted

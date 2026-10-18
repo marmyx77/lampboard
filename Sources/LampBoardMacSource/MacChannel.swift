@@ -193,7 +193,7 @@ final class MacChannel: ChannelInboundHandler, @unchecked Sendable {
                     let nodes = await services.carryToNodes(device)
                     let carried = Dictionary(nodes.compactMap { node in node.device.map { (node.name, $0) } },
                                              uniquingKeysWith: { first, _ in first })
-                    if !carried.isEmpty { try? services.devices.setNodes(device.id, carried) }
+                    if !carried.isEmpty { try? services.devices.setNodes(device.id, (device.nodes ?? [:]).merging(carried) { _, now in now }) }
                     reply = MacPairingReply(ok: true, device: device.id, mac: services.macName, nodes: nodes.isEmpty ? nil : nodes)
                 } catch {
                     reply = MacPairingReply(ok: false, error: "\(error)")
