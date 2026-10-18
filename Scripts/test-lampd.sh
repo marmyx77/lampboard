@@ -389,6 +389,8 @@ presence here
 sleep 2
 tee_check "mac-link beats that lampd is serving, and sends the choices once" \
     '[ "$(as_dev "grep -c \"serving\\\":true\" /tmp/link.out")" -gt 2 ] && as_dev "grep -q \"preferences\" /tmp/link.out"'
+tee_check "and that it holds the hooks' port, so the Mac's tunnel may go next to it" \
+    'as_dev "tail -n 1 /tmp/link.out" | grep -q "\"hooks\":true"'
 tee_check "status says the Mac is at the desk" 'as_dev "lampd status" | grep -q "at the Mac: the phone stays quiet"'
 BEFORE="$(alerts)"
 as_dev "python3 /opt/fixture/fixture.py ask 2 > /dev/null"
@@ -428,6 +430,8 @@ sys.exit(0 if sent == got else 1)"'
 
 tee_check "lampd release gives the port back to the Mac" \
     'as_dev "lampd release" > /dev/null; sleep 0.5; [ -z "$(as_dev "$TEE listening $HOOKS")" ] && as_dev "lampd status" | grep -q "released with lampd release"'
+tee_check "and mac-link says so at once: still serving, no longer the hooks' port, so the Mac takes it back" \
+    'sleep 1; as_dev "tail -n 1 /tmp/link.out" | grep -q "\"serving\":true" && ! as_dev "tail -n 1 /tmp/link.out" | grep -q "\"hooks\":true"'
 as_dev 'kill "$(cat /tmp/link.pid)" "$(cat /tmp/link-writer.pid)" 2>/dev/null; true'
 if [ "$TEE_FAIL" != 0 ]; then
     echo "    lampd's log on the node, last lines:"

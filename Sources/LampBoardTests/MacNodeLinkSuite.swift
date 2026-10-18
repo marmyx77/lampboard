@@ -10,7 +10,9 @@ enum MacNodeLinkSuite {
     private static let t0 = Date(timeIntervalSince1970: 1_760_000_000)
     private static let id = "30000000-0000-4000-8000-000000000001"
 
-    static func beat(_ serving: Bool) -> NodeToMac { NodeToMac(serving: serving, journal: "j", seq: 1, at: t0) }
+    static func beat(_ serving: Bool, hooks: Bool = true) -> NodeToMac {
+        NodeToMac(serving: serving, journal: "j", seq: 1, hooks: serving ? hooks : nil, at: t0)
+    }
 
     static let suite = TestSuite("Mac and lampd: the tunnel's port, the lines, the merge of the choices", [
 
@@ -21,6 +23,20 @@ enum MacNodeLinkSuite {
             t.expect(!watch.lampdHealthy(at: t0.addingTimeInterval(0.3)), "two beats are not yet healthy")
             t.expectEqual(watch.beat(beat(true), at: t0.addingTimeInterval(0.6)), .secondary)
             t.expect(watch.lampdHealthy(at: t0.addingTimeInterval(0.6)), "three are: lampd owns the node's rows")
+        },
+
+        TestCase("A lampd that serves without the hooks' port owns its rows, and the port stays the Mac's") { t in
+            // Installed without `--tee`, or after `lampd release` (§2.15, the way
+            // back): moving the tunnel off the hooks' port would leave it empty.
+            var watch = MacNodeLinkWatch()
+            for n in 0..<5 { watch.beat(beat(true, hooks: false), at: t0.addingTimeInterval(Double(n) * 0.3)) }
+            t.expectEqual(watch.port, .primary, "nobody else hears the hooks")
+            t.expect(watch.lampdHealthy(at: t0.addingTimeInterval(1.2)), "yet lampd answers: its rows are its own")
+            for n in 5..<8 { watch.beat(beat(true), at: t0.addingTimeInterval(Double(n) * 0.3)) }
+            t.expectEqual(watch.port, .secondary, "once it holds the port in tee, the tunnel goes next to it")
+            t.expectEqual(watch.beat(beat(true, hooks: false), at: t0.addingTimeInterval(2.4)), .primary,
+                          "lampd release: the port back to the Mac at the first beat that says so")
+            t.expect(watch.lampdHealthy(at: t0.addingTimeInterval(2.4)), "still owning its rows")
         },
 
         TestCase("The first beat that says lampd is not serving takes the port back (N = 1)") { t in

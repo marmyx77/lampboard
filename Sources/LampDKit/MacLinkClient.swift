@@ -57,9 +57,10 @@ public final class MacLinkClient: @unchecked Sendable {
     public func beat(at now: Date) -> Bool {
         let beat: NodeToMac
         if let answer = LampDStatus.ask(paths.socket, line: "mac-ping", timeout: 1) {
-            let words = answer.split(separator: " ", maxSplits: 2).map(String.init)
-            if words.first == "ok", words.count == 3 {
-                beat = NodeToMac(serving: true, journal: words[1], seq: Int(words[2]), at: now)
+            let words = answer.split(separator: " ").map(String.init)
+            if words.first == "ok", words.count == 3 || words.count == 4 {
+                beat = NodeToMac(serving: true, journal: words[1], seq: Int(words[2]), hooks: words.count == 4 && words[3] == "hooks",
+                                 at: now)
             } else {
                 beat = NodeToMac(serving: false, reason: words.dropFirst().joined(separator: " "), at: now)
             }

@@ -257,13 +257,15 @@ public final class LampDService: @unchecked Sendable {
             close(fd)
         case "mac-ping":
             // `lampd mac-link`'s beat: the Mac's link is up, and the answer
-            // says whether this service is serving from a fresh state.
+            // says whether this service is serving from a fresh state, and
+            // whether it holds the hooks' port in tee (the Mac's tunnel moves
+            // next to it only then).
             let now = Date()
             source.macLinkSeen(at: now)
             let status = source.status(at: now)
             let age = status.lastProbeAt.map { now.timeIntervalSince($0) } ?? .infinity
             let line = age <= max(3 * config.probeInterval, 15)
-                ? "ok \(status.journal) \(status.seq)" : "stale the last look was \(age.isFinite ? "\(Int(age)) s ago" : "never")"
+                ? "ok \(status.journal) \(status.seq)\(tee == nil ? "" : " hooks")" : "stale the last look was \(age.isFinite ? "\(Int(age)) s ago" : "never")"
             UnixSocket.sendAll(fd, Array((line + "\n").utf8))
             close(fd)
         case "mac":
