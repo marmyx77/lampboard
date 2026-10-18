@@ -19,6 +19,19 @@ case "keys" where commandLine.count == 2:
     exit(RemoteCommands.keys(commandLine[1]))
 case "devices" where commandLine.count == 3:
     exit(RemoteCommands.devices(commandLine[1], commandLine[2]))
+case "serve" where commandLine.count == 2:
+    // A harness server that stays up, its keys written into the folder: for
+    // trying `remote` against a server in another process.
+    if #available(macOS 15.0, *) {
+        guard let harness = try? MacHarness(terminalsOn: true) else { exit(1) }
+        let dir = commandLine[1]
+        _ = FileManager.default.createFile(atPath: dir + "/read.key", contents: Data(harness.read.rawRepresentation.base64EncodedString().utf8))
+        _ = FileManager.default.createFile(atPath: dir + "/action.key", contents: Data(harness.action.rawRepresentation.base64EncodedString().utf8))
+        _ = FileManager.default.createFile(atPath: dir + "/hostkey", contents: Data(harness.hostKey.openSSH.utf8))
+        print("serving on port \(harness.port)")
+        while true { sleep(3600) }
+    }
+    exit(2)
 case "remote":
     if #available(macOS 15.0, *) { exit(RemoteCommands.remote(commandLine)) }
     exit(2)
