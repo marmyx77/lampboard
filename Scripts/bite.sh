@@ -463,7 +463,7 @@ import re
 # added, and a bite that needs maintaining is a bite that gets deleted.
 p = "docs/08-gates.md"
 s = open(p).read()
-said = re.search(r"commits ([a-z]+(?:-[a-z]+)?) violations", s).group(1)
+said = re.search(r"commits ([a-z]+(?:[- ][a-z]+)*?) violations", s).group(1)
 other = "ninety-nine" if said != "ninety-nine" else "ninety-eight"
 open(p, "w").write(s.replace(f"commits {said} violations", f"commits {other} violations", 1))
 PY
@@ -475,8 +475,8 @@ import re
 # had one guard that was green because it could not run.
 for p in ("docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"):
     s = open(p).read()
-    s = re.sub(r"commits ([a-z]+(?:-[a-z]+)?) violations", r"commits violations", s)
-    s = re.sub(r"demands ([a-z]+(?:-[a-z]+)?) catches", r"demands catches", s)
+    s = re.sub(r"commits ([a-z]+(?:[- ][a-z]+)*?) violations", r"commits violations", s)
+    s = re.sub(r"demands ([a-z]+(?:[- ][a-z]+)*?) catches", r"demands catches", s)
     open(p, "w").write(s)
 PY
 
