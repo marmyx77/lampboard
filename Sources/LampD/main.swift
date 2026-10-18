@@ -28,6 +28,10 @@ import Darwin
 //   lampd look                        asks the service to look at the files now
 //   lampd compare                     the service's lamps against the phone's look, now
 //   lampd replay <flow.jsonl>         recorded hooks, reduced as the tee will
+//   lampd mac-link                    what the Mac's tunnel runs here: beats up, the Mac's lines down (W5)
+//   lampd routes                      the hooks' port's route table, as JSON
+//   lampd rows                        the rows the service serves now, as JSON
+//   lampd release                     the hooks' port back to the Mac, until the file it leaves is removed
 //   lampd projects list | attach -- <folder> | detach -- <folder>
 //                                     the projects kept in the list (JSON, as the phone reads it)
 //   lampd version
@@ -54,7 +58,8 @@ func option(_ name: String, in list: [String] = arguments) -> String? {
 func usage() -> Never {
     print("""
     usage: lampd serve | v1-stdio --device <id> [--role read|action] | devices add|list|revoke |
-           status | doctor | usage | look | replay <flow.jsonl> | projects | name [<name>] | version
+           status | doctor | usage | look | replay <flow.jsonl> | projects | name [<name>] |
+           mac-link | routes | rows | release | version
     """)
     exit(2)
 }
@@ -62,9 +67,40 @@ func usage() -> Never {
 switch arguments.first {
 case "serve":
     if let problem = configProblem { FileHandle.standardError.write(Data("lampd: \(problem)\n".utf8)) }
+    let hookPort: UInt16?
+    switch HookPortOverride.port(environment: environment, paths: paths) {
+    case .success(let port): hookPort = port
+    case .failure(let error): fail("\(error)")
+    }
     let service = LampDService(paths: paths, config: config, version: version, log: LampDLog(file: nil),
-                               testHooks: environment["LAMPD_TEST_HOOKS"] == "1")
+                               testHooks: environment["LAMPD_TEST_HOOKS"] == "1", hookPortOverride: hookPort)
     exit(service.run())
+
+case "mac-link":
+    let client = MacLinkClient(paths: paths) { line in
+        UnixSocket.sendAll(1, Array((line + "\n").utf8))
+    }
+    exit(client.run(lines: MacLinkClient.standardInputLines()))
+
+case "rows":
+    guard let answer = LampDStatus.ask(paths.socket, line: "rows", timeout: 10) else { fail("the service does not answer on \(paths.socket)", code: 1) }
+    print(answer)
+
+case "routes":
+    print((try? HookRoutes.json()) ?? "[]")
+
+case "release":
+    // The service lets the port go and leaves the file that keeps it the Mac's;
+    // the socket and its retry timer stop, when systemd is there.
+    try? LampDPaths.makeDirectory(paths.stateDirectory)
+    _ = FileManager.default.createFile(atPath: paths.releasedFile, contents: Data(), attributes: [.posixPermissions: 0o600])
+    let answered = LampDStatus.ask(paths.socket, line: "release", timeout: 5) != nil
+    if let systemctl = ["/usr/bin/systemctl", "/bin/systemctl"].first(where: FileManager.default.isExecutableFile) {
+        _ = try? Command.run(systemctl, ["--user", "stop", "lampd-socket-retry.timer", "lampd.socket"], deadline: 10)
+    }
+    print(answered ? "the hooks' port is released: the Mac's tunnel takes it back by itself"
+                   : "the service did not answer; \(paths.releasedFile) keeps the port the Mac's at its next start")
+    print("to take it again: rm \(paths.releasedFile) && systemctl --user start lampd-socket-retry.timer")
 
 case "v1-stdio":
     guard let device = option("device"), V1Validation.isSessionId(device) else { fail("v1-stdio needs --device <id>") }

@@ -70,6 +70,14 @@ public struct LampDPaths: Equatable, Sendable {
     /// A file the checks drop to stop the service's loop on purpose, honoured
     /// only when the unit says so (`LAMPD_TEST_HOOKS=1`): the watchdog's bite.
     public var blockLoopFile: String { stateDirectory + "/block-loop" }
+    /// What the Mac told this machine (`lampd mac-link`): presence, settings.
+    public var macStateFile: String { stateDirectory + "/mac.json" }
+    /// Written by `lampd release`: the hooks' port is the Mac's again until removed.
+    public var releasedFile: String { stateDirectory + "/hooks-released" }
+    /// The token the hooks send and the port they post to, as the Mac's repair
+    /// wrote them on this machine (D48): `lampd` adopts both, never writes them.
+    public var hookTokenFile: String { home + "/.lampboard/token" }
+    public var hookPortFile: String { home + "/.lampboard/port" }
     public var claudeDirectory: String { home + "/.claude" }
     public var authorizedKeys: String { home + "/.ssh/authorized_keys" }
 

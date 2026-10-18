@@ -118,13 +118,13 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq 
         openssh-server openssh-client python3 procps tmux && rm -rf /var/lib/apt/lists/*
 EOF
 fi
-NODE_IMAGE="lampboard-nodelink-tmux:$(printf '%s' "$NODE_BASE openssh-server python3 procps tmux" | shasum | cut -c1-12)"
+NODE_IMAGE="lampboard-nodelink-tmux:$(printf '%s' "$NODE_BASE openssh-server python3 procps tmux curl" | shasum | cut -c1-12)"
 if ! docker image inspect "$NODE_IMAGE" >/dev/null 2>&1; then
     echo "▸ Preparing $NODE_IMAGE"
     docker build -q -t "$NODE_IMAGE" - > "$CACHE/node-image.log" 2>&1 <<EOF || could_not_look "the node's image could not be prepared (see $CACHE/node-image.log)"
 FROM $NODE_BASE
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-        openssh-server python3 procps tmux && rm -rf /var/lib/apt/lists/*
+        openssh-server python3 procps tmux curl ca-certificates && rm -rf /var/lib/apt/lists/*
 EOF
 fi
 
@@ -176,6 +176,11 @@ for flow in Tests/NodeFixture/flows/*.jsonl; do
     fi
 done
 [ "$REPLAY_FAIL" = 0 ] || failed "the recorded hooks are not reduced as the Mac reduces them"
+
+echo
+echo "▸ Every route of the hooks' port has an owner in lampd (§2.3)"
+in_builder /opt/lampd/lampd routes > "$CACHE/routes.json" 2> "$CACHE/routes.err" || failed "lampd routes failed"
+Scripts/check-lampd-routes.sh "$CACHE/routes.json" || failed "a route of the hooks' port has no owner in lampd"
 
 echo
 echo "▸ lampd's own suite"
@@ -319,5 +324,116 @@ docker run --rm --name "$NAME-check" --network "$NET" --user "$(id -u):$(id -g)"
         --host-key /keys/host.pub --keys /keys --flip 'python3 /opt/fixture/fixture.py flip > /dev/null && ~/.local/bin/lampd look' < /dev/null" \
     || failed "the app one version behind cannot read this lampd"
 
+# ── The hooks' port in tee (W5) ─────────────────────────────────────────────
+# lampd started again holding the node's hooks' port (the container's own
+# loopback: nothing of this machine), with the token and the port the Mac's
+# repair would have written, the Mac's end of the tunnel and the push relay
+# played by Tests/NodeFixture/tee.py, and a phone registered for notifications.
 echo
-passed "lampd builds static, keeps the conformance battery behind OpenSSH, holds the phone's lines to what they may do, lights what the probe lights, serves the files when stopped, reduces the hooks as the Mac does, and answers the app one version behind"
+echo "▸ The hooks' port in tee: heard here, passed on to the Mac, nothing the node may not ask"
+HOOKS=31000
+MACP=31001
+RELAYP=31090
+TEE_FAIL=0
+TEE="python3 /opt/fixture/tee.py"
+tee_check() { if eval "$2"; then echo "    ✓ $1"; else echo "    ✗ $1"; TEE_FAIL=1; fi; }
+row() { as_dev "$TEE row $1"; }
+alerts() { as_dev "$TEE alerts /tmp/relay.log"; }
+presence() { as_dev "echo '{\"at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"presence\":\"$1\"}' > /tmp/link.in"; }
+IDLE=a1000000-0000-4000-8000-000000000005
+BUSY=a1000000-0000-4000-8000-000000000001
+
+as_dev 'kill "$(cat /tmp/lampd.pid)"; for i in $(seq 1 50); do kill -0 "$(cat /tmp/lampd.pid)" 2>/dev/null || break; sleep 0.1; done'
+as_dev "mkdir -p ~/.lampboard && head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > ~/.lampboard/token && chmod 600 ~/.lampboard/token && echo $HOOKS > ~/.lampboard/port"
+as_dev "$TEE device ~/.local/state/lampd"
+as_dev "echo '{\"name\": \"fake-node\", \"probeInterval\": 2, \"relay\": \"http://127.0.0.1:$RELAYP\"}' > ~/.config/lampd/config.json"
+as_dev "setsid nohup $TEE mac $MACP /tmp/mac.log > /dev/null 2>&1 < /dev/null & setsid nohup $TEE relay $RELAYP /tmp/relay.log > /dev/null 2>&1 < /dev/null &"
+as_dev "python3 /opt/fixture/fixture.py frame 0 > /dev/null"
+# A Mac 2.3 whose tunnel already holds the hooks' port (§2.15, compatibility):
+# lampd does not take it, says why, and serves the files; the hooks still reach
+# that Mac as before.
+as_dev "setsid nohup $TEE mac $HOOKS /tmp/mac23.log > /dev/null 2>&1 < /dev/null & echo \$! > /tmp/mac23.pid"
+sleep 0.5
+as_dev "LAMPD_HOOK_PORT=$HOOKS setsid nohup lampd serve >> /tmp/lampd-tee.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
+for _ in $(seq 1 100); do as_dev "lampd status > /dev/null 2>&1" && break; sleep 0.2; done
+tee_check "a Mac 2.3's tunnel on the hooks' port: lampd leaves it, says why, and serves the files" \
+    'as_dev "lampd status" | grep -q "not held: 127.0.0.1:$HOOKS is taken" && [ "$(row $BUSY | cut -d" " -f2)" = "sessionFile" ]'
+tee_check "and the hooks still reach that Mac" \
+    'as_dev "$TEE hook $HOOKS UserPromptSubmit $BUSY" | grep -q "^200" && as_dev "grep -q /signal /tmp/mac23.log"'
+as_dev 'kill "$(cat /tmp/lampd.pid)" "$(cat /tmp/mac23.pid)"; for i in $(seq 1 50); do kill -0 "$(cat /tmp/lampd.pid)" 2>/dev/null || break; sleep 0.1; done'
+as_dev "LAMPD_HOOK_PORT=$HOOKS setsid nohup lampd serve >> /tmp/lampd-tee.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
+for _ in $(seq 1 100); do as_dev "lampd status > /dev/null 2>&1" && break; sleep 0.2; done
+sleep 1
+
+tee_check "the hooks' port is bound on 127.0.0.1 only" '[ "$(as_dev "$TEE listening $HOOKS")" = "127.0.0.1" ]'
+tee_check "status says lampd holds it and passes on to the Mac on $MACP" \
+    'as_dev "lampd status" | grep -q "lampd on 127.0.0.1:$HOOKS, passed on to the Mac on $MACP"'
+tee_check "token adopted: a hook with the token written before the switch is heard, the row changes colour" \
+    '[ "$(as_dev "$TEE hook $HOOKS UserPromptSubmit $IDLE")" = "204 " ] && [ "$(row $IDLE | cut -d" " -f1-2)" = "working hooks" ]'
+tee_check "and passed on to the Mac, named with X-LampBoard-Event (E3)" \
+    'sleep 0.5; as_dev "grep /signal /tmp/mac.log | tail -1" | grep -q "\"x-lampboard-event\": \"tee-"'
+tee_check "green to read when its Stop comes" \
+    'as_dev "$TEE hook $HOOKS Stop $IDLE '"'"'{\"last_assistant_message\": \"Done.\"}'"'"'" > /dev/null; [ "$(row $IDLE | cut -d" " -f1)" = "ready" ]'
+tee_check "a token that is not the hooks' is refused, and changes nothing" \
+    'as_dev "$TEE hook $HOOKS UserPromptSubmit $IDLE --token $(printf "%064d" 0)" | grep -q "^401" && [ "$(row $IDLE | cut -d" " -f1)" = "ready" ]'
+tee_check "/new and /chat from the node are refused (R2), so is a route nobody named, and none reaches the Mac" \
+    'as_dev "$TEE post $HOOKS /new --body {}" | grep -q "^403" && as_dev "$TEE post $HOOKS /chat --body {}" | grep -q "^403" \
+     && as_dev "$TEE post $HOOKS /a-route-of-tomorrow --body {}" | grep -q "^404" \
+     && ! as_dev "grep -qE \"\\\"path\\\": \\\"/(new|chat|a-route-of-tomorrow)\" /tmp/mac.log"'
+tee_check "/health is lampd's own" '[ "$(as_dev "$TEE post $HOOKS /health")" = "200 lampboard" ]'
+
+# Q8, and «no double notification»: with the Mac at the desk an amber of this
+# machine does not ring the phone (the Mac's banner does); away, it does.
+as_dev "rm -f /tmp/link.in; mkfifo /tmp/link.in; setsid nohup sleep 900 > /tmp/link.in 2>/dev/null < /dev/null & echo \$! > /tmp/link-writer.pid; setsid nohup lampd mac-link < /tmp/link.in > /tmp/link.out 2> /tmp/link.err & echo \$! > /tmp/link.pid"
+presence here
+sleep 2
+tee_check "mac-link beats that lampd is serving, and sends the choices once" \
+    '[ "$(as_dev "grep -c \"serving\\\":true\" /tmp/link.out")" -gt 2 ] && as_dev "grep -q \"preferences\" /tmp/link.out"'
+tee_check "status says the Mac is at the desk" 'as_dev "lampd status" | grep -q "at the Mac: the phone stays quiet"'
+BEFORE="$(alerts)"
+as_dev "python3 /opt/fixture/fixture.py ask 2 > /dev/null"
+sleep 10
+tee_check "the Mac at the desk: an amber of this machine sends the phone nothing" '[ "$(alerts)" = "$BEFORE" ]'
+as_dev "python3 /opt/fixture/fixture.py ask 2 off > /dev/null"
+sleep 3
+presence away
+sleep 1
+as_dev "python3 /opt/fixture/fixture.py ask 2 > /dev/null"
+sleep 10
+tee_check "the Mac away: the same amber rings the phone" '[ "$(alerts)" -gt "$BEFORE" ]'
+
+# A question the Mac holds (M9): amber here with its text at once, and the push
+# leaves while the Mac still holds it (tee.py's Mac holds /check for 8 s).
+BEFORE="$(alerts)"
+as_dev "setsid nohup $TEE post $HOOKS /check --body '{\"v\":1,\"session\":\"$BUSY\",\"id\":\"toolu_01\",\"tool\":\"Bash\",\"detail\":\"npm publish\"}' > /tmp/check.out 2>&1 < /dev/null &"
+sleep 1.5
+tee_check "while the Mac holds a question the row is amber, held by the Mac, with the question" \
+    'row $BUSY | grep -q "^awaiting .* true Bash: npm publish$"'
+sleep 5
+tee_check "and the push leaves while the Mac still holds it" '[ "$(alerts)" -gt "$BEFORE" ]'
+sleep 3
+tee_check "the Mac's answer goes back to the mod untouched" '[ "$(as_dev "cat /tmp/check.out")" = "200 allow.signed" ]'
+
+# The idle compaction's flow through the tee, recorded at the Mac's end: the
+# Mac receives exactly what the hooks sent.
+as_dev "$TEE play $HOOKS /opt/fixture/flows/idle-compaction.jsonl --token ~/.lampboard/token" || TEE_FAIL=1
+sleep 1
+as_dev "$TEE flow /tmp/mac.log idle-compaction-01 idle-compaction-02" > "$CACHE/idle-compaction.recorded.jsonl"
+tee_check "the idle compaction's flow reaches the Mac through the tee as it was sent" \
+    'python3 -c "
+import json, sys
+sent = [json.loads(l)[\"payload\"] for l in open(\"Tests/NodeFixture/flows/idle-compaction.jsonl\") if l.strip()]
+got = [json.loads(l)[\"payload\"] for l in open(\"$CACHE/idle-compaction.recorded.jsonl\") if l.strip()]
+sys.exit(0 if sent == got else 1)"'
+
+tee_check "lampd release gives the port back to the Mac" \
+    'as_dev "lampd release" > /dev/null; sleep 0.5; [ -z "$(as_dev "$TEE listening $HOOKS")" ] && as_dev "lampd status" | grep -q "released with lampd release"'
+as_dev 'kill "$(cat /tmp/link.pid)" "$(cat /tmp/link-writer.pid)" 2>/dev/null; true'
+if [ "$TEE_FAIL" != 0 ]; then
+    echo "    lampd's log on the node, last lines:"
+    as_dev "tail -15 /tmp/lampd-tee.log" | sed 's/^/      /'
+    failed "the hooks' port in tee did not hold"
+fi
+
+echo
+passed "lampd builds static, keeps the conformance battery behind OpenSSH, holds the phone's lines to what they may do, lights what the probe lights, serves the files when stopped, reduces the hooks as the Mac does, answers the app one version behind, and holds the hooks' port in tee"

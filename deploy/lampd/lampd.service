@@ -1,7 +1,9 @@
 # lampd: LampBoard's service on a Linux machine (ADR-65 of the node's register,
 # W3 of the mobile plan). It reads Claude Code's files with the Core's rules and
-# serves them to the phone through the read key's forced command; in this form
-# it binds no network port and takes no hook. Installed by
+# serves them to the phone through the read key's forced command. With
+# lampd.socket enabled (`Scripts/lampd-install.sh --tee`, W5) systemd passes it
+# the hooks' port on loopback, and it hears the hooks in tee; without it, it
+# binds no network port and takes no hook. Installed by
 # Scripts/lampd-install.sh, which writes a copy of this file into
 # ~/.config/systemd/user/ marked with the commit it came from: nothing here is
 # edited on the machine (ADR-59).

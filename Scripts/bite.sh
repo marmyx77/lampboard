@@ -38,6 +38,7 @@
 #   ./Scripts/bite.sh --nodelink only NodeLink over ssh (needs docker)
 #   ./Scripts/bite.sh --lampd    only lampd on a fake node and its watchdog
 #                                (needs docker, and systemd --user for the watchdog)
+#   ./Scripts/bite.sh --tee      only lampd holding the hooks' port in tee (needs docker)
 #   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
 #   ./Scripts/bite.sh --pins     only the pins of the packages (needs swift)
 #   ./Scripts/bite.sh --parity   only the Mac app's parity with lampd (needs a Mac)
@@ -462,7 +463,7 @@ import re
 # added, and a bite that needs maintaining is a bite that gets deleted.
 p = "docs/08-gates.md"
 s = open(p).read()
-said = re.search(r"commits ([a-z]+(?:-[a-z]+)?) violations", s).group(1)
+said = re.search(r"commits ([a-z]+(?:[- ][a-z]+)*?) violations", s).group(1)
 other = "ninety-nine" if said != "ninety-nine" else "ninety-eight"
 open(p, "w").write(s.replace(f"commits {said} violations", f"commits {other} violations", 1))
 PY
@@ -474,8 +475,8 @@ import re
 # had one guard that was green because it could not run.
 for p in ("docs/08-gates.md", "docs/06-working-here.md", "docs/05-code-map.md"):
     s = open(p).read()
-    s = re.sub(r"commits ([a-z]+(?:-[a-z]+)?) violations", r"commits violations", s)
-    s = re.sub(r"demands ([a-z]+(?:-[a-z]+)?) catches", r"demands catches", s)
+    s = re.sub(r"commits ([a-z]+(?:[- ][a-z]+)*?) violations", r"commits violations", s)
+    s = re.sub(r"demands ([a-z]+(?:[- ][a-z]+)*?) catches", r"demands catches", s)
     open(p, "w").write(s)
 PY
 
@@ -1255,9 +1256,114 @@ PY
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--lampd" ] || [ "$WHAT" = "--tee" ]; then
+
+chapter "lampd holding the hooks' port in tee (W5)"
+
+# Every route has an owner (§6.2): a row of the table gone leaves a route the
+# Mac serves refused on the node, and the check read from SignalServer says so.
+protect Sources/LampDKit/HookRoutes.swift
+attack_platform Scripts/test-lampd.sh "a route of the Mac without a row in lampd's table" "has no row in lampd's table" <<'PY'
+p = "Sources/LampDKit/HookRoutes.swift"
+s = open(p).read()
+i = s.index("        Route(path: AppConfig.modRadarPath")
+j = s.index("\n", i)
+open(p, "w").write(s[:i] + s[j + 1:])
+PY
+
+# Token adopted (§6.2): a token of lampd's own puts out the colours of every
+# session already running, whose hooks carry the old one.
+protect Sources/LampDKit/HookTee.swift
+attack_platform Scripts/test-lampd.sh "lampd minting a token instead of adopting the hooks'" "Token adopted" <<'PY'
+p = "Sources/LampDKit/HookTee.swift"
+s = open(p).read()
+old = "guard let text = try? String(contentsOfFile: tokenFile, encoding: .utf8) else { return nil }"
+open(p, "w").write(s.replace(old, 'let text = String(repeating: "f", count: 64)', 1))
+PY
+
+# The node does not command the Mac (R2): /new passed on would let a process
+# of the node open a window on the Mac.
+protect Sources/LampDKit/HookRoutes.swift
+attack_platform Scripts/test-lampd.sh "/new passed on to the Mac" "are refused (R2)" <<'PY'
+p = "Sources/LampDKit/HookRoutes.swift"
+s = open(p).read()
+old = "Route(path: AppConfig.newConversationPath, owner: .refuse"
+open(p, "w").write(s.replace(old, "Route(path: AppConfig.newConversationPath, owner: .forward", 1))
+PY
+
+# The hooks' port on loopback (§6.2): bound on every interface, refused.
+protect Sources/LampDKit/LoopbackTCP.swift
+attack_platform Scripts/test-lampd.sh "the hooks' port bound on every interface" "bound on 127.0.0.1 only" <<'PY'
+p = "Sources/LampDKit/LoopbackTCP.swift"
+s = open(p).read()
+old = "        var address = loopback(port)\n        let bound"
+new = "        var address = loopback(port)\n        address.sin_addr.s_addr = 0\n        let bound"
+open(p, "w").write(s.replace(old, new, 1))
+PY
+
+# E3: an event passed on without its name is one the Mac 2.4 cannot tell from
+# the same event arriving twice during a switch.
+protect Sources/LampDKit/HookTee.swift
+attack_platform Scripts/test-lampd.sh "an event passed on without X-LampBoard-Event" "named, so the Mac 2.4 drops a double" <<'PY'
+p = "Sources/LampDKit/HookTee.swift"
+s = open(p).read()
+old = 'head += "\\(MacNodeLink.eventHeader): \\(id)\\r\\nContent-Length:'
+open(p, "w").write(s.replace(old, 'head += "X-Unnamed: \\(id)\\r\\nContent-Length:', 1))
+PY
+
+# M9: a question the Mac holds that does not make the row amber is a phone
+# that hears nothing for 55 seconds.
+protect Sources/LampDKit/NodeHooks.swift
+attack_platform Scripts/test-lampd.sh "a question the Mac holds left out of the row" "amber here with its text while held" <<'PY'
+p = "Sources/LampDKit/NodeHooks.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("guard let entry = held[row.id] else { return row }", 'guard let entry = held["-"] else { return row }', 1))
+PY
+
+# No double notification (§6.2), lampd's side: the person at the Mac not
+# counted, the phone rings with the Mac's banner.
+protect Sources/LampDKit/NodePushes.swift
+attack_platform Scripts/test-lampd.sh "the Mac at the desk not counted by the planner" "The Mac at the desk: an amber of this machine does not ring" <<'PY'
+p = "Sources/LampDKit/NodePushes.swift"
+s = open(p).read()
+old = "if macHere { pushDevices.append(PushDevice(id: Self.macAtTheDesk, usedAt: now)) }"
+open(p, "w").write(s.replace(old, old.replace("if macHere {", "if macHere && now < .distantPast {"), 1))
+PY
+
+# Q8: a here never repeated kept good for ever is a Mac that vanished keeping
+# the phone quiet.
+protect Sources/LampDKit/MacState.swift
+attack_platform Scripts/test-lampd.sh "a Mac's here that never goes stale" "A here with no link for a minute" <<'PY'
+p = "Sources/LampDKit/MacState.swift"
+s = open(p).read()
+old = "guard presence == .here, let presenceAt, now.timeIntervalSince(presenceAt) <= MacNodeLink.presenceStaleAfter else {"
+open(p, "w").write(s.replace(old, "guard presence == .here, presenceAt != nil else {", 1))
+PY
+
+# D177 on the node (the plan's defect to close in W5): without the files' last
+# word, a yellow the hooks cannot end stays yellow.
+protect Sources/LampDKit/NodeHooks.swift
+attack_platform Scripts/test-lampd.sh "the files' idle no longer resting a yellow nothing ends" "A yellow the hooks cannot end rests" <<'PY'
+p = "Sources/LampDKit/NodeHooks.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("guard reconcilesWithFiles else { return }", "guard !reconcilesWithFiles else { return }", 1))
+PY
+
+# The fake node isolated (§6.2): a check's port override taken in a real home
+# could point the service at the machine's own hooks' port.
+protect Sources/LampDKit/HookRoutes.swift
+attack_platform Scripts/test-lampd.sh "LAMPD_HOOK_PORT taken in a real home" "LAMPD_HOOK_PORT is taken in a check's home only" <<'PY'
+p = "Sources/LampDKit/HookRoutes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("guard checkHome || fixture else {", "guard checkHome || fixture || port > 0 else {", 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
 # Everywhere but the platform runs, as before they existed.
 if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ] \
-    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ] && [ "$WHAT" != "--parity" ] && [ "$WHAT" != "--macsource" ]; then
+    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ] && [ "$WHAT" != "--parity" ] && [ "$WHAT" != "--macsource" ] && [ "$WHAT" != "--tee" ]; then
 
 chapter "The mod loads"
 

@@ -86,6 +86,20 @@ public enum LampDDoctor {
             if let started, let config = LampDBinary.modified(paths.configFile), config > started.addingTimeInterval(1) {
                 say(.yellow, "the configuration changed after the service started: restart it")
             }
+            // The hooks' port (W5): who holds it, and the Mac.
+            if let hooks = object["hooks"] as? String {
+                if hooks.hasPrefix("lampd on") {
+                    let tee = object["tee"] as? [String: Any]
+                    let undelivered = (tee?["undelivered"] as? NSNumber)?.intValue ?? 0
+                    say(.green, "the hooks' port: \(hooks)\(tee.map { " (\($0["received"] ?? 0) heard, \($0["forwarded"] ?? 0) passed on, \(undelivered) the Mac did not take)" } ?? "")")
+                } else {
+                    say(.yellow, "the hooks' port: \(hooks). The rows come from the files: no green, no red, no question")
+                }
+            }
+            if let mac = object["mac"] as? String { say(.green, "the Mac: \(mac)") }
+            if let settings = object["settings"] as? [String: Any] {
+                say(.green, "the Mac's settings here: permission mode \(settings["permissionMode"] ?? "unset"), Send messages \(settings["sendMessages"] ?? "unset")")
+            }
         } else {
             say(.red, "the service does not answer on \(paths.socket): phones read the files through v1-stdio until it is back")
         }

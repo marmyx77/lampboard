@@ -13,6 +13,8 @@ let suites: [TestSuite] = [
     DevicesSuite.suite,
     NodeSourceSuite.suite,
     PushSuite.suite,
+    TeeSuite.suite,
+    MacLinkSuite.suite,
     SmallSuites.preferences,
     SmallSuites.projects,
     SmallSuites.config,

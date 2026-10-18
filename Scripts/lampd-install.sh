@@ -21,13 +21,19 @@
 #     marked like the units; the person's ~/.tmux.conf reads it with a line of
 #     their own, which this script prints and never writes;
 #   - daemon-reload, then lampd.service and lampd-contract.timer enabled and
-#     started, unless --no-start.
-# It binds no port, writes nothing in ~/.claude, touches no line of
-# authorized_keys and needs no sudo. Pairing a phone is `lampd devices add`,
-# the owner's own gesture.
+#     started, unless --no-start;
+#   - with --tee only (W5, §2.3): lampd.socket and lampd-socket-retry.timer
+#     enabled, so systemd binds the hooks' port on loopback for lampd as soon as
+#     the Mac's tunnel leaves it (the Mac 2.4 does so when `lampd mac-link`
+#     says lampd is serving). Without --tee the socket's unit is installed and
+#     left off: the port stays the Mac's tunnel's (lampd in the shade).
+# The hooks' port is the one in ~/.lampboard/port (the Mac's repair writes it;
+# the hooks read it), else the one derived from the account as the Mac derives
+# it. It writes nothing in ~/.claude, touches no line of authorized_keys and
+# needs no sudo. Pairing a phone is `lampd devices add`, the owner's own gesture.
 #
 # USAGE
-#   Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--no-start] [--dry-run]
+#   Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--tee] [--no-start] [--dry-run]
 #   Scripts/lampd-install.sh --uninstall      units, binaries and the phones'
 #                                             lines go; state and configuration stay
 
@@ -44,16 +50,19 @@ START=1
 DRY=0
 UNINSTALL=0
 NAME=""
+TEE=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --binary) BINARY="$2"; shift 2 ;;
         --no-start) START=0; shift ;;
         --dry-run) DRY=1; shift ;;
         --uninstall) UNINSTALL=1; shift ;;
+        # The hooks' port in tee (W5): lampd.socket and its retry enabled.
+        --tee) TEE=1; shift ;;
         # The machine's name on the phones, written into its configuration
         # (`lampd name`): «Linux» until a person names it.
         --name) NAME="${2:?--name needs a name}"; shift 2 ;;
-        *) echo "usage: Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--no-start] [--dry-run] | --uninstall" >&2; exit 2 ;;
+        *) echo "usage: Scripts/lampd-install.sh [--binary <path>] [--name <name>] [--tee] [--no-start] [--dry-run] | --uninstall" >&2; exit 2 ;;
     esac
 done
 
@@ -70,9 +79,13 @@ run() { if [ "$DRY" = 1 ]; then say "would run: $*"; else "$@"; fi; }
 
 ours() { [ -f "$1" ] && head -1 "$1" | grep -q "^$MARK"; }
 
+# The hooks' port: the one the hooks read, else the account's as the Mac derives it.
+HOOK_PORT="$(tr -dc 0-9 < "$HOME/.lampboard/port" 2>/dev/null)"
+[ -n "$HOOK_PORT" ] && [ "$HOOK_PORT" -ge 1024 ] 2>/dev/null || HOOK_PORT=$((30000 + $(id -u) % 20000))
+
 if [ "$UNINSTALL" = 1 ]; then
     echo "▸ Removing lampd"
-    for unit in lampd-contract.timer lampd.service; do
+    for unit in lampd-socket-retry.timer lampd.socket lampd-contract.timer lampd.service; do
         run systemctl --user disable --now "$unit" 2>/dev/null
     done
     if [ -x "$BIN_LINK" ]; then
@@ -80,7 +93,7 @@ if [ "$UNINSTALL" = 1 ]; then
             run "$BIN_LINK" devices revoke "$device"
         done
     fi
-    for file in deploy/lampd/*.service deploy/lampd/*.timer; do
+    for file in deploy/lampd/*.service deploy/lampd/*.timer deploy/lampd/*.socket; do
         target="$UNITS/$(basename "$file")"
         if ours "$target"; then run rm -f "$target"; elif [ -e "$target" ]; then say "left $target: not one of these copies"; fi
     done
@@ -96,7 +109,7 @@ COMMIT="$(git rev-parse --short HEAD)"
 [ -z "$(git status --porcelain --untracked-files=no)" ] || COMMIT="$COMMIT-dirty"
 
 # Every unit that would be replaced must be one of these copies.
-for file in deploy/lampd/*.service deploy/lampd/*.timer; do
+for file in deploy/lampd/*.service deploy/lampd/*.timer deploy/lampd/*.socket; do
     target="$UNITS/$(basename "$file")"
     if [ -e "$target" ] && ! ours "$target"; then
         failed "$target exists and is not a copy this script made: nothing was installed"
@@ -132,10 +145,11 @@ run rm -rf "$LIB/contract"
 run mv "$STAGE" "$LIB/contract"
 say "contract: $LIB/contract"
 
-for file in deploy/lampd/*.service deploy/lampd/*.timer; do
+for file in deploy/lampd/*.service deploy/lampd/*.timer deploy/lampd/*.socket; do
     target="$UNITS/$(basename "$file")"
     if [ "$DRY" = 1 ]; then say "would write $target"; continue; fi
-    { echo "$MARK $COMMIT ($file) by Scripts/lampd-install.sh: edit the repository, not this copy."; cat "$file"; } > "$target.new"
+    { echo "$MARK $COMMIT ($file) by Scripts/lampd-install.sh: edit the repository, not this copy."
+      sed "s/@HOOK_PORT@/$HOOK_PORT/g" "$file"; } > "$target.new"
     mv "$target.new" "$target"
     say "unit: $target"
 done
@@ -175,6 +189,14 @@ if [ "$START" = 1 ]; then
     run systemctl --user enable lampd.service lampd-contract.timer
     run systemctl --user restart lampd.service
     run systemctl --user start lampd-contract.timer
+    if [ "$TEE" = 1 ]; then
+        # The hooks' port in tee: the socket binds 127.0.0.1:$HOOK_PORT as soon as
+        # the Mac's tunnel has moved to the next port, and lampd restarts with it.
+        run rm -f "$HOME/.local/state/lampd/hooks-released"
+        run systemctl --user enable lampd.socket lampd-socket-retry.timer
+        run systemctl --user start lampd-socket-retry.timer
+        say "the hooks' port 127.0.0.1:$HOOK_PORT goes to lampd when the Mac's tunnel leaves it (lampd release gives it back)"
+    fi
     if [ "$DRY" = 0 ]; then
         for _ in $(seq 1 50); do "$BIN_LINK" status > /dev/null 2>&1 && break; sleep 0.2; done
         "$BIN_LINK" status > /dev/null 2>&1 || failed "lampd.service started but lampd does not answer: journalctl --user -u lampd"

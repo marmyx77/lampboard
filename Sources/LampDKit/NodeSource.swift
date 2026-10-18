@@ -37,9 +37,16 @@ public final class NodeSource: V1Source, @unchecked Sendable {
     /// The notifications: registrations in every mode, sending only in the
     /// service's (`NodePushes.relay`).
     public let pushes: NodePushes
+    /// What the hooks say, once the service holds their port (W5). Empty, and
+    /// changing nothing, until a hook speaks.
+    public let hooks: NodeHooks
+    private let macFile: MacStateFile
+    /// When `lampd mac-link` last asked: the Mac's link is up (Q8).
+    private var macLinkSeenAt: Date?
 
     public init(identity: V1SourceIdentity, mode: V1ServingMode, paths: LampDPaths, version: String,
-                startedAt: Date, retention: Int = 1000, relay: RelayClient? = nil, log: @escaping (String) -> Void = { _ in }) {
+                startedAt: Date, retention: Int = 1000, relay: RelayClient? = nil, hooks: NodeHooks = NodeHooks(),
+                log: @escaping (String) -> Void = { _ in }) {
         self.identity = identity
         self.mode = mode
         self.paths = paths
@@ -54,6 +61,8 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         preferences = preferencesFile.load()
         devicesStore = DevicesStore(paths: paths)
         pushes = NodePushes(identity: identity, paths: paths, relay: mode == .live ? relay : nil, log: log)
+        self.hooks = hooks
+        macFile = MacStateFile(path: paths.macStateFile)
     }
 
     // MARK: - Looks
@@ -66,6 +75,7 @@ public final class NodeSource: V1Source, @unchecked Sendable {
             lastProbeAt = look.at
             lastProblem = look.problem
             guard let reading = look.reading else { return }
+            hooks.reconcile(with: reading.report.sessions, at: look.at)
             fresh = NodeRows.rows(from: reading, jobs: look.jobs, identity: identity, at: look.at)
             cwds = Dictionary(reading.report.sessions.map { ($0.sessionId, $0.cwd) }, uniquingKeysWith: { first, _ in first })
             // The choices are read again at each look: the service and a forced
@@ -77,7 +87,46 @@ public final class NodeSource: V1Source, @unchecked Sendable {
         }
         // Outside the lock: sealing is quick, but a connection's `hello` must
         // never wait on it.
-        pushes.after(rows: currentRows, at: look.at)
+        pushes.after(rows: currentRows, at: look.at, macHere: macHere(at: look.at))
+    }
+
+    /// A hook, a report of the mod, a question the Mac holds or a line from
+    /// the Mac changed a row: published now, not at the next look, and the
+    /// notifications decided on it.
+    public func changed(at now: Date) {
+        locked {
+            preferences = preferencesFile.load()
+            publish(at: now)
+            journal.flush()
+        }
+        pushes.after(rows: currentRows, at: now, macHere: macHere(at: now))
+    }
+
+    // MARK: - The Mac (`lampd mac-link`)
+
+    /// `lampd mac-link` asked how the service is: the Mac's link is up.
+    public func macLinkSeen(at now: Date) { locked { macLinkSeenAt = now } }
+
+    /// Whether the person is at the Mac (Q8): then the Mac's banners ring for
+    /// these rows, and the phone does not.
+    public func macHere(at now: Date) -> Bool {
+        macFile.load().isHere(at: now, linkSeenAt: locked { macLinkSeenAt })
+    }
+
+    public func macDescription(at now: Date) -> String {
+        macFile.load().describe(at: now, linkSeenAt: locked { macLinkSeenAt })
+    }
+
+    /// A line from the Mac, carried out: kept on disk like a phone's choice,
+    /// and a read or an unread told to the hooks' state too.
+    public func takeFromMac(_ line: MacToNode, at now: Date) -> Result<MacToNode, LampDError> {
+        let result = MacLines.apply(line, paths: paths)
+        if case .success = result, let command = line.command, let id = command.session {
+            if command.action == .markSeen { hooks.markSeen(id, at: now) }
+            if command.action == .markUnread { hooks.markUnread(id, at: now) }
+        }
+        changed(at: now)
+        return result
     }
 
     /// The rows as the column shows them now.
@@ -86,7 +135,7 @@ public final class NodeSource: V1Source, @unchecked Sendable {
     /// The rows the column shows, made events: one per row that changed, one
     /// per row that went.
     private func publish(at now: Date) {
-        let shown = NodeRows.shown(fresh, preferences: preferences)
+        let shown = NodeRows.shown(hooks.overlaid(fresh, at: now), preferences: preferences)
         let ids = Set(shown.map(\.id))
         for id in journal.rows.keys.sorted() where !ids.contains(id) { journal.remove(id: id, at: now) }
         for row in shown where !Self.sameOnTheWire(journal.rows[row.id], row) { journal.upsert(row, at: now) }
@@ -112,7 +161,8 @@ public final class NodeSource: V1Source, @unchecked Sendable {
             V1SourceStatus(
                 version: version, startedAt: startedAt, binaryModifiedAt: LampDBinary.modifiedAt,
                 configModifiedAt: LampDBinary.modified(paths.configFile), journal: journal.name, seq: journal.seq,
-                lastEventAt: journal.lastEventAt, lastProbeAt: lastProbeAt, relay: pushes.relayHealth, mode: mode
+                lastEventAt: journal.lastEventAt, lastProbeAt: lastProbeAt, relay: pushes.relayHealth, mode: mode,
+                settings: macFile.load().settings
             )
         }
     }
@@ -139,6 +189,10 @@ public final class NodeSource: V1Source, @unchecked Sendable {
             }
             if let id = command.session, journal.rows[id] == nil {
                 return V1Failure(.notFound, "no row \(id)")
+            }
+            if let id = command.session {
+                if command.action == .markSeen { hooks.markSeen(id, at: now) }
+                if command.action == .markUnread { hooks.markUnread(id, at: now) }
             }
             do {
                 preferences = try preferencesFile.update { $0.apply(command, at: now) }

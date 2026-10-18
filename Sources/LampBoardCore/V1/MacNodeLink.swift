@@ -215,3 +215,16 @@ public struct MacNodeLinkWatch: Equatable, Sendable {
         return port
     }
 }
+
+extension MacNodeLink {
+    /// The Mac says where the person is at least this often, even when it has
+    /// not changed: a node cannot tell a Mac that is still there from one that
+    /// vanished without a word (power cut, a connection that died half-way)…
+    public static let presenceRefresh: TimeInterval = 60
+    /// …so a `here` older than this is taken for away, and the phone rings
+    /// again (Q8): a lost Mac must never keep the phone quiet.
+    public static let presenceStaleAfter: TimeInterval = 600
+    /// A `here` stays good this long after the last `lampd mac-link` of the
+    /// Mac went (a tunnel moving between ports, a reconnection); past it, away.
+    public static let linkGrace: TimeInterval = 60
+}
