@@ -16,6 +16,9 @@ gate's container makes.
 
     fixture.py frame <n>     the node as frame n describes it
     fixture.py flip          the first session of frame 0 between busy and idle
+    fixture.py ask <n>       session n of frame 0 waiting for the person (amber),
+                             and `fixture.py ask <n> off` busy again: the
+                             notifications' check (W4)
     fixture.py clean         every process and file this made, gone
     fixture.py actions       what a phone's actions need besides frame 0: the
                              sessions' folders, a project with files, a fake
@@ -180,6 +183,24 @@ def flip():
     path = os.path.join(SESSIONS, "%d.json" % pid)
     record = json.load(open(path))
     record["status"] = "idle" if record["status"] == "busy" else "busy"
+    with open(path, "w") as handle:
+        json.dump(record, handle)
+    print(record["status"])
+
+
+def ask(index, on=True):
+    state = load_state()
+    frames = json.load(open(os.path.join(HERE, "sessions.json")))["frames"]
+    chosen = frames[0]["sessions"][index]
+    pid = state["pids"].get(chosen["key"])
+    path = os.path.join(SESSIONS, "%d.json" % pid)
+    record = json.load(open(path))
+    record["status"] = "waiting" if on else "busy"
+    if on:
+        record["waitingFor"] = "permission"
+    else:
+        record.pop("waitingFor", None)
+    record["statusUpdatedAt"] = int(time.time() * 1000)
     with open(path, "w") as handle:
         json.dump(record, handle)
     print(record["status"])
@@ -383,6 +404,8 @@ if __name__ == "__main__":
         frame(int(sys.argv[2]))
     elif command == "flip":
         flip()
+    elif command == "ask" and len(sys.argv) in (3, 4):
+        ask(int(sys.argv[2]), on=not (len(sys.argv) == 4 and sys.argv[3] == "off"))
     elif command == "clean":
         clean()
     elif command == "actions":

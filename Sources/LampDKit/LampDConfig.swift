@@ -72,8 +72,9 @@ public struct LampDConfig: Equatable, Sendable {
         return trimmed
     }
 
-    /// A relay address: `https`, or `http` only to this machine or a private
-    /// network (a check's own relay). Never a path, a query or a user.
+    /// A relay address: `https`, or `http` only to this machine, a private
+    /// network or the tailnet (a check's own relay). Never a path, a query or
+    /// a user.
     public static func validRelay(_ text: String) -> URL? {
         guard let url = URL(string: text), let host = url.host, url.user == nil, url.query == nil,
               url.path.isEmpty || url.path == "/" else { return nil }
@@ -81,6 +82,7 @@ public struct LampDConfig: Equatable, Sendable {
         guard url.scheme == "http" else { return nil }
         let privateHost = host == "localhost" || host.hasPrefix("127.") || host.hasPrefix("10.") || host.hasPrefix("192.168.")
             || (host.hasPrefix("172.") && (16...31).contains(Int(host.split(separator: ".").dropFirst().first ?? "") ?? 0))
+            || (host.hasPrefix("100.") && (64...127).contains(Int(host.split(separator: ".").dropFirst().first ?? "") ?? 0))
         return privateHost ? url : nil
     }
 

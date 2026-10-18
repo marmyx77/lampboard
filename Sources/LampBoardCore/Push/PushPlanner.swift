@@ -263,7 +263,10 @@ public enum PushPlanner {
         let preferences = device.preferences
         guard preferences.enabled, !row.session.muted else { return false }
         if let until = preferences.mutedUntil, until > now { return false }
-        if preferences.mutedProjects.contains(row.session.workspace) { return false }
+        // By the folder (what the phone keeps a row by) or by the project's name.
+        if preferences.mutedProjects.contains(row.session.path) || preferences.mutedProjects.contains(row.session.workspace) {
+            return false
+        }
         if event == .finished && !preferences.finished { return false }
         return true
     }

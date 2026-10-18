@@ -160,7 +160,7 @@ public struct V1PushPreferences: Codable, Equatable, Sendable {
     public let finished: Bool
     /// Everything silent until then.
     public let mutedUntil: Date?
-    /// Projects never to alert for, by the row's `workspace`.
+    /// Projects never to alert for, by the row's folder (`path`) or name.
     public let mutedProjects: [String]
 
     public static let maxProjects = 200
