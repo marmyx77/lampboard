@@ -38,7 +38,7 @@ public enum V1WireContract {
             req("protocol", .int), req("minClient", .int), req("version", .string), req("source", .object),
             req("startedAt", .date), opt("binaryModifiedAt", .date), opt("configModifiedAt", .date),
             req("stateAge", .object), opt("relay", .object), req("role", .string), opt("mode", .string),
-            opt("away", .string),
+            opt("away", .string), opt("settings", .object),
         ],
         "state": [
             req("journal", .string), req("seq", .int), req("source", .object), req("rows", .array, .null),
