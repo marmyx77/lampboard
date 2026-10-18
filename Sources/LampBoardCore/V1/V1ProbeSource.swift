@@ -140,8 +140,8 @@ public final class V1ProbeSource: V1Source, @unchecked Sendable {
         }
     }
 
-    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure? {
-        V1Failure(.unavailable, "a machine read over ssh sends no notifications")
+    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> Result<V1PushAccepted, V1Failure> {
+        .failure(V1Failure(.unavailable, "a machine read over ssh sends no notifications"))
     }
 
     public func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure> {

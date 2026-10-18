@@ -38,6 +38,9 @@ public struct V1Client {
         case transcript(V1Transcript)
         /// An answer to a request with nothing else to show.
         case done(re: Int?)
+        /// A source took this device's push registration: its half of the
+        /// envelope key (§2.8).
+        case pushAccepted(re: Int?, V1PushAccepted)
         /// The source is stopping.
         case bye(String)
     }
@@ -181,7 +184,10 @@ public struct V1Client {
             return []
         case .transcript(let transcript):
             return [.transcript(transcript)]
-        case .result, .devices:
+        case .result(let result):
+            if let accepted = result.push { return [.pushAccepted(re: message.re, accepted)] }
+            return [.done(re: message.re)]
+        case .devices:
             return [.done(re: message.re)]
         case .error(let failure):
             if failure.code == .clientTooOld {

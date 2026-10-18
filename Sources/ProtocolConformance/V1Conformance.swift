@@ -125,6 +125,29 @@ public enum V1Conformance {
                 }
             },
 
+            TestCase("push.register: the source's half of the envelope key, or a refusal by name") { t in
+                withWire(target, t) { wire in
+                    try wire.greet()
+                    // A public key of the right length: 32 bytes of example.
+                    let key = Data(repeating: 9, count: 32).base64EncodedString()
+                    let token = String(repeating: "ab", count: 32)
+                    let bad = try wire.ask(["op": "push.register", "capability": "Y2Fw", "token": "not hex",
+                                            "environment": "sandbox", "envelopeKey": key], expecting: "error")
+                    t.expectEqual(bad?["code"] as? String, "badRequest", "a token that is not one")
+                    let answer = try wire.ask(["op": "push.register", "capability": "Y2Fw", "token": token,
+                                               "environment": "sandbox", "envelopeKey": key,
+                                               "preferences": ["finished": true]], expecting: ["result", "error"])
+                    if answer?["type"] as? String == "error" {
+                        t.expectEqual(answer?["code"] as? String, "unavailable", "a source that sends nothing says so")
+                    } else {
+                        let push = answer?["push"] as? [String: Any]
+                        let half = (push?["envelopeKey"] as? String).flatMap { Data(base64Encoded: $0) }
+                        t.expectEqual(half?.count, 32, "an X25519 public key")
+                        t.expect((push?["device"] as? String)?.isEmpty == false, "the device's name for the key")
+                    }
+                }
+            },
+
             TestCase("The devices are refused to the read key") { t in
                 withWire(target, t) { wire in
                     try wire.greet()

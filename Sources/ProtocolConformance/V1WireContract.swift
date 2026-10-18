@@ -38,6 +38,7 @@ public enum V1WireContract {
             req("protocol", .int), req("minClient", .int), req("version", .string), req("source", .object),
             req("startedAt", .date), opt("binaryModifiedAt", .date), opt("configModifiedAt", .date),
             req("stateAge", .object), opt("relay", .object), req("role", .string), opt("mode", .string),
+            opt("away", .string),
         ],
         "state": [
             req("journal", .string), req("seq", .int), req("source", .object), req("rows", .array, .null),
@@ -50,7 +51,7 @@ public enum V1WireContract {
         "event": [req("seq", .int), req("at", .date), req("kind", .string), opt("row", .object), opt("id", .string)],
         "ping": [req("seq", .int), req("at", .date)],
         "transcript": [req("session", .string), req("messages", .array), req("notSent", .int)],
-        "result": [req("op", .string)],
+        "result": [req("op", .string), opt("push", .object)],
         "devices": [req("devices", .array)],
         "error": [req("code", .string), req("message", .string)],
         "bye": [req("reason", .string)],
@@ -58,7 +59,8 @@ public enum V1WireContract {
 
     static let source = [req("kind", .string), req("name", .string)]
     static let stateAge = [req("seq", .int), opt("lastEventAt", .date), opt("lastProbeAt", .date), opt("seconds", .number)]
-    static let relay = [req("outcome", .string), req("at", .date)]
+    static let relay = [req("outcome", .string), req("at", .date), opt("retryAfter", .int), opt("reason", .string)]
+    static let pushAccepted = [req("envelopeKey", .string), req("source", .string), req("device", .string)]
     static let message = [req("role", .string), req("text", .string), opt("at", .date)]
     static let device = [req("id", .string), req("name", .string), req("pairedAt", .date), opt("lastSeenAt", .date)]
 
@@ -103,6 +105,10 @@ public enum V1WireContract {
             if message["relay"] != nil { found += nested(message["relay"], relay, at: "hello.relay") }
             if let role = message["role"] as? String, !["read", "action"].contains(role) { found.append("hello.role \(role)") }
             if let mode = message["mode"] as? String, !["live", "files"].contains(mode) { found.append("hello.mode \(mode)") }
+            if let outcome = (message["relay"] as? [String: Any])?["outcome"] as? String,
+               !["ok", "refused", "quota", "unreachable"].contains(outcome) { found.append("hello.relay.outcome \(outcome)") }
+        case "result":
+            if message["push"] != nil { found += nested(message["push"], pushAccepted, at: "result.push") }
         case "state":
             found += nested(message["source"], source, at: "state.source")
             for (n, row) in ((message["rows"] as? [Any]) ?? []).enumerated() { found += rowViolations(row, at: "state.rows[\(n)]") }

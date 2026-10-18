@@ -193,6 +193,8 @@ let suites: [TestSuite] = [
     V1ConformanceSuite.suite,
     NodeLinkSuite.suite,
     PushEnvelopeSuite.suite,
+    PushPlannerSuite.suite,
+    RelayClientSuite.suite,
     LiveAdoptionSuite.suite,
     TmuxSizeRuleSuite.suite,
     V1ProbeSourceSuite.suite,

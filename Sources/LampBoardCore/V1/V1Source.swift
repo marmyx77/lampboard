@@ -31,11 +31,20 @@ public protocol V1Source: AnyObject {
     /// One low-power action, already validated (`V1Command.problem`).
     func perform(_ command: V1Command, by peer: V1Peer, at now: Date) -> V1Failure?
 
-    /// A device's push registration, already validated.
-    func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure?
+    /// A device's push registration, already validated; the source's half of
+    /// the envelope key when it takes it (§2.8, point 2).
+    func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> Result<V1PushAccepted, V1Failure>
 
     /// The paired devices, or a revocation. Only ever called for the action key.
     func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure>
+
+    /// «While you were away» for that device, said once in its `hello`.
+    func away(for peer: V1Peer, at now: Date) -> String?
+}
+
+extension V1Source {
+    /// A source that keeps no ledger says nothing.
+    public func away(for peer: V1Peer, at now: Date) -> String? { nil }
 }
 
 /// What `hello` reports of a source.

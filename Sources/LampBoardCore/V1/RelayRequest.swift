@@ -28,6 +28,12 @@ public enum PushKind: String, Codable, Sendable {
     case liveactivity
 }
 
+/// What a Live Activity push does to the activity.
+public enum LiveActivityEvent: String, Codable, Sendable {
+    case update
+    case end
+}
+
 /// One push as a source hands it to the relay: the capability, the kind, the
 /// priority and the envelope — and nothing a person wrote.
 public struct RelayPushRequest: Codable, Equatable, Sendable {
@@ -39,6 +45,18 @@ public struct RelayPushRequest: Codable, Equatable, Sendable {
     /// what cannot wait: a new permission question (§2.8, point 4).
     public let priority: Int
     public let envelope: String
+    /// For a Live Activity only: when the activity reads as stale if no newer
+    /// push came (§2.11, point 3). Always set by `make` for that kind, so a
+    /// source that falls silent shows grey rather than calm.
+    public let staleDate: Date?
+    /// For a Live Activity only: `update`, or `end` to close it.
+    public let event: LiveActivityEvent?
+    /// For an `end` only: when the ended activity leaves the Lock Screen.
+    public let dismissalDate: Date?
+
+    /// How long a Live Activity stays fresh without news when the source
+    /// names nothing else: the relay's own default.
+    public static let defaultStaleAfter: TimeInterval = 15 * 60
 
     public enum Refusal: Error, Equatable, Sendable {
         /// Over `PushEnvelope.maxBytes`: the relay would refuse it anyway.
@@ -47,16 +65,24 @@ public struct RelayPushRequest: Codable, Equatable, Sendable {
         case readable
         /// APNs takes a background push only at priority 5.
         case badPriority
+        /// A Live Activity's fields on a push of another kind.
+        case notALiveActivity
     }
 
     /// The request for `sealed`, checked before it leaves: the source refuses to
     /// send a push the relay could read. `content` is what was sealed, here only
     /// so the check has something to look for.
+    /// For a Live Activity, `staleDate` defaults to `now` plus
+    /// `defaultStaleAfter`: never a Live Activity push without one.
     public static func make(
-        capability: RelayCapability, kind: PushKind, urgent: Bool, sealed: String, content: PushContent
+        capability: RelayCapability, kind: PushKind, urgent: Bool, sealed: String, content: PushContent,
+        staleDate: Date? = nil, event: LiveActivityEvent? = nil, dismissalDate: Date? = nil, now: Date = Date()
     ) throws -> RelayPushRequest {
         let priority = urgent ? 10 : 5
         if kind == .background && urgent { throw Refusal.badPriority }
+        if kind != .liveactivity && (staleDate != nil || event != nil || dismissalDate != nil) {
+            throw Refusal.notALiveActivity
+        }
         guard sealed.utf8.count <= PushEnvelope.maxBytes else { throw Refusal.tooLarge }
         // A sealed box is base64 of a nonce, the ciphertext and a tag. What the
         // person would read, or the row it is about, anywhere in its bytes is a
@@ -65,9 +91,13 @@ public struct RelayPushRequest: Codable, Equatable, Sendable {
         guard let bytes = Data(base64Encoded: sealed), bytes.count >= 12 + 16 else { throw Refusal.readable }
         let secrets = [content.title, content.body, content.session ?? ""].filter { $0.utf8.count >= 4 }
         if secrets.contains(where: { Self.contains(Array(bytes), Array($0.utf8)) }) { throw Refusal.readable }
+        let live = kind == .liveactivity
         return RelayPushRequest(
             cap: capability.cap, token: capability.token, environment: capability.environment,
-            kind: kind, priority: priority, envelope: sealed
+            kind: kind, priority: priority, envelope: sealed,
+            staleDate: live ? (staleDate ?? now.addingTimeInterval(defaultStaleAfter)) : nil,
+            event: live ? (event ?? .update) : nil,
+            dismissalDate: live && event == .end ? dismissalDate : nil
         )
     }
 

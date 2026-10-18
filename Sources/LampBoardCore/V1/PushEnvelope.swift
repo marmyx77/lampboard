@@ -76,8 +76,19 @@ public struct PushContent: Codable, Equatable, Sendable {
     public let body: String
     /// The row it is about, for the tap.
     public let session: String?
+    /// What the news is: what the extension picks the category and the
+    /// interruption level from, once the envelope has opened (§2.9). `nil` in
+    /// an envelope of a source one version behind: an alert with no actions.
+    public let event: PushEvent?
+    /// The source's rows by colour at `at`: the badge (summed over sources by
+    /// the extension, §2.8 point 3), the widget and the Live Activity.
+    public let counts: PushCounts?
+    /// Delivered without a sound: the other devices' copy, two minutes after
+    /// the one last used rang and nobody opened it (Q9).
+    public let quiet: Bool?
 
-    public init(source: String, journal: String, seq: Int, at: Date, title: String, body: String, session: String?) {
+    public init(source: String, journal: String, seq: Int, at: Date, title: String, body: String, session: String?,
+                event: PushEvent? = nil, counts: PushCounts? = nil, quiet: Bool? = nil) {
         self.v = PushEnvelope.version
         self.source = source
         self.journal = journal
@@ -86,6 +97,90 @@ public struct PushContent: Codable, Equatable, Sendable {
         self.title = title
         self.body = body
         self.session = session
+        self.event = event
+        self.counts = counts
+        self.quiet = quiet
+    }
+}
+
+/// The kinds of news an envelope carries.
+public enum PushEvent: String, Codable, Sendable, CaseIterable {
+    /// A session waits for the person: a permission or a question. Time
+    /// Sensitive, with Deny before Open.
+    case waiting
+    /// A turn died.
+    case failed
+    /// A turn finished, for a device that asked to hear it.
+    case finished
+    /// What waited while the person was in one session, in one line (G1).
+    case summary
+    /// The counts alone, for the widget and the Live Activity.
+    case counts
+
+    /// The notification category the extension gives a verified alert.
+    public var category: String? {
+        switch self {
+        case .waiting: return PushCategories.waiting
+        case .failed, .finished, .summary: return PushCategories.session
+        case .counts: return nil
+        }
+    }
+
+    /// Only a session waiting for the person breaks through Focus (§2.9).
+    public var timeSensitive: Bool { self == .waiting }
+}
+
+/// The categories the app registers and the extension assigns.
+public enum PushCategories {
+    public static let waiting = "lampboard.waiting"
+    public static let session = "lampboard.session"
+    /// Actions, by identifier.
+    public static let deny = "lampboard.deny"
+    public static let open = "lampboard.open"
+    public static let silence = "lampboard.silence"
+}
+
+/// One source's rows by colour.
+public struct PushCounts: Codable, Equatable, Sendable {
+    /// Amber: waiting for the person.
+    public let waiting: Int
+    /// Red.
+    public let failed: Int
+    /// Green, an answer not yet read.
+    public let ready: Int
+    /// Yellow and blue: at work.
+    public let working: Int
+
+    public init(waiting: Int, failed: Int, ready: Int, working: Int) {
+        self.waiting = waiting
+        self.failed = failed
+        self.ready = ready
+        self.working = working
+    }
+
+    public static let zero = PushCounts(waiting: 0, failed: 0, ready: 0, working: 0)
+
+    /// What the badge counts: the rows that want the person.
+    public var wanting: Int { waiting + failed + ready }
+
+    /// The counts of rows, by their status words on the wire.
+    public init(statuses: [String]) {
+        var waiting = 0, failed = 0, ready = 0, working = 0
+        for status in statuses {
+            switch SessionStatus(rawValue: status) {
+            case .awaiting?: waiting += 1
+            case .failed?: failed += 1
+            case .ready?: ready += 1
+            case .working?, .waiting?: working += 1
+            default: break
+            }
+        }
+        self.init(waiting: waiting, failed: failed, ready: ready, working: working)
+    }
+
+    public static func + (a: PushCounts, b: PushCounts) -> PushCounts {
+        PushCounts(waiting: a.waiting + b.waiting, failed: a.failed + b.failed,
+                   ready: a.ready + b.ready, working: a.working + b.working)
     }
 }
 

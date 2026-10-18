@@ -215,7 +215,7 @@ private final class OverGenerous: V1Source {
         V1Transcript(session: session, messages: (1...40).map { .init(role: "assistant", text: "answer \($0)", at: nil) }, notSent: 0)
     }
     func perform(_ command: V1Command, by peer: V1Peer, at now: Date) -> V1Failure? { inner.perform(command, by: peer, at: now) }
-    func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure? {
+    func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> Result<V1PushAccepted, V1Failure> {
         inner.register(registration, by: peer, at: now)
     }
     func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure> {

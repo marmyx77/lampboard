@@ -1,3 +1,8 @@
+#if canImport(CryptoKit)
+import CryptoKit
+#else
+import Crypto
+#endif
 import Foundation
 
 /// The reference source: rows and a journal held in memory, and the
@@ -24,6 +29,8 @@ public final class V1MemorySource: V1Source {
     /// When each device last said it was in use (`focus`): what decides which
     /// one rings (Q9).
     public private(set) var focusedAt: [String: Date] = [:]
+    /// Its half of every envelope key: one per run, enough for a reference.
+    public let pushKey = Curve25519.KeyAgreement.PrivateKey()
 
     private var rows: [String: V1Row] = [:]
     private var known: Bool
@@ -161,9 +168,10 @@ public final class V1MemorySource: V1Source {
         return nil
     }
 
-    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> V1Failure? {
+    public func register(_ registration: V1PushRegistration, by peer: V1Peer, at now: Date) -> Result<V1PushAccepted, V1Failure> {
         registrations[peer.device] = registration
-        return nil
+        return .success(V1PushAccepted(envelopeKey: pushKey.publicKey.rawRepresentation.base64EncodedString(),
+                                       source: identity.name, device: peer.device))
     }
 
     public func devices(_ request: V1DevicesRequest, by peer: V1Peer, at now: Date) -> Result<[V1Device], V1Failure> {

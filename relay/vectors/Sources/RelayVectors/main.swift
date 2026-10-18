@@ -49,6 +49,7 @@ struct Case {
     let kind: PushKind
     let urgent: Bool
     let content: PushContent
+    var event: LiveActivityEvent? = nil
 }
 
 let sendable: [Case] = [
@@ -60,6 +61,8 @@ let sendable: [Case] = [
          content: content("counts", "amber 1 red 0 green 2", seq: 3, session: nil)),
     Case(name: "liveactivity-counts", capability: liveCapability, kind: .liveactivity, urgent: false,
          content: content("counts", "amber 1 red 0 green 2", seq: 4, session: nil)),
+    Case(name: "liveactivity-end", capability: liveCapability, kind: .liveactivity, urgent: false,
+         content: content("counts", "amber 0 red 0 green 0", seq: 6, session: nil), event: .end),
 ]
 
 var requests: [[String: Any]] = []
@@ -67,8 +70,11 @@ for item in sendable {
     guard let sealed = try? PushEnvelope.seal(item.content, with: key) else { fail("could not seal \(item.name)") }
     guard PushEnvelope.open(sealed, with: key) == item.content else { fail("\(item.name) does not open") }
     do {
+        // The Live Activity's stale date from the vectors' own clock, so the
+        // file is the same on every run but for the envelopes' nonces.
         let request = try RelayPushRequest.make(
-            capability: item.capability, kind: item.kind, urgent: item.urgent, sealed: sealed, content: item.content)
+            capability: item.capability, kind: item.kind, urgent: item.urgent, sealed: sealed, content: item.content,
+            event: item.event, now: at)
         requests.append(["name": item.name, "request": json(request),
                          "secrets": [item.content.title, item.content.body, item.content.session ?? ""].filter { !$0.isEmpty }])
     } catch {
@@ -105,7 +111,8 @@ let refused: [[String: Any]] = [
 
 let registration = V1PushRegistration(
     capability: capability.cap, token: token, environment: .sandbox,
-    envelopeKey: deviceKey.publicKey.rawRepresentation.base64EncodedString(), liveActivityToken: liveToken)
+    envelopeKey: deviceKey.publicKey.rawRepresentation.base64EncodedString(), liveActivityToken: liveToken,
+    liveActivityCapability: liveCapability.cap, preferences: V1PushPreferences(finished: true))
 guard registration.problem == nil else { fail("registration: \(registration.problem ?? "")") }
 
 let document: [String: Any] = [

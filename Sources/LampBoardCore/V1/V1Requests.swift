@@ -92,6 +92,8 @@ public struct V1Command: Codable, Equatable, Sendable {
             if V1Validation.hasControlCharacters(name) { return "a name has no control characters" }
         case .hide, .mute:
             if on == nil { return "\(action.rawValue) needs on" }
+        case .focus:
+            if let session, !V1Validation.isSessionId(session) { return "focus names a session id or none" }
         case .order:
             guard let ids, ids.count <= Self.maxIds, ids.allSatisfy(V1Validation.isSessionId) else {
                 return "order needs up to \(Self.maxIds) session ids"
@@ -114,23 +116,80 @@ public struct V1PushRegistration: Codable, Equatable, Sendable {
     public let envelopeKey: String
     /// The Live Activity's push token, when one is running.
     public let liveActivityToken: String?
+    /// The relay's capability for that token (`/v1/capability/liveactivity`).
+    public let liveActivityCapability: String?
+    /// What this device wants to hear (§2.9; Settings › Notifications).
+    public let preferences: V1PushPreferences?
 
-    public init(capability: String, token: String, environment: APNsEnvironment, envelopeKey: String, liveActivityToken: String? = nil) {
+    public init(capability: String, token: String, environment: APNsEnvironment, envelopeKey: String,
+                liveActivityToken: String? = nil, liveActivityCapability: String? = nil,
+                preferences: V1PushPreferences? = nil) {
         self.capability = capability
         self.token = token
         self.environment = environment
         self.envelopeKey = envelopeKey
         self.liveActivityToken = liveActivityToken
+        self.liveActivityCapability = liveActivityCapability
+        self.preferences = preferences
     }
 
     public var problem: String? {
         if !V1Validation.isHexToken(token) { return "token is not an APNs token" }
         if let live = liveActivityToken, !V1Validation.isHexToken(live) { return "liveActivityToken is not an APNs token" }
+        if (liveActivityToken == nil) != (liveActivityCapability == nil) {
+            return "a Live Activity token needs its capability, and the other way round"
+        }
+        if let cap = liveActivityCapability, cap.isEmpty || cap.count > 512 || V1Validation.hasControlCharacters(cap) {
+            return "liveActivityCapability is not one"
+        }
+        if let problem = preferences?.problem { return problem }
         if capability.isEmpty || capability.count > 512 || V1Validation.hasControlCharacters(capability) {
             return "capability is not one"
         }
         guard let key = Data(base64Encoded: envelopeKey), key.count == 32 else { return "envelopeKey is not an X25519 key" }
         return nil
+    }
+}
+
+/// What one device wants to hear from a source (§2.9).
+public struct V1PushPreferences: Codable, Equatable, Sendable {
+    /// Notifications at all: off still keeps the memory of what was already
+    /// so (D9), so turning them on is not a burst.
+    public let enabled: Bool
+    /// A turn finished with an answer: only when asked for.
+    public let finished: Bool
+    /// Everything silent until then.
+    public let mutedUntil: Date?
+    /// Projects never to alert for, by the row's `workspace`.
+    public let mutedProjects: [String]
+
+    public static let maxProjects = 200
+
+    public init(enabled: Bool = true, finished: Bool = false, mutedUntil: Date? = nil, mutedProjects: [String] = []) {
+        self.enabled = enabled
+        self.finished = finished
+        self.mutedUntil = mutedUntil
+        self.mutedProjects = mutedProjects
+    }
+
+    public static let standard = V1PushPreferences()
+
+    public var problem: String? {
+        if mutedProjects.count > Self.maxProjects { return "too many muted projects" }
+        if mutedProjects.contains(where: { $0.isEmpty || $0.count > 400 || V1Validation.hasControlCharacters($0) }) {
+            return "a muted project is not a name"
+        }
+        return nil
+    }
+
+    private enum Keys: String, CodingKey { case enabled, finished, mutedUntil, mutedProjects }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: Keys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        finished = try container.decodeIfPresent(Bool.self, forKey: .finished) ?? false
+        mutedUntil = try container.decodeIfPresent(Date.self, forKey: .mutedUntil)
+        mutedProjects = try container.decodeIfPresent([String].self, forKey: .mutedProjects) ?? []
     }
 }
 

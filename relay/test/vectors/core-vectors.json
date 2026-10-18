@@ -44,7 +44,7 @@
       "name" : "background-urgent",
       "request" : {
         "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
-        "envelope" : "jcAqWqczerG32q1v/oiqg9cnoO+HMeq+kybQ9gqy06SeSp5k6tka6zdzXYyz1KNQaBypRzJ2Tsx1ydOHU4egGUnfv67t1ldNlyk7+pf4qEFQxMlRq98JFTS7dQY589rK8w4MWNn7fYSJYw2dLYYg0lyJeldPmytA+Gya40R/y+vi63e6ibyPpdGRM2wkCYlTyi7F8LSRPb1sy9xTPmDlMx4xGChCjWaHngtY8hNAy+YMp/gat8lBA4GT7NRKGa1rw8+7dKsS7UYtF8CTKTWanGIpt02llt1WXb8KMrglXNBOm8MyR/7TAIDLB+n7qzthguhWChkSnQG8FQ==",
+        "envelope" : "1WMWpmqJ04BQvWbIS9yl2h6gO/2rlvIqP9qsOFKNuvNMsW3wsx716lfHQyIAN9rNV9DGtgODje8BSq8Q3/pMYo4GT0QJrKHmxfHHHCSHuTJ+R0OZ9WrTwjccGHuEZMI0kj0rxLmp2xi2fe8ziQvwHaP1qYJbm7OZPdEGEdugqPtpgn3F7o6+H2B/qkaka1PcLVOp2JqTB77inxC5sxX2b7qfHqm4Ka17h3GguKOo2AUsUee4BoYOHeoAyeemWZgzPrm9zygwxXW0kD0tE7hNOhqMFybZM7qsJLv8xPyvzIhF7iWC8sLfcP+tam9FJQAG0oldY/XeNfwdMg==",
         "environment" : "sandbox",
         "kind" : "background",
         "priority" : 10,
@@ -56,7 +56,15 @@
     "capability" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
     "envelopeKey" : "D6poTtKIZ7l/Smot7l34zpdOdrcBjj8iocTPJnhXDyA=",
     "environment" : "sandbox",
+    "liveActivityCapability" : "c2lnbmVkLWJ5LXRoZS1yZWxheS1sYQ==",
     "liveActivityToken" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "preferences" : {
+      "enabled" : true,
+      "finished" : true,
+      "mutedProjects" : [
+
+      ]
+    },
     "token" : "abababababababababababababababababababababababababababababababab"
   },
   "requests" : [
@@ -64,7 +72,7 @@
       "name" : "alert-permission",
       "request" : {
         "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
-        "envelope" : "xxaRFogVasT4oMdmIlOEdjNdltpSOuLJf8OCIBmdAnklRJP/fGhFxqUQ70QhczkJy0VIHn8f5J9yc6Y+5tD2vBJ6BelplNq5hsis3FjZw2GC+iDF0y9gvUnNIbQUemyH4MHMIFhzB76ShwBsfD2TqbxDlIkVaKeeo35BAsmn7TgnYPD/VF6SRlc3Ly+3PEXeJ5kBvntKjgAo8780EQ7K+Ze8acy0pJoMSFRM+Wi8jYrvuzEsufD0b6W2mP5r163DZkuAwL6Dz8epAR43dt6WAY6X4cgUuvBCHQgYLh0L9N9qZHjUP3//Dpzdn4s=",
+        "envelope" : "avW3EDQqTNtL3Yi0HrItDoIdWVVM6AY8DwywvwwbwXmnxgqIhiIFpGIQqvIlc92Wj6Ihv7IF/XB6DcBgGRci1viBuyJC05+WFkBAP0PDsEJo2ZUNi2e3JxlHoJ0SLx5yo1kl5uLlaUPd+P6zizm9yc09SGdYCATt6EWsTeQ5J/7lGw7+b1E7CXVXkTAvFWyWx4oI7NXWsgjBzAj+3JwTTow67RqHmqhFlaO4sTBHaN5sKiQ8w/F45drEny5evWR3GcXi3Y/e61bKNEyeWTm8pGkxw/4EYVbMODacCRU7TGj1Pwec5Nkt2UM5oIs=",
         "environment" : "sandbox",
         "kind" : "alert",
         "priority" : 10,
@@ -80,7 +88,7 @@
       "name" : "alert-turn-done",
       "request" : {
         "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
-        "envelope" : "3RYLmsUSlN1FcbP9cOjYfTEtmQ85VXcNu7L932buOLW/nlMpqQiZxAwrSuQkxAqmckZRgZnRe9NExF/3vwgDIUfQ7kjpLbuXuwqGTbAjC4OhZVHuDqk2Fq5BU5G6XavyVdaR3jxNYvAgiGJsedEKRN7+KaeiVolKjWIa1dmJY4Q/puIl+hZSMpWUZW5CzGxfp2igxHH4yC61boVOo1M0hV/85qeLxMybHSysk9ipIIbh9zq0GhpMdJOaZ0wZhib717hWXr4bebM0vwTAz6wb+jlzXZevOooX",
+        "envelope" : "5vpe8JIlkoYSOaLcLw0pTzTCHRJ6dFmy+g2n0uEQt5GR8C4vCNkuXzGyPptlUhE7G6fBGM6q+lVC1zYLTMnN99My16rL6j8H/mbkaYKwJe5E/GaWUYq29xDsVu79YmnGKPcGxaIRYRsVVy/qxS17d4flYrmYcEPNyDC1s/jVtAMPwyRR3RodulAGcl2YNZq2fS3SWZeC5YAbNqJLtk8E37ti+eUaiyB4nKnBn9i01LmGxGezXyWndN8ehyDqjDbi8rPrdppPSg7PDGsbshPJim852xpw6ttu",
         "environment" : "sandbox",
         "kind" : "alert",
         "priority" : 5,
@@ -96,7 +104,7 @@
       "name" : "background-counts",
       "request" : {
         "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheQ==",
-        "envelope" : "aeIURDEoMbfhFrDMw8ZTMDtL9mMoRzoxkDTyTKkER7k8CTu9uFPHnOqjl7Z6eS8IW+H1r76VdgkD0uJ7gLUV7zAss2l/o+0HzCv+anp0Z4Trcux7KHW+cNa9m8qqX+WP7pDDectQvskkcaKifwJvORFepitwagEGdUr4xR9EmAD6sdtxDJ8+qs0j/czcdAtEKwYzhtTNZhOquXDAb32ElABwN5Yp",
+        "envelope" : "yWXjVL8DcTovQFQYY383yYPPH4UUff2BOnixZN7DeVyAFGzPfXpznyoklQvmJu45eVCTFOhWuHvH4D0wWe2FUKi7WSwpfq5WBHjilde3wcqiNU4LApbnE1kTcaJjfLdCs1QhqzSCTpbJBNQpjtVoVKLcnrKQFY9hjSqsM+aumtCtLJMPe3h6Z0Z8ZgXFfUBXhMr2VJc7TdRr4JIpQvRCGoxCA0Yl",
         "environment" : "sandbox",
         "kind" : "background",
         "priority" : 5,
@@ -111,15 +119,34 @@
       "name" : "liveactivity-counts",
       "request" : {
         "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheS1sYQ==",
-        "envelope" : "NZbnsTmyHfDmlI9j/eo8zDy5Rj1wWIOCLt0tkFZ99ykG6By94Mpaghsbht+t275cq1UNqK/Ru/2WJwPxRCDoWc/K6faKQcvTHvM9imsO8RS0IEcWNdqsIR1clhQ8IcGn61OrJdjOb6IjAcoTO5J+3lIzHZgakdvBM1BoCZf26ycxdxV+BNGwRKvRQki5T0EAnL+tbGL8HZ6pNOwyuDI6N1xDUj25",
+        "envelope" : "zttnE6FpBo2i8eNnMmFXjTOKnK1bZObKhutMO9u9bxAJLz6FCEYQsYnO6TTWPeCnIypmwAMbJr3jtb8ozpPhRuQnFPM+KTuSHQ0E/VL+crzpV8r8nSRB5CPsL943S5ASMalXCHTDXsbdxzMuCBrwwsAOLGNWADeTwHyaBhN7tNc7+3AMuNL3xThVnk1MkWEe6hcd1M5k/XIUL53jJDrxOGnJMQ4z",
         "environment" : "sandbox",
+        "event" : "update",
         "kind" : "liveactivity",
         "priority" : 5,
+        "staleDate" : "2025-10-09T09:08:20Z",
         "token" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
       },
       "secrets" : [
         "counts",
         "amber 1 red 0 green 2"
+      ]
+    },
+    {
+      "name" : "liveactivity-end",
+      "request" : {
+        "cap" : "c2lnbmVkLWJ5LXRoZS1yZWxheS1sYQ==",
+        "envelope" : "mlRByG3/k2odp76IRTNfyxWH/RIckoERoHJN4VPuYbQ2Tcz9RPMVNinbKZA2tLPswoXE1UlMDO7Pw/MGGSOLpCVn9Y5iyvHKZ27nvq3GwDkKZ7f03UL6RSAuHR+X+Q7zd/ukOFpeAGeGPwgcb/waebf4w7YjshK9K3B5yWzKLuVfS1Usznn5gsZEAjTwnqVp/oiwQ2H0BRIYhrur7haoA0NG/Sv2",
+        "environment" : "sandbox",
+        "event" : "end",
+        "kind" : "liveactivity",
+        "priority" : 5,
+        "staleDate" : "2025-10-09T09:08:20Z",
+        "token" : "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+      },
+      "secrets" : [
+        "counts",
+        "amber 0 red 0 green 0"
       ]
     }
   ]

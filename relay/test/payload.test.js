@@ -50,7 +50,11 @@ test('priority other than 5 or 10 is refused', async () => {
 
 test('liveactivity: its own topic, the envelope as content state, a stale date always', async () => {
   const { h, cap } = await liveHarness();
-  await h.post('/v1/push', { ...find('liveactivity-counts'), cap });
+  // The Core always names a stale date (RelayPushRequest.make); a source
+  // without it names none, and the relay puts its own.
+  assert.ok(find('liveactivity-counts').staleDate, 'the Core names one');
+  const { staleDate: _named, ...bare } = find('liveactivity-counts');
+  await h.post('/v1/push', { ...bare, cap });
   const { headers, payload } = h.apns.sent.at(-1);
   const now = Math.floor(h.clock.now / 1000);
   assert.equal(headers['apns-topic'], 'com.lampboard.ios.push-type.liveactivity');
@@ -71,6 +75,8 @@ test('liveactivity: a stale date the source names is kept, within eight hours', 
   await h.post('/v1/push', { ...find('liveactivity-counts'), cap, event: 'end', dismissalDate: now + 60 });
   assert.equal(h.apns.sent.at(-1).payload.aps.event, 'end');
   assert.equal(h.apns.sent.at(-1).payload.aps['dismissal-date'], now + 60);
+  assert.equal(find('liveactivity-end').event, 'end', 'the Core writes the end as the relay reads it');
+  assert.equal((await h.post('/v1/push', { ...find('liveactivity-end'), cap })).status, 200);
   assert.equal((await h.post('/v1/push', { ...find('liveactivity-counts'), cap, event: 'start' })).status, 400);
   assert.equal((await h.post('/v1/push', { ...find('liveactivity-counts'), cap, staleDate: 'tomorrow' })).status, 400);
 });

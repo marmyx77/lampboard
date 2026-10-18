@@ -130,8 +130,10 @@ public struct V1Service {
             return [V1ServerMessage(re: re, .result(V1Result(op: "cmd")))]
         case .pushRegister(let registration):
             if let problem = registration.problem { return refuse(.badRequest, problem) }
-            if let failure = source.register(registration, by: peer, at: now) { return [V1ServerMessage(re: re, .error(failure))] }
-            return [V1ServerMessage(re: re, .result(V1Result(op: "push.register")))]
+            switch source.register(registration, by: peer, at: now) {
+            case .success(let accepted): return [V1ServerMessage(re: re, .result(V1Result(op: "push.register", push: accepted)))]
+            case .failure(let failure): return [V1ServerMessage(re: re, .error(failure))]
+            }
         case .devices(let request):
             guard peer.role == .action else { return refuse(.forbidden, "the devices need the action key") }
             if let problem = request.problem { return refuse(.badRequest, problem) }
@@ -148,7 +150,7 @@ public struct V1Service {
             version: status.version, source: source.identity, startedAt: status.startedAt,
             binaryModifiedAt: status.binaryModifiedAt, configModifiedAt: status.configModifiedAt,
             stateAge: V1StateAge(seq: status.seq, lastEventAt: status.lastEventAt, lastProbeAt: status.lastProbeAt, at: now),
-            relay: status.relay, role: peer.role, mode: status.mode
+            relay: status.relay, role: peer.role, mode: status.mode, away: source.away(for: peer, at: now)
         )
     }
 

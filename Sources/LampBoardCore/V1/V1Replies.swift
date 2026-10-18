@@ -61,11 +61,14 @@ public struct V1Hello: Codable, Equatable, Sendable {
     /// How a source that can serve two ways serves this connection; absent for
     /// one that serves only one way. A client one version behind ignores it.
     public let mode: V1ServingMode?
+    /// What happened while this device was away from the app, once (§5.8);
+    /// absent when nothing the column does not show.
+    public let away: String?
 
     public init(
         protocol: Int = V1Protocol.version, minClient: Int = V1Protocol.minClient, version: String,
         source: V1SourceIdentity, startedAt: Date, binaryModifiedAt: Date? = nil, configModifiedAt: Date? = nil,
-        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role, mode: V1ServingMode? = nil
+        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role, mode: V1ServingMode? = nil, away: String? = nil
     ) {
         self.protocol = `protocol`
         self.minClient = minClient
@@ -78,6 +81,7 @@ public struct V1Hello: Codable, Equatable, Sendable {
         self.relay = relay
         self.role = role
         self.mode = mode
+        self.away = away
     }
 }
 
@@ -105,10 +109,23 @@ public struct V1RelayHealth: Codable, Equatable, Sendable {
     /// `ok`, or what went wrong: `refused`, `quota`, `unreachable`.
     public let outcome: String
     public let at: Date
+    /// For `quota`: the seconds the relay asked to wait (`Retry-After`), which
+    /// the phone's strip says (§2.8, point 5).
+    public let retryAfter: Int?
+    /// The relay's own sentence, when it gave one: never a token.
+    public let reason: String?
 
-    public init(outcome: String, at: Date) {
+    public init(outcome: String, at: Date, retryAfter: Int? = nil, reason: String? = nil) {
         self.outcome = outcome
         self.at = at
+        self.retryAfter = retryAfter
+        self.reason = reason
+    }
+
+    /// Until when the relay asked this source to hold back, if it did.
+    public var holdUntil: Date? {
+        guard outcome == "quota", let retryAfter, retryAfter > 0 else { return nil }
+        return at.addingTimeInterval(TimeInterval(retryAfter))
     }
 }
 
@@ -276,9 +293,33 @@ public struct V1Transcript: Codable, Equatable, Sendable {
 public struct V1Result: Codable, Equatable, Sendable {
     /// The request it answers, by `op`.
     public let op: String
+    /// For `push.register`: what the device needs to open this source's
+    /// envelopes.
+    public let push: V1PushAccepted?
 
-    public init(op: String) {
+    public init(op: String, push: V1PushAccepted? = nil) {
         self.op = op
+        self.push = push
+    }
+}
+
+/// A source's answer to `push.register`: its half of the envelope key and the
+/// names the key is bound to (`PushEnvelope.key(mine:theirs:source:device:)`).
+///
+/// The device learns its own name here: it is the one the source gave it at
+/// pairing (`lampd devices add`), which the phone was never told.
+public struct V1PushAccepted: Codable, Equatable, Sendable {
+    /// The source's X25519 public key, base64.
+    public let envelopeKey: String
+    /// The source's name in the key derivation.
+    public let source: String
+    /// The device's name in the key derivation.
+    public let device: String
+
+    public init(envelopeKey: String, source: String, device: String) {
+        self.envelopeKey = envelopeKey
+        self.source = source
+        self.device = device
     }
 }
 
