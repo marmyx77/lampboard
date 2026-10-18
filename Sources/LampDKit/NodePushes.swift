@@ -72,6 +72,9 @@ public final class NodePushes: @unchecked Sendable {
     /// A Live Activity is refreshed this often even when nothing changed, so
     /// its stale date only ever passes when this machine is silent.
     public static let liveActivityEvery: TimeInterval = 10 * 60
+    /// The fewest seconds between two Live Activity updates when only work
+    /// came or went (the relay allows 120 an hour).
+    public static let liveActivityQuiet: TimeInterval = 60
     /// How often the relay's `/health` is asked when nothing else was sent.
     public static let healthEvery: TimeInterval = 10 * 60
 
@@ -173,7 +176,15 @@ public final class NodePushes: @unchecked Sendable {
                 }
                 if let live = registration.liveActivityToken, let liveCap = registration.liveActivityCapability {
                     let last = state.lastLiveActivity[id] ?? .distantPast
-                    if state.liveCounts[id] != counts || now.timeIntervalSince(last) >= Self.liveActivityEvery {
+                    let since = now.timeIntervalSince(last)
+                    // A row starting or stopping to want the person shows at
+                    // once; work coming and going waits a minute, or a busy
+                    // machine would spend the relay's quota in a quarter of an
+                    // hour (seen on the fake node: one every look).
+                    let before = state.liveCounts[id]
+                    let urgent = before.map { $0.waiting != counts.waiting || $0.failed != counts.failed } ?? true
+                    let moved = before != counts
+                    if (moved && (urgent || since >= Self.liveActivityQuiet)) || since >= Self.liveActivityEvery {
                         let content = next(PushContent(source: identity.name, journal: state.journal, seq: 0, at: now, title: "counts",
                                                        body: "", session: nil, event: .counts, counts: counts))
                         if let request = seal(content, kind: .liveactivity, urgent: false, to: id, registration,

@@ -151,6 +151,29 @@ enum PushSuite {
             t.expect(!file.contains(token), "and gone from the file")
         },
 
+        TestCase("The Live Activity follows the wait for the person at once, the work at most once a minute") { t in
+            let paths = F.home("push-live")
+            defer { F.remove(paths) }
+            let relay = FakeRelay()
+            let service = live(paths, relay)
+            let r = registration()
+            let withActivity = V1PushRegistration(capability: r.capability, token: r.token, environment: r.environment,
+                                                  envelopeKey: r.envelopeKey, liveActivityToken: String(repeating: "cd", count: 40),
+                                                  liveActivityCapability: "bGl2ZQ==", preferences: r.preferences)
+            _ = service.register(withActivity, by: device, at: F.t0)
+            // Work that comes and goes every five seconds, for a minute and a half.
+            for step in 0..<18 {
+                service.absorb(F.look([F.record(F.a, pid: 10, status: step % 2 == 0 ? "busy" : "idle")], at: F.t0 + Double(step) * 5))
+            }
+            _ = service.pushes.drain()
+            let quiet = relay.pushes.filter { $0.kind == .liveactivity }.count
+            t.expect(quiet <= 3, "work alone: at most once a minute, not every look (\(quiet) in 90 s)")
+            service.absorb(F.look([F.record(F.a, pid: 10, status: "waiting")], at: F.t0 + 91))
+            _ = service.pushes.drain()
+            t.expectEqual(relay.pushes.filter { $0.kind == .liveactivity }.count, quiet + 1, "a session waiting for you: at once")
+            t.expect(relay.pushes.filter { $0.kind == .liveactivity }.allSatisfy { $0.staleDate != nil }, "every one with a stale date")
+        },
+
         TestCase("The envelope key is made once, whichever process makes it") { t in
             let paths = F.home("push-key")
             defer { F.remove(paths) }

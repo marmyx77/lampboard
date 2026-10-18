@@ -1014,6 +1014,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("if case .gone = outcome { forget(device: device, kind: kind, token: request.token) }", "", 1))
 PY
 
+# A Live Activity updated at every look spends the relay's hourly quota in a
+# quarter of an hour on a busy machine (seen on the fake node, W4).
+protect Sources/LampDKit/NodePushes.swift
+attack_platform Scripts/test-lampd.sh "the Live Activity updated at every look" "at most once a minute" <<'PY'
+p = "Sources/LampDKit/NodePushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("public static let liveActivityQuiet: TimeInterval = 60", "public static let liveActivityQuiet: TimeInterval = 0", 1))
+PY
+
 chapter "A phone's actions on a fake node"
 
 # Attachments by SFTP (H1.2-9): a new file only. Without SSH_FXF_EXCL a second
