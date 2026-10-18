@@ -37,11 +37,6 @@ public enum MacNodeLink {
     /// or after this long without any (N = 1 beat, with a margin for the network).
     public static let silentAfter: TimeInterval = 2
 
-    /// The Mac says where the person is again this often, even when nothing
-    /// changed: `lampd` takes a `here` it has not heard renewed for a while as
-    /// gone, so a Mac that died at the desk does not keep the phone quiet.
-    public static let presenceRefresh: TimeInterval = 60
-
     /// The header `lampd` puts on every hook event it forwards to the Mac (E3):
     /// `<journal>-<n>`. The Mac 2.4 drops one it has already taken, so an event
     /// that arrived both ways during a switch counts once.
