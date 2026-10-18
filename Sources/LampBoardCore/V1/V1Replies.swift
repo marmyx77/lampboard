@@ -64,11 +64,16 @@ public struct V1Hello: Codable, Equatable, Sendable {
     /// What happened while this device was away from the app, once (§5.8);
     /// absent when nothing the column does not show.
     public let away: String?
+    /// The Mac's settings the phone needs for this source (W5): the permission
+    /// mode new sessions start in, *Send messages*, the palette. Absent until
+    /// the Mac wrote them; a client one version behind ignores it.
+    public let settings: MacNodeSettings?
 
     public init(
         protocol: Int = V1Protocol.version, minClient: Int = V1Protocol.minClient, version: String,
         source: V1SourceIdentity, startedAt: Date, binaryModifiedAt: Date? = nil, configModifiedAt: Date? = nil,
-        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role, mode: V1ServingMode? = nil, away: String? = nil
+        stateAge: V1StateAge, relay: V1RelayHealth? = nil, role: V1Role, mode: V1ServingMode? = nil, away: String? = nil,
+        settings: MacNodeSettings? = nil
     ) {
         self.protocol = `protocol`
         self.minClient = minClient
@@ -82,6 +87,7 @@ public struct V1Hello: Codable, Equatable, Sendable {
         self.role = role
         self.mode = mode
         self.away = away
+        self.settings = settings
     }
 }
 

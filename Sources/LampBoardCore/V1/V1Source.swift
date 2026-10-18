@@ -61,11 +61,14 @@ public struct V1SourceStatus: Equatable, Sendable {
     /// How the source is serving this connection, when it can serve it two ways
     /// (`lampd`: its service, or the files read by the connection itself).
     public let mode: V1ServingMode?
+    /// The Mac's settings the phone needs for this source (W5, §2.12): the Mac's
+    /// own, or the copy it wrote into a node's `lampd`. Absent until written.
+    public let settings: MacNodeSettings?
 
     public init(
         version: String, startedAt: Date, binaryModifiedAt: Date? = nil, configModifiedAt: Date? = nil,
         journal: String, seq: Int, lastEventAt: Date?, lastProbeAt: Date?, relay: V1RelayHealth? = nil,
-        mode: V1ServingMode? = nil
+        mode: V1ServingMode? = nil, settings: MacNodeSettings? = nil
     ) {
         self.version = version
         self.startedAt = startedAt
@@ -77,6 +80,7 @@ public struct V1SourceStatus: Equatable, Sendable {
         self.lastProbeAt = lastProbeAt
         self.relay = relay
         self.mode = mode
+        self.settings = settings
     }
 }
 

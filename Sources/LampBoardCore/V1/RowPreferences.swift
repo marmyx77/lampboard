@@ -1,5 +1,4 @@
 import Foundation
-import LampBoardCore
 
 /// The person's choices about the rows of this machine (§2.12): a name, mute,
 /// hidden, the place in the column, when the last answer was read, and
@@ -90,6 +89,31 @@ public struct RowPreferences: Equatable, Sendable {
         return V1Row(session: session, source: row.source, owner: row.owner, extras: extras)
     }
 
+    /// This copy and `other` merged field by field (§2.12, the Mac 2.4's
+    /// migration): for each row and each field the value written last wins,
+    /// with its date; at a tie, this copy's. `lampd` calls it with the Mac's
+    /// copy as `other`, so nothing done from the phone is lost or done twice.
+    public func merged(with other: RowPreferences) -> RowPreferences {
+        func pick<V>(_ mine: Stamped<V>?, _ theirs: Stamped<V>?) -> Stamped<V>? {
+            guard let theirs else { return mine }
+            guard let mine else { return theirs }
+            return theirs.at > mine.at ? theirs : mine
+        }
+        var out = rows
+        for (id, theirs) in other.rows {
+            let mine = rows[id] ?? Row()
+            var row = Row()
+            row.label = pick(mine.label, theirs.label)
+            row.muted = pick(mine.muted, theirs.muted)
+            row.hidden = pick(mine.hidden, theirs.hidden)
+            row.order = pick(mine.order, theirs.order)
+            row.readAt = pick(mine.readAt, theirs.readAt)
+            row.dismissedAt = pick(mine.dismissedAt, theirs.dismissedAt)
+            if !row.isEmpty { out[id] = row }
+        }
+        return RowPreferences(rows: out)
+    }
+
     /// Choices about rows that have not been seen for `age`: a session gone for
     /// good leaves nothing behind for ever.
     public mutating func forget(besides live: Set<String>, olderThan age: TimeInterval, at now: Date) {
@@ -154,40 +178,15 @@ extension RowPreferences {
         return RowPreferences(rows: out)
     }
 
-    static func time(_ date: Date) -> String {
+    public static func time(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
     }
 
-    static func date(_ text: String) -> Date? {
+    public static func date(_ text: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: text) ?? ISO8601DateFormatter().date(from: text)
-    }
-}
-
-/// The preferences file, read and written under a lock: the service and a
-/// forced command reading files may both write it.
-public struct PreferencesFile: Sendable {
-    public let path: String
-
-    public init(path: String) { self.path = path }
-
-    public func load() -> RowPreferences {
-        guard let data = FileManager.default.contents(atPath: path) else { return RowPreferences() }
-        return RowPreferences.decode(data)
-    }
-
-    /// Reads the file again under the lock, applies `change`, writes it back,
-    /// and returns what was written.
-    @discardableResult
-    public func update(_ change: (inout RowPreferences) -> Void) throws -> RowPreferences {
-        try FileLock.with(path + ".lock") {
-            var preferences = load()
-            change(&preferences)
-            try AtomicFile.write(try preferences.encoded(), to: path)
-            return preferences
-        }
     }
 }

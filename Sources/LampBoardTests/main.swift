@@ -200,6 +200,7 @@ let suites: [TestSuite] = [
     V1ProbeSourceSuite.suite,
     ProbeLinkSuite.suite,
     NodeActionsSuite.suite,
+    MacNodeLinkSuite.suite,
 ]
 
 let filter = CommandLine.arguments.dropFirst().first

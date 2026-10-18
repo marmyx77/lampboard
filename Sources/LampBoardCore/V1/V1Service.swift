@@ -150,7 +150,8 @@ public struct V1Service {
             version: status.version, source: source.identity, startedAt: status.startedAt,
             binaryModifiedAt: status.binaryModifiedAt, configModifiedAt: status.configModifiedAt,
             stateAge: V1StateAge(seq: status.seq, lastEventAt: status.lastEventAt, lastProbeAt: status.lastProbeAt, at: now),
-            relay: status.relay, role: peer.role, mode: status.mode, away: source.away(for: peer, at: now)
+            relay: status.relay, role: peer.role, mode: status.mode, away: source.away(for: peer, at: now),
+            settings: status.settings
         )
     }
 

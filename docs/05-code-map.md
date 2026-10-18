@@ -1,13 +1,13 @@
 # Code map
 
-~101,200 lines of Swift across fourteen targets. For each file: what it contains, why
+~101,700 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  30,525 lines · 220 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  30,945 lines · 222 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,792 lines · 168 files   shell: AppKit, network, windows
-  LampBoardTests/  22,203 lines · 150 files   1557 cases, instantaneous
+  LampBoardTests/  22,294 lines · 151 files   1565 cases, instantaneous
   LampBoardE2E/    5,750 lines · 25 files   193 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -15,7 +15,7 @@ Sources/
   MacSourceTests/   1,321 lines · 7 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         3,138 lines · 23 files   lampd: the Linux machine's service
+  LampDKit/         2,972 lines · 23 files   lampd: the Linux machine's service
   LampD/              231 lines · 1 files   lampd's command line
   LampDTests/         896 lines · 7 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
@@ -1970,6 +1970,31 @@ one-time code (`MacPairingCode`, twelve characters nobody misreads); the
 pairing request and reply. **What you would break**: a parse that accepts a
 line it does not name is a command from the phone on the Mac.
 
+### `MacNodeLink.swift` · 217
+The Mac and a node's `lampd` on the tunnel's own ssh connection (W5, §2.3,
+§2.12): the tunnel runs `lampd mac-link` on the node, or a silent wait where
+there is none. Down it, one JSON line each (`MacToNode`): where the person is
+(`MacPresence`, Q8), the Mac's settings the phone needs for the node
+(`MacNodeSettings`: permission mode, *Send messages*, palette), a panel's
+low-power change to a node's row, and once the panel's own choices to merge.
+Up it (`NodeToMac`): a heartbeat every 0.3 s and the node's choices when they
+change. `MacNodeLinkWatch` turns the beats into the tunnel's port — the next
+one after three healthy beats, the hooks' own at the first that says no or
+after two seconds of silence — and into "lampd healthy", which makes `lampd`
+the owner of the node's rows (§2.9). `X-LampBoard-Event` names each event
+`lampd` forwards. **What you would break**: a port handed back on a single
+missed beat makes the tunnel flap; one kept on silence loses every hook while
+`lampd` is down.
+
+### `RowPreferences.swift` · 192
+The person's choices about a node's rows (§2.12) — name, mute, hidden, place,
+read, taken off — each with the time it was set, as `lampd` keeps them, the
+phone writes them, and from W5 the Mac merges its own into them once: per
+field the value written last wins, at a tie the node's (`merged(with:)`).
+Here and not in `lampd` so that the Mac reads and writes the same shape.
+**What you would break**: a tie won by the Mac undoes what the person did from
+the phone the same second.
+
 ## `Push/`
 
 What a source decides to notify (W4 of the mobile plan, §2.9), written once so
@@ -2566,7 +2591,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1557 cases
+## `LampBoardTests/` — 1565 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2660,6 +2685,7 @@ script, before it was split. The most important ones:
 | `SessionActivitySuite` | a session found by its id, or by LampMaster's eight characters only when they name one; what each session has been doing, tool by tool and turn by turn |
 | `TranscriptPreviewSuite` | the last thing said, read from a transcript's tail (moved here from the Plancia's suite, D165) |
 | `NodeActionsSuite` | a device's actions (W3): no command from an argument that is not one; Bypass refused until turned on; End leaving a reused pid's program running and ending the process its file names; a second Move refused by the first one's lock, a stale lock taken over; Resume refused while a live process holds the conversation; a second `claude attach` refused while the first is open; the look naming each process with its start; the attachments folder made inside the project, refused through a link out |
+| `MacNodeLinkSuite` | the Mac and `lampd` (W5): the tunnel's port goes to `lampd` after three healthy beats and comes back at the first no or after the silence; the secondary port is the next one; a line from the Mac carries one thing and never a device's focus; lines read back as written; Bypass from the start only when the Mac's mode is Bypass; the migration's merge, last written wins and a tie keeps the node's |
 | `RemoteMoveSuite` | moving a conversation from another machine: only a start time that is one, never init; a process that is not the one named is left alone, the one named is ended |
 | `RemoteFoldersSuite` | another machine's folders: a listing that starts at home or an absolute path, quoted, and refuses anything else; the answer in Finder's order, hidden ones left out |
 | `RowActivitySuite` | the second line for every state: the ask, the reason, the tool and when it may be stuck, the answer's first line, what holds a blue row, the agent at rest, the machine of a remote row, `+N` for a project of several, a blank first line skipped; one line, cut, with no control or bidi character |
@@ -2855,7 +2881,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `NodePushes.swift` | the relay's client (W4): registrations kept `0600` by whichever process takes them, the envelope key made once under a lock, the Core's planner after each look with its memory on disk, alerts, counts and Live Activity updates sealed per device and sent on a queue of their own; the relay's answer in `hello`, `Retry-After` respected, a gone token dropped. Only the service sends |
 | `CurlRelayTransport.swift` | the relay's bytes through the machine's `curl`, the body on standard input: certificates and proxies are the system's, nothing secret on a command line |
 | `NodeJournal.swift` | the numbered journal on disk: a restart keeps its name and numbers; events past the rows start a new one |
-| `RowPreferences.swift` | name, mute, hidden, place, read, taken off, each with its date, and the file under a lock |
+| `PreferencesFile.swift` | the person's choices about this machine's rows (`RowPreferences`, in the Core) read and written under a lock |
 | `NodeTranscripts.swift` | the last messages of a conversation and how many were not sent, read with `TranscriptTail` |
 | `AuthorizedKeys.swift` | the phone's two lines, their marker, and a rewrite that refuses to move any other line |
 | `DevicesStore.swift` | `devices add`, `list`, `revoke`: the lines and the register under one lock; a link refused, the file's mode kept |
