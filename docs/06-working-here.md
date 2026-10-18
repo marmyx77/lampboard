@@ -91,7 +91,7 @@ things, not two: ✓ it looked and the claim holds, ✗ the claim is false, and 
 could not observe what it judges. **A green with a ⚠ in it is not a green**, and
 it exits 3 to say so.
 
-`bite.sh` is the one that judges the others. It commits eighty-two violations — a
+`bite.sh` is the one that judges the others. It commits eighty-three violations — a
 drifted figure, a broken link, a planted home directory, a suite nobody runs, an
 assertion that has stopped asserting — and fails if any gate does not notice.
 Every mutation is undone afterwards, including on Ctrl-C.

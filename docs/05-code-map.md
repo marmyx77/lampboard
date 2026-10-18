@@ -13,9 +13,9 @@ Sources/
   LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         3,093 lines · 23 files   lampd: the Linux machine's service
+  LampDKit/         3,116 lines · 23 files   lampd: the Linux machine's service
   LampD/              216 lines · 1 files   lampd's command line
-  LampDTests/         855 lines · 7 files   lampd's suite, on Linux
+  LampDTests/         878 lines · 7 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2931,5 +2931,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits eighty-two violations and demands eighty-two catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits eighty-three violations and demands eighty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
