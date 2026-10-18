@@ -41,13 +41,41 @@ enum ParityE2ESuite {
                 func id(_ original: String) -> String { "parity-\(run)-\(original)" }
                 // A conversation for each session, where the app looks for it: a
                 // session that only starts earns no row without one.
-                for original in Set(events.compactMap { ($0["payload"] as? [String: Any])?["session_id"] as? String }) {
+                //
+                // And a process, as a real one has: the sweep keeps a terminal
+                // session's row only while its process lives. Without one, the
+                // first sweep that runs while another session's process is alive
+                // takes every row of the flow away ("lost 7 to reconcile" in the
+                // gate of 18 October): the parity was then a race with the clock.
+                let originals = Set(events.compactMap { ($0["payload"] as? [String: Any])?["session_id"] as? String })
+                var processes: [String: Process] = [:]
+                func end(_ original: String) {
+                    guard let process = processes.removeValue(forKey: original) else { return }
+                    try? FileManager.default.removeItem(
+                        at: app.home.appendingPathComponent(".claude/sessions/\(process.processIdentifier).json"))
+                    process.terminate()
+                    process.waitUntilExit()
+                }
+                defer { for original in Array(processes.keys) { end(original) } }
+                // A neighbour that lives, as there always is on a real machine:
+                // the sweep only takes rows away when it saw someone alive, so
+                // without one this check would pass for the wrong reason when the
+                // flow runs on its own.
+                for original in originals.union(["neighbour"]) {
                     app.writeTranscript(sessionId: id(original), cwd: workspace, title: "Parity \(original)")
+                    let process = Process()
+                    process.executableURL = URL(fileURLWithPath: "/bin/sleep")
+                    process.arguments = ["600"]
+                    guard (try? process.run()) != nil else { a.expect(false, "no process for \(original)"); return }
+                    processes[original] = process
+                    app.writeLiveSession(sessionId: id(original), cwd: workspace, entrypoint: "cli", pid: process.processIdentifier)
                 }
                 var mismatches: [String] = []
                 for (index, event) in events.enumerated() where index < golden.count {
                     guard var payload = event["payload"] as? [String: Any], let original = payload["session_id"] as? String
                     else { continue }
+                    // A session that ends has no process any more.
+                    if payload["hook_event_name"] as? String == "SessionEnd" { end(original) }
                     payload["session_id"] = id(original)
                     payload["cwd"] = workspace
                     payload.removeValue(forKey: "transcript_path")
@@ -74,6 +102,20 @@ enum ParityE2ESuite {
                                           + "/\(session?.activeSubagents ?? 0), lampd says \(expected.status)/\(expected.activeSubagents)"
                                           + " (seen: \(seen.joined(separator: ", ")); live files: \(live.sorted().joined(separator: ", ")))")
                     }
+                }
+                // The last lamp of every session, through two sweeps: the rows a
+                // flow leaves must survive the app's realignment, every time,
+                // not only when no sweep happened to fall inside the flow.
+                var last: [String: String] = [:]
+                for (index, event) in events.enumerated() where index < golden.count {
+                    if let original = (event["payload"] as? [String: Any])?["session_id"] as? String { last[original] = golden[index].status }
+                }
+                let held = app.holdsThroughTwoSweeps {
+                    last.allSatisfy { original, status in (app.session(id: id(original))?.status ?? "absent") == status }
+                }
+                if !held {
+                    let now = last.keys.sorted().map { "\($0) \(app.session(id: id($0))?.status ?? "absent") (lampd \(last[$0] ?? ""))" }
+                    mismatches.append("after two sweeps: \(now.joined(separator: ", "))")
                 }
                 // With LAMPBOARD_DEBUG set, what the app itself said about these rows.
                 let debug = (try? String(contentsOf: app.home.appendingPathComponent(".lampboard/debug.log"), encoding: .utf8)) ?? ""

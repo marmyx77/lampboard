@@ -40,6 +40,7 @@
 #                                (needs docker, and systemd --user for the watchdog)
 #   ./Scripts/bite.sh --links    only what the Mac app links (needs a Mac)
 #   ./Scripts/bite.sh --pins     only the pins of the packages (needs swift)
+#   ./Scripts/bite.sh --parity   only the Mac app's parity with lampd (needs a Mac)
 
 set -uo pipefail   # deliberately not -e: half of what runs here is meant to fail
 
@@ -561,6 +562,51 @@ s = open(p).read().replace("        case source, owner\n", "        case source,
 open(p, "w").write(s)
 PY
 
+chapter "Honest pushes (W4)"
+
+# «Push oneste» (§6.2): what is already amber when a source starts is not news.
+# A planner that forgets to remember it rings ten times at the first look.
+protect Sources/LampBoardCore/Push/PushPlanner.swift
+attack_swift "the announced memory emptied at the first look" "Ten amber rows at start are zero notifications" 1 <<'PY'
+p = "Sources/LampBoardCore/Push/PushPlanner.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("                memory.announced.insert(row.id)\n                memory.amberSince[row.id] = row.session.statusSince",
+                             "                memory.amberSince[row.id] = row.session.statusSince", 1))
+PY
+
+# Amber after four seconds: a permission the agent answers itself is no alert.
+protect Sources/LampBoardCore/Push/PushPlanner.swift
+attack_swift "amber announced at once" "answered within four seconds never rings" 1 <<'PY'
+p = "Sources/LampBoardCore/Push/PushPlanner.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("public static let amberDelay: TimeInterval = 4", "public static let amberDelay: TimeInterval = 0", 1))
+PY
+
+# The device last used rings, the others quietly two minutes later (Q9).
+protect Sources/LampBoardCore/Push/PushPlanner.swift
+attack_swift "every device rings at once" "the other gets a quiet copy two minutes later" 1 <<'PY'
+p = "Sources/LampBoardCore/Push/PushPlanner.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("due: now.addingTimeInterval(othersAfter)", "due: now", 1))
+PY
+
+# A gone token (APNs 410) is the one answer that makes a source drop a device.
+protect Sources/LampBoardCore/V1/RelayClient.swift
+attack_swift "410 read as an ordinary refusal" "Each answer of the relay is one outcome" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/RelayClient.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("case 410: return .gone(reason)", "case 410: return .refused(reason)", 1))
+PY
+
+# «Il relay non legge»: a source refuses to send a push whose bytes say what
+# the envelope was meant to hide.
+protect Sources/LampBoardCore/V1/RelayRequest.swift
+attack_swift "a readable envelope let through" "A push that was never sealed is refused before it leaves" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/RelayRequest.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if secrets.contains(where: { Self.contains(Array(bytes), Array($0.utf8)) }) { throw Refusal.readable }", "", 1))
+PY
+
 chapter "Claude Code's word against its own transcript"
 
 # A conversation Claude Code compacts while idle says `busy` in its file
@@ -959,6 +1005,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("public static let minClient = 1", "public static let minClient = 2", 1))
 PY
 
+# A token APNs says is gone (410) is dropped: kept, every alert for that
+# device is a refusal for ever (W4).
+protect Sources/LampDKit/NodePushes.swift
+attack_platform Scripts/test-lampd.sh "a gone token kept" "410: the token is dropped" <<'PY'
+p = "Sources/LampDKit/NodePushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if case .gone = outcome { forget(device: device, kind: kind, token: request.token) }", "", 1))
+PY
+
 chapter "A phone's actions on a fake node"
 
 # Attachments by SFTP (H1.2-9): a new file only. Without SSH_FXF_EXCL a second
@@ -1057,9 +1112,28 @@ PY
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
+if [ "$WHAT" = "all" ] || [ "$WHAT" = "--parity" ]; then
+
+chapter "The Mac's parity holds through the sweeps"
+
+# The recorded flows played into the real app (ParityE2ESuite) must survive the
+# app's realignment, which keeps a terminal row only while its process lives.
+# Without a process per session, the flows race the sweep: red on 18 October in
+# every gate, green by hand.
+protect Sources/LampBoardE2E/ParityE2ESuite.swift
+attack_platform Scripts/test-parity-e2e.sh "the recorded sessions played with no process" "after two sweeps" <<'PY'
+p = "Sources/LampBoardE2E/ParityE2ESuite.swift"
+s = open(p).read()
+old = "app.writeLiveSession(sessionId: id(original), cwd: workspace, entrypoint: \"cli\", pid: process.processIdentifier)"
+open(p, "w").write(s.replace(old, "if original == \"neighbour\" { " + old + " }", 1))
+PY
+
+fi
+
+# ═════════════════════════════════════════════════════════════════════════════
 # Everywhere but the platform runs, as before they existed.
 if [ "$WHAT" != "--ios" ] && [ "$WHAT" != "--linux" ] && [ "$WHAT" != "--nodelink" ] && [ "$WHAT" != "--links" ] \
-    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ]; then
+    && [ "$WHAT" != "--pins" ] && [ "$WHAT" != "--lampd" ] && [ "$WHAT" != "--parity" ]; then
 
 chapter "The mod loads"
 
