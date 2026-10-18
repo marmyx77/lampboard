@@ -1327,7 +1327,7 @@ attack_platform Scripts/test-lampd.sh "the Mac at the desk not counted by the pl
 p = "Sources/LampDKit/NodePushes.swift"
 s = open(p).read()
 old = "if macHere { pushDevices.append(PushDevice(id: Self.macAtTheDesk, usedAt: now)) }"
-open(p, "w").write(s.replace(old, "_ = macHere", 1))
+open(p, "w").write(s.replace(old, old.replace("if macHere {", "if macHere && now < .distantPast {"), 1))
 PY
 
 # Q8: a here never repeated kept good for ever is a Mac that vanished keeping
@@ -1346,7 +1346,7 @@ protect Sources/LampDKit/NodeHooks.swift
 attack_platform Scripts/test-lampd.sh "the files' idle no longer resting a yellow nothing ends" "A yellow the hooks cannot end rests" <<'PY'
 p = "Sources/LampDKit/NodeHooks.swift"
 s = open(p).read()
-open(p, "w").write(s.replace("public init(reconcilesWithFiles: Bool = true)", "public init(reconcilesWithFiles: Bool = false)", 1))
+open(p, "w").write(s.replace("guard reconcilesWithFiles else { return }", "guard !reconcilesWithFiles else { return }", 1))
 PY
 
 # The fake node isolated (§6.2): a check's port override taken in a real home

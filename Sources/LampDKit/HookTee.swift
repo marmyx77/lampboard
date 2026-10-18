@@ -55,7 +55,7 @@ public final class HookTee: @unchecked Sendable {
 
     public var stats: Stats { locked { statsValue } }
 
-    /// The token the hooks already send (§2.3, «token adottato»): the one the
+    /// The token the hooks already send (§2.3, the token adopted): the one the
     /// Mac wrote in `~/.lampboard/token`, read again at every request so a
     /// repair that writes a new one is followed. Never one made here: a new
     /// token would put out the colours of every session already running.

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Every route of the Mac's hooks' port has an owner in lampd's table (W5, §2.3
-# of the mobile plan, §6.2 «Ogni rotta ha un padrone»).
+# of the mobile plan, §6.2: every route has an owner).
 #
 # WHY THIS EXISTS
 # Once lampd holds a node's hooks' port, a route the Mac learns and lampd does

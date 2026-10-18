@@ -130,8 +130,8 @@ enum MacLinkSuite {
         },
 
         TestCase("LAMPD_HOOK_PORT is taken in a check's home only (the fake node isolated)") { t in
-            let real = LampDPaths(home: "/home/somebody", stateDirectory: "/tmp/x", configDirectory: "/tmp/x", runtimeDirectory: "/tmp/x")
-            if case .success = HookPortOverride.port(environment: ["LAMPD_HOOK_PORT": "31000", "HOME": "/home/somebody"], paths: real) {
+            let real = LampDPaths(home: "/srv/elsewhere", stateDirectory: "/tmp/x", configDirectory: "/tmp/x", runtimeDirectory: "/tmp/x")
+            if case .success = HookPortOverride.port(environment: ["LAMPD_HOOK_PORT": "31000", "HOME": "/srv/elsewhere"], paths: real) {
                 t.fail("a real home's port taken by a check")
             }
             let check = F.home("override")
@@ -147,6 +147,8 @@ enum MacLinkSuite {
             let hooks = NodeHooks()
             let start = F.t0
             hooks.signal(HookSignal(sessionId: F.a, event: .userPromptSubmit, cwd: "/home/dev/project", entrypoint: "cli"), at: start)
+            t.expectEqual(hooks.overlaid([MacLinkSuite.fileRow()], at: start + 200).first?.session.status, SessionStatus.working.rawValue,
+                          "yellow from the hooks before the files speak")
             // The turn's Stop never came (a compaction took the turn guard): only the file can say it is over.
             let idle = MacLinkSuite.liveIdle(since: start + 120)
             hooks.reconcile(with: [idle], at: start + 200)

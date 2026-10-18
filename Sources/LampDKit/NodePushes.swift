@@ -137,8 +137,8 @@ public final class NodePushes: @unchecked Sendable {
 
     /// What the rows of one look send. Called by the service only. `macHere`:
     /// the person is at the Mac (`lampd mac-link`, Q8), whose own banners ring
-    /// for these rows; the phone does not ring as well (§6.2 «Nessuna doppia
-    /// notifica»).
+    /// for these rows; the phone does not ring as well (§6.2, no double
+    /// notification).
     public func after(rows: [V1Row], at now: Date, macHere: Bool = false) {
         guard let relay, let key else { return }
         var work: [(device: String, request: RelayPushRequest, kind: PushKind, event: PushEvent?, session: String?)] = []

@@ -82,7 +82,7 @@ public final class LampDService: @unchecked Sendable {
         }
         guard let fd, let bound = LoopbackTCP.boundAddress(fd) else { return }
         guard bound.host == "127.0.0.1" else {
-            // §6.2 «Porta degli hook su loopback»: anything else is refused, never served.
+            // §6.2, the hooks' port on loopback: anything else is refused, never served.
             close(fd)
             hookPortProblem = "the hooks' port came bound on \(bound.host), not 127.0.0.1: refused"
             log.write(hookPortProblem ?? "")

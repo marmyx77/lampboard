@@ -6790,3 +6790,71 @@ and the preferences written into `lampd` (`MacRows` names a node's rows as the n
 
 **Signal to revisit:** a phone that cannot reach the Mac's port (a firewall the person runs); Bonjour names
 that leak a person's name; a background session shared by two phones at once.
+
+## D181 · `lampd` holds the hooks' port in tee, and hears what the Mac hears
+
+**Decided** (18 October 2026), as `lampd`'s part of W5 of the mobile plan (§2.3, §2.9, §2.12; ADR-65 point 3,
+E1–E3). On a node, the hooks' port — the one in `~/.lampboard/port`, 31000 on the always-on machine — is bound
+by systemd for `lampd` (`deploy/lampd/lampd.socket`, loopback only, enabled by `Scripts/lampd-install.sh
+--tee`) and `lampd` hears every hook and every report of the mod in tee:
+- **Read and passed on.** `/signal` and `/mod` are read with the Core's decoders and reducer — the same
+  functions `HookReplay` plays for the parity with the Mac — answered at once, and passed on after to the Mac's
+  tunnel, which now listens on the next port (`MacNodeLink.secondaryPort`). Each event passed on carries
+  `X-LampBoard-Event: <tee>-<n>`, so the Mac 2.4 can drop one it took twice during a switch (E3). With nobody
+  on that port the hook is still heard: the Mac away is not a fault.
+- **One owner per route.** `HookRoutes.table` gives every route the Mac's `SignalServer` serves one owner:
+  served (`/health`), read and passed on, passed on and observed (`/check` held up to 65 s, `/question` 30 s),
+  passed on byte for byte (`/sessions` and the mod's routes), refused (`/new`, `/open`, `/chat`, `/next` and the
+  Mac's own clients' routes: R2, stricter than before, when the node's token reached them), not found
+  (`/watch`). An unknown route is refused and logged. `Scripts/check-lampd-routes.sh` reads the routes out of
+  `SignalServer.swift` and the mod's hooks and is red while one has no row.
+- **The token adopted.** `lampd` reads `~/.lampboard/token` at each request and never writes one: a token of
+  its own would put out the colours of every session started before the switch. As on the Mac, a hook with a
+  wrong token is refused and one without is heard; the mod's reports need it.
+- **Heard rows.** A row any hook spoke for takes its colour from the hooks (`stateBasis: hooks`, new): green
+  with an answer to read, red, amber with its question. It keeps from the file where and what it is. A row no
+  hook spoke for keeps the file's rule unchanged, so the gate «one rule for the files» still holds. The files
+  keep two words (D177): their `busy` lights a row the hooks left at rest, and their `idle`, a minute old with
+  the hooks as quiet and no turn open in the tail, rests a yellow nothing will end — a compaction Claude Code
+  ran by itself while nobody typed, whose only hook says nothing of a turn. The defect the plan carried into
+  W5 is closed on the node by the same rule as on the Mac.
+- **The question the Mac holds** (D80, M9). While the Mac holds a `/check` or a `/question`, the row is amber
+  with its text and `heldByMac`, and the push leaves as soon as the amber has lasted the planner's four seconds
+  — no longer the 30 s measured in W4. The Mac's answer goes back to the mod untouched; with no Mac the answer
+  is an unsigned `ask`, which the mod reads as its own dialog. Nothing on the node answers a permission (R3, R4).
+- **The Mac on its own connection** (`lampd mac-link`, `MacNodeLink`). The tunnel's ssh runs it: a beat every
+  0.3 s saying whether the service serves from a fresh state (a service whose last look is older than three
+  intervals is not serving: the machine's known failure), the node's choices when they change, and the Mac's
+  lines down — presence, settings, a panel's low-power change, the migration — handed to the service or, while
+  it is down, carried out on the files (`mac.json`, `preferences.json`), so a restart loses none.
+- **The Mac at the desk keeps the phone quiet** (Q8, «no double notification»). A fresh `here` counts while
+  `lampd mac-link` was seen in the last minute and the Mac said it in the last ten (`MacNodeLink.linkGrace`,
+  `presenceStaleAfter`; the Mac repeats it every minute, `presenceRefresh`). Then the planner sees a present
+  pseudo-device: nothing rings, an amber stays unannounced and rings when the Mac goes away. Away, asleep,
+  never heard, or silent too long: the phone rings.
+- **Settings and the migration.** The Mac's permission mode, *Send messages* and palette are kept and served in
+  `hello.settings`; the panel's choices about the node's rows are merged once with `RowPreferences.merged`,
+  the node's value winning a tie.
+- **The way back.** `lampd release` closes the port, stops the socket and its retry timer, and leaves a file
+  that keeps the port the Mac's until removed; the Mac's tunnel takes the port back by itself. Without
+  `--tee` nothing changes from W3 and W4: the socket's unit is installed and left off.
+
+**Why.** The plan's §2.3: the node's notifications cannot wait 55 seconds behind the Mac's hold, the red and
+the question exist only in the hooks, and every hook must still reach the Mac. A tee keeps both: nothing the Mac
+sees changes, and the node hears it first.
+
+**Measured** on the fake node (`Scripts/test-lampd.sh`): the port bound on `127.0.0.1` only; a hook with the
+pre-existing token heard and passed on named; a wrong token refused; `/new` and `/chat` refused and never
+passed on; the Mac at the desk: an amber sent nothing; away: it rang; a question held eight seconds by the
+Mac's end made the row amber with «Bash: npm publish» and the push left while held; the idle compaction's flow
+reached the Mac's end exactly as sent; `lampd release` gave the port back. The flow is synthesized from the
+shape measured on the always-on machine for D177 (the hooks of an idle compaction: a `SessionStart` of source
+`compact` after the turn's `Stop`; one inside a turn), not recorded from a live compaction, which comes on
+Claude Code's schedule (54 minutes after the turn in the recorded morning).
+
+**Discarded:** `lampd` binding the port itself in production (a crash would lose the hooks of its restart;
+the socket keeps them queued, E1); restarting nothing when the socket comes up later (a running `lampd`
+cannot be handed a socket started after it, so the retry restarts it once; its phones resume by number).
+
+**Signal to revisit:** two accounts on one node whose ports are next to each other (the next port is the other
+account's); a Mac that never repeats its presence; a mod route the table refuses that the node turns out to need.

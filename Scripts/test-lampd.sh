@@ -349,6 +349,18 @@ as_dev "$TEE device ~/.local/state/lampd"
 as_dev "echo '{\"name\": \"fake-node\", \"probeInterval\": 2, \"relay\": \"http://127.0.0.1:$RELAYP\"}' > ~/.config/lampd/config.json"
 as_dev "setsid nohup $TEE mac $MACP /tmp/mac.log > /dev/null 2>&1 < /dev/null & setsid nohup $TEE relay $RELAYP /tmp/relay.log > /dev/null 2>&1 < /dev/null &"
 as_dev "python3 /opt/fixture/fixture.py frame 0 > /dev/null"
+# A Mac 2.3 whose tunnel already holds the hooks' port (§2.15, compatibility):
+# lampd does not take it, says why, and serves the files; the hooks still reach
+# that Mac as before.
+as_dev "setsid nohup $TEE mac $HOOKS /tmp/mac23.log > /dev/null 2>&1 < /dev/null & echo \$! > /tmp/mac23.pid"
+sleep 0.5
+as_dev "LAMPD_HOOK_PORT=$HOOKS setsid nohup lampd serve >> /tmp/lampd-tee.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
+for _ in $(seq 1 100); do as_dev "lampd status > /dev/null 2>&1" && break; sleep 0.2; done
+tee_check "a Mac 2.3's tunnel on the hooks' port: lampd leaves it, says why, and serves the files" \
+    'as_dev "lampd status" | grep -q "not held: 127.0.0.1:$HOOKS is taken" && [ "$(row $BUSY | cut -d" " -f2)" = "sessionFile" ]'
+tee_check "and the hooks still reach that Mac" \
+    'as_dev "$TEE hook $HOOKS UserPromptSubmit $BUSY" | grep -q "^200" && as_dev "grep -q /signal /tmp/mac23.log"'
+as_dev 'kill "$(cat /tmp/lampd.pid)" "$(cat /tmp/mac23.pid)"; for i in $(seq 1 50); do kill -0 "$(cat /tmp/lampd.pid)" 2>/dev/null || break; sleep 0.1; done'
 as_dev "LAMPD_HOOK_PORT=$HOOKS setsid nohup lampd serve >> /tmp/lampd-tee.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
 for _ in $(seq 1 100); do as_dev "lampd status > /dev/null 2>&1" && break; sleep 0.2; done
 sleep 1

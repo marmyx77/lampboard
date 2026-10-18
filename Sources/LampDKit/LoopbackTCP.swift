@@ -7,8 +7,8 @@ import Musl
 import Darwin
 #endif
 
-/// The hooks' port, on loopback and nowhere else (§2.3, §6.2 «Porta degli hook
-/// su loopback»): taken from systemd (`lampd.socket`, E1), or, for the checks,
+/// The hooks' port, on loopback and nowhere else (§2.3; §6.2, the hooks' port
+/// on loopback): taken from systemd (`lampd.socket`, E1), or, for the checks,
 /// bound here; and the connection to the Mac's tunnel on the next port.
 public enum LoopbackTCP {
 

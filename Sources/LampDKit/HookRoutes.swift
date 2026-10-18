@@ -9,7 +9,7 @@ import Darwin
 #endif
 
 /// Who answers each route of the hooks' port once `lampd` holds it (§2.3 of the
-/// mobile plan, the table «Tabella delle rotte»): every route the Mac's
+/// mobile plan, the table of routes): every route the Mac's
 /// `SignalServer` knows has one owner here, and a route nobody named is refused
 /// and logged. A white list for what is passed on, a black one for the rest.
 ///
@@ -123,7 +123,7 @@ public enum HookPortFile {
 /// `LAMPD_HOOK_PORT`: the checks' way to give the service a hooks' port of its
 /// own without systemd. Taken only in a home made for a check — one with
 /// `LAMPBOARD_HOME` set, or the fake node's `~/.lampd-fixture` — so that nothing
-/// pointed at a real machine's port can start (the gate «Nodo finto isolato»).
+/// pointed at a real machine's port can start (the gate «fake node isolated»).
 public enum HookPortOverride {
     public static let variable = "LAMPD_HOOK_PORT"
 

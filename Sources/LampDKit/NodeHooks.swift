@@ -9,7 +9,7 @@ import LampBoardCore
 /// A row any hook spoke for takes its colour from here — green "to read", red,
 /// amber with its question — and keeps from the file everything the file knows
 /// better: where it is, its folder, its title, tmux. A row no hook spoke for
-/// keeps the file's rule unchanged (the gate «Una sola regola dei file»).
+/// keeps the file's rule unchanged (the gate «one rule for the files»).
 ///
 /// The files still have the last word on two things (D177): `busy` lights a row
 /// the hooks left at rest, and an `idle` that has lasted a minute with the hooks

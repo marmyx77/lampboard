@@ -1,0 +1,23 @@
+# The hooks' port, bound by systemd for lampd (W5 of the mobile plan, §2.3;
+# ADR-65 point 3, E1): on loopback only, the port the hooks post to — the one in
+# ~/.lampboard/port, which Scripts/lampd-install.sh writes here in place of
+# @HOOK_PORT@. Bound before lampd starts and kept while it restarts, so a hook
+# that arrives during a restart waits in the queue instead of being lost. With
+# the port taken (the Mac's tunnel still on it) this unit does not start and
+# says so in the journal; lampd-socket-retry.timer tries again.
+# Installed but not enabled until `Scripts/lampd-install.sh --tee`: until then
+# the port stays the Mac's tunnel's and lampd reads the files (in the shade).
+
+[Unit]
+Description=LampBoard (lampd): the hooks' port on loopback
+
+[Socket]
+ListenStream=127.0.0.1:@HOOK_PORT@
+# One lampd takes every connection (Accept=no): the hooks' answers are its.
+Accept=no
+Service=lampd.service
+FreeBind=no
+Backlog=128
+
+[Install]
+WantedBy=sockets.target

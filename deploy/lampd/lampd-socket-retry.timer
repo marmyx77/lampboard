@@ -1,0 +1,14 @@
+# Runs lampd-socket-retry.service every two seconds (W5, §2.3, E1). Enabled
+# with lampd.socket by `Scripts/lampd-install.sh --tee`, stopped by
+# `lampd release`.
+
+[Unit]
+Description=LampBoard (lampd): try the hooks' port every two seconds
+
+[Timer]
+OnActiveSec=2s
+OnUnitActiveSec=2s
+AccuracySec=500ms
+
+[Install]
+WantedBy=timers.target

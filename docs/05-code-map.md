@@ -1,11 +1,11 @@
 # Code map
 
-~101,700 lines of Swift across fourteen targets. For each file: what it contains, why
+~103,300 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  30,945 lines · 222 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  30,966 lines · 222 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,792 lines · 168 files   shell: AppKit, network, windows
   LampBoardTests/  22,294 lines · 151 files   1565 cases, instantaneous
   LampBoardE2E/    5,750 lines · 25 files   193 cases, the real binary
@@ -15,9 +15,9 @@ Sources/
   MacSourceTests/   1,321 lines · 7 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         2,972 lines · 23 files   lampd: the Linux machine's service
-  LampD/              231 lines · 1 files   lampd's command line
-  LampDTests/         896 lines · 7 files   lampd's suite, on Linux
+  LampDKit/         4,140 lines · 29 files   lampd: the Linux machine's service
+  LampD/              267 lines · 1 files   lampd's command line
+  LampDTests/         1,332 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2818,8 +2818,10 @@ attachments that never overwrite, `lampd projects`, the project's shell, a
 low-power command through the read key) and the node's tmux with the options of
 `deploy/tmux/lampboard.conf`; only `Scripts/test-lampd.sh`
 runs it, with `Tests/NodeFixture/` (the session files' frames, `fixture.py` that
-plays them, the recorded hook flows and their golden reductions, and the reader of
-the app one version behind). `RealNodeChecks` (`NodeLinkCheck real`) is for a real
+plays them, the recorded hook flows and their golden reductions — the idle
+compaction's among them, D181 — `tee.py` that plays the Mac's end of the tunnel,
+the push relay and the hooks' posts for the tee, and the reader of the app one
+version behind). `RealNodeChecks` (`NodeLinkCheck real`) is for a real
 machine with a test key, never in a gate: 10 MiB byte for byte, the background
 rule's cycles leaving no client, the first frame cold and warm, all on a tmux server
 of its own (`-L lb-…`, refused otherwise), never the person's.
@@ -2887,12 +2889,18 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `DevicesStore.swift` | `devices add`, `list`, `revoke`: the lines and the register under one lock; a link refused, the file's mode kept |
 | `LocalNetworks.swift` | `from=` by default: the tailnet and this machine's own networks |
 | `UnixSocket.swift` | the socket calls, and `sd_notify` without libsystemd |
-| `LampDService.swift` | `lampd serve`: the main loop and its heartbeat, connections with bounded queues, `bye` on SIGTERM, the log |
+| `LampDService.swift` | `lampd serve`: the main loop and its heartbeat, connections with bounded queues, `bye` on SIGTERM, the log; the hooks' port taken (or why not), `mac-ping`, the Mac's lines, `rows`, `release` |
 | `LampDStdio.swift` | `lampd v1-stdio`: bytes to the service, or the files read in the same process when it is stopped |
 | `LampDStatus.swift` | what `status` says and the Quadro reads; the contract's stamp |
-| `LampDDoctor.swift` | `doctor`: tools, the running tmux's options (Q10, E14), the service and the age of its state, the phones' lines, the contract |
+| `LampDDoctor.swift` | `doctor`: tools, the running tmux's options (Q10, E14), the service and the age of its state, who holds the hooks' port and what the tee passed on, where the Mac says the person is, its settings, the phones' lines, the contract |
 | `LampDUsage.swift` | `usage`: the Core's allowance script run here |
-| `HookReplay.swift` | recorded hooks reduced as the tee will reduce them, for the parity with the Mac |
+| `HookReplay.swift` | recorded hooks reduced as the tee reduces them, for the parity with the Mac |
+| `HookRoutes.swift` | the hooks' port's route table (W5, §2.3, D181): every route the Mac's `SignalServer` serves with one owner here — read and passed on, served, passed on and observed, passed on, refused (R2: `/new`, `/open`, `/chat`, `/next`, the Mac's clients' routes), not found (`/watch`) — and an unknown one refused; `lampd routes` prints it for `Scripts/check-lampd-routes.sh`; the hooks' port from `~/.lampboard/port`; `LAMPD_HOOK_PORT` taken in a check's home only |
+| `HookTee.swift` | the hooks' port in tee (D181): a thread per connection, never the main loop; the token the hooks already send, adopted from `~/.lampboard/token` and read again at each request; `/signal` and `/mod` read with the Core's decoders, answered at once and passed on after to the Mac's tunnel on the next port, named with `X-LampBoard-Event`; `/check` and `/question` passed on with the row amber while the Mac holds them, an unsigned `ask` when nobody is there; counts of what was heard, passed on, not taken, refused |
+| `NodeHooks.swift` | what the hooks say (D181): the Core's reducer over the same signals as the Mac, the mod's reports as `ModReceiver` takes them, the questions the Mac holds; a row a hook spoke for takes its colour from here (`stateBasis` hooks) and keeps from the file where and what it is; the files' `busy` lights a row the hooks left at rest and their minute of `idle` rests a yellow nothing ends (D177) |
+| `LoopbackTCP.swift` | the hooks' port: the socket systemd passes (`LISTEN_FDS`), or one bound on `127.0.0.1` for a check; where it is bound; the connection to the Mac's tunnel with a deadline |
+| `MacState.swift` | what the Mac said (`mac.json`, `0600`): presence and its freshness (a `here` counts while its link was seen in the last minute and it was said in the last ten), the Mac's settings, the migration; a line from the Mac carried out on the files by whichever process takes it |
+| `MacLinkClient.swift` | `lampd mac-link`, what the Mac's tunnel runs here: a beat every 0.3 s saying whether the service serves from a fresh state, the node's choices when they change, the Mac's lines to the service or to the files while it is down |
 | `ProjectsStore.swift` | `projects list`, `attach`, `detach`: the folders kept in the list, in the Hub's own file shape (`ProjectList`), under a lock; a path that is not a folder here refused |
 | `LampDCompare.swift` | `compare`: the service's lamps against the phone's own look at the same files, on the machine itself |
 | `LampDInstall.swift` | the version, where the binary is linked from, a device's id from its name |
@@ -2994,10 +3002,11 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D178). Exits 3 without docker |
 | `Scripts/lampd-install.sh` | installs `lampd` for this account from this checkout: the binary and its link, the contract's runner, the units and `deploy/tmux/lampboard.conf` (as `~/.config/lampd/tmux.conf`, read by a line of the person's own `~/.tmux.conf`, never written) marked with their commit; refuses a unit it did not write; `--uninstall` |
 | `Scripts/test-parity-e2e.sh` | the Mac app's parity with `lampd`'s golden files on its own (`LampBoardE2E parity`), each recorded session with a process, through two sweeps; exits 3 off a Mac; attacked by `bite.sh --parity` |
-| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, the conformance battery, the phone's lines, one rule for the files, the service stopped, the node's tmux with the repository's options, the app one version behind. Exits 3 without docker; attacked by `bite.sh --lampd` |
+| `Scripts/test-lampd.sh` | `lampd` on a fake node behind OpenSSH (D178): its suite, the recorded hooks against the parity files, every route with an owner, the conformance battery, the phone's lines, one rule for the files, the service stopped, the node's tmux with the repository's options, the app one version behind, and the hooks' port in tee (D181) with `Tests/NodeFixture/tee.py` playing the Mac's end and the relay. Exits 3 without docker; attacked by `bite.sh --lampd` and `--tee` |
+| `Scripts/check-lampd-routes.sh` | the routes the Mac's `SignalServer` switches on and the mod's hooks call, read from the code, against `lampd routes`: a route without an owner in `lampd` is red (§6.2). Run by `test-lampd.sh`, attacked by `bite.sh --tee` |
 | `Scripts/test-lampd-watchdog.sh` | `lampd` under `systemd --user` with the unit as installed: a loop stopped on purpose restarted within `WatchdogSec`, a stop with a phone attached quick. Exits 3 without systemd; attacked by `bite.sh --lampd` |
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits ninety-five violations and demands ninety-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and five violations and demands one hundred and five catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
