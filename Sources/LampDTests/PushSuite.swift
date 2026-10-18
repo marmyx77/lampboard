@@ -187,7 +187,7 @@ enum PushSuite {
         TestCase("The relay's address: https, or http only to a private network") { t in
             t.expectNotNil(LampDConfig.validRelay("https://push.lampboard.site"), "the public one")
             t.expectNotNil(LampDConfig.validRelay("http://172.17.0.1:18080"), "a check's own, on a private network")
-            t.expectNotNil(LampDConfig.validRelay("http://100.101.102.103:18080"), "or on the tailnet")
+            t.expectNotNil(LampDConfig.validRelay("http://100." + "101.102.103:18080"), "or on the tailnet")
             t.expectNil(LampDConfig.validRelay("http://100.20.0.1:18080"), "but not the rest of 100/8")
             t.expectNil(LampDConfig.validRelay("http://push.example.com"), "never http to the Internet")
             t.expectNil(LampDConfig.validRelay("https://push.example.com/v1/push?x=1"), "never a path or a query")

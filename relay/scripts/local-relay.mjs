@@ -4,7 +4,7 @@
 // would have sent APNs is written to a folder, one JSON file per push, for
 // `simctl push` to deliver to a simulator (Apps/iOS/Scripts/push-e2e.sh).
 //
-//   node relay/scripts/local-relay.mjs --bind <address> --port <port> --dump <folder>
+//   node relay/scripts/local-relay.mjs --listen http://<address>:<port> [--listen https://… --cert f --key f] --dump <folder>
 //
 // Everything that decides is the deployed relay's: routes, capabilities,
 // quotas, payloads, logs (lib/relay.js). Only APNs is replaced, by a recorder
@@ -16,8 +16,9 @@
 // a folder made for the run (0700), removed by the check.
 
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync, chmodSync } from 'node:fs';
+import { mkdirSync, writeFileSync, chmodSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createServer as createSecureServer } from 'node:https';
 import { join } from 'node:path';
 import { readConfig } from '../lib/config.js';
 import { createLogger } from '../lib/log.js';
@@ -29,16 +30,27 @@ function arg(name, fallback) {
   return at >= 0 && at + 1 < process.argv.length ? process.argv[at + 1] : fallback;
 }
 
-const bind = arg('--bind', '127.0.0.1');
-const port = Number(arg('--port', '18080'));
+function all(name) {
+  return process.argv.flatMap((value, at) => (value === name && at + 1 < process.argv.length ? [process.argv[at + 1]] : []));
+}
+
+// Where to listen: `--listen http://<address>:<port>` and `--listen
+// https://<address>:<port>` (with `--cert` and `--key`), as many as wanted. A
+// simulator talks https (App Transport Security), a fake node's curl http on
+// the containers' own network. `--bind`/`--port` is one http listener.
+const listens = all('--listen');
+if (listens.length === 0) listens.push(`http://${arg('--bind', '127.0.0.1')}:${arg('--port', '18080')}`);
 const dump = arg('--dump');
 if (!dump) {
   console.error('local-relay: --dump <folder> is required');
   process.exit(2);
 }
-if (bind === '0.0.0.0' || bind === '::') {
-  console.error('local-relay: refuses to listen on every address');
-  process.exit(2);
+for (const listen of listens) {
+  const url = new URL(listen);
+  if (url.hostname === '0.0.0.0' || url.hostname === '[::]') {
+    console.error('local-relay: refuses to listen on every address');
+    process.exit(2);
+  }
 }
 mkdirSync(dump, { recursive: true, mode: 0o700 });
 chmodSync(dump, 0o700);
@@ -70,7 +82,7 @@ const relay = createRelay({
   logger: createLogger((line) => process.stdout.write(line + '\n')),
 });
 
-createServer(async (request, response) => {
+async function serve(request, response) {
   let body = '';
   for await (const chunk of request) {
     body += chunk;
@@ -83,6 +95,14 @@ createServer(async (request, response) => {
   });
   response.writeHead(answer.status, answer.headers);
   response.end(JSON.stringify(answer.body));
-}).listen(port, bind, () => {
-  process.stdout.write(`local-relay: listening on http://${bind}:${port}, writing to ${dump}\n`);
-});
+}
+
+for (const listen of listens) {
+  const url = new URL(listen);
+  const server = url.protocol === 'https:'
+    ? createSecureServer({ cert: readFileSync(arg('--cert')), key: readFileSync(arg('--key')) }, serve)
+    : createServer(serve);
+  server.listen(Number(url.port), url.hostname, () => {
+    process.stdout.write(`local-relay: listening on ${listen}, writing to ${dump}\n`);
+  });
+}
