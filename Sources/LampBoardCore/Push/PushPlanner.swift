@@ -147,6 +147,8 @@ public enum PushPlanner {
 
         var news: [(event: PushEvent, row: V1Row)] = []
         var soonest: Date?
+        // A wait held for someone in a session is said by that hold's line.
+        let heldWaiting = Set(memory.held.values.flatMap { $0 }.filter { $0.event == .waiting }.map(\.session))
         for row in rows.sorted(by: { $0.id < $1.id }) {
             let status = row.session.status
             let was = before[row.id]
@@ -160,8 +162,13 @@ public enum PushPlanner {
                 guard !memory.announced.contains(row.id) else { continue }
                 let since = memory.amberSince[row.id] ?? now
                 if now.timeIntervalSince(since) >= amberDelay {
-                    memory.announced.insert(row.id)
-                    news.append((.waiting, row))
+                    // With the app in someone's hand the row shows itself, and
+                    // stays unannounced: put the phone away while it still
+                    // waits and it rings then (seen on the simulator: an amber
+                    // four seconds into a presence was never said at all).
+                    let inHand = devices.contains { $0.isPresent(at: now) && admits($0, row: row, event: .waiting, at: now) }
+                    if !inHand { memory.announced.insert(row.id) }
+                    if inHand || !heldWaiting.contains(row.id) { news.append((.waiting, row)) }
                 } else {
                     let due = since.addingTimeInterval(amberDelay)
                     soonest = min(soonest ?? due, due)

@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  30,168 lines · 219 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  30,175 lines · 219 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    30,084 lines · 164 files   shell: AppKit, network, windows
-  LampBoardTests/  22,192 lines · 150 files   1557 cases, instantaneous
+  LampBoardTests/  22,203 lines · 150 files   1557 cases, instantaneous
   LampBoardE2E/    5,525 lines · 24 files   187 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,506 lines · 8 files   ssh to a machine: v1, commands, terminal
@@ -1968,7 +1968,7 @@ The Mac's `SessionNotifier` as a pure function over `v1` rows: transitions only
 after four seconds in the same spell, once; red on the transition; a finished
 turn only for a device that asked; the row's mute, the device's muted projects
 and «until»; presence (a device used in the last 45 s shows the column itself,
-so nothing rings) and the focus hold that says what waited in one line; the
+so nothing rings; a row still waiting when the phone is put away rings then) and the focus hold that says what waited in one line; the
 device last used rings, the others get a quiet copy after two minutes if the row
 has not moved (Q9). Its memory is `Codable`, kept by the source across restarts.
 **What you would break**: the memory emptied at the first look is ten

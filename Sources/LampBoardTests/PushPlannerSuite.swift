@@ -151,14 +151,25 @@ enum PushPlannerSuite {
             t.expectEqual(result.alerts.flatMap { $0 }.map(\.device), ["phone-1"], "answered in time: nobody else hears of it")
         },
 
-        TestCase("An app in front shows the row itself: no phone rings") { t in
+        TestCase("An app in front shows the row itself: no phone rings; put away, a session still waiting does") { t in
             let inHand = PushDevice(id: "phone-1", usedAt: t0.addingTimeInterval(5))
             let result = run([
                 (0, [row(1, .working)]),
                 (10, [row(1, .awaiting, since: t0)]),
-                (200, [row(1, .awaiting, since: t0)]),
+                (30, [row(1, .awaiting, since: t0)]),
+                (60, [row(1, .awaiting, since: t0)]),
+                (90, [row(1, .awaiting, since: t0)]),
             ], devices: [inHand, pad])
-            t.expectEqual(result.alerts.flatMap { $0 }.count, 0, "seen in the last 45 s: neither it nor the iPad")
+            t.expectEqual(result.alerts[1].count + result.alerts[2].count, 0, "seen in the last 45 s: neither it nor the iPad")
+            t.expectEqual(result.alerts[3].map(\.device), ["phone-1"], "the phone put away, the row still waiting: it rings")
+            t.expectEqual(result.alerts[4].count, 0, "once")
+            let answered = run([
+                (0, [row(1, .working)]),
+                (10, [row(1, .awaiting, since: t0)]),
+                (30, [row(1, .working, since: t0.addingTimeInterval(30))]),
+                (90, [row(1, .working, since: t0.addingTimeInterval(30))]),
+            ], devices: [inHand, pad])
+            t.expectEqual(answered.alerts.flatMap { $0 }.count, 0, "answered from the app: nothing afterwards")
         },
 
         TestCase("In one session, the others' alerts wait and come in one line when it leaves") { t in
