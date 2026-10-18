@@ -132,6 +132,9 @@ final class MobileServer: ObservableObject {
     /// (E11); the TXT carries the short fingerprint and the protocol.
     private func advertise(key: String) {
         guard let port = listeningPort else { return }
+        // A fake home says nothing to the network unless asked: a gate run on a
+        // shared LAN must not show up in someone's list of Macs.
+        if AppConfig.isUsingHomeOverride, ProcessInfo.processInfo.environment["LAMPBOARD_MOBILE_BONJOUR"] != "1" { return }
         let service = NetService(domain: "local.", type: MacBridge.bonjourType + ".", name: macName, port: Int32(port))
         service.setTXTRecord(NetService.data(fromTXTRecord: [
             "v": Data(String(V1Protocol.version).utf8),
