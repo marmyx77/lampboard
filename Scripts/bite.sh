@@ -813,8 +813,8 @@ protect Package.swift
 attack_platform Scripts/check-app-links.sh "the Mac app made to link NodeLink" "LampBoardNodeLink → Citadel" <<'PY'
 p = "Package.swift"
 s = open(p).read()
-old = 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit"],'
-open(p, "w").write(s.replace(old, 'dependencies: ["LampBoardCore", "SwiftTerm", "ClarcChatKit", "LampBoardNodeLink"],', 1))
+old = 'dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit"],'
+open(p, "w").write(s.replace(old, 'dependencies: ["LampBoardCore", "LampBoardMacSource", "SwiftTerm", "ClarcChatKit", "LampBoardNodeLink"],', 1))
 PY
 
 fi

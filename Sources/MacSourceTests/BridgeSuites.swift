@@ -128,6 +128,15 @@ enum MacBridgeSuite {
                 t.expect(Blocking.eventually(5) { shared.stopped }, "sharing ended with the channel")
             },
 
+            TestCase("Like my VS Code: the Mac's terminal colours, for the action key with the switch on") { t in
+                harness.terminals.on = true
+                defer { harness.terminals.on = false }
+                guard let connection = try? harness.actionConnection() else { return t.fail("no connection") }
+                let palette = try? Blocking.run(15) { try await connection.run("palette") }
+                t.expect(palette?.output.contains(#""theme":"example""#) == true, "the palette: \(palette?.output ?? "nothing")")
+                _ = try? Blocking.run(10) { await connection.close() }
+            },
+
             TestCase("Named actions run as a node runs them; Bypass stays off unless the Mac allows it") { t in
                 harness.terminals.on = true
                 defer { harness.terminals.on = false }
