@@ -248,6 +248,14 @@ as_dev "lampd devices add --id far-phone --name 'Far phone' --read '$(pub far-re
 as_dev "lampd devices add --id lost-phone --name 'Lost phone' --read '$(pub lost-read)' --action '$(pub lost-action)'" \
     >> "$CACHE/devices.log" 2>&1 || failed "lampd devices add (lost) failed"
 as_dev "lampd devices revoke lost-phone" >> "$CACHE/devices.log" 2>&1 || failed "lampd devices revoke failed"
+# The same keys again, as the Mac carries a phone already authorized by hand:
+# "already", never "added", or the Mac keeps the id and its Forget revokes it.
+again="$(as_dev "lampd devices add --id check-phone --name 'Check phone' --read '$(pub read)' --action '$(pub action)'" 2>&1)" \
+    || failed "lampd devices add, the same keys again, failed: $again"
+case "$again" in
+    "already check-phone "*) echo "$again" >> "$CACHE/devices.log" ;;
+    *) failed "the same keys again were not said to be already there: $again" ;;
+esac
 sed 's/^/    /' "$CACHE/devices.log"
 
 as_dev "python3 /opt/fixture/fixture.py frame 0 > /dev/null" || failed "the fixture could not play frame 0"

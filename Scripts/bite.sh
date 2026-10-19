@@ -1162,6 +1162,15 @@ old = "let rewritten = try AuthorizedKeys.rewrite(text, removing: id, adding: []
 open(p, "w").write(s.replace(old, "let rewritten = text", 1))
 PY
 
+# Keys already in place answered "added": the Mac keeps the id and its Forget
+# takes off the node a phone authorized by hand (19 October 2026).
+protect Sources/LampDKit/DevicesStore.swift
+attack_platform Scripts/test-lampd.sh "the same keys again answered as added" "already there, said so" <<'PY'
+p = "Sources/LampDKit/DevicesStore.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("                return .alreadyThere\n", "", 1))
+PY
+
 # The house's own lines: a rewrite that drops its comments, with the guard
 # that refuses it taken away, must be seen in the file it gives back.
 protect Sources/LampDKit/AuthorizedKeys.swift

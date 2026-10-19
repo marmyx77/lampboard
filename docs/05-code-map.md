@@ -6,7 +6,7 @@ it exists, and **what you would break** by touching it.
 ```
 Sources/
   LampBoardCore/  31,376 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,454 lines · 173 files   shell: AppKit, network, windows
+  LampBoardApp/    31,458 lines · 173 files   shell: AppKit, network, windows
   LampBoardTests/  22,474 lines · 152 files   1579 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
@@ -15,9 +15,9 @@ Sources/
   MacSourceTests/   1,492 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,171 lines · 29 files   lampd: the Linux machine's service
-  LampD/              267 lines · 1 files   lampd's command line
-  LampDTests/         1,386 lines · 9 files   lampd's suite, on Linux
+  LampDKit/         4,194 lines · 29 files   lampd: the Linux machine's service
+  LampD/              274 lines · 1 files   lampd's command line
+  LampDTests/         1,417 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -3048,5 +3048,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and fourteen violations and demands one hundred and fourteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and fifteen violations and demands one hundred and fifteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

@@ -18,8 +18,8 @@ enum NodeDeviceCarry {
     /// reach it. `nil` when the node refused or did not answer: said in the log,
     /// and the phone simply has one node fewer.
     static func add(_ device: MacDevices.Device, on host: String) -> MacPairedNode? {
-        // The same device pairing again: its keys are already there (and
-        // `lampd` refuses a key twice); the phone only needs the way back.
+        // The same device pairing again: its keys are already there, put by
+        // this Mac; the phone only needs the way back.
         if let nodeId = device.nodes?[host] {
             let facts = facts(of: host)
             return MacPairedNode(name: host, address: facts?.address ?? host, port: facts?.port ?? 22,
@@ -30,6 +30,10 @@ enum NodeDeviceCarry {
             Diagnostics.log("carry \(device.id) to \(host): lampd refused or did not answer")
             return nil
         }
+        // Only an id `lampd` says it added is this Mac's to revoke at Forget.
+        // Keys already in place (`already <id>`, authorized by hand) stay with
+        // whoever put them there: had the Mac kept that id, its Forget would
+        // take the phone off the node (19 October 2026).
         let nodeId = output.split(separator: "\n").first { $0.hasPrefix("added ") }
             .flatMap { $0.split(separator: " ").dropFirst().first.map(String.init) }
         let facts = facts(of: host)

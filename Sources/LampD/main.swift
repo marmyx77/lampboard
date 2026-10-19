@@ -122,7 +122,14 @@ case "devices":
         case .failure(let error):
             fail("\(error): nothing was written")
         case .success(let addition):
-            do { try store.add(addition) } catch { fail("\(error)", code: 1) }
+            let outcome: DevicesStore.Outcome
+            do { outcome = try store.add(addition) } catch { fail("\(error)", code: 1) }
+            // Never "added" for keys that were there: the Mac keeps the id it
+            // reads after "added" as one it carried, and revokes it at Forget.
+            if outcome == .alreadyThere {
+                print("already \(addition.id) (\(addition.name)): its keys were in place, nothing was written")
+                exit(0)
+            }
             print("added \(addition.id) (\(addition.name)) from \(addition.from)")
             print("  read key:   v1 only, through \(addition.command) v1-stdio")
             print("  action key: terminal, commands and files")

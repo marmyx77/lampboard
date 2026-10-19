@@ -109,10 +109,22 @@ public struct DevicesStore: Sendable {
         return .success(Addition(id: id, name: checkedName, readKey: read, actionKey: action, from: networks, command: command))
     }
 
+    /// What `add` did.
+    public enum Outcome: Equatable, Sendable {
+        /// The device's lines were written: new here, or new keys for its id.
+        case added
+        /// Its two lines were already there with these very keys: nothing was
+        /// written. Whoever asked did not authorize the device here, so the Mac
+        /// must not keep the id as one it carried: its Forget would revoke an
+        /// authorization made by hand (19 October 2026, the iPhone's).
+        case alreadyThere
+    }
+
     /// Writes the device's two lines (replacing any it had) and its entry.
-    public func add(_ addition: Addition, at now: Date = Date()) throws {
+    @discardableResult
+    public func add(_ addition: Addition, at now: Date = Date()) throws -> Outcome {
         try LampDPaths.makeDirectory(paths.stateDirectory)
-        try FileLock.with(lockPath) {
+        return try FileLock.with(lockPath) {
             let text = try readAuthorizedKeys()
             // A key already in the file under another device, or on a line that
             // is not LampBoard's, would be two owners for one key.
@@ -122,12 +134,23 @@ public struct DevicesStore: Sendable {
                     throw LampDError.invalid("this key is already in authorized_keys on another line: nothing was written")
                 }
             }
+            let own = text.components(separatedBy: "\n").compactMap { line in
+                AuthorizedKeys.owner(of: line).flatMap { $0.device == addition.id ? (role: $0.role, line: line) : nil }
+            }
+            if own.contains(where: { $0.role == .read && $0.line.contains(addition.readKey) }),
+               own.contains(where: { $0.role == .action && $0.line.contains(addition.actionKey) }) {
+                if !entries().contains(where: { $0.id == addition.id }) {
+                    try saveEntries(entries() + [Entry(id: addition.id, name: addition.name, pairedAt: now, lastSeenAt: nil)])
+                }
+                return .alreadyThere
+            }
             let lines = AuthorizedKeys.lines(device: addition.id, readKey: addition.readKey, actionKey: addition.actionKey,
                                              from: addition.from, command: addition.command)
             try writeAuthorizedKeys(try AuthorizedKeys.rewrite(text, removing: addition.id, adding: lines))
             var all = entries().filter { $0.id != addition.id }
             all.append(Entry(id: addition.id, name: addition.name, pairedAt: now, lastSeenAt: nil))
             try saveEntries(all)
+            return .added
         }
     }
 

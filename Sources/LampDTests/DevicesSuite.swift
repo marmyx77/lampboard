@@ -130,6 +130,37 @@ enum DevicesSuite {
             t.expectEqual(text.components(separatedBy: "\n").filter { !$0.isEmpty }.count, 2, "still two lines")
         },
 
+        TestCase("Keys already in place are said to be there, never added: the Mac must not take them as its own") { t in
+            // 19 October 2026: the iPhone authorized by hand (gesture 17), then
+            // paired with the Mac with «Also on» ticked. `lampd` answered "added"
+            // for the same keys, the Mac kept the id, and its Forget took the
+            // phone off the node.
+            let paths = F.home("already")
+            defer { F.remove(paths) }
+            try? FileManager.default.createDirectory(atPath: paths.home + "/.ssh", withIntermediateDirectories: true)
+            _ = FileManager.default.createFile(atPath: paths.authorizedKeys, contents: Data(house.utf8),
+                                               attributes: [.posixPermissions: 0o600])
+            let store = DevicesStore(paths: paths)
+            guard case .success(let byHand) = DevicesStore.addition(id: "phone-1", name: "Phone", readKey: F.key(seed: 1),
+                                                                    actionKey: F.key(seed: 2), from: ["192.0.2.0/24"],
+                                                                    command: "/x/lampd"),
+                  case .success(let fromMac) = DevicesStore.addition(id: "phone-1", name: "iPhone", readKey: F.key(seed: 1),
+                                                                     actionKey: F.key(seed: 2), from: ["198.51.100.0/24"],
+                                                                     command: "/x/lampd"),
+                  case .success(let newKeys) = DevicesStore.addition(id: "phone-1", name: "Phone", readKey: F.key(seed: 1),
+                                                                     actionKey: F.key(seed: 3), from: ["192.0.2.0/24"],
+                                                                     command: "/x/lampd")
+            else { t.expect(false, "refused"); return }
+            let at = Date(timeIntervalSince1970: 1_760_000_000)
+            t.expectEqual(try? store.add(byHand, at: at), .added, "by hand: added")
+            let before = try? String(contentsOfFile: paths.authorizedKeys, encoding: .utf8)
+            t.expectEqual(try? store.add(fromMac, at: at.addingTimeInterval(3600)), .alreadyThere,
+                          "the same keys again: already there, said so")
+            t.expectEqual(try? String(contentsOfFile: paths.authorizedKeys, encoding: .utf8), before, "nothing written")
+            t.expectEqual(store.entries().map(\.pairedAt), [at], "the entry as it was made by hand")
+            t.expectEqual(try? store.add(newKeys), .added, "a new action key for the id is written")
+        },
+
         TestCase("A link in place of authorized_keys is not written through") { t in
             let paths = F.home("link")
             defer { F.remove(paths) }

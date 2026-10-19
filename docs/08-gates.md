@@ -101,7 +101,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits one hundred and fourteen violations and demands one hundred and fourteen catches. It takes 26
+`bite.sh` commits one hundred and fifteen violations and demands one hundred and fifteen catches. It takes 26
 seconds.
 
 ## The two platform gates
