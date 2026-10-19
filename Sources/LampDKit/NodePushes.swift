@@ -77,6 +77,8 @@ public final class NodePushes: @unchecked Sendable {
     public static let liveActivityQuiet: TimeInterval = 60
     /// How often the relay's `/health` is asked when nothing else was sent.
     public static let healthEvery: TimeInterval = 10 * 60
+    /// The pause before the one retry of a push the relay did not answer.
+    public static let retryPause: TimeInterval = 1
 
     public init(identity: V1SourceIdentity, paths: LampDPaths, relay: RelayClient?, log: @escaping (String) -> Void = { _ in }) {
         self.identity = identity
@@ -272,7 +274,16 @@ public final class NodePushes: @unchecked Sendable {
         locked { inFlight += 1 }
         queue.async { [self] in
             let started = Date()
-            let outcome = Self.wait { await relay.push(request) }
+            var outcome = Self.wait { await relay.push(request) }
+            if case .unreachable = outcome {
+                // One try more: a relay that did not answer once (a cold start,
+                // a dropped packet) mostly answers the next time, and the phone
+                // drops a repeat by its sequence number (`PushEnvelope`), so a
+                // first try that did arrive costs nothing.
+                log("push: \(kind.rawValue) → \(device): unreachable in \(Int(Date().timeIntervalSince(started) * 1000)) ms, trying once more")
+                Thread.sleep(forTimeInterval: Self.retryPause)
+                outcome = Self.wait { await relay.push(request) }
+            }
             locked {
                 inFlight -= 1
                 // At the look's time: what `hold` is compared with.

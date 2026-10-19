@@ -31,7 +31,25 @@ enum PushSuite {
             self.answer = answer
         }
 
-        func exchange(method: String, url: URL, body: Data?) async throws -> RelayHTTPResponse { record(url, body) }
+        /// How many of the next pushes find no relay (the transport throws).
+        var unanswered = 0
+        private(set) var attempts = 0
+
+        struct NoAnswer: Error {}
+
+        func exchange(method: String, url: URL, body: Data?) async throws -> RelayHTTPResponse {
+            if url.path == "/v1/push", takeUnanswered() { throw NoAnswer() }
+            return record(url, body)
+        }
+
+        private func takeUnanswered() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            attempts += 1
+            guard unanswered > 0 else { return false }
+            unanswered -= 1
+            return true
+        }
 
         private func record(_ url: URL, _ body: Data?) -> RelayHTTPResponse {
             lock.lock()
@@ -124,6 +142,31 @@ enum PushSuite {
             t.expectEqual(content.session, F.a, "the row, for the tap")
             t.expectEqual(content.counts?.waiting, 1, "the counts for the badge")
             t.expectEqual(relay.pushes.filter { $0.kind == .background }.count, 1, "and the counts for the widget, once")
+        },
+
+        TestCase("A push the relay did not answer is tried once more, and only once") { t in
+            let paths = F.home("push-retry")
+            defer { F.remove(paths) }
+            let relay = FakeRelay()
+            relay.unanswered = 1
+            let service = live(paths, relay)
+            _ = service.register(registration(), by: device, at: F.t0)
+            amberLooks(service)
+            t.expectEqual(relay.alerts().count, 1, "the alert arrived on the second try")
+            t.expectEqual(service.pushes.sent.first { $0.kind == .alert }?.outcome, .ok, "and its outcome is the second try's")
+
+            let paths2 = F.home("push-retry-twice")
+            defer { F.remove(paths2) }
+            let silent = FakeRelay()
+            silent.unanswered = 100
+            let again = live(paths2, silent)
+            _ = again.register(registration(), by: device, at: F.t0)
+            amberLooks(again)
+            let pushes = again.pushes.sent.count
+            t.expectEqual(silent.attempts, pushes * 2, "two tries for each push, never a third")
+            guard case .unreachable? = again.pushes.sent.first(where: { $0.kind == .alert })?.outcome else {
+                t.expect(false, "a relay that never answers stays unreachable"); return
+            }
         },
 
         TestCase("A gone token is dropped; a quota holds the next alerts back and hello says until when") { t in
