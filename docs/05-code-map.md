@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,354 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,466 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,464 lines · 152 files   1578 cases, instantaneous
+  LampBoardCore/  31,376 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,454 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  22,474 lines · 152 files   1579 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -15,9 +15,9 @@ Sources/
   MacSourceTests/   1,492 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,157 lines · 29 files   lampd: the Linux machine's service
+  LampDKit/         4,171 lines · 29 files   lampd: the Linux machine's service
   LampD/              267 lines · 1 files   lampd's command line
-  LampDTests/         1,332 lines · 9 files   lampd's suite, on Linux
+  LampDTests/         1,386 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -1973,7 +1973,7 @@ of the Mac's own `known_hosts`, read by `MacSSHFacts`, a revoked line never).
 **What you would break**: a parse that accepts a line it does not name is a
 command from the phone on the Mac.
 
-### `MacNodeLink.swift` · 217
+### `MacNodeLink.swift` · 261
 The Mac and a node's `lampd` on the tunnel's own ssh connection (W5, §2.3,
 §2.12): the tunnel runs `lampd mac-link` on the node, or a silent wait where
 there is none. Down it, one JSON line each (`MacToNode`): where the person is
@@ -2625,7 +2625,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1578 cases
+## `LampBoardTests/` — 1579 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -3048,5 +3048,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and thirteen violations and demands one hundred and thirteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and fourteen violations and demands one hundred and fourteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
