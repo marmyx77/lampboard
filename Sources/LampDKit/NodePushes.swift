@@ -286,8 +286,11 @@ public final class NodePushes: @unchecked Sendable {
             }
             locked {
                 inFlight -= 1
-                // At the look's time: what `hold` is compared with.
-                health = outcome.health(at: now)
+                // At the look's time: what `hold` is compared with. A gone token
+                // is the device's news, not the relay's: it is dropped below, and
+                // the phone's strip must not say the relay refused (18/10: an
+                // ended Live Activity's `ExpiredToken`).
+                if case .gone = outcome {} else { health = outcome.health(at: now) }
                 sent.append(Sent(device: device, kind: kind, event: event, session: session, outcome: outcome, at: now))
                 if sent.count > 500 { sent.removeFirst(sent.count - 500) }
             }

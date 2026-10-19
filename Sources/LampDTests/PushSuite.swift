@@ -169,6 +169,17 @@ enum PushSuite {
             }
         },
 
+        TestCase("A gone token is the device's news: hello still says the relay is fine") { t in
+            let paths = F.home("push-gone-health")
+            defer { F.remove(paths) }
+            let relay = FakeRelay(RelayHTTPResponse(status: 410, body: Data(#"{"outcome":"refused","reason":"ExpiredToken"}"#.utf8)))
+            let service = live(paths, relay)
+            _ = service.register(registration(), by: device, at: F.t0)
+            amberLooks(service)
+            t.expect(relay.pushes.count > 0, "something was sent")
+            t.expect(service.status(at: F.t0 + 20).relay?.outcome != "refused", "not «the relay refused» for a token APNs dropped")
+        },
+
         TestCase("A gone token is dropped; a quota holds the next alerts back and hello says until when") { t in
             let paths = F.home("push-gone")
             defer { F.remove(paths) }
