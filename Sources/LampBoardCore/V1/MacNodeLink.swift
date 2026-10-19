@@ -28,6 +28,28 @@ public enum MacNodeLink {
     public static let remoteCommand =
         #"L="$HOME/.local/bin/lampd"; if [ -x "$L" ]; then "$L" mac-link; fi; exec tail -f /dev/null"#
 
+    /// The tunnel's ssh command line: the forward of the hooks' port and, last,
+    /// `remoteCommand`. Never `-N`: with it ssh runs no command, so the 2.4.0
+    /// tunnel held the port and `lampd` never heard from the Mac.
+    public static func tunnelArguments(host: String, remotePort: UInt16, localPort: UInt16,
+                                       connectTimeout: Int) -> [String] {
+        SSHHardening.options + [
+            // A connection of its own, whatever the user's ssh config says: with
+            // `ControlMaster auto` and `ControlPersist`, ssh hands the forward to
+            // a shared master and exits 0, the tunnel reads as down while the
+            // forward lives on in the master, and the next try finds its own
+            // port taken (measured on the test VM, whose Lima config does that).
+            "-o", "ControlMaster=no",
+            "-o", "ControlPath=none",
+            "-o", "ExitOnForwardFailure=yes",
+            "-o", "ServerAliveInterval=15",
+            "-o", "ServerAliveCountMax=2",
+            "-o", "ConnectTimeout=\(connectTimeout)",
+            "-R", "127.0.0.1:\(remotePort):127.0.0.1:\(localPort)",
+            host, remoteCommand,
+        ]
+    }
+
     /// How often `lampd mac-link` says how it is (§2.3 point 2: a probe every 0.3 s).
     public static let heartbeatInterval: TimeInterval = 0.3
     /// The tunnel leaves the hooks' port to `lampd` after this many healthy

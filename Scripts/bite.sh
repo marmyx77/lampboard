@@ -808,6 +808,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("row.readySince.map({ readAt >= $0 })", "row.readySince.map({ readAt >= $0 || readAt < $0 })", 1))
 PY
 
+# 2.4.0: the tunnel's ssh with `-N` runs no command, so `lampd mac-link` never
+# started and the node never heard from the Mac.
+protect Sources/LampBoardCore/V1/MacNodeLink.swift
+attack_swift "the tunnel's ssh told to run no command" "no -N, the command last" 1 <<'PY'
+p = "Sources/LampBoardCore/V1/MacNodeLink.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        SSHHardening.options + [\n", '        ["-N"] + SSHHardening.options + [\n', 1))
+PY
+
 # Whatever happened above, the binaries must match the sources again.
 swift build > /dev/null 2>&1
 

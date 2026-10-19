@@ -102,5 +102,15 @@ enum MacNodeLinkSuite {
             t.expectEqual(merged.hidden?.value, true, "a field only the panel set comes over")
             t.expectEqual(node.merged(with: mac).merged(with: mac), node.merged(with: mac), "merging twice does nothing more")
         },
+
+        TestCase("The tunnel's ssh runs lampd mac-link on the node: no -N, the command last") { t in
+            // 2.4.0 passed `-N`, and ssh with `-N` runs no command: the forward
+            // held and `lampd` never heard from the Mac.
+            let arguments = MacNodeLink.tunnelArguments(host: "bestia", remotePort: 31000, localPort: 9877, connectTimeout: 5)
+            t.expect(!arguments.contains("-N"), "-N would drop the command: \(arguments)")
+            t.expectEqual(arguments.suffix(2), ["bestia", MacNodeLink.remoteCommand])
+            t.expect(arguments.contains("127.0.0.1:31000:127.0.0.1:9877"), "the forward of the hooks' port")
+            t.expect(arguments.starts(with: SSHHardening.options), "the hardening first")
+        },
     ])
 }

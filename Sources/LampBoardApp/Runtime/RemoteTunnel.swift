@@ -3,7 +3,7 @@ import Foundation
 
 /// The ssh tunnel that lets another machine's hooks reach this one.
 ///
-/// `ssh -N -R 127.0.0.1:<port>:127.0.0.1:<localPort> host`, where `<port>` is
+/// `ssh -R 127.0.0.1:<port>:127.0.0.1:<localPort> host <command>`, where `<port>` is
 /// derived from the user's uid over there: on the node, that loopback port
 /// becomes this app's server, so the hook script installed there posts to it and
 /// needs no knowledge of where the Mac is.
@@ -278,21 +278,9 @@ final class RemoteTunnel {
     private func spawn(port: UInt16) {
         let ssh = Process()
         ssh.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
-        ssh.arguments = ["-N"] + RemoteCommand.hardening + [
-            // A connection of its own, whatever the user's ssh config says: with
-            // `ControlMaster auto` and `ControlPersist`, ssh hands the forward to
-            // a shared master and exits 0, the tunnel reads as down while the
-            // forward lives on in the master, and the next try finds its own
-            // port taken (measured on the test VM, whose Lima config does that).
-            "-o", "ControlMaster=no",
-            "-o", "ControlPath=none",
-            "-o", "ExitOnForwardFailure=yes",
-            "-o", "ServerAliveInterval=15",
-            "-o", "ServerAliveCountMax=2",
-            "-o", "ConnectTimeout=\(Int(AppConfig.remoteProbeTimeout))",
-            "-R", "127.0.0.1:\(port):127.0.0.1:\(localPort)",
-            host, MacNodeLink.remoteCommand,
-        ]
+        ssh.arguments = MacNodeLink.tunnelArguments(
+            host: host, remotePort: port, localPort: localPort,
+            connectTimeout: Int(AppConfig.remoteProbeTimeout))
         let errors = Pipe(), output = Pipe(), feed = Pipe()
         ssh.standardOutput = output
         ssh.standardError = errors
