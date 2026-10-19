@@ -3,8 +3,11 @@
 # undone. Every second the port waits is a second of hooks the node does not
 # hear, so lampd-socket-retry.timer runs this every two seconds; it does nothing
 # while lampd.socket is up, while the port is taken, or after `lampd release`.
-# lampd started before the socket holds no hooks' port, so it is restarted once
-# the socket is up (its phones reconnect and lose nothing: v1 resumes by number).
+# lampd started before the socket holds no hooks' port, and systemd refuses to
+# start a socket while its service runs ("Socket service lampd.service already
+# active, refusing": the real switch, 19 October 2026). So a running lampd is
+# stopped, then the socket and lampd start together (its phones reconnect and
+# lose nothing: v1 resumes by number). Scripts/test-lampd-handover.sh plays it.
 
 [Unit]
 Description=LampBoard (lampd): take the hooks' port when it is free
@@ -12,4 +15,4 @@ ConditionPathExists=!%h/.local/state/lampd/hooks-released
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'systemctl --user is-active -q lampd.socket && exit 0; ss -Htln "sport = :@HOOK_PORT@" 2>/dev/null | grep -q . && exit 0; systemctl --user start lampd.socket && systemctl --user try-restart lampd.service'
+ExecStart=/bin/sh -c 'systemctl --user is-active -q lampd.socket && exit 0; ss -Htln "sport = :@HOOK_PORT@" 2>/dev/null | grep -q . && exit 0; if systemctl --user is-active -q lampd.service; then systemctl --user stop lampd.service && systemctl --user start lampd.socket lampd.service; else systemctl --user start lampd.socket; fi'

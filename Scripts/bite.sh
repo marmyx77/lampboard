@@ -1162,6 +1162,18 @@ old = "let rewritten = try AuthorizedKeys.rewrite(text, removing: id, adding: []
 open(p, "w").write(s.replace(old, "let rewritten = text", 1))
 PY
 
+# The hand-over of the hooks' port (19 October 2026, B.4): the socket started
+# while lampd runs, as the first retry unit did, is refused by systemd and the
+# port stays empty.
+protect deploy/lampd/lampd-socket-retry.service
+attack_platform Scripts/test-lampd-handover.sh "the socket started while lampd runs" "the hooks' port stayed empty after the tunnel left" <<'PY'
+p = "deploy/lampd/lampd-socket-retry.service"
+s = open(p).read()
+old = ("if systemctl --user is-active -q lampd.service; then systemctl --user stop lampd.service && "
+       "systemctl --user start lampd.socket lampd.service; else systemctl --user start lampd.socket; fi")
+open(p, "w").write(s.replace(old, "systemctl --user start lampd.socket && systemctl --user try-restart lampd.service", 1))
+PY
+
 # Keys already in place answered "added": the Mac keeps the id and its Forget
 # takes off the node a phone authorized by hand (19 October 2026).
 protect Sources/LampDKit/DevicesStore.swift
