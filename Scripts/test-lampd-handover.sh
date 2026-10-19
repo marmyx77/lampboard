@@ -13,18 +13,22 @@
 # gate never saw it: it starts lampd in a container, without systemd. This plays
 # the hand-over with systemd itself.
 #
-# It renders the two units from deploy/lampd/ under names of their own
-# (`lampd-handover-<pid>`), on a free port of its own, into the user manager's
-# runtime directory, and removes them at the end. The service behind the socket
-# is a stand-in that says whether systemd passed it a port: what lampd does with
-# the port is the lampd gate's. A listener stands for the Mac's tunnel and goes
-# away; the port must then be the socket's, and the service must have been
-# started again with it. Nothing installed on this machine is touched.
+# Then, the same evening: lampd restarted after the hand-over shut down the
+# listening socket systemd had passed it, and the port went deaf for every lampd
+# after, though systemd still called the socket active. So the hand-over is
+# played with the real binary, and lampd is restarted once more after it.
+#
+# It renders lampd.socket, lampd.service and the retry units from deploy/lampd/
+# under names of their own (`lampd-handover-<pid>`), on a free port of their
+# own, into the user manager's runtime directory, with the static binary in a
+# home of its own (LAMPBOARD_HOME), and removes them at the end. A listener
+# stands for the Mac's tunnel and goes away; the port must then be lampd's, and
+# stay lampd's across a restart. Nothing installed on this machine is touched.
 #
 # EXIT CODES
-#   0  the port went to the socket, and the service got it
-#   1  it did not
-#   3  no systemd --user here: nothing was observed
+#   0  the port went to lampd, and stayed lampd's across a restart
+#   1  it did not, or lampd does not build
+#   3  no systemd --user or no container engine here: nothing was observed
 #
 # USAGE
 #   Scripts/test-lampd-handover.sh
@@ -42,6 +46,15 @@ passed()         { printf '\033[32m✓\033[0m %s\n' "$1"; }
 systemctl --user show-environment >/dev/null 2>&1 || could_not_look "no systemd --user manager answers: the hand-over was not tried"
 [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ] || could_not_look "no XDG_RUNTIME_DIR: the hand-over was not tried"
 command -v ss >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 || could_not_look "no ss or python3: the hand-over was not tried"
+
+CACHE="${LAMPBOARD_LAMPD_HANDOVER_CACHE:-$HOME/.cache/lampboard/lampd-handover}"
+mkdir -p "$CACHE/bin"
+Scripts/lampd-build.sh --out "$CACHE/bin" > "$CACHE/build.log" 2>&1
+case $? in
+    0) ;;
+    3) could_not_look "lampd could not be built here (see $CACHE/build.log)" ;;
+    *) tail -5 "$CACHE/build.log" | sed 's/^/    /'; failed "lampd does not build static" ;;
+esac
 
 NAME="lampd-handover-$$"
 UNITS="$XDG_RUNTIME_DIR/systemd/user"
@@ -70,19 +83,30 @@ render() {
         -e "s/lampd-socket-retry\.service/$NAME-retry.service/g" \
         -e "s/lampd\.socket/$NAME.socket/g" \
         -e "s/lampd\.service/$NAME.service/g" \
-        -e "s|%h/.local/state/lampd/hooks-released|$WORK/hooks-released|g" "$1"
+        -e "s|%h/.local/state/lampd/hooks-released|$WORK/home/.local/state/lampd/hooks-released|g" \
+        -e "s|^ExecStart=%h/.local/bin/lampd serve|ExecStart=$WORK/lampd serve|" \
+        -e "s|^Environment=PATH=.*|Environment=PATH=/usr/local/bin:/usr/bin:/bin LAMPBOARD_HOME=$WORK/home HOME=$WORK/home TMUX_TMPDIR=$WORK/tmux|" "$1"
 }
 mkdir -p "$UNITS"
+mkdir -p "$WORK/home/.claude/sessions" "$WORK/tmux"
+install -m 0755 "$CACHE/bin/lampd" "$WORK/lampd"
 render deploy/lampd/lampd.socket > "$UNITS/$NAME.socket"
+render deploy/lampd/lampd.service > "$UNITS/$NAME.service"
 render deploy/lampd/lampd-socket-retry.service > "$UNITS/$NAME-retry.service"
 render deploy/lampd/lampd-socket-retry.timer > "$UNITS/$NAME-retry.timer"
 grep -q "$NAME.socket" "$UNITS/$NAME-retry.service" || failed "the retry unit no longer names lampd.socket: the rendering is stale"
-# The stand-in for lampd: writes, at each start, how many ports systemd passed.
-cat > "$UNITS/$NAME.service" <<EOF
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 -c 'import os, time; open("$WORK/starts", "a").write(os.environ.get("LISTEN_FDS", "0") + "\\\\n"); time.sleep(3600)'
-EOF
+grep -q "^ExecStart=$WORK/lampd serve" "$UNITS/$NAME.service" || failed "lampd.service no longer runs %h/.local/bin/lampd serve: the rendering is stale"
+lampd() { LAMPBOARD_HOME="$WORK/home" HOME="$WORK/home" TMUX_TMPDIR="$WORK/tmux" "$WORK/lampd" "$@"; }
+hooks() { lampd status 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("hooks") or "")' 2>/dev/null; }
+listening() { ss -Htln "sport = :$PORT" | grep -q .; }
+# A connection taken and answered: a port systemd calls active may hear nothing.
+answers() {
+    python3 -c "
+import socket, sys
+s = socket.create_connection(('127.0.0.1', $PORT), timeout=3)
+s.sendall(b'GET /health HTTP/1.1\\r\\nHost: 127.0.0.1\\r\\nConnection: close\\r\\n\\r\\n')
+sys.exit(0 if s.recv(64).startswith(b'HTTP/1.') else 1)" 2>/dev/null
+}
 systemctl --user daemon-reload || failed "systemd did not read the units"
 
 # The Mac's tunnel on the port, and lampd running in the shade.
@@ -92,11 +116,12 @@ s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(('127.0.0.1', $PORT)); s.listen(); time.sleep(3600)" &
 HOLDER=$!
 for _ in $(seq 1 50); do ss -Htln "sport = :$PORT" | grep -q . && break; sleep 0.1; done
-systemctl --user start "$NAME.service" || failed "the stand-in did not start"
+systemctl --user start "$NAME.service" || failed "lampd did not start in its unit"
 systemctl --user start "$NAME-retry.timer" || failed "the retry timer did not start"
 sleep 5
 systemctl --user is-active -q "$NAME.socket" && failed "the socket started while the port was the tunnel's"
-passed "while the tunnel holds the port, the socket waits"
+case "$(hooks)" in *"passed no port"*) ;; *) failed "lampd in the shade says: $(hooks)" ;; esac
+passed "while the tunnel holds the port, the socket waits and lampd serves in the shade"
 
 # The tunnel moves to the next port.
 kill "$HOLDER"; wait "$HOLDER" 2>/dev/null; HOLDER=""
@@ -110,13 +135,21 @@ if [ "$held" != 1 ]; then
         | grep -E "refusing|Failed" | tail -3 | sed 's/^/    /'
     failed "the hooks' port stayed empty after the tunnel left: the socket never started"
 fi
-ss -Htln "sport = :$PORT" | grep -q . || failed "the socket is up but nothing listens on the port"
+listening || failed "the socket is up but nothing listens on the port"
 passed "the tunnel gone, the socket holds the port within 20 s"
 
-got=0
-for _ in $(seq 1 20); do
-    tail -1 "$WORK/starts" 2>/dev/null | grep -qx 1 && { got=1; break; }
-    sleep 0.5
-done
-[ "$got" = 1 ] || failed "the service was not started again with the port (starts: $(tr '\n' ' ' < "$WORK/starts" 2>/dev/null))"
-passed "the service started again with the port passed to it"
+held() {
+    for _ in $(seq 1 40); do
+        case "$(hooks)" in "lampd on 127.0.0.1:$PORT"*) answers && return 0 ;; esac
+        sleep 0.5
+    done
+    return 1
+}
+held || failed "lampd did not take the port the socket holds: $(hooks)"
+passed "lampd started again with the port, and it answers"
+
+# lampd restarted, as the watchdog, a crash or an install restart it: the port
+# is systemd's and must still listen for the next lampd.
+systemctl --user restart "$NAME.service" || failed "lampd did not restart"
+listening && held || failed "the port went deaf when lampd restarted (listening: $(listening && echo yes || echo no); lampd: $(hooks))"
+passed "restarted, lampd has the port again, and it answers"

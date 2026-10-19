@@ -235,7 +235,7 @@ public final class LampDService: @unchecked Sendable {
         for connection in open { connection.close(reason: "lampd is stopping") }
         let deadline = Date().addingTimeInterval(2)
         for connection in open { connection.waitUntilWritten(before: deadline) }
-        tee?.stop()
+        tee?.leave()
         if listener >= 0 {
             shutdown(listener, Int32(SHUT_RDWR))
             close(listener)

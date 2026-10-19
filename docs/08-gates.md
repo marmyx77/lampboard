@@ -91,7 +91,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Honest pushes (W4) | a source notifies transitions only: ten amber rows at start ring nothing, amber rings four seconds into its spell and once, a question answered within four seconds never rings, the device last used rings and the others get a quiet copy two minutes later; a 410 from APNs is the one answer that drops a device; a push whose bytes read as what the envelope hides is never sent (§6.2: «Push oneste», «Il relay non legge») | filesystem | `bite.sh --swift` empties the announced memory, announces amber at once, rings every device at once, reads a 410 as a plain refusal, lets a readable envelope through; `bite.sh --lampd` keeps a gone token and updates the Live Activity at every look | CI, `test.sh`, `Scripts/test-linux.sh`, `Scripts/test-lampd.sh` | in the domain suite |
 | The Mac's parity through the sweeps | the recorded flows played into the real app give `lampd`'s golden lamps after every event, each session with a process, and the last lamps hold through two sweeps beside a living neighbour | filesystem | `bite.sh --parity` plays the sessions with no process | `test.sh`, `Scripts/test-parity-e2e.sh` (a Mac) | ~40 s |
 | lampd's watchdog | under `systemd --user`, with the settings of `deploy/lampd/lampd.service`, a loop stopped on purpose is killed and restarted within `WatchdogSec` while the age in `hello` climbs, and a stop with a phone attached tells it `bye` and is quick (D178, E10) | filesystem | `bite.sh --lampd` sends the heartbeat from a thread of its own | a Linux machine with `systemd --user`, `Scripts/test-lampd-watchdog.sh` | ~45 s |
-| lampd's hand-over | under `systemd --user`, with `deploy/lampd/lampd.socket` and `lampd-socket-retry.*` as installed: while the Mac's tunnel holds the hooks' port the socket waits; once it leaves, the socket holds the port within 20 s and the service starts again with it, though it was running before (19 October 2026, B.4) | filesystem | `bite.sh --lampd` starts the socket while the service runs | a Linux machine with `systemd --user`, `Scripts/test-lampd-handover.sh` | ~15 s |
+| lampd's hand-over | the static binary under `systemd --user`, with `deploy/lampd/lampd.socket`, `lampd.service` and `lampd-socket-retry.*` as installed: while the Mac's tunnel holds the hooks' port the socket waits and lampd serves in the shade; once it leaves, the socket holds the port within 20 s and lampd, though it was running, starts again with it; restarted once more, lampd has the port again and it answers (19 October 2026, B.4) | filesystem | `bite.sh --lampd` starts the socket while the service runs, and shuts down systemd's socket when lampd stops | a Linux machine with `systemd --user` and a container engine, `Scripts/test-lampd-handover.sh` | ~30 s |
 | The contract on a node | lampd's contract timer runs the check from its installed copy on a machine without binutils: Claude Code is never run for its version, nothing crashes on a missing tool or a path relative to the checkout, nothing is red for ever because the machine is not a Mac (E5) | filesystem | `bite.sh --lampd` puts back each of the four defects: a note in backticks, a relative path, `strings` unasked, the editor's lock required | a machine with docker, `Scripts/test-contract-node.sh` | ~5 s |
 | Every package is pinned | each package the dependency graph reaches has a pin in the committed `Package.resolved`, at the version the graph uses, and the build moved none (D175) | filesystem | `bite.sh --pins` removes BigInt's pin | `test.sh` | a few seconds |
 | The Mac app links only its own | the app reaches no product of another package, as the manifest reads on a Mac, but the ssh server's four (swift-nio-ssh, swift-nio, swift-crypto) through `LampBoardMacSource` alone: Citadel, the client, is NodeLink's (D175, D180) | filesystem | `bite.sh --links` makes the app name NodeLink, then makes the Mac's server name Citadel | `test.sh` | 2 s |
@@ -102,7 +102,7 @@ Measured on an M-series Mac, 29 August 2026.
 | Where a session gets compacted | no reading ever exceeded its model's window | **external** | set the table to `0.92 × window` and it answers `108.6%`, twice, and exits 1 | with the contract | 24 s |
 | A click lands where the row promises | the panel recognises where each session lives, and `--live` proves the window that came forward | **external** | the run names the build and its signature, and lists every surface it could not exercise | a person's machine, before a release | 4 s dry, ~2 s a row live |
 
-`bite.sh` commits one hundred and sixteen violations and demands one hundred and sixteen catches. It takes 26
+`bite.sh` commits one hundred and seventeen violations and demands one hundred and seventeen catches. It takes 26
 seconds.
 
 ## The two platform gates
@@ -152,7 +152,8 @@ asks it, through NodeLink, everything the phone will. `Scripts/test-lampd-watchd
 runs the binary under this machine's `systemd --user` in a transient unit with the
 repository unit's settings and a home of its own. `Scripts/test-lampd-handover.sh`
 plays the hooks' port handed from the Mac's tunnel to `lampd.socket` with the
-repository's socket and retry units, under names and a port of their own.
+repository's units and the static binary, under names and a port of their own,
+and restarts `lampd` once more after it.
 `Scripts/test-contract-node.sh` runs the contract check as the timer does. A
 change to `lampd` is not done until the four and `Scripts/bite.sh --lampd` have
 run.

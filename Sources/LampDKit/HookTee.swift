@@ -77,11 +77,22 @@ public final class HookTee: @unchecked Sendable {
         }
     }
 
-    /// Lets the port go (`lampd release`).
+    /// Lets the port go (`lampd release`): shut down, so nobody hears it any
+    /// more, systemd's copy of the socket included.
     public func stop() {
         let fd = locked { () -> Int32 in let fd = listener; listener = -1; return fd }
         guard fd >= 0 else { return }
         shutdown(fd, Int32(SHUT_RDWR))
+        close(fd)
+    }
+
+    /// The service stopping: the port is systemd's, and must keep listening for
+    /// the next lampd, so only this process's copy goes. A shutdown here, as
+    /// `stop` does, left the port deaf for every lampd after while systemd
+    /// still called the socket active (the real switch, 19 October 2026).
+    public func leave() {
+        let fd = locked { () -> Int32 in let fd = listener; listener = -1; return fd }
+        guard fd >= 0 else { return }
         close(fd)
     }
 

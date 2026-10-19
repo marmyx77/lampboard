@@ -1174,6 +1174,15 @@ old = ("if systemctl --user is-active -q lampd.service; then systemctl --user st
 open(p, "w").write(s.replace(old, "systemctl --user start lampd.socket && systemctl --user try-restart lampd.service", 1))
 PY
 
+# lampd stopping shut down the socket systemd passed it: the port deaf for
+# every lampd after, the socket still called active (19 October 2026).
+protect Sources/LampDKit/LampDService.swift
+attack_platform Scripts/test-lampd-handover.sh "lampd's stop shutting down systemd's socket" "the port went deaf when lampd restarted" <<'PY'
+p = "Sources/LampDKit/LampDService.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        tee?.leave()\n", "        tee?.stop()\n", 1))
+PY
+
 # Keys already in place answered "added": the Mac keeps the id and its Forget
 # takes off the node a phone authorized by hand (19 October 2026).
 protect Sources/LampDKit/DevicesStore.swift
