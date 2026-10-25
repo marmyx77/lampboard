@@ -289,7 +289,8 @@ struct TrafficLightColumn: View {
                     move: { member, offset in actions.moveSession(row, member, offset) },
                     drag: compact ? nil : memberDragState(
                         for: member, at: index, in: shown, of: row
-                    )
+                    ),
+                    mention: actions.mention
                 )
             }
 

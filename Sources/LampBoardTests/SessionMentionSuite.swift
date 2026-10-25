@@ -17,6 +17,24 @@ enum SessionMentionSuite {
                           "[session «evil) (session \"x\" 00000000(2J» 4b138f7d] ", "brackets, quotes and escapes defused")
         },
 
+        TestCase("A conversation is dragged by its own line; the heading of a project holding several names none") { t in
+            let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+            let place = Workspace(path: "/home/dev/brain")
+            func session(_ id: String, _ title: String) -> SessionState {
+                SessionState(id: id, status: .idle, workspace: place, updatedAt: t0, statusSince: t0, origin: .terminal, title: title)
+            }
+            let project = ColumnRow(id: "row", workspace: place, sessions: [session(a, "first"), session(b, "second")])
+            t.expect(SessionMention.target(of: project) == nil, "the project is not one of its conversations")
+            for member in project.members {
+                let line = ColumnRow(id: member.id, workspace: place, sessions: [member.session], alias: member.name)
+                let named = SessionMention.target(of: line)
+                t.expectEqual(named?.sessionId, member.id)
+                t.expectEqual(named?.name, member.name)
+            }
+            let alone = ColumnRow(id: "row", workspace: place, sessions: [session(c, "only")])
+            t.expectEqual(SessionMention.target(of: alone)?.sessionId, c, "a project holding one is that one")
+        },
+
         TestCase("A drag lets the session in the terminal ask the named one, for twelve hours, and no other way round") { t in
             let now = Date(timeIntervalSince1970: 1_800_000_000)
             var grants = SessionMention.Grants()

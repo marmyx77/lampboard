@@ -47,14 +47,15 @@ extension PanelController {
 }
 
 extension PanelController {
-    /// A row dragged from the Hub's column (D172): its reference, for the
+    /// A line dragged from the Hub's column (D172): its reference, for the
     /// terminal it lands in, and leave for the session at the centre to ask it.
+    /// Only lines that are one conversation get here (`SessionMention.target`).
     func mention(_ row: ColumnRow) -> NSItemProvider {
-        let target = row.primary
-        if let asker = hubCentreSession?(), asker != target.id, let lampMaster {
-            lampMaster.mentions.grant(asker: asker, target: target.id, at: Date())
-            Diagnostics.log("mention: \(asker.prefix(8)) may ask \(target.id.prefix(8))")
+        guard let target = SessionMention.target(of: row) else { return NSItemProvider() }
+        if let asker = hubCentreSession?(), asker != target.sessionId, let lampMaster {
+            lampMaster.mentions.grant(asker: asker, target: target.sessionId, at: Date())
+            Diagnostics.log("mention: \(asker.prefix(8)) may ask \(target.sessionId.prefix(8))")
         }
-        return NSItemProvider(object: SessionMention.text(name: row.alias ?? target.displayName, sessionId: target.id) as NSString)
+        return NSItemProvider(object: SessionMention.text(name: target.name, sessionId: target.sessionId) as NSString)
     }
 }

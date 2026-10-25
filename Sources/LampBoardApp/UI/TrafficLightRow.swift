@@ -290,7 +290,8 @@ struct TrafficLightRow: View {
         .accessibilityAction(named: "Show in Finder") { actions.revealInFinder(row) }
         .onHover { hovering = $0 }
         .onTapGesture(perform: activate)
-        .modifier(MentionDrag(provide: isSample ? nil : actions.mention.map { mention in { mention(row) } }))
+        .modifier(MentionDrag(provide: isSample || SessionMention.target(of: row) == nil
+            ? nil : actions.mention.map { mention in { mention(row) } }))
         .contextMenu { menu }
         .tooltip(RowSummary.of(row, now: now, muted: flags.isMuted))
         // The movement is **not** here. A row is the top line of a project, and a
@@ -601,8 +602,9 @@ struct TrafficLightRow: View {
 
 }
 
-/// A row dragged out of the Hub's column into a terminal (D172); nothing elsewhere.
-private struct MentionDrag: ViewModifier {
+/// A line dragged out of the Hub's column into a terminal (D172): a row holding
+/// one conversation, or one conversation of an opened project; nothing elsewhere.
+struct MentionDrag: ViewModifier {
     let provide: (() -> NSItemProvider)?
     func body(content: Content) -> some View {
         if let provide { content.onDrag(provide) } else { content }

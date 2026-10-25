@@ -884,6 +884,12 @@ old = "            # the start time below is asked all the same.\n            pa
 open(p, "w").write(s.replace(old, "            # the start time below is asked all the same.\n            return True\n", 1))
 PY
 
+attack_platform Scripts/test-linux.sh "a project's heading dragged as one of its conversations" "the project is not one of its conversations" <<'PY'
+p = "Sources/LampBoardCore/Peer/SessionMention.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("        guard row.count == 1 else { return nil }\n", "", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════

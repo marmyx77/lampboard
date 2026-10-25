@@ -22,6 +22,15 @@ public enum SessionMention {
         return "[session «\(String(clean.prefix(60)))» \(sessionId.prefix(8))] "
     }
 
+    /// The session a line of the Hub's column names when it is dragged: the
+    /// conversation that line is. The heading of a project holding several is
+    /// the project, not one of them, and names none: each conversation under it
+    /// is dragged by its own line.
+    public static func target(of row: ColumnRow) -> (name: String, sessionId: String)? {
+        guard row.count == 1 else { return nil }
+        return (row.alias ?? row.primary.displayName, row.primary.id)
+    }
+
     /// How long a drag lets one session ask another.
     public static let lasts: TimeInterval = 12 * 3600
 

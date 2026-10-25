@@ -28,6 +28,9 @@ struct SessionSubRow: View {
     /// What the block tells this line about the drag in progress. `nil` in the
     /// narrow panel, where there is no handle and nothing to drag.
     var drag: RowDragState? = nil
+    /// The Hub's drag into a terminal (D172), for this conversation. `nil` in
+    /// the panel.
+    var mention: ((ColumnRow) -> NSItemProvider)? = nil
 
     @State private var hovering = false
 
@@ -108,6 +111,7 @@ struct SessionSubRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { open(member) }
+        .modifier(MentionDrag(provide: mention.map { mention in { mention(card) } }))
         .tooltip(RowSummary.of(card, now: now, revealable: false))
         .contextMenu {
             Button("Open this conversation") { open(member) }
