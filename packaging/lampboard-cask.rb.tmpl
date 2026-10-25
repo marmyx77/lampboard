@@ -34,8 +34,14 @@ cask "lampboard" do
   # against a port nobody is listening on. Nothing on screen explains it.
   #
   # The caveats say so, because the alternative is an install that looks broken.
-  postflight do
-    system_command "/usr/bin/open", args: ["-a", "#{appdir}/LampBoard.app"]
+  #
+  # A launch that fails leaves the install in place: with the default, Homebrew
+  # took a refused `open` for a failed install and removed the app (25 October
+  # 2026, an install over ssh, with no screen to open it on). Steps rather than
+  # a Ruby block: Homebrew 7 warns twice on every install of a cask that still
+  # uses `postflight`, and asks for a report to this tap.
+  postflight_steps do
+    run "/usr/bin/open", args: ["-a", "{{appdir}}/LampBoard.app"], must_succeed: false
   end
 
   uninstall quit: "com.lampboard.app"
@@ -56,6 +62,8 @@ cask "lampboard" do
   caveats <<~EOS
     LampBoard is opening now: the panel appears in the corner of the screen.
     It has no Dock icon and no menu bar item — the panel is the interface.
+    If it did not open (an install over ssh, say), open LampBoard from
+    Applications.
 
     macOS asks once, because Homebrew marks every download: a dialog saying
     LampBoard was downloaded from the Internet. Click Open. Until you do, the
