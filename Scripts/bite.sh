@@ -1031,6 +1031,21 @@ s = open(p).read()
 open(p, "w").write(s.replace("let atTheMac = currentPresence == .here", "let atTheMac = false", 1))
 PY
 
+# The Mac's own pushes, the same two rules as lampd's (24 October 2026).
+protect Sources/LampBoardMacSource/MacPushes.swift
+attack_platform Scripts/test-mac-source.sh "the Mac's Live Activity budget gone" "under the relay's quota" <<'PY'
+p = "Sources/LampBoardMacSource/MacPushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("(due && liveBudgets[id, default: LiveActivityBudget()].take(at: now))", "due", 1))
+PY
+
+protect Sources/LampBoardMacSource/MacPushes.swift
+attack_platform Scripts/test-mac-source.sh "the Mac's alerts held back by the Live Activity's quota" "the question rings while the Live Activity waits" <<'PY'
+p = "Sources/LampBoardMacSource/MacPushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("for alert in plan.alerts where !holds.holds(.alert, at: now) {", "for alert in plan.alerts where !holds.any(at: now) {", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1267,6 +1282,25 @@ attack_platform Scripts/test-lampd.sh "the Live Activity updated at every look" 
 p = "Sources/LampDKit/NodePushes.swift"
 s = open(p).read()
 open(p, "w").write(s.replace("public static let liveActivityQuiet: TimeInterval = 60", "public static let liveActivityQuiet: TimeInterval = 0", 1))
+PY
+
+# A wait for the person updated the Live Activity at once with no ceiling: 121
+# updates in sixteen minutes on the Bestia, over the relay's 120 an hour
+# (24 October 2026).
+protect Sources/LampDKit/NodePushes.swift
+attack_platform Scripts/test-lampd.sh "the Live Activity's budget gone" "under the relay's quota" <<'PY'
+p = "Sources/LampDKit/NodePushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace(",\n                       liveBudgets[id, default: LiveActivityBudget()].take(at: now) {", " {", 1))
+PY
+
+# A quota on the Live Activity silenced the alerts too: the relay counts each
+# kind apart, and lampd held everything back on any "quota" (24 October 2026).
+protect Sources/LampDKit/NodePushes.swift
+attack_platform Scripts/test-lampd.sh "lampd's alerts held back by the Live Activity's quota" "a new wait still rings while the Live Activity waits" <<'PY'
+p = "Sources/LampDKit/NodePushes.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("for alert in plan.alerts where !holds.holds(.alert, at: now) {", "for alert in plan.alerts where !holds.any(at: now) {", 1))
 PY
 
 chapter "A phone's actions on a fake node"

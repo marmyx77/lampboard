@@ -36,6 +36,11 @@ public final class MacPushes: @unchecked Sendable {
     private var devices: [String: Registered]
     private var used: [String: (at: Date, session: String?)] = [:]
     private var health: V1RelayHealth?
+    /// What the relay asked to hold back, per kind: a spent Live Activity quota
+    /// leaves the alerts free (`RelayHolds`).
+    private var holds = RelayHolds()
+    /// Each device's Live Activity updates, under the relay's quota.
+    private var liveBudgets: [String: LiveActivityBudget] = [:]
     private var lastHealthCheck: Date?
     private var inFlight = 0
     /// Where the person is, as the Mac knows it (Q8).
@@ -148,12 +153,10 @@ public final class MacPushes: @unchecked Sendable {
             let (plan, memory) = PushPlanner.plan(rows: rows, devices: pushDevices, memory: state.memory, at: now)
             state.memory = memory
             let counts = memory.lastCounts ?? .zero
-            if let until = health?.holdUntil, until > now {
-                if !plan.alerts.isEmpty { log("push: \(plan.alerts.count) held back, the relay asked to wait until \(until)") }
-                saveState()
-                return
+            if holds.holds(.alert, at: now), !plan.alerts.isEmpty {
+                log("push: \(plan.alerts.count) held back, the relay asked its alerts to wait")
             }
-            for alert in plan.alerts {
+            for alert in plan.alerts where !holds.holds(.alert, at: now) {
                 guard let registered = devices[alert.device] else { continue }
                 let content = next(PushContent(source: identity.name, journal: state.journal, seq: 0, at: now, title: alert.title,
                                                body: alert.body, session: alert.session, event: alert.event, counts: counts,
@@ -174,7 +177,7 @@ public final class MacPushes: @unchecked Sendable {
             // Nobody registered: the relay is not asked anything, not even how it is.
             if devices.isEmpty { return false }
             if !work.isEmpty { lastHealthCheck = now; return false }
-            if let until = health?.holdUntil, until > now { return false }
+            if holds.any(at: now) { return false }
             return lastHealthCheck.map { now.timeIntervalSince($0) >= Self.healthEvery } ?? true
         }
         if due { checkHealth(at: now) }
@@ -217,7 +220,8 @@ public final class MacPushes: @unchecked Sendable {
                             key: Curve25519.KeyAgreement.PrivateKey, now: Date, force: Bool, stale: Date?) -> [Work] {
         var out: [Work] = []
         let lastBackground = state.lastBackground[id] ?? .distantPast
-        if !force, state.backgroundCounts[id] != counts, now.timeIntervalSince(lastBackground) >= Self.backgroundEvery {
+        if !force, state.backgroundCounts[id] != counts, now.timeIntervalSince(lastBackground) >= Self.backgroundEvery,
+           !holds.holds(.background, at: now) {
             let content = next(PushContent(source: identity.name, journal: state.journal, seq: 0, at: now, title: "counts",
                                            body: "", session: nil, event: .counts, counts: counts))
             if let request = seal(content, kind: .background, urgent: false, device: id, registration,
@@ -227,12 +231,16 @@ public final class MacPushes: @unchecked Sendable {
                 state.backgroundCounts[id] = counts
             }
         }
-        if let live = registration.liveActivityToken, let liveCap = registration.liveActivityCapability {
+        if let live = registration.liveActivityToken, let liveCap = registration.liveActivityCapability,
+           force || !holds.holds(.liveactivity, at: now) {
             let since = now.timeIntervalSince(state.lastLiveActivity[id] ?? .distantPast)
             let before = state.liveCounts[id]
             let urgent = before.map { $0.waiting != counts.waiting || $0.failed != counts.failed } ?? true
             let moved = before != counts
-            if force || (moved && (urgent || since >= Self.liveActivityQuiet)) || since >= Self.liveActivityEvery {
+            // Due, and within the budget: one the budget refuses is not recorded
+            // as sent, so a later look sends it. Going to sleep goes regardless.
+            let due = (moved && (urgent || since >= Self.liveActivityQuiet)) || since >= Self.liveActivityEvery
+            if force || (due && liveBudgets[id, default: LiveActivityBudget()].take(at: now)) {
                 let content = next(PushContent(source: identity.name, journal: state.journal, seq: 0, at: now, title: "counts",
                                                body: "", session: nil, event: .counts, counts: counts))
                 if let request = seal(content, kind: .liveactivity, urgent: false, device: id, registration,
@@ -307,6 +315,7 @@ public final class MacPushes: @unchecked Sendable {
             locked {
                 inFlight -= 1
                 health = outcome.health(at: now)
+                holds.heard(outcome, for: work.kind, at: now)
                 sent.append(Sent(device: work.device, kind: work.kind, event: work.event, session: work.session,
                                  outcome: outcome, at: now, staleDate: work.staleDate))
                 if sent.count > 500 { sent.removeFirst(sent.count - 500) }

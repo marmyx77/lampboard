@@ -1,23 +1,23 @@
 # Code map
 
-~105,200 lines of Swift across fourteen targets. For each file: what it contains, why
+~105,800 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,388 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  31,458 lines · 224 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    31,500 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,495 lines · 152 files   1581 cases, instantaneous
+  LampBoardTests/  22,595 lines · 153 files   1585 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
-  LampBoardMacSource/  2,353 lines · 13 files   the Mac as a source: its ssh server, pairing, bridge
-  MacSourceTests/   1,492 lines · 8 files   the server reached by a phone made of NodeLink
+  LampBoardMacSource/  2,362 lines · 13 files   the Mac as a source: its ssh server, pairing, bridge
+  MacSourceTests/   1,530 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,205 lines · 29 files   lampd: the Linux machine's service
+  LampDKit/         4,214 lines · 29 files   lampd: the Linux machine's service
   LampD/              274 lines · 1 files   lampd's command line
-  LampDTests/         1,417 lines · 9 files   lampd's suite, on Linux
+  LampDTests/         1,467 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2032,6 +2032,16 @@ has not moved (Q9). Its memory is `Codable`, kept by the source across restarts.
 **What you would break**: the memory emptied at the first look is ten
 notifications for what was already so — `bite.sh` commits exactly that.
 
+### `PushPacing.swift` · 67
+How often a source updates a Live Activity, and what a relay's «quota» holds
+back. `LiveActivityBudget` lets six go at once, then one every 36 s: about 106 in
+the relay's hour, under its 120. `RelayHolds` keeps the relay's wait per kind, as
+the relay counts it. On 24 October 2026 a node sent 121 updates in sixteen
+minutes, and the quota it spent held its alerts back for half an hour.
+**What you would break**: a hold for every kind silences a permission question
+because the lock screen spent its quota — `bite.sh` commits that, on `lampd`
+and on the Mac.
+
 ### `RowsAwayLedger.swift` · 63
 «While you were away» for a source that speaks in rows: finished turns and
 failures counted as they happen, said once in that device's `hello.away`, and
@@ -2625,7 +2635,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1581 cases
+## `LampBoardTests/` — 1585 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -3049,5 +3059,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and eighteen violations and demands one hundred and eighteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and twenty-three violations and demands one hundred and twenty-three catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

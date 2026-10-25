@@ -16,6 +16,8 @@ enum MacPushesSuite {
     final class FakeRelay: RelayTransport, @unchecked Sendable {
         private let lock = NSLock()
         private var all: [RelayPushRequest] = []
+        /// Kinds the relay says are over their quota: its quotas are per kind.
+        var spent: Set<PushKind> = []
         var pushes: [RelayPushRequest] { lock.lock(); defer { lock.unlock() }; return all }
 
         func exchange(method: String, url: URL, body: Data?) async throws -> RelayHTTPResponse { record(url, body) }
@@ -25,6 +27,9 @@ enum MacPushesSuite {
             defer { lock.unlock() }
             if url.path == "/v1/push", let body, let request = try? V1Codec.decoder().decode(RelayPushRequest.self, from: body) {
                 all.append(request)
+                if spent.contains(request.kind) {
+                    return RelayHTTPResponse(status: 429, headers: ["Retry-After": "1919"], body: Data(#"{"outcome":"quota"}"#.utf8))
+                }
             }
             return RelayHTTPResponse(status: 200, body: Data(#"{"outcome":"ok","status":"ok"}"#.utf8))
         }
@@ -107,6 +112,39 @@ enum MacPushesSuite {
             let live = relay.pushes.filter { $0.kind == .liveactivity }
             t.expect(!live.isEmpty, "the Live Activity is fed")
             t.expect(relay.pushes.allSatisfy { !$0.envelope.contains("example-node") }, "nothing readable of the node")
+        },
+
+        TestCase("A spent Live Activity quota holds back the Live Activity only: away, the amber row still rings") { t in
+            // 24 October 2026, on the node: the lock screen spent the relay's 120
+            // an hour and the source held its alerts back as well.
+            let relay = FakeRelay()
+            relay.spent = [.liveactivity]
+            let pushes = pushes(relay)
+            _ = pushes.register(registration(liveActivity: true), device: "phone-1", at: t0)
+            pushes.presence = .away
+            pushes.after(rows: rows(.working, since: t0, lampd: true), at: t0)
+            _ = pushes.drain()
+            t.expectEqual(relay.pushes.filter { $0.kind == .liveactivity }.count, 1, "the Live Activity tried, and refused")
+            pushes.after(rows: rows(.awaiting, since: t0 + 5, lampd: true), at: t0 + 5)
+            pushes.after(rows: rows(.awaiting, since: t0 + 5, lampd: true), at: t0 + 10)
+            _ = pushes.drain()
+            t.expectEqual(relay.alerts().count, 1, "the question rings while the Live Activity waits")
+            t.expectEqual(relay.pushes.filter { $0.kind == .liveactivity }.count, 1, "the Live Activity not tried again meanwhile")
+        },
+
+        TestCase("Waiting and working by turns for an hour: under the relay's 120 Live Activity updates") { t in
+            let relay = FakeRelay()
+            let pushes = pushes(relay)
+            _ = pushes.register(registration(liveActivity: true), device: "phone-1", at: t0)
+            pushes.presence = .away
+            for step in 0..<720 {
+                let at = t0 + Double(step) * 5
+                pushes.after(rows: rows(step % 2 == 0 ? .awaiting : .working, since: at, lampd: true), at: at)
+            }
+            _ = pushes.drain()
+            let sent = relay.pushes.filter { $0.kind == .liveactivity }.count
+            t.expect(sent < 120, "under the relay's quota: \(sent) in an hour")
+            t.expect(sent >= 60, "and still following the waits: \(sent) in an hour")
         },
 
         TestCase("Before sleep: one alert when something waits, and the Live Activity grey at once") { t in

@@ -24,6 +24,8 @@ enum PushSuite {
     final class FakeRelay: RelayTransport, @unchecked Sendable {
         private let lock = NSLock()
         var answer: RelayHTTPResponse
+        /// A kind answered otherwise than `answer`: the relay's quotas are per kind.
+        var answers: [PushKind: RelayHTTPResponse] = [:]
         private(set) var pushes: [RelayPushRequest] = []
         private(set) var healthChecks = 0
 
@@ -57,6 +59,7 @@ enum PushSuite {
             if url.path == "/health" { healthChecks += 1 }
             if url.path == "/v1/push", let body, let request = try? V1Codec.decoder().decode(RelayPushRequest.self, from: body) {
                 pushes.append(request)
+                return answers[request.kind] ?? answer
             }
             return answer
         }
@@ -85,6 +88,13 @@ enum PushSuite {
     static let device = V1Peer(device: "test-phone", role: .read)
 
     /// Looks: busy at 0, amber from 10 on.
+    static func withActivity() -> V1PushRegistration {
+        let r = registration()
+        return V1PushRegistration(capability: r.capability, token: r.token, environment: r.environment,
+                                  envelopeKey: r.envelopeKey, liveActivityToken: String(repeating: "cd", count: 40),
+                                  liveActivityCapability: "bGl2ZQ==", preferences: r.preferences)
+    }
+
     static func amberLooks(_ source: NodeSource) {
         source.absorb(F.look([F.record(F.a, pid: 10, status: "busy")], at: F.t0))
         for seconds in [10.0, 15, 20] {
@@ -203,6 +213,46 @@ enum PushSuite {
             t.expectEqual(later.pushes.registeredDevices, [], "410: the token is dropped")
             let file = FileManager.default.contents(atPath: paths.pushDevicesFile).map { String(decoding: $0, as: UTF8.self) } ?? ""
             t.expect(!file.contains(token), "and gone from the file")
+        },
+
+        TestCase("A spent Live Activity quota holds back the Live Activity only: a question still rings") { t in
+            // 24 October 2026: the lock screen spent the relay's 120 an hour, the
+            // relay asked for 32 minutes, and lampd held its alerts back as well.
+            let paths = F.home("push-live-quota")
+            defer { F.remove(paths) }
+            let relay = FakeRelay()
+            relay.answers[.liveactivity] = RelayHTTPResponse(status: 429, headers: ["Retry-After": "1919"],
+                                                             body: Data(#"{"outcome":"quota"}"#.utf8))
+            let service = live(paths, relay)
+            _ = service.register(withActivity(), by: device, at: F.t0)
+            amberLooks(service)
+            let lives = relay.pushes.filter { $0.kind == .liveactivity }.count
+            t.expect(lives > 0, "the Live Activity was tried, and refused")
+            let alerts = relay.alerts().count
+            service.absorb(F.look([F.record(F.a, pid: 10, status: "busy"), F.record(F.b, pid: 11, status: "busy")], at: F.t0 + 30))
+            for seconds in [40.0, 45, 50] {
+                service.absorb(F.look([F.record(F.a, pid: 10, status: "busy"), F.record(F.b, pid: 11, status: "waiting")],
+                                      at: F.t0 + seconds))
+            }
+            _ = service.pushes.drain()
+            t.expect(relay.alerts().count > alerts, "a new wait still rings while the Live Activity waits")
+            t.expectEqual(relay.pushes.filter { $0.kind == .liveactivity }.count, lives, "the Live Activity is not tried again meanwhile")
+        },
+
+        TestCase("An hour of sessions waiting and working by turns stays under the relay's 120 Live Activity updates") { t in
+            let paths = F.home("push-live-hour")
+            defer { F.remove(paths) }
+            let relay = FakeRelay()
+            let service = live(paths, relay)
+            _ = service.register(withActivity(), by: device, at: F.t0)
+            for step in 0..<720 {
+                service.absorb(F.look([F.record(F.a, pid: 10, status: step % 2 == 0 ? "waiting" : "busy")],
+                                      at: F.t0 + Double(step) * 5))
+            }
+            _ = service.pushes.drain()
+            let sent = relay.pushes.filter { $0.kind == .liveactivity }.count
+            t.expect(sent < 120, "under the relay's quota: \(sent) in an hour")
+            t.expect(sent >= 60, "and still following the waits: \(sent) in an hour")
         },
 
         TestCase("The Live Activity follows the wait for the person at once, the work at most once a minute") { t in
