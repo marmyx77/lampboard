@@ -884,6 +884,10 @@ old = "            # the start time below is asked all the same.\n            pa
 open(p, "w").write(s.replace(old, "            # the start time below is asked all the same.\n            return True\n", 1))
 PY
 
+# A project's heading dragged as if it were one of its conversations: in the
+# Hub it named whichever came first, and the conversations' own lines could not
+# be dragged at all (25 October 2026).
+protect Sources/LampBoardCore/Peer/SessionMention.swift
 attack_platform Scripts/test-linux.sh "a project's heading dragged as one of its conversations" "the project is not one of its conversations" <<'PY'
 p = "Sources/LampBoardCore/Peer/SessionMention.swift"
 s = open(p).read()
