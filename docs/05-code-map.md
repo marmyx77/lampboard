@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,376 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,458 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,474 lines · 152 files   1579 cases, instantaneous
+  LampBoardCore/  31,388 lines · 223 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,500 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  22,495 lines · 152 files   1581 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -2588,7 +2588,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `ContextRing.swift` | 81 | the second ring: the arc is the context spent, the letter is the model (D30) |
 | `LegendView.swift` | 204 | what the six colours and the two rings mean, counted live (D31); the light's two shapes, and `--legend` opens it for a photograph (D115) |
 | `LegendWindowController.swift` | 57 | owns the legend window |
-| `Tooltip.swift` | 306 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32); one level above the window it explains, beside it, and not taken away by an exit the pointer did not make (D123) |
+| `Tooltip.swift` | 348 | the panel's own tooltips: AppKit's need a key window, and this one never is (D32); one level above the window it explains, beside it, and not taken away by an exit the pointer did not make (D123) |
 | `TooltipCard.swift` | 149 | draws a `RowSummary`: header, the label/value grid, the context bar, the keys |
 | `Blinking.swift` | 39 | the blink as a view that exists only while it blinks |
 | `UpdateFlow.swift` | 55 | the update from the menu entry to the app coming back: what was found, what failed, nothing silent |
@@ -2625,7 +2625,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1579 cases
+## `LampBoardTests/` — 1581 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2664,7 +2664,7 @@ script, before it was split. The most important ones:
 | `DemoScriptSuite` | the demo's script holding nothing real and catching what would be, a beat as the hook's payload, LampMaster's demo card, the allowance line, the permission and the answers it plays (D64, D120) |
 | `LearnSuite` | a tip the first time its thing is on screen and none otherwise, each once, one a day, the most urgent first, every sentence within two lines, holding only while its thing does; the catalogue's six groups, one name each, each capability tried, turned on or found, the helper's marked (D127) |
 | `AllowanceLinesSuite` | the session window unless another limit is spent, no line for a window that has not started, the fullest limit without a session window, short names that stay unique (D123) |
-| `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123) |
+| `TooltipPlacementSuite` | the card beside the panel — right, else left, else under, else above — never over it, kept on the panel's screen (D123); in the Hub beside the row, not the window |
 | `AllowanceForecastSuite` | the last hour's pace and when the window runs out; nothing from one reading, five minutes or a flat line; a reset starting the history again; the sentence only before the reset (D111) |
 | `GovernorSuite` | one step down by family and nowhere past Haiku; lowered until the reset and back after it or when taken off; the session in focus kept; the mod heard only proven, the model only signed; the file's round trip, expired entries dropped (D112) |
 | `RadarSuite` | another live session's latest write of the file within two hours, never one's own, an old one or a closed session's; the sentence with a flattened name; the request proven for its session and file, the answer signed (D113) |
@@ -3049,5 +3049,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and seventeen violations and demands one hundred and seventeen catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and eighteen violations and demands one hundred and eighteen catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

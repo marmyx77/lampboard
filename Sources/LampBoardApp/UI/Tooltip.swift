@@ -38,6 +38,9 @@ enum Tooltip {
     /// there under the pointer: an exit that never comes — the panel ordered out
     /// under a still pointer — must not strand the card.
     private static weak var owner: NSWindow?
+    /// The view whose hover asked for the card. In a window wider than its rows
+    /// (the Hub) the card goes beside it rather than beside the window.
+    private static weak var item: NSView?
     private static var watchdog: Timer?
 
     /// What a tooltip can be: a sentence, or a row's whole second layer.
@@ -58,8 +61,9 @@ enum Tooltip {
     /// Calling it again while one is up replaces it without waiting: moving
     /// between two rows should read as one tooltip following the pointer, not as
     /// a flicker and a new delay.
-    static func show(_ content: Content) {
+    static func show(_ content: Content, from item: NSView? = nil) {
         pending?.cancel()
+        Self.item = item
 
         if panel?.isVisible == true {
             present(content)
@@ -80,6 +84,7 @@ enum Tooltip {
         pending = nil
         shownAt = nil
         owner = nil
+        item = nil
         watchdog?.invalidate()
         watchdog = nil
         panel?.orderOut(nil)
@@ -220,10 +225,16 @@ enum Tooltip {
         return panel
     }
 
-    /// Beside the window being explained, never over it: `TooltipPlacement`.
+    /// Beside the panel, or beside the row in a wider window, never over either:
+    /// `TooltipPlacement`.
     private static func origin(for size: NSSize, beside owner: NSWindow?) -> NSPoint {
         let mouse = NSEvent.mouseLocation
-        let anchor = owner?.frame ?? NSRect(origin: mouse, size: .zero)
+        let read = item.flatMap { view -> NSRect? in
+            guard let window = view.window, window === owner else { return nil }
+            return window.convertToScreen(view.convert(view.bounds, to: nil))
+        }
+        let anchor = TooltipPlacement.anchor(window: owner?.frame ?? NSRect(origin: mouse, size: .zero),
+                                             item: read, besideWindow: owner is FloatingPanel)
         let screen = owner?.screen ?? NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         let bounds = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         return TooltipPlacement.origin(size: size, anchor: anchor, pointer: mouse, screen: bounds)
@@ -299,8 +310,39 @@ extension View {
     }
 
     private func tooltip(_ content: Tooltip.Content) -> some View {
-        onHover { inside in
-            if inside { Tooltip.show(content) } else { Tooltip.pointerLeft() }
-        }
+        modifier(TooltipHover(shown: content))
     }
+}
+
+/// The hover, and the view it happened on: where the card goes depends on it.
+private struct TooltipHover: ViewModifier {
+    let shown: Tooltip.Content
+    @State private var anchor = TooltipAnchor.Holder()
+
+    func body(content: Content) -> some View {
+        content
+            .background(TooltipAnchor(holder: anchor))
+            .onHover { inside in
+                if inside { Tooltip.show(shown, from: anchor.view) } else { Tooltip.pointerLeft() }
+            }
+    }
+}
+
+/// An empty AppKit view behind the hovered one, so its frame on the screen can be
+/// read. It takes no clicks: a hit test never lands on it.
+private struct TooltipAnchor: NSViewRepresentable {
+    final class Holder { weak var view: NSView? }
+    let holder: Holder
+
+    final class Passive: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = Passive()
+        holder.view = view
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) { holder.view = nsView }
 }

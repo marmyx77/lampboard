@@ -58,6 +58,27 @@ enum TooltipPlacementSuite {
             t.expectEqual(bottom.y, screen.minY)
         },
 
+        TestCase("In the Hub, beside the row: a window wider than its rows keeps the card next to what is read") { t in
+            // The Hub reuses the panel's rows in its sidebar. Beside the whole
+            // window, the card opened past the Hub's right edge, a screen away
+            // from the row (25 October 2026).
+            let hub = CGRect(x: 100, y: 80, width: 1200, height: 760)
+            let row = CGRect(x: 100, y: 600, width: 280, height: 44)
+            let anchor = TooltipPlacement.anchor(window: hub, item: row, besideWindow: false)
+            let origin = TooltipPlacement.origin(size: card, anchor: anchor, pointer: CGPoint(x: 200, y: 620), screen: screen)
+            t.expectEqual(origin.x, row.maxX + TooltipPlacement.gap)
+            t.expect(hub.contains(CGRect(origin: origin, size: card)), "over the Hub's own centre, next to the row")
+            t.expect(!overlaps(origin, row), "never over the row it explains")
+        },
+
+        TestCase("In the panel, beside the panel: its rows are the window, and a control's card stays off it") { t in
+            let panel = CGRect(x: 200, y: 300, width: 340, height: 500)
+            let button = CGRect(x: 220, y: 760, width: 24, height: 24)
+            t.expectEqual(TooltipPlacement.anchor(window: panel, item: button, besideWindow: true), panel)
+            t.expectEqual(TooltipPlacement.anchor(window: panel, item: nil, besideWindow: false), panel,
+                          "nothing said which view: the window")
+        },
+
         TestCase("A second screen: the card stays on the one the panel is on") { t in
             let right = CGRect(x: 1440, y: 0, width: 1920, height: 1080)
             let panel = CGRect(x: 2500, y: 200, width: 340, height: 600)

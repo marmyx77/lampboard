@@ -863,6 +863,16 @@ s = open(p).read()
 open(p, "w").write(s.replace("            try? pipe.fileHandleForReading.close()\n", "", 1))
 PY
 
+# A row's card beside the whole window: in the Hub it opened past the window's
+# right edge, a screen away from the row (25 October 2026). The placement is the
+# Core's, so the Linux build runs its suite.
+protect Sources/LampBoardCore/Models/TooltipPlacement.swift
+attack_platform Scripts/test-linux.sh "a row's card beside the whole Hub" "never over the row it explains" <<'PY'
+p = "Sources/LampBoardCore/Models/TooltipPlacement.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("guard !besideWindow, let item else { return window }\n        return item", "return window", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════

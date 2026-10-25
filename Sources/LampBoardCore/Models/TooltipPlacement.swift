@@ -25,9 +25,21 @@ public enum TooltipPlacement {
     /// card's first line is level with the row's name rather than below it.
     public static let lift: CGFloat = 12
 
+    /// What the card goes beside: the panel's window, whose rows fill it, or the
+    /// view being read in a window wider than its rows.
+    ///
+    /// The Hub reuses the panel's rows in its sidebar. Anchored to the whole
+    /// window, the card opened past the Hub's right edge, as far from the row as
+    /// the window is wide (25 October 2026). In the panel the window stays the
+    /// anchor: a button's card beside the button would cover the panel (U1).
+    public static func anchor(window: CGRect, item: CGRect?, besideWindow: Bool) -> CGRect {
+        guard !besideWindow, let item else { return window }
+        return item
+    }
+
     /// - Parameters:
     ///   - size: the card, already measured.
-    ///   - anchor: the frame of the window being explained.
+    ///   - anchor: what the card goes beside, from `anchor(window:item:besideWindow:)`.
     ///   - pointer: where the pointer is.
     ///   - screen: the visible frame of the screen the window is on.
     public static func origin(size: CGSize, anchor: CGRect, pointer: CGPoint, screen: CGRect) -> CGPoint {
