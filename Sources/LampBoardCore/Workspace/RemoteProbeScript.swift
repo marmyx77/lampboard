@@ -32,8 +32,11 @@ public enum RemoteProbeScript {
         except ProcessLookupError:
             return False
         except PermissionError:
-            # The process exists and belongs to somebody else. Still alive.
-            return True
+            # The process exists and belongs to somebody else: alive, if it is
+            # still the session's. A reboot handed a dead session's pid to
+            # root's tailscaled, and its row stayed, twice over (21/10/2026):
+            # the start time below is asked all the same.
+            pass
         except Exception:
             return False
         # A pid outlives its process: after a reboot, or once the counter wraps,

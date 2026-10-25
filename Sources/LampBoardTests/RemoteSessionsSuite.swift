@@ -35,6 +35,49 @@ enum RemoteSessionsSuite {
         return process.terminationStatus == 0
     }
 
+    /// The probe run here on one session file whose pid is this python's own,
+    /// with `kill(pid, 0)` answering as it does for a process of another user.
+    /// `start` is the start time the file remembers; `"own"` puts the real one.
+    /// The session ids the probe calls alive, or `nil` where it could not run.
+    private static func probeSeesForeignPid(start: String) -> [String]? {
+        let home = NSTemporaryDirectory() + "probe-foreign-\(UUID().uuidString)"
+        defer { try? FileManager.default.removeItem(atPath: home) }
+        let shim = #"""
+        import json, os, sys
+        home, start = sys.argv[1], sys.argv[2]
+        pid = os.getpid()
+        if start == "own":
+            start = open("/proc/self/stat").read().rsplit(")", 1)[1].split()[19]
+        os.makedirs(home + "/.claude/sessions")
+        record = {"pid": pid, "sessionId": "deadbeef-foreign", "cwd": "/tmp", "procStart": start,
+                  "kind": "interactive", "entrypoint": "cli"}
+        json.dump(record, open("%s/.claude/sessions/%d.json" % (home, pid), "w"))
+        real = os.kill
+        def kill(target, signal):
+            if target == pid and signal == 0:
+                raise PermissionError(1, "Operation not permitted")
+            return real(target, signal)
+        os.kill = kill
+        os.environ["HOME"] = home
+        exec(compile(sys.stdin.read(), "probe", "exec"), {"__name__": "__main__"})
+        """#
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["python3", "-c", shim, home, start]
+        let input = Pipe(), output = Pipe()
+        process.standardInput = input
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        input.fileHandleForWriting.write(Data(RemoteProbeScript.script.utf8))
+        try? input.fileHandleForWriting.close()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        try? output.fileHandleForReading.close()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        return (try? RemoteSessionsDecoder.report(from: data, host: host, at: Date()))?.sessions.map(\.sessionId)
+    }
+
     private static func decode(_ json: String) -> [LiveSession] {
         (try? RemoteSessionsDecoder.decode(
             Data(json.utf8), host: host
@@ -435,6 +478,19 @@ enum RemoteSessionsSuite {
                 RemoteProbeScript.script.contains("PermissionError"),
                 "a process owned by somebody else is still alive"
             )
+        },
+
+        // 21 October 2026: after a reboot a dead session's pid was root's
+        // tailscaled. kill(pid, 0) said "not yours", the probe called that alive
+        // without asking the start time, and the Hub said the conversation was
+        // open twice.
+        TestCase("A pid now somebody else's, started at another time, is not the session's") { t in
+            // The start time is read from Linux's /proc: a Mac probe reads its own way.
+            guard FileManager.default.fileExists(atPath: "/proc/self/stat") else { return }
+            t.expectEqual(probeSeesForeignPid(start: "own"), ["deadbeef-foreign"],
+                          "another user's process with the session's start: alive")
+            t.expectEqual(probeSeesForeignPid(start: "999999999"), [],
+                          "another user's process started at another time: a reused pid, not alive")
         },
 
         // A pid outlives its process: after a reboot the same number names

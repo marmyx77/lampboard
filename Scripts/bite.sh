@@ -873,6 +873,17 @@ s = open(p).read()
 open(p, "w").write(s.replace("guard !besideWindow, let item else { return window }\n        return item", "return window", 1))
 PY
 
+# A pid of another user taken for the session without its start time: after a
+# reboot root's tailscaled kept a dead session's row, and the Hub said the
+# conversation was open twice (21 October 2026).
+protect Sources/LampBoardCore/Workspace/RemoteProbeScript.swift
+attack_platform Scripts/test-linux.sh "a reused pid of another user taken for the session" "a reused pid, not alive" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteProbeScript.swift"
+s = open(p).read()
+old = "            # the start time below is asked all the same.\n            pass\n"
+open(p, "w").write(s.replace(old, "            # the start time below is asked all the same.\n            return True\n", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
