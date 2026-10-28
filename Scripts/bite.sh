@@ -894,6 +894,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("        guard row.count == 1 else { return nil }\n", "", 1))
 PY
 
+# A project at rest measured as a wide row: once rows at rest could open, the
+# panel would have been sized for lines it does not draw (28 October 2026).
+protect Sources/LampBoardCore/Models/PanelMetrics.swift
+attack_platform Scripts/test-linux.sh "a row at rest measured as a wide one" "one line, not the wide row's two" <<'PY'
+p = "Sources/LampBoardCore/Models/PanelMetrics.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("(compact || singleLine ? sizes.row", "(compact ? sizes.row", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════

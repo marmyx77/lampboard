@@ -383,7 +383,9 @@ final class PanelController {
         // be two formulas that agreed right up until a project was opened, and
         // then disagreed by the padding a block adds: with two open, the window
         // came up twelve points short and the last row was cut in half.
-        let blocks = rendering.rows.map { row -> CGFloat in
+        // The rows at rest are measured the same way while their line is open:
+        // a project among them opens onto its conversations like any other.
+        func measure(_ row: ColumnRow, _ resting: Bool) -> CGFloat {
             let open = row.count > 1 && preferences.expandedRows.contains(row.id)
             let shown = open ? min(row.members.count, Layout.subRowCap) : 0
             return Layout.blockHeight(
@@ -391,9 +393,12 @@ final class PanelController {
                 shownConversations: shown,
                 hasTail: open && row.members.count > shown,
                 compact: compact,
-                asks: row.sessions.contains { queue.inlineSessions.contains($0.id) }
+                asks: !resting && row.sessions.contains { queue.inlineSessions.contains($0.id) },
+                singleLine: resting
             )
         }
+        let restingRows = rendering.resting.map { $0.isOpen ? $0.rows : [] } ?? []
+        let blocks = rendering.rows.map { measure($0, false) } + restingRows.map { measure($0, true) }
 
         let wanted = NSSize(
             width: Layout.width(compact: compact),
@@ -401,7 +406,7 @@ final class PanelController {
                 ofBlocks: blocks, extras: extras, showsIssue: store.issue != nil || store.awayNote != nil,
                 allowanceLines: allowance.reports.filter { AllowanceLines.shown(in: $0) != nil }.count,
                 showsLampMaster: compact && showsLampMaster, bandLines: (samples.isOn || TrialStage.mode != nil ? 1 : 0) + (tips.current == nil ? 0 : (compact ? 1 : TipBand.lines)),
-                resting: (rendering.resting != nil, rendering.resting.map { $0.isOpen ? $0.rows.count : 0 } ?? 0),
+                resting: (rendering.resting != nil, 0),
                 bar: compact ? 0 : Layout.barHeight(results: bar.shownResults.count, answer: bar.shownAnswer != nil),
                 empty: !compact && rendering.rows.isEmpty && rendering.hidden == nil && rendering.resting == nil
                     && rendering.filteredOut == 0

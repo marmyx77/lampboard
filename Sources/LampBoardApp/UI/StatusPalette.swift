@@ -405,11 +405,12 @@ enum Layout {
     /// How tall one row draws. Delegates, because arithmetic that decides whether
     /// a row can be seen is not drawing and belongs where a test can call it.
     static func blockHeight(
-        rowCount: Int, shownConversations: Int, hasTail: Bool, compact: Bool, asks: Bool = false
+        rowCount: Int, shownConversations: Int, hasTail: Bool, compact: Bool, asks: Bool = false,
+        singleLine: Bool = false
     ) -> CGFloat {
         PanelMetrics.blockHeight(
             rowCount: rowCount, shownConversations: shownConversations,
-            hasTail: hasTail, compact: compact, asks: asks, sizes: sizes
+            hasTail: hasTail, compact: compact, asks: asks, singleLine: singleLine, sizes: sizes
         )
     }
 

@@ -66,16 +66,19 @@ public enum PanelMetrics {
     /// The narrow panel has no fill, so it has no inset.
     /// - Parameter asks: an ask the panel holds for this row, drawn under it
     ///   (U2). Only in the wide panel: the narrow one has no room for buttons.
+    /// - Parameter singleLine: a row at rest (U2), one line even in the wide
+    ///   panel; a project there still opens onto its conversations.
     public static func blockHeight(
         rowCount: Int,
         shownConversations: Int,
         hasTail: Bool,
         compact: Bool,
         asks: Bool = false,
+        singleLine: Bool = false,
         sizes: Sizes
     ) -> CGFloat {
         let inset = (!compact && rowCount > 1) ? sizes.blockInset * 2 : 0
-        let row = (compact ? sizes.row : (sizes.wideRow ?? sizes.row)) + (asks && !compact ? sizes.inlineAsk : 0)
+        let row = (compact || singleLine ? sizes.row : (sizes.wideRow ?? sizes.row)) + (asks && !compact ? sizes.inlineAsk : 0)
         guard shownConversations > 0 else { return row + inset }
         return row
             + CGFloat(shownConversations) * (sizes.subRow + sizes.spacing)
@@ -104,8 +107,10 @@ public enum PanelMetrics {
     /// - Parameter bandLines: the band at the top while sample rows are in the
     ///   panel (U4), or in the demo used for screenshots, in lines of the issue
     ///   strip's height; zero everywhere else.
-    /// - Parameter resting: the line of rows at rest (U2), and the rows listed
-    ///   under it while it is open, one plain line each.
+    /// - Parameter resting: the line of rows at rest (U2). The rows listed under
+    ///   it while it is open come in `blocks`, measured like any other with
+    ///   `singleLine`, because a project among them opens too; `open` counts
+    ///   plain lines only.
     /// - Parameter empty: how tall the empty column's guidance is, when there is
     ///   nothing else to draw (U4).
     public static func height(

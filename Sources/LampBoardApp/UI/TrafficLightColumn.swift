@@ -111,9 +111,11 @@ struct TrafficLightColumn: View {
                 if let resting = rendering.resting {
                     RestingRow(summary: resting, compact: compact, toggle: toggleResting)
                     if resting.isOpen {
-                        ForEach(resting.rows) { row in
-                            TrafficLightRow(row: row, compact: compact, now: now,
-                                            flags: flags(for: row, expanded: false, singleLine: true), actions: actions)
+                        // A project at rest still opens onto its conversations:
+                        // drawn closed for good, the one way back into a sleeping
+                        // conversation was starting a new one in its folder.
+                        ForEach(Array(resting.rows.enumerated()), id: \.element.id) { index, row in
+                            block(row, at: index, in: resting.rows, resting: true)
                         }
                     }
                 }
@@ -146,11 +148,14 @@ struct TrafficLightColumn: View {
     /// project with a single session has no block, so it cannot pretend to have
     /// one. A leading chevron would have charged **every** name in the column 13
     /// points on a 240 point panel, for a minority of rows.
+    ///
+    /// A row at rest is one line and is not moved by hand, since the order of
+    /// the column is the order of the rows above that line; it opens all the same.
     @ViewBuilder
-    private func block(_ row: ColumnRow, at index: Int, in rows: [ColumnRow]) -> some View {
+    private func block(_ row: ColumnRow, at index: Int, in rows: [ColumnRow], resting: Bool = false) -> some View {
         let holdsMany = row.count > 1
         let open = holdsMany && expandedRows.contains(row.id)
-        let drag = dragState(for: row, at: index, in: rows)
+        let drag: RowDragState? = resting ? nil : dragState(for: row, at: index, in: rows)
 
         if compact {
             narrowBlock(row, at: index, in: rows, holdsMany: holdsMany, open: open)
@@ -162,14 +167,14 @@ struct TrafficLightColumn: View {
                         row: row,
                         compact: false,
                         now: now,
-                        flags: flags(for: row, expanded: open),
+                        flags: flags(for: row, expanded: open, singleLine: resting),
                         actions: actions,
                         drag: drag
                     )
-                    if let queue { InlineAskView(queue: queue, sessionIds: row.sessions.map(\.id)) }
+                    if let queue, !resting { InlineAskView(queue: queue, sessionIds: row.sessions.map(\.id)) }
                 }
                 .overlay {
-                    if let queue { SelectionRing(queue: queue, sessionIds: Set(row.sessions.map(\.id))) }
+                    if let queue, !resting { SelectionRing(queue: queue, sessionIds: Set(row.sessions.map(\.id))) }
                 }
 
                 if open { conversations(of: row) }
@@ -195,10 +200,10 @@ struct TrafficLightColumn: View {
             // header, its conversations and the well around them, and moving one
             // third of that was the defect. Closed, the two are the same thing,
             // which is why it only ever looked wrong open.
-            .offset(y: drag.offset)
-            .zIndex(drag.isDragged ? 1 : 0)
-            .shadow(color: .black.opacity(drag.isDragged ? 0.35 : 0), radius: drag.isDragged ? 6 : 0, y: 2)
-            .animation(drag.isDragged ? nil : .easeOut(duration: 0.12), value: drag.offset)
+            .offset(y: drag?.offset ?? 0)
+            .zIndex(drag?.isDragged == true ? 1 : 0)
+            .shadow(color: .black.opacity(drag?.isDragged == true ? 0.35 : 0), radius: drag?.isDragged == true ? 6 : 0, y: 2)
+            .animation(drag?.isDragged == true ? nil : .easeOut(duration: 0.12), value: drag?.offset ?? 0)
         }
     }
 

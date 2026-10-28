@@ -134,6 +134,20 @@ enum PanelMetricsSuite {
                           4 * (20 + 2), "the line and three rows")
         },
 
+        TestCase("A project at rest is one line, and opened it adds its conversations like any other") { t in
+            let twoLines = PanelMetrics.Sizes(
+                row: 20, subRow: 10, spacing: 2, blockInset: 3,
+                tail: 16, padding: 8, footer: 25, issueStrip: 17, wideRow: 30
+            )
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 1, shownConversations: 0, hasTail: false, compact: false,
+                                                   singleLine: true, sizes: twoLines), 20, "one line, not the wide row's two")
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 3, shownConversations: 0, hasTail: false, compact: false,
+                                                   singleLine: true, sizes: twoLines), 20 + 6, "closed: the line in its well")
+            t.expectEqual(PanelMetrics.blockHeight(rowCount: 3, shownConversations: 3, hasTail: false, compact: false,
+                                                   singleLine: true, sizes: twoLines), 20 + 3 * (10 + 2) + 6,
+                          "opened at rest: the line, its three conversations, the well")
+        },
+
         TestCase("An empty column is as tall as what it says to do, and no taller once rows come") { t in
             let empty = PanelMetrics.height(ofBlocks: [], extras: 0, showsIssue: false, empty: 70, sizes: sizes)
             t.expectEqual(empty - PanelMetrics.height(ofBlocks: [], extras: 0, showsIssue: false, sizes: sizes), 50,

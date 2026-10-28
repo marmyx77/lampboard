@@ -52,6 +52,7 @@ extension PanelController {
     /// Only lines that are one conversation get here (`SessionMention.target`).
     func mention(_ row: ColumnRow) -> NSItemProvider {
         guard let target = SessionMention.target(of: row) else { return NSItemProvider() }
+        Diagnostics.log("mention drag: \(target.sessionId.prefix(8))")
         if let asker = hubCentreSession?(), asker != target.sessionId, let lampMaster {
             lampMaster.mentions.grant(asker: asker, target: target.sessionId, at: Date())
             Diagnostics.log("mention: \(asker.prefix(8)) may ask \(target.sessionId.prefix(8))")

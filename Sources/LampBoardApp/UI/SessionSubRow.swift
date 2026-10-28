@@ -109,6 +109,9 @@ struct SessionSubRow: View {
                 .fill(Color.white.opacity(drag?.isDragged == true ? 0.16 : hovering ? 0.10 : hubSelection == member.id ? 0.14 : 0))
         )
         .contentShape(Rectangle())
+        // For the tests' real hands, as the row above is found (`lbhands`).
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("sub.\(member.id.prefix(8))")
         .onHover { hovering = $0 }
         .onTapGesture { open(member) }
         .modifier(MentionDrag(provide: mention.map { mention in { mention(card) } }))
