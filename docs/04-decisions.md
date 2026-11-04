@@ -2294,8 +2294,9 @@ lock files — `~/.claude/ide/*.lock`, written there by the Remote-SSH extension
 judged alive there because the pid means nothing anywhere else — and a remote
 row's folder is the window whose folder contains the session's `cwd`, resolved by
 the same function that resolves a local row against this Mac's locks. Failing a
-window, the folder the session's own file names, written once at start; failing
-that, the `cwd`, which is what every remote row had before. A row that spoke
+window, the folder the session's own file names, written once at start (wherever
+the `cwd` went since, D183); failing that, the `cwd`, which is what every remote
+row had before. A row that spoke
 before its host had ever answered is **moved** when the answer comes, colour and
 history untouched.
 
@@ -6929,3 +6930,32 @@ choices at the migration (it would undo what the person did on the phone since).
 **Signal to revisit:** a node whose ssh refuses a command with `-R` (a `ForceCommand`); two Macs paired with one
 node (each would be an owner of nothing and both would say presence); a phone that read on a node while the
 Mac slept and the panel's green still on after the wake.
+
+## D183 · A remote session stays in the folder it started in, wherever it goes
+
+**Decided.** Without an editor window over there that contains the hook's `cwd`, a
+row on another machine belongs to the folder its session file names, written once
+at start, whether the `cwd` is below that folder or outside it. Until now the
+file's folder held only a `cwd` below it (D51); a `cwd` anywhere else became a
+project of its own, named after wherever the session had stepped.
+
+**Why.** Found on 4 November 2026: a session started in its project's folder, with
+three others beside it, stepped into a data folder under `~/.local/share` to read
+what it was analysing. The phone, whose rows `lampd` builds from the session files,
+kept it in its project with the other three; the Mac opened a fourth project named
+after the data folder, with one conversation in it. The person reads the project
+as where the session was started, and so did one of the two screens: the rule
+that disagreed was the one with the condition.
+
+**Measured** by `RemoteWorkspaceResolverSuite` (a `cwd` under `~/.local/share`
+belongs to the file's folder), on Linux and the Mac, and by one bite in `--linux`
+that puts the condition back.
+
+**Discarded:** trimming the `cwd` to some ancestor (D51 already discarded the guess
+about how deep a project is); keeping the condition and teaching `lampd` the same
+(the phone was the screen that was right).
+
+**Signal to revisit:** a session whose Claude moves on for good to another project
+and is still listed under the first; an editor window over there that contains the
+wandered `cwd` still claims the row first, as in D51, and a row found there under
+the wrong window would say this rule is needed for windows too.

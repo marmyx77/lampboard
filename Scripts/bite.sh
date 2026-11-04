@@ -894,6 +894,16 @@ s = open(p).read()
 open(p, "w").write(s.replace("        guard row.count == 1 else { return nil }\n", "", 1))
 PY
 
+# A session that stepped out of its folder, homed on the folder it stepped into:
+# on the Mac it opened a project of its own, while the phone kept it where it
+# started (4 November 2026, D183).
+protect Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift
+attack_platform Scripts/test-linux.sh "a remote session homed on where it wandered" "a cwd outside the file's folder still belongs to it" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift"
+s = open(p).read()
+open(p, "w").write(s.replace(", !file.cwd.isEmpty {", ",\n           PathNormalizer.isDescendant(PathNormalizer.normalize(cwd), of: PathNormalizer.normalize(file.cwd)) {", 1))
+PY
+
 # A project at rest measured as a wide row: once rows at rest could open, the
 # panel would have been sized for lines it does not draw (28 October 2026).
 protect Sources/LampBoardCore/Models/PanelMetrics.swift

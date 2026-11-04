@@ -52,8 +52,8 @@ enum RemoteWorkspaceResolverSuite {
         },
 
         // Written once at start and never moved by a `cd`: the second-best record
-        // of where the session lives, when the node has no window for it.
-        TestCase("Without a window, the session file's folder stands in — if it contains the cwd") { t in
+        // of where the session lives, when the node has no window for it (D183).
+        TestCase("Without a window, the session file's folder stands in, wherever the cwd went") { t in
             let resolved = resolve(
                 cwd: "/home/dev/simlab/experiment", id: "s1",
                 sessions: [file("s1", cwd: "/home/dev/simlab")]
@@ -61,10 +61,10 @@ enum RemoteWorkspaceResolverSuite {
             t.expectEqual(resolved.path, "/home/dev/simlab", "the file's folder")
 
             let elsewhere = resolve(
-                cwd: "/home/dev/other", id: "s1",
+                cwd: "/home/dev/.local/share/simlab/analysis", id: "s1",
                 sessions: [file("s1", cwd: "/home/dev/simlab")]
             )
-            t.expectEqual(elsewhere.path, "/home/dev/other", "a cwd outside the file's folder is not folded into it")
+            t.expectEqual(elsewhere.path, "/home/dev/simlab", "a cwd outside the file's folder still belongs to it")
 
             let another = resolve(
                 cwd: "/home/dev/simlab/experiment", id: "s1",

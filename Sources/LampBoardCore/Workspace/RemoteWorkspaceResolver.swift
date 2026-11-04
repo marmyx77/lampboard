@@ -15,6 +15,13 @@ import Foundation
 /// The row was called "experiment", the window was called `simlab [SSH:
 /// devmachine]`, and the click found nothing. The session beside it worked
 /// because it had never left its root (D51).
+///
+/// The file's folder holds wherever the `cwd` went, not only below it (D183).
+/// Found on 4 November 2026: a session started in its project's folder had
+/// stepped into a data folder under `~/.local/share`, outside the project, to
+/// read what it was analysing. The phone, which reads the file, kept it in its
+/// project; the Mac, which folded a `cwd` into the file's folder only from
+/// below, opened a project of its own named after the data folder.
 public enum RemoteWorkspaceResolver {
 
     /// - Parameters:
@@ -34,8 +41,7 @@ public enum RemoteWorkspaceResolver {
         if let window = WorkspaceResolver.resolve(cwd: cwd, in: windows, at: now) {
             return Workspace(path: window.path, host: host)
         }
-        if let file = sessions.first(where: { $0.sessionId == sessionId && $0.host == host }),
-           PathNormalizer.isDescendant(PathNormalizer.normalize(cwd), of: PathNormalizer.normalize(file.cwd)) {
+        if let file = sessions.first(where: { $0.sessionId == sessionId && $0.host == host }), !file.cwd.isEmpty {
             return Workspace(path: file.cwd, host: host)
         }
         return Workspace(path: cwd, host: host)

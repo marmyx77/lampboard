@@ -5,7 +5,7 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,472 lines · 224 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardCore/  31,478 lines · 224 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    31,523 lines · 173 files   shell: AppKit, network, windows
   LampBoardTests/  22,627 lines · 153 files   1587 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
@@ -1754,11 +1754,12 @@ with no timestamp to every open session: rows quiet for days read "10h".
 > changed. Deciding here from shipped files would answer both about the wrong
 > machine.
 
-### `RemoteWorkspaceResolver.swift` · 43
+### `RemoteWorkspaceResolver.swift` · 49
 Which folder a row on another machine belongs to: the node's editor window that
 contains the hook's `cwd`, resolved by the same function as a local row; failing
-that the session file's folder, written once; failing that the `cwd` itself. Born
-from a row called "experiment" whose window was called `simlab` (D51).
+that the session file's folder, written once, wherever the `cwd` has gone since
+(D183); failing that the `cwd` itself. Born from a row called "experiment" whose
+window was called `simlab` (D51).
 
 ### `RemoteAdoption.swift` · 36
 Which sessions another machine's probe reports become rows before they speak
@@ -3059,5 +3060,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and twenty-five violations and demands one hundred and twenty-five catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and twenty-six violations and demands one hundred and twenty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |
