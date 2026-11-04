@@ -34,6 +34,8 @@ import Darwin
 //   lampd release                     the hooks' port back to the Mac, until the file it leaves is removed
 //   lampd projects list | attach -- <folder> | detach -- <folder>
 //                                     the projects kept in the list (JSON, as the phone reads it)
+//   lampd move [--session <id>] -- <folder> | --back
+//                                     a session moved to another project by the person (D184)
 //   lampd version
 
 signal(SIGPIPE, SIG_IGN)
@@ -58,7 +60,7 @@ func option(_ name: String, in list: [String] = arguments) -> String? {
 func usage() -> Never {
     print("""
     usage: lampd serve | v1-stdio --device <id> [--role read|action] | devices add|list|revoke |
-           status | doctor | usage | look | replay <flow.jsonl> | projects | name [<name>] |
+           status | doctor | usage | look | replay <flow.jsonl> | projects | move | name [<name>] |
            mac-link | routes | rows | release | version
     """)
     exit(2)
@@ -257,6 +259,35 @@ case "projects":
         fail("\(error)", code: 1)
     }
     print(String(decoding: ProjectList.encode(store.list()), as: UTF8.self))
+
+case "move":
+    // The person moves a session to another project (D184): the one this runs
+    // in, or the one `--session` names. A `cd` never moves it (D183); this does,
+    // for every screen at its next look. The folder comes after `--`.
+    let rest = Array(arguments.dropFirst())
+    let command = SessionMoveCommand(paths: paths)
+    let named = option("session", in: rest)
+    guard let found = named.map({ command.session(id: $0) }) ?? command.own() else {
+        fail(named.map { SessionMoveCommand.Failure.noSuchSession($0).description }
+             ?? SessionMoveCommand.Failure.notInASession.description, code: 1)
+    }
+    let folder = rest.firstIndex(of: "--").flatMap { $0 + 1 < rest.count ? rest[$0 + 1] : nil }
+    do {
+        if rest.contains("--back") {
+            try command.back(found)
+            print("\(found.sessionId.prefix(8)) is back in \(found.started)")
+        } else if let folder {
+            let target = try command.move(found, to: folder, base: FileManager.default.currentDirectoryPath)
+            print(target == found.started ? "\(found.sessionId.prefix(8)) is back in \(target)"
+                                           : "\(found.sessionId.prefix(8)) moved to \(target)")
+        } else {
+            fail("move [--session <id>] -- <folder> | move [--session <id>] --back")
+        }
+    } catch {
+        fail("\(error)", code: 1)
+    }
+    // The phone sees it at once; the Mac at its next look at this machine.
+    _ = LampDStatus.ask(paths.socket, line: "look", timeout: 25)
 
 case "version", "--version":
     print("lampd \(version)")

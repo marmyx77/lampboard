@@ -13,6 +13,11 @@ public struct LiveSession: Sendable, Equatable {
     /// Working directory, from which the VS Code workspace is derived.
     public let cwd: String
 
+    /// The folder the person moved the session to (D184), where its machine
+    /// says so; `nil` for a session never moved. Its `cwd` stays as it is: the
+    /// transcript is filed under it, and a resume starts there.
+    public let movedTo: String?
+
     /// `claude-vscode`, `cli`, … Used to exclude what nobody sits in front of
     /// (`sdk`, `print`), and carried into the row: it decides whether a click
     /// may send the tab deep link.
@@ -155,7 +160,7 @@ public struct LiveSession: Sendable, Equatable {
             name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
             fileStatus: word, turnIsOpen: status == .waiting ? false : status == .working ? true : turnIsOpen,
-            idleSince: idleSince
+            idleSince: idleSince, movedTo: movedTo
         )
     }
 
@@ -172,7 +177,7 @@ public struct LiveSession: Sendable, Equatable {
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: newValue, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript, fileStatus: fileStatus,
-            turnIsOpen: turnIsOpen, idleSince: idleSince
+            turnIsOpen: turnIsOpen, idleSince: idleSince, movedTo: movedTo
         )
     }
 
@@ -186,7 +191,7 @@ public struct LiveSession: Sendable, Equatable {
             pid: pid, sessionId: sessionId, cwd: cwd, entrypoint: entrypoint,
             name: name, kind: kind, modifiedAt: modifiedAt, host: host, procStart: procStart,
             context: context, jobId: jobId, tmux: tmux, hasTranscript: hasTranscript,
-            fileStatus: fileStatus, turnIsOpen: isOpen, idleSince: idleSince
+            fileStatus: fileStatus, turnIsOpen: isOpen, idleSince: idleSince, movedTo: movedTo
         )
     }
 
@@ -206,8 +211,10 @@ public struct LiveSession: Sendable, Equatable {
         hasTranscript: Bool = false,
         fileStatus: FileStatus = .idle,
         turnIsOpen: Bool? = nil,
-        idleSince: Date? = nil
+        idleSince: Date? = nil,
+        movedTo: String? = nil
     ) {
+        self.movedTo = movedTo.flatMap { $0.hasPrefix("/") ? PathNormalizer.normalize($0) : nil }
         self.turnIsOpen = turnIsOpen
         self.hasTranscript = hasTranscript
         self.fileStatus = fileStatus

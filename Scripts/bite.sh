@@ -904,6 +904,33 @@ s = open(p).read()
 open(p, "w").write(s.replace(", !file.cwd.isEmpty {", ",\n           PathNormalizer.isDescendant(PathNormalizer.normalize(cwd), of: PathNormalizer.normalize(file.cwd)) {", 1))
 PY
 
+# A session the person moved, placed by its cwd and windows as if nobody had
+# asked: the move made on its machine would move nothing on the Mac (D184).
+protect Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift
+attack_platform Scripts/test-linux.sh "a moved session placed as if never moved" "the folder it was moved to" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("if let moved = file?.movedTo {", "if let moved = file?.movedTo, moved.isEmpty {", 1))
+PY
+
+# A found row the Mac never resolves again: moved over there, it would stay
+# where it was found until the app restarted (D184).
+protect Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift
+attack_platform Scripts/test-linux.sh "a found row deaf to its session's move" "moved: resolved again" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("return file.movedTo != nil || file.cwd != workspace.path", "return file.cwd != workspace.path", 1))
+PY
+
+# The probe that does not read the moves: every screen reads a machine through
+# it, so none of them would see one (D184).
+protect Sources/LampBoardCore/Workspace/RemoteProbeScript.swift
+attack_platform Scripts/test-linux.sh "a probe blind to the moves" "the folder the move file names" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteProbeScript.swift"
+s = open(p).read()
+open(p, "w").write(s.replace('"movedTo": moved_to(sid),', '"movedTo": None,', 1))
+PY
+
 # A project at rest measured as a wide row: once rows at rest could open, the
 # panel would have been sized for lines it does not draw (28 October 2026).
 protect Sources/LampBoardCore/Models/PanelMetrics.swift
@@ -1188,6 +1215,15 @@ new = ("V1ProbeSource.rows(from: RemoteSessionsDecoder.Report(sessions: reading.
        "$0.fileStatus == .shell ? $0.with(statusFromFile: .idle) : $0 }, windows: reading.report.windows), "
        "identity: identity, at: now)")
 open(p, "w").write(s.replace(old, new, 1))
+PY
+
+# lampd reads its own files with no host, and the resolver looked a session's
+# file up by host: a move made on this machine moved nothing on the phone (D184).
+protect Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift
+attack_platform Scripts/test-lampd.sh "lampd's own sessions unknown to the resolver" "where it was moved" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteWorkspaceResolver.swift"
+s = open(p).read()
+open(p, "w").write(s.replace(" && ($0.host == host || $0.host == nil)", " && $0.host == host", 1))
 PY
 
 # The service stopped does not turn the lights off (E10 as amended): the

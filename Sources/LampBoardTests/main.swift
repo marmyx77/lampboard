@@ -133,6 +133,8 @@ let suites: [TestSuite] = [
     HookRepairSuite.suite,
     NativeHookSupportSuite.suite,
     RemoteWorkspaceResolverSuite.suite,
+    SessionMovesSuite.suite,
+    StartChoicesSuite.suite,
     TranscriptDecoderSuite.suite,
     ConversationSuite.suite,
     TranscriptLocatorSuite.suite,

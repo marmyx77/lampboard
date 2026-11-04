@@ -307,12 +307,19 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         // Projects (hub-terminale R3–R5), as the projects' menu calls them.
         if let add = wish["addProject"] as? [String: String], let path = add["path"] { model.deps.projects.add(path: path, host: add["host"]) }
         if let start = wish["start"] as? [String: String], let folder = start["folder"] {
-            model.startSession(folder: folder, host: start["host"], keepsRunning: start["keepsRunning"] != "false")
+            model.startSession(folder: folder, host: start["host"], keepsRunning: start["keepsRunning"] != "false",
+                               permissions: start["permissions"].map { NewSession.Permissions.named($0) })
         }
         // «End session…», confirmed as a person's click would (D168).
         if let id = wish["end"] as? String { model.deps.endConfirmed(id) }
         if let resume = wish["resume"] as? [String: String], let id = resume["id"], let folder = resume["folder"] {
-            model.resumeSession(id, folder: folder, host: resume["host"])
+            model.resumeSession(id, folder: folder, host: resume["host"],
+                                permissions: resume["permissions"].map { NewSession.Permissions.named($0) })
+        }
+        // «Fork this conversation» (D186), as the row's menu calls it.
+        if let fork = wish["fork"] as? [String: String], let from = fork["from"], let folder = fork["folder"] {
+            model.forkSession(from, folder: folder, host: fork["host"], name: fork["name"],
+                              permissions: fork["permissions"].map { NewSession.Permissions.named($0) })
         }
         // A project's «Resume a past conversation…», by its folder on this Mac.
         if let path = wish["resumeSheet"] as? String { model.resumeAsked = path }

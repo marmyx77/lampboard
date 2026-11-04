@@ -17,10 +17,10 @@ enum RemoteWorkspaceResolverSuite {
         IDEWindow(workspaceFolders: [folder], ideName: ide, pid: 40, lockModifiedAt: now)
     }
 
-    private static func file(_ id: String, cwd: String) -> LiveSession {
+    private static func file(_ id: String, cwd: String, movedTo: String? = nil) -> LiveSession {
         LiveSession(
             pid: 7, sessionId: id, cwd: cwd, entrypoint: "claude-vscode", name: nil, kind: "interactive",
-            modifiedAt: now, host: host, context: nil
+            modifiedAt: now, host: host, context: nil, movedTo: movedTo
         )
     }
 
@@ -84,6 +84,36 @@ enum RemoteWorkspaceResolverSuite {
                 windows: [window("/home/dev/simlab", ide: "SomeEditor")]
             )
             t.expectEqual(resolved.path, "/home/dev/simlab/experiment", "unsupported window ignored")
+        },
+
+        // Asked for by the person, which no `cd` is (D184): the session goes where
+        // it was moved, before any window claims where its Claude happens to be.
+        TestCase("A session the person moved belongs to where it was moved, whatever its cwd and windows say") { t in
+            let moved = [file("s1", cwd: "/home/dev/simlab", movedTo: "/home/dev/eventsapp")]
+            t.expectEqual(resolve(cwd: "/home/dev/simlab/experiment", sessions: moved).path, "/home/dev/eventsapp",
+                          "the folder it was moved to")
+            t.expectEqual(resolve(cwd: "/home/dev/simlab/experiment", windows: [window("/home/dev/simlab")],
+                                  sessions: moved).path, "/home/dev/eventsapp",
+                          "a window on its old folder does not take it back")
+            t.expectEqual(resolve(cwd: "/home/dev/simlab", windows: [window("/home/dev")], sessions: moved),
+                          Workspace(path: "/home/dev", host: host),
+                          "a window over there that contains the new folder names it, as it would any folder")
+            t.expectEqual(resolve(cwd: "/home/dev/simlab/experiment",
+                                  sessions: [file("s2", cwd: "/home/dev/simlab", movedTo: "/home/dev/eventsapp")]).path,
+                          "/home/dev/simlab/experiment", "another session's move moves nobody else")
+        },
+
+        TestCase("A found row is resolved again only when its session was moved, or the move was taken back") { t in
+            func may(_ folder: String, _ files: [LiveSession]) -> Bool {
+                RemoteWorkspaceResolver.mayRehome(sessionId: "s1", workspace: Workspace(path: folder, host: host),
+                                                  host: host, sessions: files)
+            }
+            t.expect(!may("/home/dev/simlab", [file("s1", cwd: "/home/dev/simlab")]), "where its file says: left alone")
+            t.expect(may("/home/dev/simlab", [file("s1", cwd: "/home/dev/simlab", movedTo: "/home/dev/eventsapp")]),
+                     "moved: resolved again")
+            t.expect(may("/home/dev/eventsapp", [file("s1", cwd: "/home/dev/simlab")]),
+                     "the move taken back: resolved again, home to its file's folder")
+            t.expect(!may("/home/dev/simlab", []), "a session the probe did not report: nothing to say")
         },
 
         // The probe answers after the row exists — the first hooks arrived before

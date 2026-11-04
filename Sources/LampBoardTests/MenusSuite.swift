@@ -30,11 +30,12 @@ enum MenusSuite {
     private static func row(remote: Bool = false, status: SessionStatus = .ready, repository: String? = "web",
                             pinned: [String] = [], attach: String? = nil, offer: String? = nil,
                             newConversation: Bool = true, move: Bool = false, elsewhere: String? = nil,
-                            canEnd: Bool = false) -> RowMenuState {
+                            canEnd: Bool = false, canFork: Bool = false) -> RowMenuState {
         RowMenuState(isRemote: remote, compact: false, alias: nil, folder: "web", status: status,
                      isHidden: false, isCalm: false, isMuted: false, isFocused: false, notificationsEnabled: true,
                      hostsNewConversation: newConversation, repository: repository, pinned: pinned,
-                     attachCommand: attach, modelOffer: offer, canMoveHere: move, elsewhere: elsewhere, canEnd: canEnd)
+                     attachCommand: attach, modelOffer: offer, canMoveHere: move, elsewhere: elsewhere, canEnd: canEnd,
+                     canFork: canFork)
     }
 
     static let suite = TestSuite("Menus", [
@@ -65,8 +66,8 @@ enum MenusSuite {
             let entries = Menus.row(row(status: .awaiting, pinned: ["UTC everywhere"],
                                         offer: "Use Sonnet until the window resets", elsewhere: "VS Code"))
             t.expectEqual(titles(entries), [
-                "Open in the Hub", "Show in VS Code", "Start a new session in this folder", "New conversation in VS Code",
-                "Rename…", "Hide", "Quiet ▸", "More ▸",
+                "Open in the Hub", "Show in VS Code", "Start a new session in this folder", "Skipping permissions ▸",
+                "New conversation in VS Code", "Rename…", "Hide", "Quiet ▸", "More ▸",
             ])
             t.expect(entries.first.map { if case .item(.sessionView, _, _, _, _) = $0 { return true }; return false } == true,
                      "Open in the Hub is the Hub's command")
@@ -96,6 +97,20 @@ enum MenusSuite {
             t.expectEqual(titles.firstIndex(of: "End session…").map { $0 + 1 }, titles.firstIndex(of: "Rename…"),
                           "the last of the session's own entries: \(titles)")
             t.expect(!Self.titles(Menus.row(row())).contains("End session…"), "only where it can be ended")
+        },
+
+        TestCase("A row's one conversation forks, and either start can skip permissions, chosen there (D185, D186)") { t in
+            let entries = Menus.row(row(canFork: true))
+            let all = titles(entries)
+            t.expectEqual(all.firstIndex(of: "Fork this conversation"),
+                          all.firstIndex(of: "Start a new session in this folder").map { $0 + 1 }, "beside the other start: \(all)")
+            let skipping = submenu("Skipping permissions", in: entries)
+            t.expectEqual(titles(skipping), ["Start a new session in this folder", "Fork this conversation"])
+            t.expect(skipping.contains { if case .item(.forkSkipping, _, _, _, _) = $0 { return true }; return false },
+                     "the fork's own command, not the plain one")
+            t.expect(!titles(Menus.row(row())).contains("Fork this conversation"), "only where there is one to fork")
+            t.expectEqual(titles(submenu("Skipping permissions", in: Menus.row(row()))),
+                          ["Start a new session in this folder"], "a start is always there to choose")
         },
 
         TestCase("A conversation in VS Code offers to move to LampBoard, right under its place (D135)") { t in

@@ -53,6 +53,7 @@ public enum NodeAction: Equatable, Sendable {
         switch self {
         case .start(_, _, _, .new): return "new-session"
         case .start(_, _, _, .resume): return "resume"
+        case .start(_, _, _, .fork): return "fork"
         case .end: return "end"
         case .move: return "move"
         case .moveDone: return "move-done"

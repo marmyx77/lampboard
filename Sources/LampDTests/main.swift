@@ -17,6 +17,7 @@ let suites: [TestSuite] = [
     MacLinkSuite.suite,
     SmallSuites.preferences,
     SmallSuites.projects,
+    SmallSuites.moves,
     SmallSuites.config,
     SmallSuites.replay,
     V1Conformance.suite(against: NodeMemoryTarget(mode: .live)),

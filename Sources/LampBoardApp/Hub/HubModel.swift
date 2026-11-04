@@ -295,11 +295,13 @@ final class HubModel: ObservableObject {
     /// Why the last start did not happen, for the tests' report.
     @Published private(set) var failure: String?
 
-    /// A new conversation in tmux, in `folder` here or on `host` (R4).
-    func startSession(folder: String, host: String?, name: String? = nil, keepsRunning: Bool = true) {
+    /// A new conversation in tmux, in `folder` here or on `host` (R4);
+    /// `permissions` chosen for this start (D185), Settings' when `nil`.
+    func startSession(folder: String, host: String?, name: String? = nil, keepsRunning: Bool = true,
+                      permissions: NewSession.Permissions? = nil) {
         failure = nil
         launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name,
-                         keepsRunning: keepsRunning) { [weak self] reason in
+                         keepsRunning: keepsRunning, permissions: permissions) { [weak self] reason in
             if let reason { self?.failed("The session did not start", reason) }
         }
     }
@@ -315,11 +317,24 @@ final class HubModel: ObservableObject {
         selected = id
     }
 
-    /// A past conversation taken up in tmux (R5).
-    func resumeSession(_ id: String, folder: String, host: String?) {
+    /// A past conversation taken up in tmux (R5), in `permissions` when chosen (D185).
+    func resumeSession(_ id: String, folder: String, host: String?, permissions: NewSession.Permissions? = nil) {
         failure = nil
-        launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id), name: nil) { [weak self] reason in
+        launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id), name: nil,
+                         permissions: permissions) { [weak self] reason in
             if let reason { self?.failed("The conversation was not taken up", reason) }
+        }
+    }
+
+    /// A conversation forked into a new one in tmux (D186): the original is not
+    /// touched, and may go on running beside it.
+    func forkSession(_ from: String, folder: String, host: String?, name: String?,
+                     permissions: NewSession.Permissions? = nil) {
+        failure = nil
+        launcher?.launch(folder: folder, host: host,
+                         start: .fork(from: from, sessionId: SessionLauncher.newSessionId()), name: name,
+                         permissions: permissions) { [weak self] reason in
+            if let reason { self?.failed("The conversation was not forked", reason) }
         }
     }
 

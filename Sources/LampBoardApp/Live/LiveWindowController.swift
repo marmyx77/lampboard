@@ -249,9 +249,11 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
 
     /// Starts a new background session in `directory`, then opens it. The start
     /// runs off the main thread: `claude --bg` may first start the supervisor.
-    func start(directory: String, name: String?, failed: @escaping (String) -> Void) {
+    func start(directory: String, name: String?, permissions: NewSession.Permissions? = nil,
+               failed: @escaping (String) -> Void) {
         guard let claude = LampMasterRunner.executable(),
-              let command = LiveLaunch.start(directory: directory, name: name, permissions: preferences.sessionPermissions, claude: claude,
+              let command = LiveLaunch.start(directory: directory, name: name,
+                                             permissions: permissions ?? preferences.sessionPermissions, claude: claude,
                                              environment: ProcessInfo.processInfo.environment,
                                              home: AppConfig.homeDirectory.path)
         else { failed(LiveLaunch.StartFailure.other("Claude Code was not found on this Mac.").message); return }

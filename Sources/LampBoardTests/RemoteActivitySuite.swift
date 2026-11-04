@@ -48,6 +48,20 @@ enum RemoteActivitySuite {
             t.expectEqual(session.modifiedAt, ISO8601DateFormatter().date(from: spoke), "and its time read")
         },
 
+        // D184: the move is read where the session runs, by the probe every
+        // screen uses, and its `cwd` is left as it is for the transcript.
+        TestCase("The probe reports where the person moved a session, and leaves its cwd alone") { t in
+            let own = #"{"type":"assistant","timestamp":"2025-10-01T08:00:00Z","message":{"role":"assistant"}}"#
+            guard let moved = probedSession(own: own, move: "/home/dev/other-project\n") else {
+                return t.fail("the probe did not run")
+            }
+            t.expectEqual(moved.movedTo, "/home/dev/other-project", "the folder the move file names")
+            t.expectEqual(moved.cwd, "/home/dev/project", "its own folder, where its transcript is")
+            t.expectEqual(moved.hasTranscript, true, "and its transcript still found there")
+            t.expectNil(probedSession(own: own)?.movedTo, "never moved: nothing")
+            t.expectNil(probedSession(own: own, move: "other-project")?.movedTo, "a relative path is no folder")
+        },
+
         TestCase("The decoder dates a session by the last timestamp of the tail it was sent") { t in
             func decoded(_ tail: String) -> LiveSession? {
                 let object: [String: Any] = [
@@ -70,7 +84,7 @@ enum RemoteActivitySuite {
     /// `ownDate` when given) and a neighbour's, written now. The probe runs for
     /// real, under `python3`, as it runs on the other machine.
     static func probedSession(own: String, ownFolder: String? = nil, ownDate: Date? = nil,
-                              sessionFileDate: Date? = nil) -> LiveSession? {
+                              sessionFileDate: Date? = nil, move: String? = nil) -> LiveSession? {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("lbtest-activity-\(UUID().uuidString)").path
         defer { try? FileManager.default.removeItem(atPath: home) }
         let cwd = "/home/dev/project"
@@ -91,6 +105,10 @@ enum RemoteActivitySuite {
                                          atomically: true, encoding: .utf8)
             if let ownDate { try fm.setAttributes([.modificationDate: ownDate], ofItemAtPath: ownPath) }
             if let sessionFileDate { try fm.setAttributes([.modificationDate: sessionFileDate], ofItemAtPath: sessionFile) }
+            if let move {
+                try fm.createDirectory(atPath: SessionMoves.directory(home: home), withIntermediateDirectories: true)
+                try move.write(toFile: SessionMoves.directory(home: home) + "/" + ownId, atomically: true, encoding: .utf8)
+            }
             try "#!/bin/sh\nexit 0\n".write(toFile: "\(home)/bin/tmux", atomically: true, encoding: .utf8)
             try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: "\(home)/bin/tmux")
         } catch {

@@ -161,6 +161,8 @@ public struct MacActionCall: Codable, Equatable, Sendable {
     public init?(_ action: NodeAction) {
         self.init(name: action.name)
         switch action {
+        // A fork is the Mac's own (D186): no phone asks for one through the bridge.
+        case .start(_, _, _, .fork): return nil
         case .start(let folder, let name, let launch, let start):
             self.folder = folder; tmuxName = name; self.launch = launch
             session = start.sessionId; permissions = start.permissions.rawValue

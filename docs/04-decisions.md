@@ -6959,3 +6959,101 @@ about how deep a project is); keeping the condition and teaching `lampd` the sam
 and is still listed under the first; an editor window over there that contains the
 wandered `cwd` still claims the row first, as in D51, and a row found there under
 the wrong window would say this rule is needed for windows too.
+
+## D184 · The person moves a session to another project; a `cd` never does
+
+**Decided.** D183 keeps a session in the folder it started in, wherever its `cwd`
+goes. When the person means a move, they say so on the machine the session runs
+on: `lampd move -- <folder>` from inside the session (asked of Claude in plain
+words, "move yourself to that project"), or `lampd move --session <id> -- <folder>`
+from anywhere on that machine; `--back`, or a move to the folder it started in,
+takes the move away. The move is one file per session, `~/.lampboard/moves/<id>`,
+holding the folder (`SessionMoves`). The probe every screen reads a machine with
+reports it as `movedTo`, and `RemoteWorkspaceResolver` puts a moved session in
+that folder, or in the editor window over there that contains it, **before** any
+window is asked about the `cwd`. The session's `cwd` is never rewritten: its
+transcript is filed under it, and that is where a resume starts.
+
+The Mac resolves a row it found again only when its session was moved, or was
+and is no longer (`mayRehome`); every other found row keeps its folder, as
+before. `lampd` reads its own files with no host, and the resolver now takes a
+file without a host as the reading machine's own: without that, `lampd` never
+found a session's file at all, and a move made there would have moved nothing on
+the phone.
+
+**Why.** Asked for by the person on 4 November 2026, the evening D183 was
+installed: the same rule that keeps a session where it started when its Claude
+steps into a data folder would keep it there forever. A `cd` is the work; a move
+is the person's, and it has to be possible to say.
+
+**Measured** by `SessionMovesSuite` (the file written, read and taken back; the
+session found among a command's ancestors), `RemoteWorkspaceResolverSuite` (a
+moved session before every window; a found row resolved again only on a move),
+the probe run under `python3` in `RemoteActivitySuite`, and `lampd`'s
+`SmallSuites.moves` (the command, and the phone's rows following a move); four
+bites, three in `--linux` and one in `--lampd`.
+
+**Discarded:** a choice kept on the Mac, in the row's menu (the phone would not
+follow, which is the disagreement D183 was about); rewriting the `cwd` in Claude
+Code's session file (not ours to write, and the transcript is filed under it);
+moving on the hook's `cwd` after some time spent elsewhere (a guess, and D183's
+data folder would have moved by it).
+
+**Not yet:** a session on the Mac itself, which the Mac places from its own
+files and hooks, does not read the moves; a "Move to project…" entry in the
+row's menu, which would write the same file over ssh.
+
+**Signal to revisit:** a move asked for and not seen on one screen after its next
+look; a session moved by mistake by a Claude that ran `lampd move` unasked.
+
+## D185 · Skip permissions is chosen at each start, where the start is asked for
+
+**Decided.** Wherever the person starts or resumes a session on the Mac, they can
+choose there, for that session only, to skip permissions
+(`--dangerously-skip-permissions`):
+- **New session…** has a **Skip permissions** box, with a line saying what it lets
+  Claude Code do;
+- a project's menu in the Hub has **Skipping permissions ▸** with both of its
+  starts, the one that keeps running and the one that ends when closed;
+- **Resume a past conversation…** has the same box beside Cancel;
+- a row's menu has **Skipping permissions ▸** with its start and its fork (D186),
+  and a conversation's line offers **Fork, skipping permissions**.
+
+The box starts as Settings say (D169). Ticked is bypass. Cleared is Settings'
+mode, except that Settings' bypass becomes Ask: a box the person cleared means
+"ask me" (`NewSession.Permissions.chosen`). Every way a start runs carries it,
+because the choice travels in `NewSession.Start` as before: tmux here or over
+there, a session that ends when closed, the background start here.
+
+**Why.** Asked for by the person on 4 November 2026: D169's setting is one choice
+for every start, and the person wants bypass for one session without turning it
+on for all of them, or the reverse.
+
+**Measured** by `LiveLaunchSuite` (ticked bypasses under any setting; cleared
+never does) and `MenusSuite` (the submenu, with the fork's own command).
+
+**Not yet:** the phone's starts, which keep the Mac's setting and its own
+refusal of bypass (D179).
+
+## D186 · Fork a conversation, and take it up from there
+
+**Decided.** A row holding one Claude Code conversation, and each conversation's
+line in an opened project, offer **Fork this conversation**. It starts a new
+conversation that begins as a copy of that one, in tmux, in the Hub, in the folder
+the original's transcript is filed under:
+`claude --resume <original> --fork-session --session-id <new id>`. The new id is
+LampBoard's, as for a new session, so its row and its terminal are known before it
+says anything. The original is not touched: it may go on running beside the fork.
+A conversation held by the Claude app is not offered; the phone does not ask for
+forks through the bridge.
+
+**Why.** Asked for by the person on 4 November 2026: to try another direction
+from where a conversation stands, without losing the one that got there.
+
+**Measured** by `LiveLaunchSuite` (the line, the id written only when it is one,
+no fork of itself) and `MenusSuite` (where the entry sits, and only where there is
+one conversation to fork).
+
+**Signal to revisit:** a Claude Code that refuses `--session-id` beside
+`--fork-session`; a fork started in a folder other than where its original's
+transcript is filed, which Claude Code would not find.

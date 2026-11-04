@@ -331,9 +331,11 @@ final class StateStore: ObservableObject {
             // Rows that spoke before this host had ever answered were homed on
             // their hook's `cwd`, which follows every `cd`. Now that the windows
             // over there are known, each goes where it belongs — and a row found
-            // rather than announced keeps its folder, as it does locally.
+            // rather than announced keeps its folder, as it does locally —
+            // unless the person moved its session, or took the move back (D184).
             for row in state.sessions.values
-            where row.workspace.host == host && !row.wasFound {
+            where row.workspace.host == host && (!row.wasFound || RemoteWorkspaceResolver.mayRehome(
+                sessionId: row.id, workspace: row.workspace, host: host, sessions: sessions)) {
                 let better = RemoteWorkspaceResolver.resolve(
                     cwd: row.workspace.path, sessionId: row.id, host: host,
                     windows: report.windows, sessions: sessions, at: askedAt

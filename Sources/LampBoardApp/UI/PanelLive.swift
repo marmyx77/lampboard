@@ -17,19 +17,41 @@ extension PanelController {
 
     /// «New conversation in LampBoard»: in the row's folder, a background
     /// session on this Mac, or a tmux session on the row's machine (D133).
-    func startHere(_ row: ColumnRow) {
-        startSession(host: row.workspace.host, folder: row.workspace.path, name: row.alias ?? row.workspace.name)
+    func startHere(_ row: ColumnRow, permissions: NewSession.Permissions? = nil) {
+        startSession(host: row.workspace.host, folder: row.workspace.path, name: row.alias ?? row.workspace.name,
+                     permissions: permissions)
+    }
+
+    /// A Claude Code conversation, the only kind Claude Code forks: not one the
+    /// Claude app holds, which takes it up in its own window (D186).
+    static func canFork(_ session: SessionState) -> Bool {
+        session.harness == .claudeCode && !ClaudeDesktop.isEntrypoint(session.entrypoint)
+    }
+
+    /// «Fork this conversation» (D186): a new conversation that starts as a
+    /// copy of `session`, in tmux, in the Hub, in the folder its transcript is
+    /// filed under; `session` stays as it was, running or not.
+    func fork(_ session: SessionState, permissions: NewSession.Permissions?) {
+        let host = session.workspace.host
+        let folder = host.flatMap { host in store.remoteSessions[host]?.first { $0.sessionId == session.id }?.cwd }
+            ?? session.workspace.path
+        guard let forkInHub, forkInHub(session.id, host, folder, session.displayName, permissions) else {
+            return liveRefused("LampBoard could not fork this conversation: it starts in the Hub, in tmux, and tmux was not found on this Mac.")
+        }
     }
 
     /// Starts a session and opens it: what «New session…» and a row both do.
     /// In tmux, in the Hub, when the Hub takes it (hub-terminale R4); else in
     /// the background here, or in tmux on the row's machine (D133).
-    func startSession(host: String?, folder: String, name: String?) {
-        if startInHub?(host, folder, name) == true { return }
-        guard let host else { return startInBackground(folder: folder, name: name) }
+    /// `permissions` is the mode chosen for this start (D185); Settings' when `nil`.
+    func startSession(host: String?, folder: String, name: String?, permissions: NewSession.Permissions? = nil) {
+        if startInHub?(host, folder, name, permissions) == true { return }
+        guard let host else { return startInBackground(folder: folder, name: name, permissions: permissions) }
         // Free names are the other machine's to pick: it knows all of its own.
         let tmuxName = NewSession.tmuxName(for: "/" + (name ?? (folder as NSString).lastPathComponent), taken: [])
-        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName), live?.show(target) == true else {
+        let start = permissions.map { NewSession.Start.new(sessionId: SessionLauncher.newSessionId(), permissions: $0) }
+        guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName, start: start),
+              live?.show(target) == true else {
             liveRefused("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")
             return
         }
@@ -76,8 +98,8 @@ extension PanelController {
     }
 
     /// A background session here (D130), whatever the Hub would do.
-    func startInBackground(folder: String, name: String?) {
-        live?.start(directory: folder, name: name) { [weak self] message in self?.liveRefused(message) }
+    func startInBackground(folder: String, name: String?, permissions: NewSession.Permissions? = nil) {
+        live?.start(directory: folder, name: name, permissions: permissions) { [weak self] message in self?.liveRefused(message) }
     }
 
     /// «Move to LampBoard…» (D135): every check first, then the editor's

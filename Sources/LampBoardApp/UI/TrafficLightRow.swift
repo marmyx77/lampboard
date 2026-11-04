@@ -61,6 +61,12 @@ struct RowActions {
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
     /// Starts a new session in the row's folder, in tmux, in the Hub (D133, D163).
     var startHere: (ColumnRow) -> Void = { _ in }
+    /// The same start with permissions skipped, chosen in the menu (D185).
+    var startHereSkipping: (ColumnRow) -> Void = { _ in }
+    /// A conversation forked and taken up from there (D186), skipping
+    /// permissions when `true`; and whether it can be.
+    var fork: (SessionState, Bool) -> Void = { _, _ in }
+    var canFork: (SessionState) -> Bool = { _ in false }
     /// A conversation in VS Code, moved to the live view (D135).
     var canMoveHere: (SessionState) -> Bool = { _ in false }
     var moveHere: (ColumnRow) -> Void = { _ in }
@@ -479,7 +485,8 @@ struct TrafficLightRow: View {
             pinned: repository.map(actions.decisions) ?? [], attachCommand: target?.command,
             modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary),
             elsewhere: target == nil ? Self.elsewhere(row.primary) : nil,
-            canEnd: actions.canEnd(row.primary)
+            canEnd: actions.canEnd(row.primary),
+            canFork: row.count == 1 && actions.canFork(row.primary)
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
             switch command {
@@ -500,6 +507,9 @@ struct TrafficLightRow: View {
             case .unpinDecision(let number): if let repository { actions.unpinDecision(repository, number) }
             case .copyAttach: if let target { actions.copyCommand(target.command) }
             case .startHere: actions.startHere(row)
+            case .startHereSkipping: actions.startHereSkipping(row)
+            case .fork: actions.fork(row.primary, false)
+            case .forkSkipping: actions.fork(row.primary, true)
             case .moveHere: actions.moveHere(row)
             case .endSession: actions.endSession(row)
             case .toggleModel: actions.toggleModel(row)

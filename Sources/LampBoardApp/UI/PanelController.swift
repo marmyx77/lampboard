@@ -44,8 +44,8 @@ final class PanelController {
     /// The live view's windows (D130), owned by the app: they open headless too.
     var live: LiveWindowController?
     /// «New session…» (D133).
-    lazy var newSession = NewSessionWindowController(store: store, preferences: preferences) { [weak self] host, folder, name in
-        self?.startSession(host: host, folder: folder, name: name)
+    lazy var newSession = NewSessionWindowController(store: store, preferences: preferences) { [weak self] host, folder, name, permissions in
+        self?.startSession(host: host, folder: folder, name: name, permissions: permissions)
     }
     /// What the live view could open for a session (D132), set by the app.
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
@@ -76,7 +76,10 @@ final class PanelController {
     /// `false` when LampBoard has no terminal into it (D165).
     var proposeInHub: ((_ sessionId: String, _ text: String) -> Bool)?
     /// Starts a session in tmux and shows it in the Hub; `false` when it cannot.
-    var startInHub: ((_ host: String?, _ folder: String, _ name: String?) -> Bool)?
+    var startInHub: ((_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions?) -> Bool)?
+    /// Forks a conversation into a new one in the Hub (D186); `false` when it cannot.
+    var forkInHub: ((_ from: String, _ host: String?, _ folder: String, _ name: String,
+                     _ permissions: NewSession.Permissions?) -> Bool)?
     /// Whether the Hub is open, or has the keys; and closing it: ⌘⇧L's round ends there.
     var hubIsOpen: (() -> Bool)?
     var hubIsKey: (() -> Bool)?
@@ -537,6 +540,9 @@ final class PanelController {
             },
             liveTarget: { [weak self] session in self?.liveTarget(session) },
             startHere: { [weak self] row in self?.startHere(row) },
+            startHereSkipping: { [weak self] row in self?.startHere(row, permissions: .bypass) },
+            fork: { [weak self] session, skipping in self?.fork(session, permissions: skipping ? .bypass : nil) },
+            canFork: { session in Self.canFork(session) },
             canMoveHere: { [weak self] session in
                 guard let live = self?.live else { return false }
                 return MoveHere.isMovable(session) && !live.isMoving(session.id)

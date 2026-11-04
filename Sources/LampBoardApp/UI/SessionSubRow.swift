@@ -25,6 +25,9 @@ struct SessionSubRow: View {
     let dismiss: (RowSession) -> Void
     let terminate: (RowSession) -> Void
     let move: (RowSession, Int) -> Void
+    /// Forks this conversation and takes it up from there (D186), skipping
+    /// permissions when `true`; `nil` where it cannot be forked.
+    var fork: ((RowSession, Bool) -> Void)? = nil
     /// What the block tells this line about the drag in progress. `nil` in the
     /// narrow panel, where there is no handle and nothing to drag.
     var drag: RowDragState? = nil
@@ -123,6 +126,11 @@ struct SessionSubRow: View {
             Button("Move down") { move(member, 1) }
             Divider()
             Button("Rename this conversation\u{2026}") { rename(member) }
+            if let fork {
+                Divider()
+                Button("Fork this conversation") { fork(member, false) }
+                Button("Fork, skipping permissions") { fork(member, true) }
+            }
             Divider()
             Button("Remove this row") { dismiss(member) }
             Button("End this session\u{2026}") { terminate(member) }

@@ -1,13 +1,13 @@
 # Code map
 
-~105,800 lines of Swift across fourteen targets. For each file: what it contains, why
+~106,500 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,478 lines · 224 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,523 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,627 lines · 153 files   1587 cases, instantaneous
+  LampBoardCore/  31,665 lines · 225 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,632 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  22,811 lines · 155 files   1597 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -15,9 +15,9 @@ Sources/
   MacSourceTests/   1,530 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,214 lines · 29 files   lampd: the Linux machine's service
-  LampD/              274 lines · 1 files   lampd's command line
-  LampDTests/         1,467 lines · 9 files   lampd's suite, on Linux
+  LampDKit/         4,299 lines · 30 files   lampd: the Linux machine's service
+  LampD/              305 lines · 1 files   lampd's command line
+  LampDTests/         1,506 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -51,9 +51,10 @@ is what makes the e2e tests possible without touching the real `~/.claude`.
 
 ## `Menus/`
 
-### `Menus.swift` · 220
+### `Menus.swift` · 238
 The three menus as data (U3, D125): the panel's ⋯ with seven entries (an eighth
-while projects are hidden), a row's, which starts with Open in the Hub and has two submenus — *Quiet* for the
+while projects are hidden), a row's, which starts with Open in the Hub, offers its start, its fork (D186) and both
+skipping permissions (D185), and has two more submenus — *Quiet* for the
 ways of keeping it quiet, *More* for the rarer things —, and the lamp's, with what
 waits, the panel, the two ways of keeping quiet, where the panel lives, Settings
 and Quit. The App only draws what it is given (`MenuEntriesView`).
@@ -1686,14 +1687,16 @@ citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
 on (a file tool's whole path inside the folder), the lines a selection covers,
 and what the preview shows of a file.
 
-### `NewSession.swift` · 183
+### `NewSession.swift` · 198
 Starting a session from LampBoard (D133, D163): the folders a machine's sessions
 worked in, a tmux name made from a folder's, and the commands that start Claude
 Code in a new tmux session, on this Mac or on another machine, picking a free
 name there and turning tmux's status line off. A new conversation gets an id
 LampBoard chose (`--session-id`), a past one is taken up by its own
 (`--resume`); only an id is ever written into the script. The permission mode
-chosen in Settings travels with the start and adds Claude Code's flag (D169).
+chosen in Settings travels with the start and adds Claude Code's flag (D169), or
+the one chosen at that start (`Permissions.chosen`, D185). A fork resumes its
+original into a new id LampBoard chose (`--fork-session --session-id`, D186).
 
 ### `ProjectList.swift` · 123
 The projects attached to the Hub (D163): a folder on this Mac or on another
@@ -1754,12 +1757,23 @@ with no timestamp to every open session: rows quiet for days read "10h".
 > changed. Deciding here from shipped files would answer both about the wrong
 > machine.
 
-### `RemoteWorkspaceResolver.swift` · 49
+### `RemoteWorkspaceResolver.swift` · 78
 Which folder a row on another machine belongs to: the node's editor window that
 contains the hook's `cwd`, resolved by the same function as a local row; failing
 that the session file's folder, written once, wherever the `cwd` has gone since
 (D183); failing that the `cwd` itself. Born from a row called "experiment" whose
-window was called `simlab` (D51).
+window was called `simlab` (D51). A session the person moved goes where it was
+moved before any of that (D184); `mayRehome` says when a row found over there is
+to be resolved again, which is only on a move or a move taken back. A file read
+with no host is the reading machine's own, which is how `lampd` reads itself.
+
+### `SessionMoves.swift`
+A session the person moved to another project (D184): one file per session,
+`~/.lampboard/moves/<id>`, holding the folder, on the machine the session runs
+on — which every screen reads, through the probe. A move to the folder the
+session started in takes the move away; an id that could climb out of the
+directory is refused. `ownSession` finds the session a command runs in among its
+ancestors: what lets a Claude asked to move itself do it without knowing its id.
 
 ### `RemoteAdoption.swift` · 36
 Which sessions another machine's probe reports become rows before they speak
@@ -1785,7 +1799,7 @@ The table of recognized editors: declared name, bundle, process name.
 **Deliberately short** — see [N3](04-decisions.md#n3--jetbrains-and-the-other-ides).
 
 ### `IDEWindow.swift` · `LiveSession.swift`
-The two parsers for the on-disk files. A live file's `jobId` — a background
+The two parsers for the on-disk files. A session's `movedTo` is the folder the person moved it to (D184), never its `cwd`. A live file's `jobId` — a background
 session's folder under `~/.claude/jobs/` — is kept only when it is fit for a
 shell (AV2). The file's `status` is kept as Claude Code's word (`FileStatus`:
 `busy`, `shell`, `idle`, `waiting`, or one not known yet), and `statusFromFile`
@@ -2585,7 +2599,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
 | `PanelEnd.swift` | 96 | «End session…» (D168): a session in tmux closes its tmux session, Claude Code with it, here or over ssh, one just started found by LampBoard's tag; a temporary one closes its terminal; one elsewhere on this Mac is asked to stop |
-| `PanelLive.swift` | 180 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
+| `PanelLive.swift` | 211 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165, or skipping permissions, D185); «Fork this conversation» in tmux, in the Hub, in the folder its transcript is filed under (D186), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 181 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; when the session window would run out before it resets, an orange ⚠ by its figure and the sentence on hover, the reset staying in its place (D111, D165) |
@@ -2636,7 +2650,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1587 cases
+## `LampBoardTests/` — 1597 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -2952,6 +2966,7 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LoopbackTCP.swift` | the hooks' port: the socket systemd passes (`LISTEN_FDS`), or one bound on `127.0.0.1` for a check; where it is bound; the connection to the Mac's tunnel with a deadline |
 | `MacState.swift` | what the Mac said (`mac.json`, `0600`): presence and its freshness (a `here` counts while its link was seen in the last minute and it was said in the last ten), the Mac's settings, the migration; a line from the Mac carried out on the files by whichever process takes it |
 | `MacLinkClient.swift` | `lampd mac-link`, what the Mac's tunnel runs here: a beat every 0.3 s saying whether the service serves from a fresh state, the node's choices when they change, the Mac's lines to the service or to the files while it is down |
+| `SessionMoveCommand.swift` | `move [--session <id>] -- <folder>`, `--back`: a session moved to another project by the person (D184), found among the command's ancestors when no id is given; a relative folder taken from where it runs, one that is not a folder here refused; the service asked to look at once |
 | `ProjectsStore.swift` | `projects list`, `attach`, `detach`: the folders kept in the list, in the Hub's own file shape (`ProjectList`), under a lock; a path that is not a folder here refused |
 | `LampDCompare.swift` | `compare`: the service's lamps against the phone's own look at the same files, on the machine itself |
 | `LampDInstall.swift` | the version, where the binary is linked from, a device's id from its name |
@@ -3060,5 +3075,5 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-contract-node.sh` | the contract check as lampd's timer runs it on a node without binutils, with a Claude Code that writes down every run (E5). Exits 3 without docker; attacked by `bite.sh --lampd` |
 | `Scripts/smoke-clicks.sh` | does a click still land where the row promises. `--live` raises windows and asks the window server who came forward; without it, recognition only and nothing moves. Writes `docs/smoke-clicks.md` |
 | `Scripts/check-docs.sh` | the figures, links, event counts and suite registrations the docs state, and the WORKLOG's status table against the repository |
-| `Scripts/bite.sh` | commits one hundred and twenty-six violations and demands one hundred and twenty-six catches; a gate nobody has seen fail has not been distinguished from a broken one |
+| `Scripts/bite.sh` | commits one hundred and thirty violations and demands one hundred and thirty catches; a gate nobody has seen fail has not been distinguished from a broken one |
 | `Scripts/measure-compaction.py` | every auto-compaction in the transcripts, and the value our own reading had reached at each — the measurement that settles the context denominator |

@@ -106,6 +106,19 @@ public enum RemoteProbeScript {
             seen += 1
         return None
 
+    # Where the person moved a session (D184): `SessionMoves`, one file per
+    # session holding the folder. Its `cwd` is left alone, the transcript is
+    # filed under it.
+    def moved_to(sid):
+        if not re.match(r"^[A-Za-z0-9_-]{1,128}$", sid):
+            return None
+        try:
+            with open(os.path.expanduser("~/.lampboard/moves/") + sid) as handle:
+                line = handle.readline().strip()
+        except Exception:
+            return None
+        return line if line.startswith("/") else None
+
     out = []
     for path in glob.glob(os.path.expanduser("~/.claude/sessions/*.json")):
         try:
@@ -199,6 +212,7 @@ public enum RemoteProbeScript {
             "procStart": record.get("procStart"),
             "sessionId": record.get("sessionId"),
             "cwd": cwd,
+            "movedTo": moved_to(sid),
             "entrypoint": record.get("entrypoint"),
             "name": record.get("name"),
             "kind": record.get("kind"),

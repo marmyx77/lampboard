@@ -65,6 +65,44 @@ enum SmallSuites {
         },
     ])
 
+    static let moves = TestSuite("lampd: a session moved by the person (D184)", [
+
+        TestCase("lampd move finds the session, takes a folder from where it runs, and refuses what is not one") { t in
+            let paths = F.home("moves")
+            defer { F.remove(paths) }
+            let fm = FileManager.default
+            let id = "1287c1a0-4444-4444-8444-444444444444"
+            let started = paths.home + "/work/analysis"
+            let other = paths.home + "/work/tennis"
+            for folder in [paths.claudeDirectory + "/sessions", started, other] {
+                try? fm.createDirectory(atPath: folder, withIntermediateDirectories: true)
+            }
+            try? #"{"pid":4242,"sessionId":"\#(id)","cwd":"\#(started)"}"#
+                .write(toFile: paths.claudeDirectory + "/sessions/4242.json", atomically: true, encoding: .utf8)
+            let command = SessionMoveCommand(paths: paths)
+            guard let found = command.session(id: id) else { return t.fail("the session was not found") }
+            t.expectEqual(found.started, started, "the folder its file names")
+            t.expectNil(command.session(id: "nobody"), "a session not on this machine")
+            t.expectEqual(try? command.move(found, to: "../tennis", base: started), other, "relative to where it runs")
+            t.expectEqual(SessionMoves.folder(home: paths.home, sessionId: id), other, "kept where every screen reads")
+            t.expectThrows(SessionMoveCommand.Failure.notAFolder("nowhere")) {
+                _ = try command.move(found, to: "nowhere", base: started)
+            }
+            t.expectEqual(SessionMoves.folder(home: paths.home, sessionId: id), other, "a refused move changes nothing")
+            _ = try? command.move(found, to: started, base: "/")
+            t.expectNil(SessionMoves.folder(home: paths.home, sessionId: id), "moved home: no move left")
+        },
+
+        TestCase("The phone's rows follow a move made on this machine, and only that session's") { t in
+            var moved = F.record("s-moved", pid: 11, status: "idle", cwd: "/home/dev/analysis")
+            moved["movedTo"] = "/home/dev/tennis"
+            let stays = F.record("s-stays", pid: 12, status: "idle", cwd: "/home/dev/analysis")
+            let rows = NodeRows.rows(from: F.reading([moved, stays]), jobs: [:], identity: F.node, at: F.t0)
+            t.expectEqual(rows.first { $0.id == "s-moved" }?.session.path, "/home/dev/tennis", "where it was moved")
+            t.expectEqual(rows.first { $0.id == "s-stays" }?.session.path, "/home/dev/analysis", "the other stays")
+        },
+    ])
+
     static let config = TestSuite("lampd: configuration", [
 
         TestCase("No file is the defaults; a bad value is said and the default kept") { t in

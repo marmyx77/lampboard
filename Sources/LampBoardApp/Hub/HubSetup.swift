@@ -88,9 +88,14 @@ enum HubSetup {
             hub.show()
             return hub.model.propose(text, to: id)
         }
-        panel.startInHub = { [weak model] host, folder, name in
+        panel.startInHub = { [weak model] host, folder, name, permissions in
             guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
-            model.startSession(folder: folder, host: host, name: name)
+            model.startSession(folder: folder, host: host, name: name, permissions: permissions)
+            return true
+        }
+        panel.forkInHub = { [weak model] from, host, folder, name, permissions in
+            guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
+            model.forkSession(from, folder: folder, host: host, name: name, permissions: permissions)
             return true
         }
         // Move to LampBoard ends in tmux, in the Hub (hub-terminale R6).

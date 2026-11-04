@@ -88,14 +88,17 @@ struct HubProjectsSection: View {
             }, cancel: { adding = false })
         }
         .sheet(item: $resuming) { entry in
+            let settings = Preferences().sessionPermissions
             HubResumeSheet(entry: entry, load: { await model.pastConversations(entry) },
                            name: { id in store.state.sessions[id]?.displayName },
-                           pick: { item in
+                           pick: { item, skipping in
                 resuming = nil
                 // A conversation a process holds is opened where it runs: taking
                 // it up again would make a second writer.
-                if item.isLive { model.openRunning(item.id) } else { model.resumeSession(item.id, folder: entry.path, host: entry.host) }
-            }, cancel: { resuming = nil })
+                if item.isLive { return model.openRunning(item.id) }
+                model.resumeSession(item.id, folder: entry.path, host: entry.host,
+                                    permissions: NewSession.Permissions.chosen(skipping: skipping, settings: settings))
+            }, cancel: { resuming = nil }, skipping: settings == .bypass)
         }
         .onChange(of: model.resumeAsked) { _, path in
             guard let path else { return }
@@ -114,6 +117,15 @@ struct HubProjectsSection: View {
             }
             Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
                 model.startSession(folder: entry.path, host: entry.host, keepsRunning: false)
+            }
+            // The same two with no permission asked, chosen here for this one (D185).
+            Menu("Skipping permissions") {
+                Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
+                    model.startSession(folder: entry.path, host: entry.host, permissions: .bypass)
+                }
+                Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
+                    model.startSession(folder: entry.path, host: entry.host, keepsRunning: false, permissions: .bypass)
+                }
             }
             // What runs here now, a click away in the Hub.
             ForEach(entry.sessionIds, id: \.self) { id in
@@ -286,8 +298,11 @@ struct HubResumeSheet: View {
     let load: () async -> [PastConversations.Item]
     /// The row's name of a conversation running now, when there is a row.
     let name: (String) -> String?
-    let pick: (PastConversations.Item) -> Void
+    /// The conversation picked, and whether to skip permissions in it (D185).
+    let pick: (PastConversations.Item, Bool) -> Void
     let cancel: () -> Void
+    /// Skip permissions for this one resume; Settings' choice to begin with.
+    @State var skipping = false
     @State private var items: [PastConversations.Item]?
 
     var body: some View {
@@ -302,7 +317,7 @@ struct HubResumeSheet: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 2) {
                             ForEach(items) { item in
-                                Button { pick(item) } label: {
+                                Button { pick(item, skipping) } label: {
                                     HStack {
                                         Text(item.title ?? name(item.id) ?? String(item.id.prefix(8))).lineLimit(1)
                                         Spacer()
@@ -325,7 +340,13 @@ struct HubResumeSheet: View {
                     ProgressView().controlSize(.small)
                 }
             }
-            HStack { Spacer(); Button("Cancel", action: cancel).keyboardShortcut(.cancelAction) }
+            HStack {
+                Toggle("Skip permissions", isOn: $skipping)
+                    .help("Claude Code runs any command and edits any file without asking, in this conversation only.")
+                    .accessibilityIdentifier("hub.resume.skipPermissions")
+                Spacer()
+                Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
+            }
         }
         .padding(18)
         .frame(width: 460)

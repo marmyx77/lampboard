@@ -292,6 +292,7 @@ struct TrafficLightColumn: View {
                     dismiss: actions.dismissSession,
                     terminate: actions.terminateSession,
                     move: { member, offset in actions.moveSession(row, member, offset) },
+                    fork: actions.canFork(member.session) ? { member, skipping in actions.fork(member.session, skipping) } : nil,
                     drag: compact ? nil : memberDragState(
                         for: member, at: index, in: shown, of: row
                     ),

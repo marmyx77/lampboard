@@ -65,13 +65,16 @@ public enum NewSession {
     public enum Start: Equatable, Hashable, Sendable {
         case new(sessionId: String, permissions: Permissions = .ask)
         case resume(sessionId: String, permissions: Permissions = .ask)
+        /// A new conversation that starts as a copy of `from`, under an id
+        /// LampBoard chose (D186): `from` stays as it was, and may still run.
+        case fork(from: String, sessionId: String, permissions: Permissions = .ask)
 
         public var sessionId: String {
-            switch self { case .new(let id, _), .resume(let id, _): return id }
+            switch self { case .new(let id, _), .resume(let id, _), .fork(_, let id, _): return id }
         }
 
         public var permissions: Permissions {
-            switch self { case .new(_, let mode), .resume(_, let mode): return mode }
+            switch self { case .new(_, let mode), .resume(_, let mode), .fork(_, _, let mode): return mode }
         }
 
         /// The same start, in `permissions`.
@@ -79,6 +82,7 @@ public enum NewSession {
             switch self {
             case .new(let id, _): return .new(sessionId: id, permissions: permissions)
             case .resume(let id, _): return .resume(sessionId: id, permissions: permissions)
+            case .fork(let from, let id, _): return .fork(from: from, sessionId: id, permissions: permissions)
             }
         }
     }
@@ -96,6 +100,13 @@ public enum NewSession {
 
         /// A stored value, or `.ask` for none or an unknown one.
         public static func named(_ raw: String?) -> Permissions { raw.flatMap(Permissions.init(rawValue:)) ?? .ask }
+
+        /// The mode of one start where the person chose, there, whether to
+        /// skip permissions (D185): chosen, bypass; not chosen, Settings' mode —
+        /// except Settings' bypass, which a box the person cleared does not get.
+        public static func chosen(skipping: Bool, settings: Permissions) -> Permissions {
+            skipping ? .bypass : (settings == .bypass ? .ask : settings)
+        }
 
         /// Claude Code's flag for it; `nil` for its default.
         public var flag: String? {
@@ -115,6 +126,10 @@ public enum NewSession {
         switch start {
         case .new: return "claude --session-id \(id)" + flag
         case .resume: return "claude --resume \(id)" + flag
+        case .fork(let from, _, _):
+            let from = from.lowercased()
+            guard ModReport.isSessionId(from), from.count == 36, from != id else { return nil }
+            return "claude --resume \(from) --fork-session --session-id \(id)" + flag
         }
     }
 

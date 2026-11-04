@@ -22,6 +22,9 @@ import Foundation
 /// read what it was analysing. The phone, which reads the file, kept it in its
 /// project; the Mac, which folded a `cwd` into the file's folder only from
 /// below, opened a project of its own named after the data folder.
+///
+/// A session the person moved to another project goes where they moved it
+/// (D184), before anything else is asked: that is the one move that is meant.
 public enum RemoteWorkspaceResolver {
 
     /// - Parameters:
@@ -38,12 +41,38 @@ public enum RemoteWorkspaceResolver {
         sessions: [LiveSession],
         at now: Date
     ) -> Workspace {
+        let file = own(sessionId, host: host, in: sessions)
+        // Moved by the person (D184): the folder they named, or the window
+        // over there that contains it — before any window claims the `cwd`.
+        if let moved = file?.movedTo {
+            let window = WorkspaceResolver.resolve(cwd: moved, in: windows, at: now)
+            return Workspace(path: window?.path ?? moved, host: host)
+        }
         if let window = WorkspaceResolver.resolve(cwd: cwd, in: windows, at: now) {
             return Workspace(path: window.path, host: host)
         }
-        if let file = sessions.first(where: { $0.sessionId == sessionId && $0.host == host }), !file.cwd.isEmpty {
+        if let file, !file.cwd.isEmpty {
             return Workspace(path: file.cwd, host: host)
         }
         return Workspace(path: cwd, host: host)
+    }
+
+    /// Whether a row found on `host`, which otherwise keeps its folder through
+    /// every look, is to be resolved again (D184): its session was moved by the
+    /// person, or was and no longer is — its folder is then neither the one its
+    /// file names nor one a window over there gave it, and resolving it again
+    /// gives the same answer in every other case.
+    public static func mayRehome(sessionId: String, workspace: Workspace, host: String,
+                                 sessions: [LiveSession]) -> Bool {
+        guard let file = own(sessionId, host: host, in: sessions) else { return false }
+        return file.movedTo != nil || file.cwd != workspace.path
+    }
+
+    /// `sessionId`'s file among `sessions`. A file read with no host is the
+    /// reading machine's own: `lampd` reads its machine as the phone would, and
+    /// names it only in the rows it builds — without this its sessions would
+    /// never find their files, and a move made there would move nothing (D184).
+    private static func own(_ sessionId: String, host: String, in sessions: [LiveSession]) -> LiveSession? {
+        sessions.first { $0.sessionId == sessionId && ($0.host == host || $0.host == nil) }
     }
 }

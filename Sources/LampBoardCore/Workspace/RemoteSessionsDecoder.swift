@@ -138,7 +138,10 @@ public enum RemoteSessionsDecoder {
             turnIsOpen: (record["contextTail"] as? String).flatMap {
                 TranscriptActivity.turnIsOpen(inTailChunk: $0, isWholeFile: true)
             },
-            idleSince: LiveSessionParser.idleSince(status: record["status"], updatedAt: record["statusUpdatedAt"])
+            idleSince: LiveSessionParser.idleSince(status: record["status"], updatedAt: record["statusUpdatedAt"]),
+            // Where the person moved it, as its machine keeps it (D184); a
+            // relative path is no folder and is dropped like a relative `cwd`.
+            movedTo: string(record, "movedTo")
         )
     }
 

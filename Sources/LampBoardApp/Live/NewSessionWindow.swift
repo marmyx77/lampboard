@@ -11,10 +11,10 @@ final class NewSessionWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let store: StateStore
     private let preferences: Preferences
-    private let start: (_ host: String?, _ folder: String, _ name: String?) -> Void
+    private let start: (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions) -> Void
 
     init(store: StateStore, preferences: Preferences,
-         start: @escaping (_ host: String?, _ folder: String, _ name: String?) -> Void) {
+         start: @escaping (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions) -> Void) {
         self.store = store
         self.preferences = preferences
         self.start = start
@@ -29,13 +29,15 @@ final class NewSessionWindowController: NSObject, NSWindowDelegate {
         }
         let hosts = preferences.remoteHosts
         let model = NewSessionModel(store: store, hosts: hosts, host: host.flatMap { hosts.contains($0) ? $0 : nil }, folder: folder)
-        let view = NewSessionView(model: model) { [weak self] host, folder, name in
+        let settings = preferences.sessionPermissions
+        model.skipsPermissions = settings == .bypass
+        let view = NewSessionView(model: model) { [weak self] host, folder, name, skipping in
             self?.window?.close()
-            self?.start(host, folder, name)
+            self?.start(host, folder, name, NewSession.Permissions.chosen(skipping: skipping, settings: settings))
         } cancel: { [weak self] in
             self?.window?.close()
         }
-        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 420),
+        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 470),
                                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "New session"
         window.isReleasedWhenClosed = false
@@ -65,6 +67,8 @@ final class NewSessionModel: ObservableObject {
         }
     }
     @Published var name = ""
+    /// Skip permissions for this one start (D185); Settings' choice to begin with.
+    @Published var skipsPermissions = false
     @Published private(set) var recent: [String]
     let hosts: [String]
     private let store: StateStore
@@ -103,7 +107,7 @@ final class NewSessionModel: ObservableObject {
 
 struct NewSessionView: View {
     @ObservedObject var model: NewSessionModel
-    let start: (String?, String, String?) -> Void
+    let start: (String?, String, String?, Bool) -> Void
     let cancel: () -> Void
 
     var body: some View {
@@ -141,11 +145,17 @@ struct NewSessionView: View {
                 Text("Name").font(.headline)
                 TextField(model.isRemote ? "tmux session" : "optional", text: $model.name).textFieldStyle(.roundedBorder)
             }
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle("Skip permissions", isOn: $model.skipsPermissions)
+                    .accessibilityIdentifier("newSession.skipPermissions")
+                Text("Claude Code runs any command and edits any file without asking. Only this session; Settings › Acting from the panel keeps the rest.")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel, action: cancel).keyboardShortcut(.cancelAction)
                 Button("Start") {
-                    if let ready = model.ready { start(ready.host, ready.folder, ready.name) }
+                    if let ready = model.ready { start(ready.host, ready.folder, ready.name, model.skipsPermissions) }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(model.ready == nil)
