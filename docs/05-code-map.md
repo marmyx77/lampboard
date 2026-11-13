@@ -5,9 +5,9 @@ it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,665 lines · 225 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,632 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,811 lines · 155 files   1597 cases, instantaneous
+  LampBoardCore/  31,743 lines · 225 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,681 lines · 173 files   shell: AppKit, network, windows
+  LampBoardTests/  22,864 lines · 155 files   1600 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -1687,7 +1687,7 @@ citation `@path#La-b` as Claude Code's prompt reads it, the file the agent is
 on (a file tool's whole path inside the folder), the lines a selection covers,
 and what the preview shows of a file.
 
-### `NewSession.swift` · 198
+### `NewSession.swift` · 276
 Starting a session from LampBoard (D133, D163): the folders a machine's sessions
 worked in, a tmux name made from a folder's, and the commands that start Claude
 Code in a new tmux session, on this Mac or on another machine, picking a free
@@ -1697,6 +1697,9 @@ LampBoard chose (`--session-id`), a past one is taken up by its own
 chosen in Settings travels with the start and adds Claude Code's flag (D169), or
 the one chosen at that start (`Permissions.chosen`, D185). A fork resumes its
 original into a new id LampBoard chose (`--fork-session --session-id`, D186).
+Another account (`Account`, D187) is a `~/.claude-<name>` folder carrying the
+marker `Scripts/claude-account.sh` leaves: the line names it in `CLAUDE_CONFIG_DIR`
+only where it exists, and both scripts stop and say so where it does not.
 
 ### `ProjectList.swift` · 123
 The projects attached to the Hub (D163): a folder on this Mac or on another
@@ -2239,10 +2242,10 @@ path of this Mac means nothing over there (P11).
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
 
-### `NewSessionWindow.swift` · 165
+### `NewSessionWindow.swift` · 197
 The **New session…** window: where, which folder (the recent ones, a typed path,
-or the folder picker on this Mac) and what name, then Start: in tmux, in the Hub
-(D163).
+or the folder picker on this Mac), what name and which account (D187), then
+Start: in tmux, in the Hub (D163).
 
 ### `SessionLauncher.swift` · 178
 Starts a session in a project (D163): a new conversation or a past one, in tmux on
@@ -2330,7 +2333,7 @@ the text view draws itself (AppKit's ruler floats over the content since macOS
 14), code kept whole and wrapped past 2,000 characters, the place kept when the
 file is read again. What is drawn is reported for the tests.
 
-### `HubProjects.swift` · 323
+### `HubProjects.swift` · 366
 The projects in the Hub's first column (D163): attached ones and the folders the
 sessions are in, each a menu — a new session in tmux, one in the background here,
 a past conversation to resume, kept in or taken off the list —, the sheet that
@@ -2650,7 +2653,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1597 cases
+## `LampBoardTests/` — 1600 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake
@@ -3063,6 +3066,8 @@ registered in `register.js`'s `session.start`, the one an engine takes.
 | `Scripts/test-mac-source.sh` | the Mac as a source for the phone (W5): `MacSourceTests` on a Mac, or in the pinned `swift` image elsewhere (no AppKit needed); exits 3 with neither. Part of `test.sh`, attacked by `bite.sh --macsource` |
 | `Scripts/test-nodelink.sh` | NodeLink over a real OpenSSH (D175): builds NodeLink and `V1ReferenceNode` in the pinned `swift` image, starts a node in a second container with the read key forced to the reference node's `stdio`, and runs `NodeLinkCheck` — the conformance battery and the key bites — on a network of its own. Needs docker, so not on the test Mac: exits 3 there. Attacked by `bite.sh --nodelink`: the forced command dropped, any host key let in, a row's field renamed |
 | `Scripts/test-linux.sh` | builds the Core and runs the domain suite on Linux, in the `swift` image pinned by digest, on a copy of the working tree (D173). Needs docker, so not on the test Mac: exits 3 there. `Command`'s suite first with `SIGPIPE` at its default, then everything with it ignored. Attacked by `bite.sh --linux` with an unconditional `import Darwin` |
+| `Scripts/claude-account.sh` | another Claude Code account on a machine (D187): `add <name>` makes `~/.claude-<name>` with every entry of `~/.claude` linked but the login, and always `projects` and `sessions`, and a copy of `~/.claude.json` without its login; `check` names what is not linked; `list`. Nothing is deleted |
+| `Scripts/test-claude-account.sh` | `claude-account.sh` in a home of its own: 22 checks, red on a link Claude Code replaced with a file and on a history of the account's own |
 | `Scripts/run-remote.sh` | the same gate on the test Mac: pushes the branch to a bare repository there, runs `test.sh` in a worktree of its own under a lock and a time limit; where that Mac is lives in the git-ignored `.env.machines` |
 | `Scripts/check-contract.sh` | the assumptions about Claude Code, static or `--live`; `--record` re-records the golden baseline; `--node` on a Linux machine, from lampd's copy, without running Claude Code for its version |
 | `Scripts/lampd-build.sh` | `lampd` as one static Linux binary, with the Static Linux SDK in the `swift` image pinned by digest (D178). Exits 3 without docker |
