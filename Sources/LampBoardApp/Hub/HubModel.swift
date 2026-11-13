@@ -296,11 +296,13 @@ final class HubModel: ObservableObject {
     @Published private(set) var failure: String?
 
     /// A new conversation in tmux, in `folder` here or on `host` (R4);
-    /// `permissions` chosen for this start (D185), Settings' when `nil`.
+    /// `permissions` chosen for this start (D185), Settings' when `nil`;
+    /// `account` the one it signs in with (D187), the default when `nil`.
     func startSession(folder: String, host: String?, name: String? = nil, keepsRunning: Bool = true,
-                      permissions: NewSession.Permissions? = nil) {
+                      permissions: NewSession.Permissions? = nil, account: NewSession.Account? = nil) {
         failure = nil
-        launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId()), name: name,
+        launcher?.launch(folder: folder, host: host, start: .new(sessionId: SessionLauncher.newSessionId(), account: account),
+                         name: name,
                          keepsRunning: keepsRunning, permissions: permissions) { [weak self] reason in
             if let reason { self?.failed("The session did not start", reason) }
         }

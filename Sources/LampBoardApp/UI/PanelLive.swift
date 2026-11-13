@@ -44,12 +44,24 @@ extension PanelController {
     /// In tmux, in the Hub, when the Hub takes it (hub-terminale R4); else in
     /// the background here, or in tmux on the row's machine (D133).
     /// `permissions` is the mode chosen for this start (D185); Settings' when `nil`.
-    func startSession(host: String?, folder: String, name: String?, permissions: NewSession.Permissions? = nil) {
-        if startInHub?(host, folder, name, permissions) == true { return }
-        guard let host else { return startInBackground(folder: folder, name: name, permissions: permissions) }
+    /// `account` is the one it signs in with (D187); the default when `nil`.
+    func startSession(host: String?, folder: String, name: String?, permissions: NewSession.Permissions? = nil,
+                      account: NewSession.Account? = nil) {
+        if startInHub?(host, folder, name, permissions, account) == true { return }
+        guard let host else {
+            // A background job's supervisor lives in the default account's folder:
+            // another account starts in tmux only, never quietly in the default.
+            if account != nil {
+                return liveRefused("A session in another account starts in tmux, and tmux was not found on this Mac. Install it (brew install tmux).")
+            }
+            return startInBackground(folder: folder, name: name, permissions: permissions)
+        }
         // Free names are the other machine's to pick: it knows all of its own.
         let tmuxName = NewSession.tmuxName(for: "/" + (name ?? (folder as NSString).lastPathComponent), taken: [])
-        let start = permissions.map { NewSession.Start.new(sessionId: SessionLauncher.newSessionId(), permissions: $0) }
+        let start = (permissions != nil || account != nil)
+            ? NewSession.Start.new(sessionId: SessionLauncher.newSessionId(), permissions: permissions ?? preferences.sessionPermissions,
+                                   account: account)
+            : nil
         guard let target = LiveTarget.starting(host: host, folder: folder, name: tmuxName, start: start),
               live?.show(target) == true else {
             liveRefused("LampBoard could not start a session on \(host): its name, or that folder, is not one ssh can be given.")

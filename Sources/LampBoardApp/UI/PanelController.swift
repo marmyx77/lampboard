@@ -44,8 +44,8 @@ final class PanelController {
     /// The live view's windows (D130), owned by the app: they open headless too.
     var live: LiveWindowController?
     /// «New session…» (D133).
-    lazy var newSession = NewSessionWindowController(store: store, preferences: preferences) { [weak self] host, folder, name, permissions in
-        self?.startSession(host: host, folder: folder, name: name, permissions: permissions)
+    lazy var newSession = NewSessionWindowController(store: store, preferences: preferences) { [weak self] host, folder, name, permissions, account in
+        self?.startSession(host: host, folder: folder, name: name, permissions: permissions, account: account)
     }
     /// What the live view could open for a session (D132), set by the app.
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
@@ -76,7 +76,8 @@ final class PanelController {
     /// `false` when LampBoard has no terminal into it (D165).
     var proposeInHub: ((_ sessionId: String, _ text: String) -> Bool)?
     /// Starts a session in tmux and shows it in the Hub; `false` when it cannot.
-    var startInHub: ((_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions?) -> Bool)?
+    var startInHub: ((_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions?,
+                      _ account: NewSession.Account?) -> Bool)?
     /// Forks a conversation into a new one in the Hub (D186); `false` when it cannot.
     var forkInHub: ((_ from: String, _ host: String?, _ folder: String, _ name: String,
                      _ permissions: NewSession.Permissions?) -> Bool)?

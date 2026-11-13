@@ -94,7 +94,7 @@ public enum NodeAction: Equatable, Sendable {
             guard NewSession.claudeLine(start) != nil else { return .failure(.invalid("not a conversation's id")) }
             if start.permissions == .bypass, !bypassAllowed { return .failure(.bypassOff) }
             let make = NewSession.remoteCommand(folder: folder, name: name, launch: launch, start: start, attach: false)
-            guard case .resume(let id, _) = start else { return .success(NewSession.posix(make)) }
+            guard case .resume(let id, _, _) = start else { return .success(NewSession.posix(make)) }
             return .success(NewSession.posix(Self.unlessHeld(id.lowercased()) + "\n" + make))
         case .end(let session, let tmux):
             return Self.python(RemoteEnd.script(session: session, tmux: tmux), "not a conversation or a tmux name")

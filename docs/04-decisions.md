@@ -7057,3 +7057,49 @@ one conversation to fork).
 **Signal to revisit:** a Claude Code that refuses `--session-id` beside
 `--fork-session`; a fork started in a folder other than where its original's
 transcript is filed, which Claude Code would not find.
+
+## D187 · Choose the account a session starts in
+
+**Decided.** «New session…» has an **Account** menu, and a project's menu in the
+Hub has **As <name> ▸** with its two starts, for each other Claude Code account on
+this Mac. An account is Claude Code's own way of keeping several apart: a
+configuration folder of its own, named in `CLAUDE_CONFIG_DIR`, with its own login.
+LampBoard looks for it as `~/.claude-<name>` on the machine the session runs on and
+offers the folders that carry the marker `Scripts/claude-account.sh` leaves.
+
+That script makes the folder by linking every entry of `~/.claude` except the
+login, and always `projects` and `sessions`: one set of settings, hooks, skills
+and history, two logins. Its `~/.claude.json` is a copy of the default one without
+`oauthAccount` and `primaryApiKey`, so MCP servers, trusted folders and onboarding
+carry over. The person signs in once:
+`CLAUDE_CONFIG_DIR="$HOME/.claude-<name>" claude auth login`.
+
+The line a pane runs becomes
+`test -d "$HOME/.claude-<name>" && env CLAUDE_CONFIG_DIR="$HOME/.claude-<name>" claude …`,
+and the script that makes the tmux session stops first, saying so, when that
+machine has no such folder: Claude Code would make an empty one and ask to sign
+in as if the account were new. A start in another account never falls back to a
+background job here, whose supervisor lives in the default folder.
+
+**Why.** Asked for by the person on 13 November 2026: each project works on one
+account, chosen when its session starts. He chose a folder per account over a
+long-lived token per account, so that Remote Control and the claude.ai connectors
+keep working in every account.
+
+**Measured** by `StartChoicesSuite` (the line, the account kept when the mode
+changes and the other way round, the check in both scripts, names refused, only
+marked folders offered) and `Scripts/test-claude-account.sh` (22 checks in a home
+of its own; red on a link Claude Code replaced and on a history of the account's
+own). On the test Mac with Claude Code 2.1.303: a session in a made account ran the
+default folder's Stop hook and filed its transcript under `~/.claude/projects`; a
+bare folder ran no hook and kept its transcript to itself; the same conversation
+was then resumed from the default folder.
+
+**Not yet:** the accounts of another machine, which are taken to be named as this
+Mac's; a row that says which account it runs in; resume and fork in another
+account; the phone's starts. Two different logins were not tried on the test Mac,
+which has one test login.
+
+**Signal to revisit:** `check` finding a link replaced by a file (Claude Code
+writing settings by rename), or a Claude Code that keeps something per account
+under a name this script links.

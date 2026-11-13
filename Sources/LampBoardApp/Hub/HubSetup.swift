@@ -88,9 +88,9 @@ enum HubSetup {
             hub.show()
             return hub.model.propose(text, to: id)
         }
-        panel.startInHub = { [weak model] host, folder, name, permissions in
+        panel.startInHub = { [weak model] host, folder, name, permissions, account in
             guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
-            model.startSession(folder: folder, host: host, name: name, permissions: permissions)
+            model.startSession(folder: folder, host: host, name: name, permissions: permissions, account: account)
             return true
         }
         panel.forkInHub = { [weak model] from, host, folder, name, permissions in

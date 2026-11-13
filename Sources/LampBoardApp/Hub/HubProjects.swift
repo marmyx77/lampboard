@@ -127,6 +127,17 @@ struct HubProjectsSection: View {
                     model.startSession(folder: entry.path, host: entry.host, keepsRunning: false, permissions: .bypass)
                 }
             }
+            // The same two signed in with another account, chosen here for this one (D187).
+            ForEach(NewSession.Account.found(in: AppConfig.homeDirectory.path), id: \.folder) { account in
+                Menu("As \(account.name)") {
+                    Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
+                        model.startSession(folder: entry.path, host: entry.host, account: account)
+                    }
+                    Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
+                        model.startSession(folder: entry.path, host: entry.host, keepsRunning: false, account: account)
+                    }
+                }
+            }
             // What runs here now, a click away in the Hub.
             ForEach(entry.sessionIds, id: \.self) { id in
                 if let session = store.state.sessions[id] {

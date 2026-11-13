@@ -308,7 +308,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         if let add = wish["addProject"] as? [String: String], let path = add["path"] { model.deps.projects.add(path: path, host: add["host"]) }
         if let start = wish["start"] as? [String: String], let folder = start["folder"] {
             model.startSession(folder: folder, host: start["host"], keepsRunning: start["keepsRunning"] != "false",
-                               permissions: start["permissions"].map { NewSession.Permissions.named($0) })
+                               permissions: start["permissions"].map { NewSession.Permissions.named($0) },
+                               account: start["account"].flatMap { NewSession.Account(name: $0) })
         }
         // «End session…», confirmed as a person's click would (D168).
         if let id = wish["end"] as? String { model.deps.endConfirmed(id) }

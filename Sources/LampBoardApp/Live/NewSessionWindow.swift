@@ -2,7 +2,8 @@ import AppKit
 import LampBoardCore
 import SwiftUI
 
-/// «New session…» (D133): a machine, a folder, a name, and the session opens in
+/// «New session…» (D133): a machine, a folder, a name, the account it signs in
+/// with (D187), and the session opens in
 /// the Hub (hub-terminale R4). It starts inside tmux, on this Mac or on another
 /// machine, where it outlives the window; on this Mac without tmux, in the background.
 @MainActor
@@ -11,10 +12,12 @@ final class NewSessionWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let store: StateStore
     private let preferences: Preferences
-    private let start: (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions) -> Void
+    private let start: (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions,
+                        _ account: NewSession.Account?) -> Void
 
     init(store: StateStore, preferences: Preferences,
-         start: @escaping (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions) -> Void) {
+         start: @escaping (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions,
+                           _ account: NewSession.Account?) -> Void) {
         self.store = store
         self.preferences = preferences
         self.start = start
@@ -31,13 +34,13 @@ final class NewSessionWindowController: NSObject, NSWindowDelegate {
         let model = NewSessionModel(store: store, hosts: hosts, host: host.flatMap { hosts.contains($0) ? $0 : nil }, folder: folder)
         let settings = preferences.sessionPermissions
         model.skipsPermissions = settings == .bypass
-        let view = NewSessionView(model: model) { [weak self] host, folder, name, skipping in
+        let view = NewSessionView(model: model) { [weak self] host, folder, name, skipping, account in
             self?.window?.close()
-            self?.start(host, folder, name, NewSession.Permissions.chosen(skipping: skipping, settings: settings))
+            self?.start(host, folder, name, NewSession.Permissions.chosen(skipping: skipping, settings: settings), account)
         } cancel: { [weak self] in
             self?.window?.close()
         }
-        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 470),
+        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
                                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "New session"
         window.isReleasedWhenClosed = false
@@ -69,8 +72,13 @@ final class NewSessionModel: ObservableObject {
     @Published var name = ""
     /// Skip permissions for this one start (D185); Settings' choice to begin with.
     @Published var skipsPermissions = false
+    /// The account it signs in with (D187), by folder; `""` is the default.
+    @Published var account = ""
     @Published private(set) var recent: [String]
     let hosts: [String]
+    /// This Mac's accounts: those of another machine are taken to be named alike,
+    /// and its start says so when one is not there.
+    let accounts = NewSession.Account.found(in: AppConfig.homeDirectory.path)
     private let store: StateStore
     private var suggested = ""
 
@@ -107,7 +115,7 @@ final class NewSessionModel: ObservableObject {
 
 struct NewSessionView: View {
     @ObservedObject var model: NewSessionModel
-    let start: (String?, String, String?, Bool) -> Void
+    let start: (String?, String, String?, Bool, NewSession.Account?) -> Void
     let cancel: () -> Void
 
     var body: some View {
@@ -146,6 +154,18 @@ struct NewSessionView: View {
                 TextField(model.isRemote ? "tmux session" : "optional", text: $model.name).textFieldStyle(.roundedBorder)
             }
             VStack(alignment: .leading, spacing: 3) {
+                Picker("Account", selection: $model.account) {
+                    Text("Default (~/.claude)").tag("")
+                    ForEach(model.accounts, id: \.folder) { Text($0.name).tag($0.folder) }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("newSession.account")
+                Text(model.accounts.isEmpty
+                     ? "One Claude Code account here. To add one: Scripts/claude-account.sh add <name>, then sign in."
+                     : "The Claude Code account this session signs in with, from its own folder ~/.claude-<name>.")
+                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 3) {
                 Toggle("Skip permissions", isOn: $model.skipsPermissions)
                     .accessibilityIdentifier("newSession.skipPermissions")
                 Text("Claude Code runs any command and edits any file without asking. Only this session; Settings › Acting from the panel keeps the rest.")
@@ -155,7 +175,9 @@ struct NewSessionView: View {
                 Spacer()
                 Button("Cancel", role: .cancel, action: cancel).keyboardShortcut(.cancelAction)
                 Button("Start") {
-                    if let ready = model.ready { start(ready.host, ready.folder, ready.name, model.skipsPermissions) }
+                    if let ready = model.ready {
+                        start(ready.host, ready.folder, ready.name, model.skipsPermissions, NewSession.Account(folder: model.account))
+                    }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(model.ready == nil)

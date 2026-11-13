@@ -63,27 +63,100 @@ public enum NewSession {
     /// known before it says anything, or a past one taken up again.
     /// The permission mode it starts in, chosen in Settings (D169).
     public enum Start: Equatable, Hashable, Sendable {
-        case new(sessionId: String, permissions: Permissions = .ask)
-        case resume(sessionId: String, permissions: Permissions = .ask)
+        case new(sessionId: String, permissions: Permissions = .ask, account: Account? = nil)
+        case resume(sessionId: String, permissions: Permissions = .ask, account: Account? = nil)
         /// A new conversation that starts as a copy of `from`, under an id
         /// LampBoard chose (D186): `from` stays as it was, and may still run.
-        case fork(from: String, sessionId: String, permissions: Permissions = .ask)
+        case fork(from: String, sessionId: String, permissions: Permissions = .ask, account: Account? = nil)
 
         public var sessionId: String {
-            switch self { case .new(let id, _), .resume(let id, _), .fork(_, let id, _): return id }
+            switch self { case .new(let id, _, _), .resume(let id, _, _), .fork(_, let id, _, _): return id }
         }
 
         public var permissions: Permissions {
-            switch self { case .new(_, let mode), .resume(_, let mode), .fork(_, _, let mode): return mode }
+            switch self { case .new(_, let mode, _), .resume(_, let mode, _), .fork(_, _, let mode, _): return mode }
+        }
+
+        /// The account it signs in with; `nil` for Claude Code's default.
+        public var account: Account? {
+            switch self { case .new(_, _, let account), .resume(_, _, let account), .fork(_, _, _, let account): return account }
         }
 
         /// The same start, in `permissions`.
         public func with(_ permissions: Permissions) -> Start {
             switch self {
-            case .new(let id, _): return .new(sessionId: id, permissions: permissions)
-            case .resume(let id, _): return .resume(sessionId: id, permissions: permissions)
-            case .fork(let from, let id, _): return .fork(from: from, sessionId: id, permissions: permissions)
+            case .new(let id, _, let account): return .new(sessionId: id, permissions: permissions, account: account)
+            case .resume(let id, _, let account): return .resume(sessionId: id, permissions: permissions, account: account)
+            case .fork(let from, let id, _, let account):
+                return .fork(from: from, sessionId: id, permissions: permissions, account: account)
             }
+        }
+
+        /// The same start, signed in with `account`; `nil` for the default.
+        public func with(account: Account?) -> Start {
+            switch self {
+            case .new(let id, let mode, _): return .new(sessionId: id, permissions: mode, account: account)
+            case .resume(let id, let mode, _): return .resume(sessionId: id, permissions: mode, account: account)
+            case .fork(let from, let id, let mode, _):
+                return .fork(from: from, sessionId: id, permissions: mode, account: account)
+            }
+        }
+    }
+
+    /// The Claude Code account a session LampBoard starts signs in with (D187).
+    ///
+    /// Claude Code keeps several accounts apart by giving each its own
+    /// configuration folder, named in `CLAUDE_CONFIG_DIR`, with its own login.
+    /// Here an account is such a folder in the home of the machine the session
+    /// runs on, `~/.claude-<name>`, made by `Scripts/claude-account.sh`: it
+    /// links everything in `~/.claude` except the login, so hooks, settings,
+    /// skills and history stay one and the lamps light as for any session.
+    /// The default account is `~/.claude` itself and has no value here.
+    public struct Account: Equatable, Hashable, Sendable {
+        /// `.claude-<name>`, relative to the home of the session's machine.
+        public let folder: String
+
+        /// `nil` for anything but `.claude-` and a name: lowercase letters and
+        /// digits, dashes inside, at most forty. Safe in a shell's double
+        /// quotes, and never a path out of the home.
+        public init?(folder: String) {
+            guard folder.hasPrefix(Self.prefix) else { return nil }
+            let name = folder.dropFirst(Self.prefix.count)
+            guard (1...40).contains(name.count), !name.hasPrefix("-"), !name.hasSuffix("-"),
+                  name.unicodeScalars.allSatisfy({ ("a"..."z").contains($0) || ("0"..."9").contains($0) || $0 == "-" })
+            else { return nil }
+            self.folder = folder
+        }
+
+        /// The account called `name`, as the script makes its folder.
+        public init?(name: String) { self.init(folder: Self.prefix + name) }
+
+        /// What the person called it: the folder without `.claude-`.
+        public var name: String { String(folder.dropFirst(Self.prefix.count)) }
+
+        static let prefix = ".claude-"
+
+        /// The marker the script leaves in an account's folder, so that
+        /// `~/.claude-mem` and the like are never offered as accounts.
+        public static let marker = ".lampboard-account"
+
+        /// The accounts in `home`: its `.claude-<name>` folders that carry the
+        /// marker, by name.
+        public static func found(in home: String, fileManager: FileManager = .default) -> [Account] {
+            let entries = (try? fileManager.contentsOfDirectory(atPath: home)) ?? []
+            return entries.compactMap { Account(folder: $0) }
+                .filter { fileManager.fileExists(atPath: home + "/" + $0.folder + "/" + marker) }
+                .sorted { $0.name < $1.name }
+        }
+
+        /// The variable's value, for a shell: the folder under that machine's home.
+        var shellPath: String { #""$HOME/"# + folder + #"""# }
+
+        /// What a script runs before starting it: stop, and say why, when that
+        /// machine has no such folder. Claude Code would make an empty one and
+        /// ask to sign in, as if the account were new.
+        func check(on machine: String) -> String {
+            "test -d \(shellPath) || { echo \"There is no account \(name) on \(machine): make it with Scripts/claude-account.sh add \(name).\"; exit 1; }"
         }
     }
 
@@ -123,13 +196,16 @@ public enum NewSession {
         let id = start.sessionId.lowercased()
         guard ModReport.isSessionId(id), id.count == 36 else { return nil }
         let flag = start.permissions.flag.map { " " + $0 } ?? ""
+        // Another account: its folder, only where it exists (D187). `env`, so
+        // that fish takes it too.
+        let claude = start.account.map { "test -d \($0.shellPath) && env CLAUDE_CONFIG_DIR=\($0.shellPath) claude" } ?? "claude"
         switch start {
-        case .new: return "claude --session-id \(id)" + flag
-        case .resume: return "claude --resume \(id)" + flag
-        case .fork(let from, _, _):
+        case .new: return "\(claude) --session-id \(id)" + flag
+        case .resume: return "\(claude) --resume \(id)" + flag
+        case .fork(let from, _, _, _):
             let from = from.lowercased()
             guard ModReport.isSessionId(from), from.count == 36, from != id else { return nil }
-            return "claude --resume \(from) --fork-session --session-id \(id)" + flag
+            return "\(claude) --resume \(from) --fork-session --session-id \(id)" + flag
         }
     }
 
@@ -158,13 +234,14 @@ public enum NewSession {
             #"n=$(tmux list-sessions -F '#{@lampboard} #{session_name}' 2>/dev/null | sed -n "s/^$l //p" | head -n 1)"#,
             "if [ -z \"$n\" ]; then",
             "  test -d \(folder) || { echo \"There is no folder \"\(folder)\" on this Mac.\"; exit 1; }",
+            start.account.map { "  " + $0.check(on: "this Mac") } ?? "",
             "  n=\(quoted); i=2; while tmux has-session -t \"=$n\" 2>/dev/null; do n=\(quoted)-$i; i=$((i+1)); done",
             "  tmux new-session -d -s \"$n\" -c \(folder) \(pane(line)) || exit 1",
             "  tmux set-option -t \"=$n:\" @lampboard \"$l\"",
             "  tmux set-option -t \"=$n:\" status off",
             "fi",
             #"tmux display-message -p -t "=$n:" '#{session_name}:#{window_index}.#{pane_index}'"#,
-        ].joined(separator: "\n")
+        ].filter { !$0.isEmpty }.joined(separator: "\n")
     }
 
     /// What the other machine runs, under `sh` (D133). If a tmux session there
@@ -187,12 +264,13 @@ public enum NewSession {
             #"n=$(tmux list-sessions -F '#{@lampboard} #{session_name}' 2>/dev/null | sed -n "s/^$l //p" | head -n 1)"#,
             "if [ -z \"$n\" ]; then",
             "  test -d \(folder) || { echo \"There is no folder \"\(folder)\" on this machine.\"; exit 1; }",
+            start?.account.map { "  " + $0.check(on: "this machine") } ?? "",
             "  n=\(quoted); i=2; while tmux has-session -t \"=$n\" 2>/dev/null; do n=\(quoted)-$i; i=$((i+1)); done",
             "  tmux new-session -d -s \"$n\" -c \(folder) \(pane) || exit 1",
             "  tmux set-option -t \"=$n:\" @lampboard \"$l\"",
             "  tmux set-option -t \"=$n:\" status off",
             "fi",
             attach ? "exec tmux attach-session -t \"=$n:\"" : "echo \"$n\"",
-        ].joined(separator: "\n")
+        ].filter { !$0.isEmpty }.joined(separator: "\n")
     }
 }
