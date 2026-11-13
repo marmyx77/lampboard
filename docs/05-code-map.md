@@ -1,13 +1,13 @@
 # Code map
 
-~106,500 lines of Swift across fourteen targets. For each file: what it contains, why
+~106,900 lines of Swift across fourteen targets. For each file: what it contains, why
 it exists, and **what you would break** by touching it.
 
 ```
 Sources/
-  LampBoardCore/  31,743 lines · 225 files  pure logic, zero AppKit; Mac, iOS, Linux
-  LampBoardApp/    31,681 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,864 lines · 155 files   1603 cases, instantaneous
+  LampBoardCore/  31,812 lines · 226 files  pure logic, zero AppKit; Mac, iOS, Linux
+  LampBoardApp/    31,804 lines · 174 files   shell: AppKit, network, windows
+  LampBoardTests/  22,943 lines · 155 files   1603 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -2302,7 +2302,7 @@ files; an open file or the project's shell (D156) — at the deepest step of ⌘
 where the Plancia was. Every rule it follows is in Core's `Hub/`; this reads,
 draws and sends.
 
-### `HubWindowController.swift` · 343
+### `HubWindowController.swift` · 404
 The window: columns in an `NSSplitView`, shown and hidden from the toolbar's
 icons, their widths and what is shown kept by macOS between launches. Opens on a
 named session and comes in front of every other application's windows, out of
@@ -2310,10 +2310,10 @@ the Dock when it was minimised (a panel's click does not activate LampBoard, and
 macOS 14 may not), redraws the sidebar when the panel changes — an order, a name,
 a mute —, and on a fake home says what it shows, for the tests.
 
-### `HubSetup.swift` · 134
+### `HubSetup.swift` · 143
 Builds the Hub and wires it to the panel, the live view and the Dock.
 
-### `HubModel.swift` · 370
+### `HubModel.swift` · 392
 What the Hub needs from the rest of the app, handed in once (`HubDependencies`):
 the panel's view, where a transcript is read, the session's project and machine,
 the terminal that reaches a session and the live view that holds it, Move to
@@ -2376,7 +2376,7 @@ project's folder, or `ssh -t` into it on another machine. One per project, kept
 while the Hub is open, so moving between sessions loses none. A shell and not the
 session: nothing typed here reaches the conversation.
 
-### `ProjectSource.swift` · 156
+### `ProjectSource.swift` · 163
 Where the Hub reads a project (D156): the disk here, or the panel's own ssh there,
 one shared connection per machine. Every call runs off the main actor, through
 `ProjectAccess`'s rules, and answers nothing rather than something outside the
@@ -2611,7 +2611,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | File | Lines | What |
 |---|---|---|
 | `MobilePane.swift` | 97 | Settings › iPhone & iPad (W5): the paired devices with their fingerprints, Forget and Forget all, the QR code with its two minutes, and the switch for terminals and actions |
-| `PanelController.swift` | 766 | holds everything together; row and panel actions |
+| `PanelController.swift` | 773 | holds everything together; row and panel actions |
 | `PanelSwitches.swift` | 165 | the switches that reach outside the panel — presence, terminal sessions, launch at login, sending messages with its dialog and the delivery hook it registers (D81) — and installing and removing the hooks; out of `PanelController` to keep it under 800 lines |
 | `PanelQueue.swift` | 101 | what waits, wired in (D74, D124): its cards from the store and the asks the panel holds — LampMaster's suggestions stay out, they are its star in the bar —, Allow, Deny and a question's choice handed to the permission desk, `O` raising the session as a row does, `E` marking it seen, keys only while the panel is key (D75), the panel remeasured when an ask under a row comes or goes and every thirty seconds for rows that fold by time; the line said on return put away at the panel's first gesture; the «Resting» line opened or folded |
 | `CommandBarView.swift` | 209 | the bar at the top of the wide panel (D77): at rest a button saying `Search`, then the count of what waits (a click shows only those rows), LampMaster's star — dim, or lit with its number, a click opening its view (D124) — and `⌘K`; opened, a field — a field present at rest would take the keyboard whenever the panel became key, and the queue's keys with it; results under it while something is typed, LampMaster's answer in a fixed, scrolling height; `↑ ↓ ⏎ Esc`; the week as six tiles above its projects (D109) |
@@ -2623,14 +2623,14 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 | `InlineAskView.swift` | 95 | an ask the panel holds, on one line under its own row (D124): the call cut in the middle and whole in a tooltip, a red ⚠ when it is dangerous, Deny and Allow or up to three of a question's options, inert until it arms; an ask answered elsewhere dimmed for a moment |
 | `PanelActivation.swift` | 204 | where a click goes, which is a different question for every surface; a session LampBoard has a terminal into to the Hub, when Settings says so (on by default, an «off» left from 2.1 cleared once) and always for one LampBoard started (D103, D130, D165) |
 | `PanelEnd.swift` | 96 | «End session…» (D168): a session in tmux closes its tmux session, Claude Code with it, here or over ssh, one just started found by LampBoard's tag; a temporary one closes its terminal; one elsewhere on this Mac is asked to stop |
-| `PanelLive.swift` | 211 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder (the row's menu says «Start a new session in this folder», D165, or skipping permissions, D185); «Fork this conversation» in tmux, in the Hub, in the folder its transcript is filed under (D186), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
+| `PanelLive.swift` | 227 | «Move to LampBoard…», on this Mac and from another machine, its VS Code process ended there by `RemoteMove` (D135, D166); opening a session in a live window and starting one in a row's folder as its menu chose it (kept running or not, skipping permissions or not, in an account, D188); «Fork this conversation» in tmux, in the Hub, in the folder its transcript is filed under, in an account when chosen (D186, D188), in the Hub when it takes them (a background job waited for until its row comes, D162), and what the live view says when it cannot open (D130) |
 | `PanelAllowance.swift` | 59 | the switch that turns the allowance strip on, and the sentence shown before the first request leaves the Mac |
 | `AllowanceCard.swift` | 129 | one account's allowance as a card: every limit, its bar, when it comes back. `TooltipCard`'s grammar but not its type — a `RowSummary` is shaped for a session, and filling in a state and a last message to reuse the view would put a status word on a thing that has no status |
 | `AllowanceStrip.swift` | 181 | the account's allowance at the foot of the column: bars, not rings, because the ring already means the context window of one conversation; when the session window would run out before it resets, an orange ⚠ by its figure and the sentence on hover, the reset staying in its place (D111, D165) |
-| `TrafficLightRow.swift` | 590 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row`, the Hub first, then *Quiet* and *More* (D125, D165), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
+| `TrafficLightRow.swift` | 625 | one row: dot, context ring, name, badge, the prompt cache's minutes while it waits for you (D100), the ⚠ of two sessions on one file (D99), the teal `✉n` of answers nobody read (D108), timestamp and, in the wide panel, a second line saying what the session is doing (D76); one VoiceOver sentence with the state, the activity and the context (`⌛` and how long on one tool when a working session may be stuck, D69), folder, handle; its menu built from `Menus.row`, the Hub first, then *Quiet* and *More* (D125, D165), the decision board under More for a local row in a repository (D105); one line only when listed under «Resting» (D124) |
 | `DragHandle.swift` | 60 | the handle's grab area, an `NSView` so the drag moves the row and not the panel |
-| `TrafficLightColumn.swift` | 655 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
-| `SessionSubRow.swift` | 201 | one conversation inside an opened block, and the grip that names its agent |
+| `TrafficLightColumn.swift` | 691 | the column, the drag in progress, the hidden summary, the filter note; a held ask under its row and the ring around the row `J` and `K` are on; the «Resting» line and, opened, its rows on one line each (D124); the card taken away when rows reorder (D123); the ⚠'s sentence for a row, from the conflicts the panel found (D99) |
+| `SessionSubRow.swift` | 221 | one conversation inside an opened block, and the grip that names its agent |
 | `PanelNaming.swift` | 171 | opening a project, and the three levels of name |
 | `PanelRootView.swift` | 580 | the bar with the count of what waits and LampMaster's star (D124); in the narrow panel LampMaster's line; the column; the panel's ⋯ built from `Menus.panel` (D125), and the strip under the rows: width on the left, legend and menu on the right, and the Hub button in the foot (D165) |
 | `TrafficLightDot.swift` | 100 | the dot, the silenceable blink, and the ring for an open ear; solid, dashed when stuck, hollow without the mod, inside its own eleven points (D115); a grey ring at rest (D124) |
