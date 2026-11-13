@@ -88,16 +88,20 @@ enum HubSetup {
             hub.show()
             return hub.model.propose(text, to: id)
         }
-        panel.startInHub = { [weak model] host, folder, name, permissions, account in
-            guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
-            model.startSession(folder: folder, host: host, name: name, permissions: permissions, account: account)
+        // One that ends when closed needs no tmux: it is the Hub's terminal's own (D168).
+        panel.startInHub = { [weak model] host, folder, name, keepsRunning, permissions, account in
+            guard let model, host != nil || !keepsRunning || LocalTmuxPlaces.executable() != nil else { return false }
+            model.startSession(folder: folder, host: host, name: name, keepsRunning: keepsRunning,
+                               permissions: permissions, account: account)
             return true
         }
-        panel.forkInHub = { [weak model] from, host, folder, name, permissions in
+        panel.forkInHub = { [weak model] from, host, folder, name, permissions, account in
             guard let model, host != nil || LocalTmuxPlaces.executable() != nil else { return false }
-            model.forkSession(from, folder: folder, host: host, name: name, permissions: permissions)
+            model.forkSession(from, folder: folder, host: host, name: name, permissions: permissions, account: account)
             return true
         }
+        // «New session…» and «New session here…» in the Hub: the panel's form (D188).
+        model.openNewSession = { [weak panel] host, folder in panel?.newSession.show(host: host, folder: folder) }
         // Move to LampBoard ends in tmux, in the Hub (hub-terminale R6).
         live.resumeInTmux = { folder, id, name, failed in
             launcher.launch(folder: folder, host: nil, start: .resume(sessionId: id), name: name) { if let reason = $0 { failed(reason) } }

@@ -27,7 +27,9 @@ struct SessionSubRow: View {
     let move: (RowSession, Int) -> Void
     /// Forks this conversation and takes it up from there (D186), skipping
     /// permissions when `true`; `nil` where it cannot be forked.
-    var fork: ((RowSession, Bool) -> Void)? = nil
+    var fork: ((RowSession, StartPlan) -> Void)? = nil
+    /// The other accounts a fork can sign in with (D187).
+    var accounts: () -> [NewSession.Account] = { [] }
     /// What the block tells this line about the drag in progress. `nil` in the
     /// narrow panel, where there is no handle and nothing to drag.
     var drag: RowDragState? = nil
@@ -128,8 +130,10 @@ struct SessionSubRow: View {
             Button("Rename this conversation\u{2026}") { rename(member) }
             if let fork {
                 Divider()
-                Button("Fork this conversation") { fork(member, false) }
-                Button("Fork, skipping permissions") { fork(member, true) }
+                // The row's own shape of starts (D188), for this one conversation.
+                MenuEntriesView(entries: Menus.starts([.fork], accounts: accounts(), form: false)) { command in
+                    if case .start(let plan) = command { fork(member, plan) }
+                }
             }
             Divider()
             Button("Remove this row") { dismiss(member) }

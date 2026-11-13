@@ -97,6 +97,14 @@ struct ProjectSource: Sendable, Equatable {
 
     // MARK: - Processes
 
+    /// One level of another machine's folders, for a form's «Browse…»; `nil`
+    /// when it cannot be read.
+    static func browse(host: String, path: String?) async -> RemoteFolders.Listing? {
+        guard let script = RemoteFolders.list(path),
+              let answer = await ssh(host, NewSession.posix(script)) else { return nil }
+        return RemoteFolders.parse(answer)
+    }
+
     /// One connection per machine, shared and kept a minute: the tree, a file
     /// and git status are three questions, not three logins.
     static func ssh(_ host: String, _ script: String, input: Data? = nil) async -> String? {

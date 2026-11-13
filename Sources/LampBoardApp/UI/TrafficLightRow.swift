@@ -59,14 +59,18 @@ struct RowActions {
     var toggleFocus: (ColumnRow) -> Void = { _ in }
     /// What the live view could open for a session, if anything (D130, D132).
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
-    /// Starts a new session in the row's folder, in tmux, in the Hub (D133, D163).
-    var startHere: (ColumnRow) -> Void = { _ in }
-    /// The same start with permissions skipped, chosen in the menu (D185).
-    var startHereSkipping: (ColumnRow) -> Void = { _ in }
-    /// A conversation forked and taken up from there (D186), skipping
-    /// permissions when `true`; and whether it can be.
-    var fork: (SessionState, Bool) -> Void = { _, _ in }
+    /// Starts a new session in the row's folder, in the Hub (D133, D163), as
+    /// chosen in its menu (D188): kept running or not, skipping permissions or
+    /// not (D185), in an account (D187).
+    var startHere: (ColumnRow, StartPlan) -> Void = { _, _ in }
+    /// A conversation forked and taken up from there (D186), as chosen in the
+    /// menu; and whether it can be.
+    var fork: (SessionState, StartPlan) -> Void = { _, _ in }
     var canFork: (SessionState) -> Bool = { _ in false }
+    /// The other accounts a start can sign in with (D187).
+    var accounts: () -> [NewSession.Account] = { [] }
+    /// «New session here…»: the form, with the row's machine and folder (D188).
+    var newSessionHere: (ColumnRow) -> Void = { _ in }
     /// A conversation in VS Code, moved to the live view (D135).
     var canMoveHere: (SessionState) -> Bool = { _ in false }
     var moveHere: (ColumnRow) -> Void = { _ in }
@@ -486,7 +490,8 @@ struct TrafficLightRow: View {
             modelOffer: actions.governorOffer(row)?.title, canMoveHere: actions.canMoveHere(row.primary),
             elsewhere: target == nil ? Self.elsewhere(row.primary) : nil,
             canEnd: actions.canEnd(row.primary),
-            canFork: row.count == 1 && actions.canFork(row.primary)
+            canFork: row.count == 1 && actions.canFork(row.primary),
+            accounts: actions.accounts()
         )
         return MenuEntriesView(entries: Menus.row(state)) { command in
             switch command {
@@ -506,10 +511,8 @@ struct TrafficLightRow: View {
             case .pinDecision: if let repository { actions.pinDecision(repository) }
             case .unpinDecision(let number): if let repository { actions.unpinDecision(repository, number) }
             case .copyAttach: if let target { actions.copyCommand(target.command) }
-            case .startHere: actions.startHere(row)
-            case .startHereSkipping: actions.startHereSkipping(row)
-            case .fork: actions.fork(row.primary, false)
-            case .forkSkipping: actions.fork(row.primary, true)
+            case .start(let plan): plan.kind == .fork ? actions.fork(row.primary, plan) : actions.startHere(row, plan)
+            case .newSessionHere: actions.newSessionHere(row)
             case .moveHere: actions.moveHere(row)
             case .endSession: actions.endSession(row)
             case .toggleModel: actions.toggleModel(row)

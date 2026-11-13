@@ -2,49 +2,52 @@ import AppKit
 import LampBoardCore
 import SwiftUI
 
-/// «New session…» (D133): a machine, a folder, a name, the account it signs in
-/// with (D187), and the session opens in
-/// the Hub (hub-terminale R4). It starts inside tmux, on this Mac or on another
-/// machine, where it outlives the window; on this Mac without tmux, in the background.
+/// «New session…» (D133): a machine, a folder chosen, typed or browsed there, a
+/// name, and the start's three choices, the same as every form's (D188): kept
+/// running or not, the account (D187), skipping permissions (D185). The session
+/// opens in the Hub (hub-terminale R4): kept running, inside tmux, on this Mac or
+/// on another machine; on this Mac without tmux, in the background. Opened from
+/// the panel's ⋯, the Hub's toolbar, and «New session here…» in a project's or a
+/// row's menu, with its machine and folder.
 @MainActor
 final class NewSessionWindowController: NSObject, NSWindowDelegate {
 
     private var window: NSWindow?
     private let store: StateStore
     private let preferences: Preferences
-    private let start: (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions,
-                        _ account: NewSession.Account?) -> Void
+    private let start: (_ host: String?, _ folder: String, _ name: String?, _ choices: StartChoices) -> Void
 
     init(store: StateStore, preferences: Preferences,
-         start: @escaping (_ host: String?, _ folder: String, _ name: String?, _ permissions: NewSession.Permissions,
-                           _ account: NewSession.Account?) -> Void) {
+         start: @escaping (_ host: String?, _ folder: String, _ name: String?, _ choices: StartChoices) -> Void) {
         self.store = store
         self.preferences = preferences
         self.start = start
     }
 
     func show(host: String? = nil, folder: String? = nil) {
-        // Asked again while open: what was typed stays.
-        if let window, window.isVisible {
+        // Asked again while open: what was typed stays, unless a place is given.
+        if let window, window.isVisible, host == nil, folder == nil {
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             return
         }
         let hosts = preferences.remoteHosts
-        let model = NewSessionModel(store: store, hosts: hosts, host: host.flatMap { hosts.contains($0) ? $0 : nil }, folder: folder)
-        let settings = preferences.sessionPermissions
-        model.skipsPermissions = settings == .bypass
-        let view = NewSessionView(model: model) { [weak self] host, folder, name, skipping, account in
+        let model = NewSessionModel(store: store, hosts: hosts, host: host.flatMap { hosts.contains($0) ? $0 : nil }, folder: folder,
+                                    choices: StartChoices(settings: preferences.sessionPermissions))
+        let view = NewSessionView(model: model) { [weak self] host, folder, name, choices in
             self?.window?.close()
-            self?.start(host, folder, name, NewSession.Permissions.chosen(skipping: skipping, settings: settings), account)
+            self?.start(host, folder, name, choices)
         } cancel: { [weak self] in
             self?.window?.close()
         }
-        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
+        let window = self.window ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 600),
                                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "New session"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: view)
+        // Its height follows what it shows: the browser, the hints that change.
+        let hosting = NSHostingController(rootView: view)
+        hosting.sizingOptions = [.preferredContentSize]
+        window.contentViewController = hosting
         window.delegate = self
         if self.window == nil { window.center() }
         self.window = window
@@ -60,6 +63,7 @@ final class NewSessionModel: ObservableObject {
         didSet {
             recent = NewSession.recentFolders(in: store.state, host: isRemote ? host : nil)
             folder = recent.first ?? ""
+            browsing = false
         }
     }
     @Published var folder: String {
@@ -70,20 +74,18 @@ final class NewSessionModel: ObservableObject {
         }
     }
     @Published var name = ""
-    /// Skip permissions for this one start (D185); Settings' choice to begin with.
-    @Published var skipsPermissions = false
-    /// The account it signs in with (D187), by folder; `""` is the default.
-    @Published var account = ""
+    /// Kept running, the account, skipping permissions (D188); Settings' to begin with.
+    @Published var choices: StartChoices
+    /// The other machine's folders shown, for «Browse…».
+    @Published var browsing = false
     @Published private(set) var recent: [String]
     let hosts: [String]
-    /// This Mac's accounts: those of another machine are taken to be named alike,
-    /// and its start says so when one is not there.
-    let accounts = NewSession.Account.found(in: AppConfig.homeDirectory.path)
     private let store: StateStore
     private var suggested = ""
 
-    init(store: StateStore, hosts: [String], host: String?, folder: String?) {
+    init(store: StateStore, hosts: [String], host: String?, folder: String?, choices: StartChoices) {
         self.store = store
+        self.choices = choices
         self.hosts = hosts
         self.host = host ?? ""
         let recent = NewSession.recentFolders(in: store.state, host: host)
@@ -115,7 +117,7 @@ final class NewSessionModel: ObservableObject {
 
 struct NewSessionView: View {
     @ObservedObject var model: NewSessionModel
-    let start: (String?, String, String?, Bool, NewSession.Account?) -> Void
+    let start: (String?, String, String?, StartChoices) -> Void
     let cancel: () -> Void
 
     var body: some View {
@@ -125,14 +127,13 @@ struct NewSessionView: View {
                 ForEach(model.hosts, id: \.self) { Text($0).tag($0) }
             }
             .pickerStyle(.menu)
-            Text(model.isRemote
-                 ? "It starts inside tmux on \(model.host), in its own terminal in the Hub: it keeps running when you close it, and any terminal can attach to it."
-                 : "It starts inside tmux on this Mac, in its own terminal in the Hub: it keeps running when you close it.")
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
             Text("Folder").font(.headline)
-            if model.recent.isEmpty {
-                Text("No sessions there yet: type the folder below.").font(.callout).foregroundStyle(.secondary)
+            if model.browsing {
+                RemoteFolderBrowser(host: model.host, path: $model.folder, id: "newSession")
+            } else if model.recent.isEmpty {
+                Text(model.isRemote ? "No sessions there yet: type the folder below, or browse." : "No sessions here yet: type the folder below, or choose it.")
+                    .font(.callout).foregroundStyle(.secondary)
             } else {
                 List(model.recent, id: \.self, selection: Binding(get: { model.folder }, set: { model.folder = $0 ?? "" })) { path in
                     VStack(alignment: .leading, spacing: 1) {
@@ -145,7 +146,10 @@ struct NewSessionView: View {
             }
             HStack {
                 TextField("/path/to/project", text: $model.folder).textFieldStyle(.roundedBorder)
-                if !model.isRemote {
+                if model.isRemote {
+                    Button(model.browsing ? "Recent" : "Browse…") { model.browsing.toggle() }
+                        .accessibilityIdentifier("newSession.browse")
+                } else {
                     Button("Choose…") { choose() }
                 }
             }
@@ -153,31 +157,12 @@ struct NewSessionView: View {
                 Text("Name").font(.headline)
                 TextField(model.isRemote ? "tmux session" : "optional", text: $model.name).textFieldStyle(.roundedBorder)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                Picker("Account", selection: $model.account) {
-                    Text("Default (~/.claude)").tag("")
-                    ForEach(model.accounts, id: \.folder) { Text($0.name).tag($0.folder) }
-                }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("newSession.account")
-                Text(model.accounts.isEmpty
-                     ? "One Claude Code account here. To add one: Scripts/claude-account.sh add <name>, then sign in."
-                     : "The Claude Code account this session signs in with, from its own folder ~/.claude-<name>.")
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                Toggle("Skip permissions", isOn: $model.skipsPermissions)
-                    .accessibilityIdentifier("newSession.skipPermissions")
-                Text("Claude Code runs any command and edits any file without asking. Only this session; Settings › Acting from the panel keeps the rest.")
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+            StartChoicesForm(choices: $model.choices, host: model.isRemote ? model.host : nil, id: "newSession")
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel, action: cancel).keyboardShortcut(.cancelAction)
                 Button("Start") {
-                    if let ready = model.ready {
-                        start(ready.host, ready.folder, ready.name, model.skipsPermissions, NewSession.Account(folder: model.account))
-                    }
+                    if let ready = model.ready { start(ready.host, ready.folder, ready.name, model.choices) }
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(model.ready == nil)

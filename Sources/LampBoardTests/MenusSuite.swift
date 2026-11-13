@@ -66,8 +66,8 @@ enum MenusSuite {
             let entries = Menus.row(row(status: .awaiting, pinned: ["UTC everywhere"],
                                         offer: "Use Sonnet until the window resets", elsewhere: "VS Code"))
             t.expectEqual(titles(entries), [
-                "Open in the Hub", "Show in VS Code", "Start a new session in this folder", "Skipping permissions ▸",
-                "New conversation in VS Code", "Rename…", "Hide", "Quiet ▸", "More ▸",
+                "Open in the Hub", "Show in VS Code", "Start a session that keeps running", "Start a session that ends when closed",
+                "Skipping permissions ▸", "New session here…", "New conversation in VS Code", "Rename…", "Hide", "Quiet ▸", "More ▸",
             ])
             t.expect(entries.first.map { if case .item(.sessionView, _, _, _, _) = $0 { return true }; return false } == true,
                      "Open in the Hub is the Hub's command")
@@ -99,18 +99,19 @@ enum MenusSuite {
             t.expect(!Self.titles(Menus.row(row())).contains("End session…"), "only where it can be ended")
         },
 
-        TestCase("A row's one conversation forks, and either start can skip permissions, chosen there (D185, D186)") { t in
+        TestCase("A row's one conversation forks, and every start can skip permissions, chosen there (D185, D186)") { t in
             let entries = Menus.row(row(canFork: true))
             let all = titles(entries)
             t.expectEqual(all.firstIndex(of: "Fork this conversation"),
-                          all.firstIndex(of: "Start a new session in this folder").map { $0 + 1 }, "beside the other start: \(all)")
+                          all.firstIndex(of: "Start a session that ends when closed").map { $0 + 1 }, "beside the other starts: \(all)")
             let skipping = submenu("Skipping permissions", in: entries)
-            t.expectEqual(titles(skipping), ["Start a new session in this folder", "Fork this conversation"])
-            t.expect(skipping.contains { if case .item(.forkSkipping, _, _, _, _) = $0 { return true }; return false },
-                     "the fork's own command, not the plain one")
+            t.expectEqual(titles(skipping), ["Start a session that keeps running", "Start a session that ends when closed",
+                                             "Fork this conversation"])
+            t.expect(skipping.contains { if case .item(.start(StartPlan(kind: .fork, skipping: true)), _, _, _, _) = $0 { return true }; return false },
+                     "the fork's own plan, skipping")
             t.expect(!titles(Menus.row(row())).contains("Fork this conversation"), "only where there is one to fork")
             t.expectEqual(titles(submenu("Skipping permissions", in: Menus.row(row()))),
-                          ["Start a new session in this folder"], "a start is always there to choose")
+                          ["Start a session that keeps running", "Start a session that ends when closed"], "a start is always there to choose")
         },
 
         TestCase("A conversation in VS Code offers to move to LampBoard, right under its place (D135)") { t in
@@ -124,7 +125,7 @@ enum MenusSuite {
             let entries = Menus.row(row(remote: true, repository: nil, newConversation: false))
             t.expectEqual(titles(entries).first, "Open in the Hub")
             t.expect(!titles(entries).contains("New conversation in VS Code"), "no local editor for it")
-            t.expect(titles(entries).contains("Start a new session in this folder"), "it starts inside tmux there (D133)")
+            t.expect(titles(entries).contains("Start a session that keeps running"), "it starts inside tmux there (D133)")
             t.expect(!titles(submenu("More", in: entries)).contains("Show in Finder"), "the folder is on that machine")
         },
 

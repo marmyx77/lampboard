@@ -79,26 +79,30 @@ struct HubProjectsSection: View {
         }
         .sheet(isPresented: $adding) {
             HubAddProjectSheet(hosts: model.deps.hosts(), recent: { host in NewSession.recentFolders(in: store.state, host: host) },
-                               browse: { host, path in await model.browse(host: host, path: path) }, done: { path, host, start in
+                               settings: Preferences().sessionPermissions, done: { path, host, start in
                 adding = false
                 guard projects.add(path: path, host: host) else {
                     return Alerts.tell(title: "This folder cannot be attached", message: "A project is an absolute folder, on this Mac or on a machine in Settings › Other Macs.")
                 }
-                if start { model.startSession(folder: path, host: host) }
+                if let start {
+                    model.startSession(folder: path, host: host, keepsRunning: start.keepsRunning,
+                                       permissions: start.permissions(settings: Preferences().sessionPermissions),
+                                       account: start.chosenAccount)
+                }
             }, cancel: { adding = false })
         }
         .sheet(item: $resuming) { entry in
             let settings = Preferences().sessionPermissions
             HubResumeSheet(entry: entry, load: { await model.pastConversations(entry) },
                            name: { id in store.state.sessions[id]?.displayName },
-                           pick: { item, skipping in
+                           pick: { item, choices in
                 resuming = nil
                 // A conversation a process holds is opened where it runs: taking
                 // it up again would make a second writer.
                 if item.isLive { return model.openRunning(item.id) }
-                model.resumeSession(item.id, folder: entry.path, host: entry.host,
-                                    permissions: NewSession.Permissions.chosen(skipping: skipping, settings: settings))
-            }, cancel: { resuming = nil }, skipping: settings == .bypass)
+                model.resumeSession(item.id, folder: entry.path, host: entry.host, keepsRunning: choices.keepsRunning,
+                                    permissions: choices.permissions(settings: settings), account: choices.chosenAccount)
+            }, cancel: { resuming = nil }, choices: StartChoices(settings: settings))
         }
         .onChange(of: model.resumeAsked) { _, path in
             guard let path else { return }
@@ -109,33 +113,18 @@ struct HubProjectsSection: View {
 
     private func row(_ entry: ProjectList.Entry) -> some View {
         Menu {
-            // Two ways to start, each saying what becomes of it (D168): one that
-            // keeps running in tmux whatever LampBoard does, and one that ends
-            // when it is closed or LampBoard quits.
-            Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
-                model.startSession(folder: entry.path, host: entry.host)
-            }
-            Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
-                model.startSession(folder: entry.path, host: entry.host, keepsRunning: false)
-            }
-            // The same two with no permission asked, chosen here for this one (D185).
-            Menu("Skipping permissions") {
-                Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
-                    model.startSession(folder: entry.path, host: entry.host, permissions: .bypass)
-                }
-                Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
-                    model.startSession(folder: entry.path, host: entry.host, keepsRunning: false, permissions: .bypass)
-                }
-            }
-            // The same two signed in with another account, chosen here for this one (D187).
-            ForEach(NewSession.Account.found(in: AppConfig.homeDirectory.path), id: \.folder) { account in
-                Menu("As \(account.name)") {
-                    Button("Start a session that keeps running" + (entry.host.map { " on \($0)" } ?? "")) {
-                        model.startSession(folder: entry.path, host: entry.host, account: account)
-                    }
-                    Button("Start a session that ends when closed" + (entry.host.map { " on \($0)" } ?? "")) {
-                        model.startSession(folder: entry.path, host: entry.host, keepsRunning: false, account: account)
-                    }
+            // What starts here, in the shape every start menu has (D188): the two
+            // ways, each saying what becomes of it (D168); the same skipping
+            // permissions (D185); the same in each other account (D187); the form.
+            MenuEntriesView(entries: Menus.starts([.keepsRunning, .endsWhenClosed],
+                                                  accounts: NewSession.Account.found(in: AppConfig.homeDirectory.path),
+                                                  on: entry.host)) { command in
+                switch command {
+                case .start(let plan):
+                    model.startSession(folder: entry.path, host: entry.host, keepsRunning: plan.keepsRunning,
+                                       permissions: plan.permissions, account: plan.account)
+                case .newSessionHere: model.openNewSession?(entry.host, entry.path)
+                default: break
                 }
             }
             // What runs here now, a click away in the Hub.
@@ -173,21 +162,33 @@ struct HubProjectsSection: View {
     }
 }
 
-/// «+»: a folder on this Mac, chosen or typed, or a path on another machine.
+/// «+»: a folder on this Mac, chosen or typed, or a path on another machine,
+/// browsed there; and a session started in it now, with the three choices every
+/// form that starts one has (D188).
 struct HubAddProjectSheet: View {
     let hosts: [String]
     /// The folders a machine's sessions worked in, the most recent first.
     let recent: (_ host: String?) -> [String]
-    /// One level of another machine's folders; `nil` when it cannot be read.
-    let browse: (_ host: String, _ path: String?) async -> RemoteFolders.Listing?
-    let done: (_ path: String, _ host: String?, _ start: Bool) -> Void
+    /// Settings' permissions, the form's to begin with (D185).
+    let settings: NewSession.Permissions
+    /// The folder, its machine, and the start's choices when one starts now.
+    let done: (_ path: String, _ host: String?, _ start: StartChoices?) -> Void
     let cancel: () -> Void
     @State private var host = ""
     @State private var path = ""
     @State private var start = true
-    @State private var listing: RemoteFolders.Listing?
+    @State private var choices: StartChoices
     @State private var browsing = false
-    @State private var unreachable = false
+
+    init(hosts: [String], recent: @escaping (_ host: String?) -> [String], settings: NewSession.Permissions,
+         done: @escaping (_ path: String, _ host: String?, _ start: StartChoices?) -> Void, cancel: @escaping () -> Void) {
+        self.hosts = hosts
+        self.recent = recent
+        self.settings = settings
+        self.done = done
+        self.cancel = cancel
+        _choices = State(initialValue: StartChoices(settings: settings))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -196,7 +197,7 @@ struct HubAddProjectSheet: View {
                 Text("This Mac").tag("")
                 ForEach(hosts, id: \.self) { Text($0).tag($0) }
             }
-            .onChange(of: host) { _, _ in path = ""; listing = nil; unreachable = false }
+            .onChange(of: host) { _, _ in path = ""; browsing = false }
             HStack {
                 TextField(host.isEmpty ? "/Users/you/project" : "/home/you/project", text: $path)
                     .textFieldStyle(.roundedBorder)
@@ -204,13 +205,13 @@ struct HubAddProjectSheet: View {
                 if host.isEmpty {
                     Button("Choose…", action: choose)
                 } else {
-                    Button("Browse…") { open(path.hasPrefix("/") ? path : nil) }
+                    Button("Browse…") { browsing = true }
                         .accessibilityIdentifier("hub.addProject.browse")
                 }
             }
-            if !host.isEmpty, browsing || listing != nil || unreachable { browser }
+            if !host.isEmpty, browsing { RemoteFolderBrowser(host: host, path: $path, id: "hub.addProject") }
             let folders = recent(host.isEmpty ? nil : host)
-            if !folders.isEmpty, listing == nil {
+            if !folders.isEmpty, !browsing {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Folders its sessions worked in").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                     ForEach(folders.prefix(5), id: \.self) { folder in
@@ -219,14 +220,15 @@ struct HubAddProjectSheet: View {
                 }
             }
             Toggle("Start a session there now", isOn: $start)
-            Text(host.isEmpty
-                 ? "Its sessions run in tmux on this Mac and open in the Hub, in their own terminal. They keep running when the Hub is closed."
-                 : "Its sessions run in tmux on \(host), reached over ssh, and open in the Hub, in their own terminal. They keep running when the Hub is closed.")
-                .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("hub.addProject.start")
+            if start {
+                StartChoicesForm(choices: $choices, host: host.isEmpty ? nil : host, id: "hub.addProject")
+                    .padding(.leading, 18)
+            }
             HStack {
                 Spacer()
                 Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
-                Button("Attach") { done(path.trimmingCharacters(in: .whitespaces), host.isEmpty ? nil : host, start) }
+                Button("Attach") { done(path.trimmingCharacters(in: .whitespaces), host.isEmpty ? nil : host, start ? choices : nil) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!path.trimmingCharacters(in: .whitespaces).hasPrefix("/"))
                     .accessibilityIdentifier("hub.addProject.attach")
@@ -234,63 +236,6 @@ struct HubAddProjectSheet: View {
         }
         .padding(18)
         .frame(width: 480)
-    }
-
-    /// One level of the other machine: up, the folders here, and «use this one».
-    @ViewBuilder private var browser: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if unreachable {
-                Text("\(host) did not answer, or that folder is not there.").font(.system(size: 11)).foregroundStyle(.orange)
-            } else if let listing {
-                HStack {
-                    Text(listing.path).font(.system(size: 11, design: .monospaced)).lineLimit(1).truncationMode(.head)
-                    Spacer()
-                    Button("Use this folder") { path = listing.path }
-                        .accessibilityIdentifier("hub.addProject.useFolder")
-                }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if let parent = listing.parent {
-                            folderRow("..", symbol: "arrow.turn.left.up") { open(parent) }
-                        }
-                        ForEach(listing.folders, id: \.self) { name in
-                            folderRow(name, symbol: "folder") { open(listing.child(name)) }
-                        }
-                    }
-                }
-                .frame(height: 180)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
-            } else {
-                ProgressView().controlSize(.small)
-            }
-        }
-    }
-
-    private func folderRow(_ name: String, symbol: String, open: @escaping () -> Void) -> some View {
-        Button(action: open) {
-            HStack(spacing: 6) {
-                Image(systemName: symbol).font(.system(size: 11)).foregroundStyle(.secondary)
-                Text(name).font(.system(size: 12)).lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("hub.addProject.folder.\(name)")
-    }
-
-    private func open(_ folder: String?) {
-        let machine = host
-        browsing = true
-        unreachable = false
-        Task {
-            let answer = await browse(machine, folder)
-            guard machine == host else { return }
-            listing = answer ?? listing
-            unreachable = answer == nil
-            if let answer { path = answer.path }
-        }
     }
 
     private func choose() {
@@ -309,17 +254,17 @@ struct HubResumeSheet: View {
     let load: () async -> [PastConversations.Item]
     /// The row's name of a conversation running now, when there is a row.
     let name: (String) -> String?
-    /// The conversation picked, and whether to skip permissions in it (D185).
-    let pick: (PastConversations.Item, Bool) -> Void
+    /// The conversation picked, and the choices it is taken up with (D188).
+    let pick: (PastConversations.Item, StartChoices) -> Void
     let cancel: () -> Void
-    /// Skip permissions for this one resume; Settings' choice to begin with.
-    @State var skipping = false
+    /// Kept running, the account, skipping permissions; Settings' to begin with.
+    @State var choices: StartChoices
     @State private var items: [PastConversations.Item]?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Resume in \(entry.name)\(entry.host.map { " on \($0)" } ?? "")").font(.system(size: 15, weight: .bold))
-            Text("A past conversation goes on in tmux, in its own terminal in the Hub. One running now opens where it runs: taking it up a second time would fork it.")
+            Text("A past conversation goes on in its own terminal in the Hub, in any account: the history is one. One running now opens where it runs: taking it up a second time would fork it.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Group {
                 if let items, items.isEmpty {
@@ -328,7 +273,7 @@ struct HubResumeSheet: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 2) {
                             ForEach(items) { item in
-                                Button { pick(item, skipping) } label: {
+                                Button { pick(item, choices) } label: {
                                     HStack {
                                         Text(item.title ?? name(item.id) ?? String(item.id.prefix(8))).lineLimit(1)
                                         Spacer()
@@ -351,10 +296,8 @@ struct HubResumeSheet: View {
                     ProgressView().controlSize(.small)
                 }
             }
+            StartChoicesForm(choices: $choices, host: entry.host, id: "hub.resume")
             HStack {
-                Toggle("Skip permissions", isOn: $skipping)
-                    .help("Claude Code runs any command and edits any file without asking, in this conversation only.")
-                    .accessibilityIdentifier("hub.resume.skipPermissions")
                 Spacer()
                 Button("Cancel", action: cancel).keyboardShortcut(.cancelAction)
             }

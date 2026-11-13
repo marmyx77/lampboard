@@ -27,6 +27,8 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     private static let filesItem = NSToolbarItem.Identifier("hub.files")
     private static let previewItem = NSToolbarItem.Identifier("hub.preview")
     private static let terminalItem = NSToolbarItem.Identifier("hub.terminal")
+    /// «New session…», the panel's form, from the Hub too (D188).
+    private static let newSessionItem = NSToolbarItem.Identifier("hub.newSession")
     private static let sidebarCollapsedKey = "hubSidebarCollapsed"
     private static let filesShownKey = "hubFilesShown"
 
@@ -224,15 +226,29 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
     // MARK: - Toolbar
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.sidebarItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
+        [Self.sidebarItem, Self.newSessionItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.sidebarItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
+        [Self.sidebarItem, Self.newSessionItem, .sidebarTrackingSeparator, .flexibleSpace, Self.filesItem, Self.previewItem, Self.terminalItem]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        if id == Self.newSessionItem {
+            // A click, not a switch: it opens the form and stays unlit.
+            let button = NSButton(image: NSImage(systemSymbolName: "plus.bubble", accessibilityDescription: "New session") ?? NSImage(),
+                                  target: self, action: #selector(newSession))
+            button.bezelStyle = .texturedRounded
+            button.toolTip = "New session… (⌘N): a machine, a folder, the account, skipping permissions"
+            button.keyEquivalent = "n"
+            button.keyEquivalentModifierMask = .command
+            button.setAccessibilityIdentifier(id.rawValue)
+            let item = NSToolbarItem(itemIdentifier: id)
+            item.label = "New session"
+            item.view = button
+            return item
+        }
         let spec: (String, String, String, Selector)
         switch id {
         case Self.sidebarItem: spec = ("Sessions", "Show or hide the sessions", "sidebar.left", #selector(toggleSessions))
@@ -267,6 +283,12 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
     @objc func togglePreview() { toggleLast(.file) }
     @objc func toggleTerminal() { toggleLast(.terminal) }
+
+    /// The form, with the open session's machine and folder when there is one.
+    @objc func newSession() {
+        let session = model.selected.flatMap { model.deps.store.state.sessions[$0] }
+        model.openNewSession?(session?.workspace.host, session?.workspace.path)
+    }
 
     /// The last column shows a file or the shell: its icon shows it, the same
     /// icon again hides it, the other icon switches it.
@@ -314,13 +336,19 @@ final class HubWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate {
         // «End session…», confirmed as a person's click would (D168).
         if let id = wish["end"] as? String { model.deps.endConfirmed(id) }
         if let resume = wish["resume"] as? [String: String], let id = resume["id"], let folder = resume["folder"] {
-            model.resumeSession(id, folder: folder, host: resume["host"],
-                                permissions: resume["permissions"].map { NewSession.Permissions.named($0) })
+            model.resumeSession(id, folder: folder, host: resume["host"], keepsRunning: resume["keepsRunning"] != "false",
+                                permissions: resume["permissions"].map { NewSession.Permissions.named($0) },
+                                account: resume["account"].flatMap { NewSession.Account(name: $0) })
         }
         // «Fork this conversation» (D186), as the row's menu calls it.
         if let fork = wish["fork"] as? [String: String], let from = fork["from"], let folder = fork["folder"] {
             model.forkSession(from, folder: folder, host: fork["host"], name: fork["name"],
-                              permissions: fork["permissions"].map { NewSession.Permissions.named($0) })
+                              permissions: fork["permissions"].map { NewSession.Permissions.named($0) },
+                              account: fork["account"].flatMap { NewSession.Account(name: $0) })
+        }
+        // The toolbar's «New session…» (D188): `{"newSession": {"host": …, "folder": …}}`.
+        if let form = wish["newSession"] as? [String: String] {
+            model.openNewSession?(form["host"], form["folder"])
         }
         // A project's «Resume a past conversation…», by its folder on this Mac.
         if let path = wish["resumeSheet"] as? String { model.resumeAsked = path }

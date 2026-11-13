@@ -15,11 +15,11 @@ extension PanelController {
         }
     }
 
-    /// «New conversation in LampBoard»: in the row's folder, a background
-    /// session on this Mac, or a tmux session on the row's machine (D133).
-    func startHere(_ row: ColumnRow, permissions: NewSession.Permissions? = nil) {
+    /// A start in the row's folder, as its menu chose it (D188): in the Hub, or
+    /// a background session on this Mac, or a tmux session on the row's machine (D133).
+    func startHere(_ row: ColumnRow, _ plan: StartPlan) {
         startSession(host: row.workspace.host, folder: row.workspace.path, name: row.alias ?? row.workspace.name,
-                     permissions: permissions)
+                     keepsRunning: plan.keepsRunning, permissions: plan.permissions, account: plan.account)
     }
 
     /// A Claude Code conversation, the only kind Claude Code forks: not one the
@@ -31,11 +31,11 @@ extension PanelController {
     /// «Fork this conversation» (D186): a new conversation that starts as a
     /// copy of `session`, in tmux, in the Hub, in the folder its transcript is
     /// filed under; `session` stays as it was, running or not.
-    func fork(_ session: SessionState, permissions: NewSession.Permissions?) {
+    func fork(_ session: SessionState, _ plan: StartPlan) {
         let host = session.workspace.host
         let folder = host.flatMap { host in store.remoteSessions[host]?.first { $0.sessionId == session.id }?.cwd }
             ?? session.workspace.path
-        guard let forkInHub, forkInHub(session.id, host, folder, session.displayName, permissions) else {
+        guard let forkInHub, forkInHub(session.id, host, folder, session.displayName, plan.permissions, plan.account) else {
             return liveRefused("LampBoard could not fork this conversation: it starts in the Hub, in tmux, and tmux was not found on this Mac.")
         }
     }
@@ -45,9 +45,13 @@ extension PanelController {
     /// the background here, or in tmux on the row's machine (D133).
     /// `permissions` is the mode chosen for this start (D185); Settings' when `nil`.
     /// `account` is the one it signs in with (D187); the default when `nil`.
-    func startSession(host: String?, folder: String, name: String?, permissions: NewSession.Permissions? = nil,
-                      account: NewSession.Account? = nil) {
-        if startInHub?(host, folder, name, permissions, account) == true { return }
+    /// One that ends when closed lives in the Hub's terminal only (D168).
+    func startSession(host: String?, folder: String, name: String?, keepsRunning: Bool = true,
+                      permissions: NewSession.Permissions? = nil, account: NewSession.Account? = nil) {
+        if startInHub?(host, folder, name, keepsRunning, permissions, account) == true { return }
+        if !keepsRunning {
+            return liveRefused("A session that ends when closed opens in the Hub's own terminal, and the Hub could not take it.")
+        }
         guard let host else {
             // A background job's supervisor lives in the default account's folder:
             // another account starts in tmux only, never quietly in the default.

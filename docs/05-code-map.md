@@ -7,7 +7,7 @@ it exists, and **what you would break** by touching it.
 Sources/
   LampBoardCore/  31,743 lines · 225 files  pure logic, zero AppKit; Mac, iOS, Linux
   LampBoardApp/    31,681 lines · 173 files   shell: AppKit, network, windows
-  LampBoardTests/  22,864 lines · 155 files   1600 cases, instantaneous
+  LampBoardTests/  22,864 lines · 155 files   1603 cases, instantaneous
   LampBoardE2E/    5,814 lines · 26 files   196 cases, the real binary
   ProtocolConformance/  659 lines · 3 files   the v1 battery, any source
   LampBoardNodeLink/  1,589 lines · 9 files   ssh to a machine: v1, commands, terminal
@@ -51,16 +51,27 @@ is what makes the e2e tests possible without touching the real `~/.claude`.
 
 ## `Menus/`
 
-### `Menus.swift` · 238
+### `Menus.swift` · 240
 The three menus as data (U3, D125): the panel's ⋯ with seven entries (an eighth
-while projects are hidden), a row's, which starts with Open in the Hub, offers its start, its fork (D186) and both
-skipping permissions (D185), and has two more submenus — *Quiet* for the
+while projects are hidden), a row's, which starts with Open in the Hub, offers its starts and its fork (D186)
+in the shape of `StartMenus` (D188), and has two more submenus — *Quiet* for the
 ways of keeping it quiet, *More* for the rarer things —, and the lamp's, with what
 waits, the panel, the two ways of keeping quiet, where the panel lives, Settings
 and Quit. The App only draws what it is given (`MenuEntriesView`).
 
 > **Adding an entry here** is adding it to a menu a test counts: the ⋯ had grown to
 > twenty-five entries one reasonable addition at a time.
+
+### `StartMenus.swift` · 67
+What a start menu offers, in one shape wherever a session starts from a menu
+(D188): a project in the Hub, a row, a conversation under a row. Its starts
+(`StartOffer`: kept running, ended when closed, a fork), the same skipping
+permissions (D185), the same in each other account and skipping there (D187),
+then «New session here…». Each entry carries a `StartPlan`: what it starts, how,
+in which account.
+
+> **Touching here** changes every start menu at once, which is the point: a test
+> walks the tree and checks each start does what its place says.
 
 ### `SettingsCatalog.swift` · 159
 Every setting, its section, its group, its one name and the line saying what it
@@ -2242,10 +2253,19 @@ path of this Mac means nothing over there (P11).
 > **Touching here**: closing must end the attach and never the session, and an
 > interactive session must never be opened here.
 
-### `NewSessionWindow.swift` · 197
+### `NewSessionWindow.swift` · 182
 The **New session…** window: where, which folder (the recent ones, a typed path,
-or the folder picker on this Mac), what name and which account (D187), then
-Start: in tmux, in the Hub (D163).
+the folder picker on this Mac, or browsing another machine's folders over ssh),
+what name, and the three choices of `StartChoicesForm` (D188), then Start, in
+the Hub (D163). Opened from the panel's ⋯, the Hub's toolbar (⌘N), and «New
+session here…» in a project's or a row's menu, with its machine and folder.
+
+### `StartChoicesForm.swift` · 141
+What every form that starts a session asks, drawn alike (D188): kept running or
+ended when closed (D168), the account (D187), skipping permissions (D185), with
+Settings' permissions to begin with. Used by New session, Attach a project and
+Resume. And `RemoteFolderBrowser`, another machine's folders one level at a time,
+for New session and Attach a project.
 
 ### `SessionLauncher.swift` · 178
 Starts a session in a project (D163): a new conversation or a past one, in tmux on
@@ -2333,13 +2353,14 @@ the text view draws itself (AppKit's ruler floats over the content since macOS
 14), code kept whole and wrapped past 2,000 characters, the place kept when the
 file is read again. What is drawn is reported for the tests.
 
-### `HubProjects.swift` · 366
+### `HubProjects.swift` · 309
 The projects in the Hub's first column (D163): attached ones and the folders the
-sessions are in, each a menu — a new session in tmux, one in the background here,
-a past conversation to resume, kept in or taken off the list —, the sheet that
+sessions are in, each a menu — the starts of `StartMenus` (D188), a past
+conversation to resume, kept in or taken off the list —, the sheet that
 attaches a folder here, or on another machine by browsing its folders over ssh
-(`RemoteFolders`, D165), and the one that lists what can be
-resumed, read off the main thread.
+(`RemoteFolders`, D165), and starts a session in it with the form's choices, and
+the one that lists what can be resumed, read off the main thread, and takes it up
+with the same choices.
 
 ### `HubTestDrop.swift` · 45
 A drop on the Hub's terminal as AppKit hands one, made by hand for the end-to-end
@@ -2653,7 +2674,7 @@ The companion mod on a node (D83): installed with the hooks when it is on here a
 
 # The tests
 
-## `LampBoardTests/` — 1600 cases
+## `LampBoardTests/` — 1603 cases
 
 One suite per domain area, and one file per group of them: `MailboxSuite.swift`
 held ten suites and 610 lines, three of which were about the rewake

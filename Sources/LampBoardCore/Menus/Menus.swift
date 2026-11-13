@@ -29,10 +29,12 @@ public enum MenuCommand: Equatable, Sendable {
     case dontAlert, dontBlink, focus
     case peek, markUnread, moveUp, moveDown, revealInFinder, pinDecision, unpinDecision(Int), copyAttach, toggleModel
     // The live view (D130)
-    case startHere, moveHere, endSession
-    /// A conversation forked and taken up from there (D186); the same two
-    /// starts with permissions skipped, chosen at the start (D185).
-    case fork, startHereSkipping, forkSkipping
+    case moveHere, endSession
+    /// A new conversation or a fork of the row's (D186), as chosen in the menu:
+    /// kept running or not, skipping permissions or not (D185), in an account (D187).
+    case start(StartPlan)
+    /// «New session here…»: the form, with the row's machine and folder (D188).
+    case newSessionHere
 }
 
 /// What the panel's ⋯ needs to know.
@@ -97,12 +99,14 @@ public struct RowMenuState: Equatable, Sendable {
     /// Whether the row's one conversation can be forked (D186): a Claude Code
     /// session, alone on its row.
     public let canFork: Bool
+    /// The other accounts a start can sign in with (D187, D188).
+    public let accounts: [NewSession.Account]
 
     public init(isRemote: Bool, compact: Bool, alias: String?, folder: String, status: SessionStatus,
                 isHidden: Bool, isCalm: Bool, isMuted: Bool, isFocused: Bool, notificationsEnabled: Bool,
                 hostsNewConversation: Bool, repository: String?, pinned: [String], attachCommand: String?,
                 modelOffer: String?, canMoveHere: Bool = false, elsewhere: String? = nil, canEnd: Bool = false,
-                canFork: Bool = false) {
+                canFork: Bool = false, accounts: [NewSession.Account] = []) {
         self.isRemote = isRemote
         self.compact = compact
         self.alias = alias
@@ -122,6 +126,7 @@ public struct RowMenuState: Equatable, Sendable {
         self.elsewhere = elsewhere
         self.canEnd = canEnd
         self.canFork = canFork
+        self.accounts = accounts
     }
 }
 
@@ -178,12 +183,9 @@ public enum Menus {
         if let elsewhere = state.elsewhere { entries.append(.item(.open, "Show in \(elsewhere)")) }
         // A conversation in VS Code goes on in LampBoard instead (D135).
         if state.canMoveHere { entries.append(.item(.moveHere, "Move to LampBoard…")) }
-        entries.append(.item(.startHere, "Start a new session in this folder"))
-        // A copy of the conversation goes on as a new one; the original stays (D186).
-        if state.canFork { entries.append(.item(.fork, "Fork this conversation")) }
-        // The same, with no permission asked, chosen here for this one (D185).
-        entries.append(.submenu("Skipping permissions", [.item(.startHereSkipping, "Start a new session in this folder")]
-            + (state.canFork ? [.item(.forkSkipping, "Fork this conversation")] : [])))
+        // What starts in its folder, as a project in the Hub offers it (D188); a
+        // copy of the conversation goes on as a new one, the original stays (D186).
+        entries += starts([.keepsRunning, .endsWhenClosed] + (state.canFork ? [.fork] : []), accounts: state.accounts)
         if state.hostsNewConversation { entries.append(.item(.newConversation, "New conversation in VS Code")) }
         // Ended here, wherever it runs: a session in tmux leaves no shell behind (D168).
         if state.canEnd { entries.append(.item(.endSession, "End session…")) }

@@ -7103,3 +7103,38 @@ which has one test login.
 **Signal to revisit:** `check` finding a link replaced by a file (Claude Code
 writing settings by rename), or a Claude Code that keeps something per account
 under a name this script links.
+
+## D188 · Every start offers the same choices
+
+A session starts from six places: the panel's ⋯ (**New session…**), a row's
+menu, the menu of a conversation under a row, a project's menu in the Hub, the
+sheet that attaches a project, and the one that resumes a past conversation.
+Each now offers the same three choices, together: kept running in tmux or ended
+when its terminal closes (D168), skipping permissions (D185), and the account
+(D187).
+
+A menu offers them in one shape, built once in Core (`Menus.starts`): its own
+starts; **Skipping permissions ▸** with the same; **As <account> ▸** for each other
+account, with the same and **Skipping permissions ▸** inside; and **New session
+here…**, the form with that machine and folder. A form draws them with one view,
+`StartChoicesForm`. The form also browses another machine's folders over ssh, as
+attaching a project did, and opens from the Hub's toolbar too, with ⌘N.
+
+A row's start is now the Hub project's two, "keeps running" and "ends when
+closed", in place of "Start a new session in this folder". Resume and fork take
+an account: the history is one folder for every account, so any of them can take
+a conversation up.
+
+**Why.** Asked for by the person on 13 November 2026, after 2.4.6: the project's
+menu offered **As armellino ▸** but no way to skip permissions in it, New session
+was only in the panel's ⋯ and could not browse the other machine, and the views
+disagreed on what a start could be.
+
+**Measured** by `StartChoicesSuite`: one shape wherever a menu starts a session; a
+walk of the whole tree checking that every start does what its place says and
+that none comes twice; a row's menu carrying the same shape with its fork.
+
+**Not yet:** the phone's starts; a row that says which account it runs in.
+
+**Signal to revisit:** a start place added without `Menus.starts` or
+`StartChoicesForm`.

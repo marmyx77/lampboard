@@ -95,5 +95,83 @@ enum StartChoicesSuite {
             t.expectEqual(NewSession.Account.found(in: home).map(\.name), ["aworld", "work"])
             t.expectEqual(NewSession.Account.found(in: home + "/nowhere"), [], "no home: no accounts")
         },
+
+        // One shape wherever a menu starts a session (D188): before, a project
+        // offered accounts but no skipping in one, and a row offered neither.
+        TestCase("Every start menu has the same shape: its starts, skipping, each account and skipping there, the form") { t in
+            let accounts = ["aworld-ai", "armellino"].compactMap { NewSession.Account(name: $0) }
+            let entries = Menus.starts([.keepsRunning, .endsWhenClosed], accounts: accounts, on: "mini")
+            t.expectEqual(titles(entries), [
+                "Start a session that keeps running on mini", "Start a session that ends when closed on mini",
+                "Skipping permissions ▸", "As aworld-ai ▸", "As armellino ▸", "New session here…",
+            ])
+            t.expectEqual(titles(submenu("As armellino", in: entries)), [
+                "Start a session that keeps running on mini", "Start a session that ends when closed on mini", "Skipping permissions ▸",
+            ])
+            t.expectEqual(plans(in: submenu("Skipping permissions", in: submenu("As armellino", in: entries))), [
+                StartPlan(kind: .new, keepsRunning: true, skipping: true, account: accounts[1]),
+                StartPlan(kind: .new, keepsRunning: false, skipping: true, account: accounts[1]),
+            ], "an account and skipping, together")
+            t.expect(!titles(Menus.starts([.fork], accounts: [], form: false)).contains { $0.hasPrefix("As ") || $0 == "New session here…" },
+                     "no accounts: no As; no form where it is not asked for")
+        },
+
+        TestCase("Each start does what its place in the menu says, and no two places do the same") { t in
+            let accounts = ["a", "b"].compactMap { NewSession.Account(name: $0) }
+            let offers: [StartOffer] = [.keepsRunning, .endsWhenClosed, .fork]
+            var seen: [StartPlan] = []
+            func walk(_ entries: [MenuEntry], skipping: Bool, account: NewSession.Account?) {
+                for entry in entries {
+                    switch entry {
+                    case .item(.start(let plan), let title, _, _, _):
+                        t.expect(plan.skipping == skipping && plan.account == account, "\(title): \(plan)")
+                        t.expect(offers.contains { $0.title == title && $0.kind == plan.kind && $0.keepsRunning == plan.keepsRunning },
+                                 "\(title) is what it starts")
+                        seen.append(plan)
+                    case .submenu("Skipping permissions", let inner): walk(inner, skipping: true, account: account)
+                    case .submenu(let title, let inner): walk(inner, skipping: skipping, account: accounts.first { "As \($0.name)" == title })
+                    default: break
+                    }
+                }
+            }
+            walk(Menus.starts(offers, accounts: accounts), skipping: false, account: nil)
+            t.expectEqual(seen.count, offers.count * 2 * (1 + accounts.count), "every start, skipping or not, in every account")
+            t.expectEqual(Set(seen).count, seen.count, "none twice")
+            t.expectEqual(StartPlan(kind: .new, skipping: true).permissions, .bypass)
+            t.expectNil(StartPlan(kind: .new).permissions, "not skipping is Settings' choice")
+        },
+
+        TestCase("A row's menu offers its starts in that same shape, with its fork and the accounts") { t in
+            let accounts = [NewSession.Account(name: "work")!]
+            let state = RowMenuState(isRemote: true, compact: false, alias: nil, folder: "web", status: .ready,
+                                     isHidden: false, isCalm: false, isMuted: false, isFocused: false, notificationsEnabled: true,
+                                     hostsNewConversation: false, repository: nil, pinned: [], attachCommand: nil,
+                                     modelOffer: nil, canFork: true, accounts: accounts)
+            let starts = Menus.starts([.keepsRunning, .endsWhenClosed, .fork], accounts: accounts)
+            let row = Menus.row(state)
+            let first = row.firstIndex(of: starts[0])
+            t.expect(first.map { Array(row[$0..<min(row.count, $0 + starts.count)]) == starts } == true, "\(titles(row))")
+            t.expectEqual(plans(in: submenu("As work", in: row)).map(\.kind), [.new, .new, .fork])
+        },
     ])
+
+    private static func titles(_ entries: [MenuEntry]) -> [String] {
+        entries.compactMap { entry in
+            switch entry {
+            case .item(_, let title, _, _, _): return title
+            case .submenu(let title, _): return title + " ▸"
+            case .heading(let title): return title
+            case .divider: return nil
+            }
+        }
+    }
+
+    private static func submenu(_ title: String, in entries: [MenuEntry]) -> [MenuEntry] {
+        for entry in entries { if case .submenu(title, let inner) = entry { return inner } }
+        return []
+    }
+
+    private static func plans(in entries: [MenuEntry]) -> [StartPlan] {
+        entries.compactMap { if case .item(.start(let plan), _, _, _, _) = $0 { return plan }; return nil }
+    }
 }

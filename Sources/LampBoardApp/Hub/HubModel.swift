@@ -294,6 +294,8 @@ final class HubModel: ObservableObject {
 
     /// Why the last start did not happen, for the tests' report.
     @Published private(set) var failure: String?
+    /// The panel's «New session…» form, with a machine and a folder when given (D188).
+    var openNewSession: ((_ host: String?, _ folder: String?) -> Void)?
 
     /// A new conversation in tmux, in `folder` here or on `host` (R4);
     /// `permissions` chosen for this start (D185), Settings' when `nil`;
@@ -319,11 +321,14 @@ final class HubModel: ObservableObject {
         selected = id
     }
 
-    /// A past conversation taken up in tmux (R5), in `permissions` when chosen (D185).
-    func resumeSession(_ id: String, folder: String, host: String?, permissions: NewSession.Permissions? = nil) {
+    /// A past conversation taken up (R5): in tmux unless it ends when closed,
+    /// in `permissions` when chosen (D185), in `account` when chosen (D187, D188).
+    /// The history is one for every account, so any of them can take it up.
+    func resumeSession(_ id: String, folder: String, host: String?, keepsRunning: Bool = true,
+                       permissions: NewSession.Permissions? = nil, account: NewSession.Account? = nil) {
         failure = nil
-        launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id), name: nil,
-                         permissions: permissions) { [weak self] reason in
+        launcher?.launch(folder: folder, host: host, start: .resume(sessionId: id, account: account), name: nil,
+                         keepsRunning: keepsRunning, permissions: permissions) { [weak self] reason in
             if let reason { self?.failed("The conversation was not taken up", reason) }
         }
     }
@@ -331,10 +336,10 @@ final class HubModel: ObservableObject {
     /// A conversation forked into a new one in tmux (D186): the original is not
     /// touched, and may go on running beside it.
     func forkSession(_ from: String, folder: String, host: String?, name: String?,
-                     permissions: NewSession.Permissions? = nil) {
+                     permissions: NewSession.Permissions? = nil, account: NewSession.Account? = nil) {
         failure = nil
         launcher?.launch(folder: folder, host: host,
-                         start: .fork(from: from, sessionId: SessionLauncher.newSessionId()), name: name,
+                         start: .fork(from: from, sessionId: SessionLauncher.newSessionId(), account: account), name: name,
                          permissions: permissions) { [weak self] reason in
             if let reason { self?.failed("The conversation was not forked", reason) }
         }
@@ -363,13 +368,6 @@ final class HubModel: ObservableObject {
             self?.deps.live.pasteWhenReady(text, into: key)
         }
         return true
-    }
-
-    /// One level of another machine's folders, through the panel's ssh.
-    func browse(host: String, path: String?) async -> RemoteFolders.Listing? {
-        guard let script = RemoteFolders.list(path),
-              let answer = await ProjectSource.ssh(host, NewSession.posix(script)) else { return nil }
-        return RemoteFolders.parse(answer)
     }
 
     /// What `entry` offers to take up, read off the main thread.
