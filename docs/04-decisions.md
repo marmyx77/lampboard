@@ -7138,3 +7138,31 @@ that none comes twice; a row's menu carrying the same shape with its fork.
 
 **Signal to revisit:** a start place added without `Menus.starts` or
 `StartChoicesForm`.
+
+## D189 · A remote row its hooks made first is named by the probe
+
+A session on another machine gets its row in one of two ways. Either the probe
+finds it before it says anything, and adoption names the row as Claude Code
+names it there (D137). Or it speaks first, and its hooks make the row. That row
+had no name, and the title read that names a local row finds nothing, because the
+transcript is on the other machine. A session started there and busy at once
+stayed nameless: one more row called after its folder among the project's others.
+
+Now, each time a machine's probe answers, every row on that machine without a
+title takes the name its probe reports (`RemoteAdoption.names`). A row that has
+a title keeps it, and a probe names only its own machine's rows.
+
+**Why.** On 18 November 2026 `tennisrace-esploratore`, started in tmux on the
+Bestia and working from its first second, was the only one of seven TennisRace
+sessions the person could not find on the Mac. `tennisrace-stratega`, started
+the same way, had its name because LampBoard had restarted since and adopted it.
+
+**Measured** by `LiveAdoptionSuite`: the unnamed row is named, a named one keeps
+its title, another machine's probe names nothing, and a blank name gives none.
+`bite.sh --linux` keeps the named rows instead and demands the suite fail.
+
+**Not yet:** a session renamed on the other machine after its row was named
+keeps the first name.
+
+**Signal to revisit:** a remote row shown by its folder while its machine's
+`~/.claude/sessions` file has a name.

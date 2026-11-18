@@ -931,6 +931,16 @@ s = open(p).read()
 open(p, "w").write(s.replace('"movedTo": moved_to(sid),', '"movedTo": None,', 1))
 PY
 
+# A remote row its hooks made first, left nameless: the session started on
+# another machine and busy at once stayed one more row called after its folder
+# (D189, 18 November 2026).
+protect Sources/LampBoardCore/Workspace/RemoteAdoption.swift
+attack_platform Scripts/test-linux.sh "a remote row heard first never named" "the unnamed row is named" <<'PY'
+p = "Sources/LampBoardCore/Workspace/RemoteAdoption.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("row.workspace.host == host, row.title == nil else", "row.workspace.host == host, row.title != nil else", 1))
+PY
+
 # A project at rest measured as a wide row: once rows at rest could open, the
 # panel would have been sized for lines it does not draw (28 October 2026).
 protect Sources/LampBoardCore/Models/PanelMetrics.swift

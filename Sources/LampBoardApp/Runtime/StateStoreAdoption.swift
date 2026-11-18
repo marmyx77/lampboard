@@ -298,7 +298,7 @@ extension StateStore {
 
     /// The sessions resting on `host`, found rather than announced (D137): a
     /// row each, idle until its first hook says otherwise, named as Claude Code
-    /// names it there. A row that already exists is left alone.
+    /// names it there. A row that already exists keeps all but a missing name.
     ///
     /// Called with each fresh answer, never from the five-second pass: between
     /// answers the list is up to twenty seconds old, and a session that has
@@ -313,6 +313,10 @@ extension StateStore {
             )
             apply(.adopt(RemoteAdoption.adopted(session, in: workspace, heard: true)), now: now)
             Diagnostics.log("remote \(host): adopted \(session.sessionId.prefix(8)) in \(session.cwd)")
+        }
+        // A row its hooks made first is named by the probe too (D189).
+        for named in RemoteAdoption.names(live, host: host, rows: state.sessions) {
+            apply(.remember(sessionId: named.sessionId, title: named.title), now: now)
         }
     }
 

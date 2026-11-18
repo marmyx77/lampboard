@@ -115,5 +115,25 @@ enum LiveAdoptionSuite {
             t.expectEqual(StateReducer.reduce(idle, action: .busy(sessionId: "s", status: .awaiting), now: t0).sessions["s"]?.status,
                           .idle, "the Mac's reducer lights no amber from the file")
         },
+
+        TestCase("A remote row its hooks made first takes its name from the probe, and a named one keeps its own (D189)") { t in
+            let host = "example-node"
+            let place = Workspace(path: "/work/alpha", host: host)
+            let id = "00000000-0000-4000-8000-000000000001"
+            let probed = LiveSession(pid: 4242, sessionId: id, cwd: "/work/alpha", entrypoint: "cli",
+                                     name: "alpha-explorer", modifiedAt: t0, host: host)
+            let heard = SessionState(id: id, status: .working, workspace: place, updatedAt: t0, statusSince: t0)
+            let named = RemoteAdoption.names([probed], host: host, rows: [id: heard])
+            t.expectEqual(named.map(\.sessionId), [id], "the unnamed row is named")
+            t.expectEqual(named.first?.title, "alpha-explorer", "as Claude Code names it there")
+            let renamed = TrafficLightState(sessions: [id: heard])
+            t.expectEqual(StateReducer.reduce(renamed, action: .remember(sessionId: id, title: "alpha-explorer"), now: t0)
+                .sessions[id]?.title, "alpha-explorer", "and the row carries it")
+            t.expect(RemoteAdoption.names([probed], host: host, rows: [id: heard.with(title: "mine")]).isEmpty,
+                     "a row with a title keeps it")
+            t.expect(RemoteAdoption.names([probed], host: "another-node", rows: [id: heard]).isEmpty, "another machine's probe names nothing here")
+            let blank = LiveSession(pid: 4242, sessionId: id, cwd: "/work/alpha", entrypoint: "cli", name: "  ", modifiedAt: t0, host: host)
+            t.expect(RemoteAdoption.names([blank], host: host, rows: [id: heard]).isEmpty, "no name, nothing to give")
+        },
     ])
 }

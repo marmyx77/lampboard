@@ -24,6 +24,22 @@ public enum RemoteAdoption {
         }
     }
 
+    /// The names another machine's probe gives the rows on `host` that have
+    /// none (D189). Adoption names a row it makes, but a session that speaks
+    /// before its first probe gets its row from its hooks, unnamed, and the
+    /// title read cannot help: the transcript is on the other machine. So a
+    /// session started there and busy at once stayed nameless on the Mac, one
+    /// more row called after its folder among the project's others
+    /// (tennisrace-esploratore, 18 November 2026). A row with a title keeps it.
+    public static func names(_ live: [LiveSession], host: String,
+                             rows: [String: SessionState]) -> [(sessionId: String, title: String)] {
+        live.compactMap { session in
+            guard session.host == host, let name = session.name?.trimmed.nilIfEmpty,
+                  let row = rows[session.sessionId], row.workspace.host == host, row.title == nil else { return nil }
+            return (session.sessionId, name)
+        }
+    }
+
     /// The row an adoptable session starts as: what Claude Code's file and the
     /// transcript's turn say (D141, `LiveSession.statusFromFile`) — working while
     /// a turn is open, paused (blue) once it ended with a background shell or

@@ -90,7 +90,7 @@ enum StartChoicesSuite {
                 try? FileManager.default.createDirectory(atPath: home + "/" + folder, withIntermediateDirectories: true)
             }
             for folder in [".claude-work", ".claude-aworld", ".claude-Bad"] {
-                FileManager.default.createFile(atPath: home + "/" + folder + "/" + NewSession.Account.marker, contents: Data())
+                _ = FileManager.default.createFile(atPath: home + "/" + folder + "/" + NewSession.Account.marker, contents: Data())
             }
             t.expectEqual(NewSession.Account.found(in: home).map(\.name), ["aworld", "work"])
             t.expectEqual(NewSession.Account.found(in: home + "/nowhere"), [], "no home: no accounts")
