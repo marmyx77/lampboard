@@ -189,10 +189,10 @@ enum SmallSuites {
 
         TestCase("The log line says who asked, from where and through what, allowed or not") { t in
             let line = PairingGate.logLine(id: "iphone-1", name: "iPhone", verdict: .refused("x"), ancestry: ["bash", "claude"],
-                                           environment: ["USER": "dev", "SSH_CONNECTION": "100.86.69.128 51000 100.85.173.55 22"], uid: 1000)
+                                           environment: ["USER": "dev", "SSH_CONNECTION": "192.0.2.10 51000 198.51.100.7 22"], uid: 1000)
             t.expect(line.contains("devices add iphone-1 (iPhone): refused"), line)
             t.expect(line.contains("uid 1000 dev"), line)
-            t.expect(line.contains("ssh 100.86.69.128 51000 100.85.173.55 22"), line)
+            t.expect(line.contains("ssh 192.0.2.10 51000 198.51.100.7 22"), line)
             t.expect(line.contains("parents bash < claude"), line)
             t.expect(PairingGate.logLine(id: "a", name: "b", verdict: .sshSession, ancestry: [], environment: [:], uid: 1)
                 .contains("allowed (an ssh session, the Mac's carry); uid 1 ?, ssh none"), "no ssh said as none")
