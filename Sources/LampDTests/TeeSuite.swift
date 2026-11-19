@@ -140,6 +140,29 @@ enum TeeSuite {
             t.expectEqual(rig.source.currentRows.first?.session.status, SessionStatus.ready.rawValue, "and changes nothing")
         },
 
+        TestCase("A signal with no token is refused, changes nothing and reaches no Mac (V-39.2)") { t in
+            // Every hook this machine has carries the token (the http hooks in
+            // ~/.claude/settings.json and ~/.lampboard/hook.sh, 19 November
+            // 2026); a post without one is somebody else on the loopback.
+            let rig = rig()
+            defer { rig.tee.stop(); rig.mac.stop(); F.remove(rig.paths) }
+            rig.source.absorb(F.look([F.record(F.a, pid: 10, status: "idle", tail: F.ended)]))
+            let before = rig.source.currentRows.first?.session.status
+            let bare = send(rig.port, "POST", AppConfig.signalPath, body: hook("UserPromptSubmit"))
+            t.expectEqual(bare?.status, 401, "no token, no signal")
+            t.expectEqual(rig.source.currentRows.first?.session.status, before, "the row keeps its colour")
+            Thread.sleep(forTimeInterval: 0.3)
+            t.expectEqual(rig.mac.taken().count, 0, "and nothing is passed on to the Mac")
+        },
+
+        TestCase("With no token on the machine a signal is refused, as /mod is (V-39.2)") { t in
+            let rig = rig()
+            defer { rig.tee.stop(); rig.mac.stop(); F.remove(rig.paths) }
+            try? FileManager.default.removeItem(atPath: rig.paths.hookTokenFile)
+            let reply = send(rig.port, "POST", AppConfig.signalPath, headers: tokenHeader, body: hook("UserPromptSubmit"))
+            t.expectEqual(reply?.status, 503, "a machine without the token hears no hook")
+        },
+
         TestCase("Refused and logged: /new from the node (R2), a route nobody named, a web page") { t in
             let rig = rig()
             defer { rig.tee.stop(); rig.mac.stop(); F.remove(rig.paths) }

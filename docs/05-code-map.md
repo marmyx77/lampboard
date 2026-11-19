@@ -15,9 +15,9 @@ Sources/
   MacSourceTests/   1,530 lines · 8 files   the server reached by a phone made of NodeLink
   V1ReferenceNode/    268 lines · 1 files   the reference source behind ssh
   NodeLinkCheck/    1,620 lines · 7 files   NodeLink, and lampd, against a real ssh
-  LampDKit/         4,299 lines · 30 files   lampd: the Linux machine's service
-  LampD/              305 lines · 1 files   lampd's command line
-  LampDTests/         1,506 lines · 9 files   lampd's suite, on Linux
+  LampDKit/         4,427 lines · 31 files   lampd: the Linux machine's service
+  LampD/              314 lines · 1 files   lampd's command line
+  LampDTests/         1,584 lines · 9 files   lampd's suite, on Linux
   TestKit/            410 lines · 5 files   minimal assertions
 ```
 
@@ -2986,7 +2986,8 @@ Linux by `Scripts/test-lampd.sh`. The Mac app links none of it.
 | `LampDUsage.swift` | `usage`: the Core's allowance script run here |
 | `HookReplay.swift` | recorded hooks reduced as the tee reduces them, for the parity with the Mac |
 | `HookRoutes.swift` | the hooks' port's route table (W5, §2.3, D181): every route the Mac's `SignalServer` serves with one owner here — read and passed on, served, passed on and observed, passed on, refused (R2: `/new`, `/open`, `/chat`, `/next`, the Mac's clients' routes), not found (`/watch`) — and an unknown one refused; `lampd routes` prints it for `Scripts/check-lampd-routes.sh`; the hooks' port from `~/.lampboard/port`; `LAMPD_HOOK_PORT` taken in a check's home only |
-| `HookTee.swift` | the hooks' port in tee (D181): a thread per connection, never the main loop; the token the hooks already send, adopted from `~/.lampboard/token` and read again at each request; `/signal` and `/mod` read with the Core's decoders, answered at once and passed on after to the Mac's tunnel on the next port, named with `X-LampBoard-Event`; `/check` and `/question` passed on with the row amber while the Mac holds them, an unsigned `ask` when nobody is there; counts of what was heard, passed on, not taken, refused |
+| `HookTee.swift` | the hooks' port in tee (D181): a thread per connection, never the main loop; the token the hooks already send, adopted from `~/.lampboard/token` and read again at each request; `/signal` and `/mod` read with the Core's decoders, answered at once and passed on after to the Mac's tunnel on the next port, `/signal` refused without the token (V-39.2), named with `X-LampBoard-Event`; `/check` and `/question` passed on with the row amber while the Mac holds them, an unsigned `ask` when nobody is there; counts of what was heard, passed on, not taken, refused |
+| `PairingGate.swift` | who may run `lampd devices add` (V-25 of the node's security review): the owner at a terminal, or the Mac's carry with an ssh session right in front (at most three shells or Pythons between); anyone else refused, and every request a line in `lampd.log` with uid, `SSH_CONNECTION` and the chain of parents. A brake on the probable case, not a lock |
 | `NodeHooks.swift` | what the hooks say (D181): the Core's reducer over the same signals as the Mac, the mod's reports as `ModReceiver` takes them, the questions the Mac holds; a row a hook spoke for takes its colour from here (`stateBasis` hooks) and keeps from the file where and what it is; the files' `busy` lights a row the hooks left at rest and their minute of `idle` rests a yellow nothing ends (D177) |
 | `LoopbackTCP.swift` | the hooks' port: the socket systemd passes (`LISTEN_FDS`), or one bound on `127.0.0.1` for a check; where it is bound; the connection to the Mac's tunnel with a deadline |
 | `MacState.swift` | what the Mac said (`mac.json`, `0600`): presence and its freshness (a `here` counts while its link was seen in the last minute and it was said in the last ten), the Mac's settings, the migration; a line from the Mac carried out on the files by whichever process takes it |

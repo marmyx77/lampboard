@@ -145,6 +145,60 @@ enum SmallSuites {
         },
     ])
 
+    static let pairing = TestSuite("lampd: who may pair a phone (V-25)", [
+
+        TestCase("The owner at a terminal pairs, whatever runs above") { t in
+            t.expectEqual(PairingGate.verdict(stdinIsTerminal: true, ancestry: ["bash", "tmux: server", "systemd"]), .terminal)
+        },
+
+        TestCase("The Mac's carry pairs: python3 - over ssh, with or without the shell sshd starts") { t in
+            t.expectEqual(PairingGate.verdict(stdinIsTerminal: false, ancestry: ["python3", "sshd", "sshd", "systemd"]), .sshSession)
+            t.expectEqual(PairingGate.verdict(stdinIsTerminal: false, ancestry: ["python3", "bash", "sshd-session"]), .sshSession)
+            t.expectEqual(PairingGate.verdict(stdinIsTerminal: false, ancestry: ["sshd: dev@notty"]), .sshSession)
+        },
+
+        TestCase("An agent has no terminal and no ssh in front: refused, and told why") { t in
+            let tmux = PairingGate.verdict(stdinIsTerminal: false, ancestry: ["bash", "claude", "bash", "tmux: server", "systemd"])
+            t.expect(!tmux.allowed, "an agent in tmux")
+            if case .refused(let why) = tmux { t.expect(why.contains("bash < claude"), "the chain is said: \(why)") }
+            t.expect(!PairingGate.verdict(stdinIsTerminal: false, ancestry: ["bash", "claude", "bash", "sshd"]).allowed,
+                     "an agent started in an ssh session: its runtime stands between")
+            t.expect(!PairingGate.verdict(stdinIsTerminal: false, ancestry: ["bash", "python3", "systemd"]).allowed,
+                     "a service's terminal tool (Hermes)")
+            t.expect(!PairingGate.verdict(stdinIsTerminal: false, ancestry: ["sh", "sh", "sh", "sh", "sshd"]).allowed,
+                     "more shells than a carry needs")
+            t.expect(!PairingGate.verdict(stdinIsTerminal: false, ancestry: []).allowed, "no parent seen: refused")
+        },
+
+        TestCase("The parent pid is read after the last parenthesis of /proc/<pid>/stat") { t in
+            t.expectEqual(PairingGate.parentPid(statLine: "4242 (tmux: server) S 1 4242 4242 0 -1"), 1)
+            t.expectEqual(PairingGate.parentPid(statLine: "77 (a) b) (c) R 76 77 77 0"), 76)
+            t.expectNil(PairingGate.parentPid(statLine: "garbage"), "nothing to read")
+        },
+
+        TestCase("The ancestry is read from a /proc, nearest first, and stops where it ends") { t in
+            let proc = NSTemporaryDirectory() + "lampd-proc-\(UUID().uuidString.prefix(8))"
+            defer { try? FileManager.default.removeItem(atPath: proc) }
+            for (pid, comm, ppid) in [(30, "python3", 20), (20, "sshd", 10), (10, "sshd", 1)] {
+                try? FileManager.default.createDirectory(atPath: "\(proc)/\(pid)", withIntermediateDirectories: true)
+                try? "\(comm)\n".write(toFile: "\(proc)/\(pid)/comm", atomically: true, encoding: .utf8)
+                try? "\(pid) (\(comm)) S \(ppid) 1 1 0".write(toFile: "\(proc)/\(pid)/stat", atomically: true, encoding: .utf8)
+            }
+            t.expectEqual(PairingGate.ancestry(from: 30, proc: proc), ["python3", "sshd", "sshd"])
+        },
+
+        TestCase("The log line says who asked, from where and through what, allowed or not") { t in
+            let line = PairingGate.logLine(id: "iphone-1", name: "iPhone", verdict: .refused("x"), ancestry: ["bash", "claude"],
+                                           environment: ["USER": "dev", "SSH_CONNECTION": "192.0.2.10 51000 198.51.100.7 22"], uid: 1000)
+            t.expect(line.contains("devices add iphone-1 (iPhone): refused"), line)
+            t.expect(line.contains("uid 1000 dev"), line)
+            t.expect(line.contains("ssh 192.0.2.10 51000 198.51.100.7 22"), line)
+            t.expect(line.contains("parents bash < claude"), line)
+            t.expect(PairingGate.logLine(id: "a", name: "b", verdict: .sshSession, ancestry: [], environment: [:], uid: 1)
+                .contains("allowed (an ssh session, the Mac's carry); uid 1 ?, ssh none"), "no ssh said as none")
+        },
+    ])
+
     static let replay = TestSuite("lampd: recorded hooks, reduced", [
 
         TestCase("A recorded turn goes working, needs you, back to work, and answers") { t in
