@@ -19,6 +19,7 @@ let suites: [TestSuite] = [
     SmallSuites.projects,
     SmallSuites.moves,
     SmallSuites.config,
+    SmallSuites.pairing,
     SmallSuites.replay,
     V1Conformance.suite(against: NodeMemoryTarget(mode: .live)),
     V1Conformance.suite(against: NodeMemoryTarget(mode: .files)),

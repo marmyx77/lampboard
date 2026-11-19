@@ -19,6 +19,7 @@ import Darwin
 //                                     the command a read key is forced to run
 //   lampd devices add --name <name> --read '<key>' --action '<key>' [--id <id>]
 //                     [--from <network,…>] [--command <path>]
+//                                     only from a terminal or the Mac's ssh (V-25)
 //   lampd devices list
 //   lampd devices revoke <id>
 //   lampd status                      what the running service says of itself
@@ -118,6 +119,14 @@ case "devices":
             fail("devices add needs --name, --read and --action")
         }
         let id = option("id") ?? DeviceIds.make(name: name, readKey: read)
+        // Who asked, in lampd's log, every time; and nobody but the owner at a
+        // terminal or the Mac's carry (V-25 of the node's review, PairingGate).
+        let parents = PairingGate.ancestry()
+        let gate = PairingGate.verdict(stdinIsTerminal: isatty(0) == 1, ancestry: parents)
+        try? LampDPaths.makeDirectory(paths.stateDirectory)
+        LampDLog(file: paths.logFile).write(PairingGate.logLine(id: id, name: name, verdict: gate, ancestry: parents,
+                                                                environment: environment))
+        if case .refused(let why) = gate { fail("\(why): nothing was written") }
         let from = option("from").map { $0.split(separator: ",").map(String.init) } ?? LocalNetworks.defaults()
         let command = option("command") ?? LampDInstall.commandPath(home: paths.home)
         switch DevicesStore.addition(id: id, name: name, readKey: read, actionKey: action, from: from, command: command) {

@@ -191,10 +191,13 @@ for prefix in "" far- lost- house-; do
     in_builder .build/debug/NodeLinkCheck keys /keys "$prefix" || failed "the keys could not be made"
 done
 pub() { tr -d '\n' < "$CACHE/keys/$1.pub"; }
+# The Mac's own ssh key, an OpenSSH one, for the carry of a phone (W5, §2.4).
+in_builder ssh-keygen -q -t ed25519 -N "" -C the-mac -f /keys/the-mac || failed "the Mac's key could not be made"
 # The house: lines that are not LampBoard's, which must come out as they went in.
 cat > "$CACHE/keys/house.txt" <<EOF
 # the house's own keys
 $(pub house-action) house
+$(tr -d '\n' < "$CACHE/keys/the-mac.pub")
 from="192.0.2.0/24" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleExampleExampleExampleExampleExample build-box
 EOF
 
@@ -237,26 +240,58 @@ done
 docker exec "$NODE" cat /etc/ssh/ssh_host_ed25519_key.pub > "$CACHE/keys/host.pub" || failed "no host key"
 
 as_dev() { docker exec -u dev -e HOME=/home/dev -e PATH=/home/dev/.local/bin:/usr/local/bin:/usr/bin:/bin -w /home/dev "$NODE" bash -c "$1"; }
+# The owner at a terminal: the same command with a terminal on its standard
+# input (V-25: `lampd devices add` refuses a caller with no terminal and no ssh).
+as_owner() { as_dev "python3 -c 'import os, pty, sys; sys.exit(os.waitstatus_to_exitcode(pty.spawn(sys.argv[1:])))' $1" | tr -d '\r'; }
 
 # The phone's lines, written by `lampd devices add` as the owner of the
 # machine runs it (gesture 17): the paired phone with the networks lampd finds
 # on its own, one phone from another network, one paired and revoked.
-as_dev "lampd devices add --id check-phone --name 'Check phone' --read '$(pub read)' --action '$(pub action)'" \
+as_owner "lampd devices add --id check-phone --name 'Check phone' --read '$(pub read)' --action '$(pub action)'" \
     > "$CACHE/devices.log" 2>&1 || { cat "$CACHE/devices.log"; failed "lampd devices add failed"; }
-as_dev "lampd devices add --id far-phone --name 'Far phone' --read '$(pub far-read)' --action '$(pub far-action)' --from 192.0.2.0/24" \
+as_owner "lampd devices add --id far-phone --name 'Far phone' --read '$(pub far-read)' --action '$(pub far-action)' --from 192.0.2.0/24" \
     >> "$CACHE/devices.log" 2>&1 || failed "lampd devices add (far) failed"
-as_dev "lampd devices add --id lost-phone --name 'Lost phone' --read '$(pub lost-read)' --action '$(pub lost-action)'" \
+as_owner "lampd devices add --id lost-phone --name 'Lost phone' --read '$(pub lost-read)' --action '$(pub lost-action)'" \
     >> "$CACHE/devices.log" 2>&1 || failed "lampd devices add (lost) failed"
 as_dev "lampd devices revoke lost-phone" >> "$CACHE/devices.log" 2>&1 || failed "lampd devices revoke failed"
 # The same keys again, as the Mac carries a phone already authorized by hand:
 # "already", never "added", or the Mac keeps the id and its Forget revokes it.
-again="$(as_dev "lampd devices add --id check-phone --name 'Check phone' --read '$(pub read)' --action '$(pub action)'" 2>&1)" \
+again="$(as_owner "lampd devices add --id check-phone --name 'Check phone' --read '$(pub read)' --action '$(pub action)'" 2>&1)" \
     || failed "lampd devices add, the same keys again, failed: $again"
 case "$again" in
     "already check-phone "*) echo "$again" >> "$CACHE/devices.log" ;;
     *) failed "the same keys again were not said to be already there: $again" ;;
 esac
 sed 's/^/    /' "$CACHE/devices.log"
+
+# Who may pair (V-25 of the node's review, 19 November 2026): nobody with no
+# terminal and no ssh in front — an agent, a service; the Mac's carry, over
+# ssh with `python3 -` as NodeDeviceCarry runs it, yes. Each request is a line
+# in lampd's log.
+echo
+echo "▸ Who may pair a phone: the owner's terminal and the Mac's carry, nobody else (V-25)"
+if as_dev "lampd devices add --id agent-phone --name 'Agent phone' --read '$(pub lost-read)' --action '$(pub lost-action)' < /dev/null" \
+    > "$CACHE/pairing.log" 2>&1; then
+    cat "$CACHE/pairing.log" | sed 's/^/    /'; failed "lampd devices add with no terminal and no ssh was taken: an agent could pair a phone"
+fi
+grep -q "needs a terminal (the owner) or the Mac's ssh" "$CACHE/pairing.log" || { cat "$CACHE/pairing.log"; failed "the refusal does not say why"; }
+as_dev "! grep -q lampboard-device:agent-phone ~/.ssh/authorized_keys" || failed "the refused pairing wrote a line"
+as_dev "grep -q 'devices add agent-phone (Agent phone): refused' ~/.local/state/lampd/lampd.log" || failed "the refusal is not in lampd's log"
+echo "    no terminal, no ssh: refused, nothing written, said in lampd's log"
+CARRY="import os, subprocess, sys
+done = subprocess.run([os.path.expanduser('~/.local/bin/lampd'), 'devices', 'add', '--id', 'carried-phone', '--name', 'Carried phone',
+                       '--read', '$(pub lost-read)', '--action', '$(pub lost-action)'], capture_output=True, text=True, timeout=20)
+sys.stdout.write(done.stdout); sys.stderr.write(done.stderr); sys.exit(done.returncode)"
+carried="$(docker run -i --rm --name "$NAME-carry" --network "$NET" --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$CACHE/keys:/keys:ro" "$IMAGE" \
+    ssh -i /keys/the-mac -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+        -p 2222 dev@node python3 - <<< "$CARRY" 2>&1)" || failed "the Mac's carry over ssh was refused: $carried"
+case "$carried" in
+    "added carried-phone "*) echo "    the Mac's carry over ssh: $(printf '%s' "$carried" | head -n 1)" ;;
+    *) failed "the Mac's carry did not add: $carried" ;;
+esac
+as_dev "grep -q 'devices add carried-phone (Carried phone): allowed (an ssh session' ~/.local/state/lampd/lampd.log" \
+    || failed "the carry is not in lampd's log"
+as_dev "lampd devices revoke carried-phone" > /dev/null || failed "the carried phone could not be revoked"
 
 as_dev "python3 /opt/fixture/fixture.py frame 0 > /dev/null" || failed "the fixture could not play frame 0"
 as_dev "setsid nohup lampd serve >> /tmp/lampd.log 2>&1 < /dev/null & echo \$! > /tmp/lampd.pid"
@@ -396,6 +431,9 @@ tee_check "green to read when its Stop comes" \
     'as_dev "$TEE hook $HOOKS Stop $IDLE '"'"'{\"last_assistant_message\": \"Done.\"}'"'"'" > /dev/null; [ "$(row $IDLE | cut -d" " -f1)" = "ready" ]'
 tee_check "a token that is not the hooks' is refused, and changes nothing" \
     'as_dev "$TEE hook $HOOKS UserPromptSubmit $IDLE --token $(printf "%064d" 0)" | grep -q "^401" && [ "$(row $IDLE | cut -d" " -f1)" = "ready" ]'
+tee_check "a hook with no token is refused (V-39.2), and changes nothing" \
+    'as_dev "$TEE post $HOOKS /signal --body {\\\"hook_event_name\\\":\\\"UserPromptSubmit\\\",\\\"session_id\\\":\\\"$IDLE\\\"}" | grep -q "^401" \
+     && [ "$(row $IDLE | cut -d" " -f1)" = "ready" ]'
 tee_check "/new and /chat from the node are refused (R2), so is a route nobody named, and none reaches the Mac" \
     'as_dev "$TEE post $HOOKS /new --body {}" | grep -q "^403" && as_dev "$TEE post $HOOKS /chat --body {}" | grep -q "^403" \
      && as_dev "$TEE post $HOOKS /a-route-of-tomorrow --body {}" | grep -q "^404" \

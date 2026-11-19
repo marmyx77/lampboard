@@ -163,14 +163,24 @@ public final class HookTee: @unchecked Sendable {
 
     // MARK: - Read here
 
-    /// `/signal`, as the Mac's `SignalServer` takes it: a wrong token is
-    /// refused, none is taken (a hook installed before tokens), an event no hook
-    /// is registered for is no fault.
+    /// `/signal`: the token is required, as for `/mod`, and an event no hook is
+    /// registered for is no fault.
+    ///
+    /// Until 19 November 2026 a signal with no token was taken, as the Mac's
+    /// `SignalServer` takes it, for a hook installed before tokens (V-39.2 of
+    /// the node's security review). On this machine every hook carries the
+    /// token (the http hooks of `~/.claude/settings.json` and
+    /// `~/.lampboard/hook.sh`), so a post without one is somebody else on the
+    /// loopback colouring the phone's rows. A hook written before tokens is
+    /// put right by the Mac's repair, which writes the token in.
     private func readSignal(_ request: HTTPRequest) -> (answer: Data, passOn: Bool) {
         guard request.method == "POST" else { return (HTTPRequestParser.response(status: 405, reason: "Method Not Allowed"), false) }
+        guard let token = adoptedToken else {
+            return (HTTPRequestParser.response(status: 503, reason: "Service Unavailable", body: "no token on this machine"), false)
+        }
         let presented = request.header(AccessToken.headerName, orLegacy: AccessToken.legacyHeaderName)
-        if let presented, let token = adoptedToken, !AccessToken.matches(presented, expected: token) {
-            return (refuse(request, status: 401, "Unauthorized", ""), false)
+        guard AccessToken.matches(presented, expected: token) else {
+            return (refuse(request, status: 401, "Unauthorized", presented == nil ? "no token" : ""), false)
         }
         locked { statsValue.received += 1 }
         do {
