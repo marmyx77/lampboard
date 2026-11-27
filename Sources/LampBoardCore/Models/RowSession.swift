@@ -74,6 +74,25 @@ extension RowSession {
         }
     }
 
+    /// The lines an opened project draws, in the row's order (D190).
+    ///
+    /// A project shows at most `cap` conversations, so a panel showing one
+    /// project does not grow past the screen. The ones the cap leaves out are
+    /// only conversations at rest, and the first of those to go are the ones
+    /// opened last. Measured on 27 November 2026: seven agents in one project,
+    /// and the seventh, not at rest, was the one the cap left out. It had no line
+    /// of its own, and the only way to reach it was the project's line, which
+    /// reads as a folder. A conversation that works or waits is never left out, even
+    /// if that means going over the cap. `all` is the project opened in full,
+    /// from its tail line.
+    public static func shown(_ members: [RowSession], cap: Int, all: Bool = false) -> [RowSession] {
+        guard !all, members.count > cap else { return members }
+        let resting = members.filter { $0.session.status == .idle }
+        let room = max(0, cap - (members.count - resting.count))
+        let kept = Set(resting.prefix(room).map(\.id))
+        return members.filter { $0.session.status != .idle || kept.contains($0.id) }
+    }
+
     /// What to call one conversation, in order of how much it was chosen.
     ///
     /// The name you gave **this** conversation first: it is the most specific

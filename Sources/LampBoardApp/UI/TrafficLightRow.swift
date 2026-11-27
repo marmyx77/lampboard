@@ -57,6 +57,8 @@ struct RowActions {
     var toggleModel: (ColumnRow) -> Void = { _ in }
     /// Puts the row's session in the foreground, or takes it out (G1).
     var toggleFocus: (ColumnRow) -> Void = { _ in }
+    /// Shows every conversation of an opened project, or back to the cap (D190).
+    var toggleAllConversations: (ColumnRow) -> Void = { _ in }
     /// What the live view could open for a session, if anything (D130, D132).
     var liveTarget: (SessionState) -> LiveTarget? = { _ in nil }
     /// Starts a new session in the row's folder, in the Hub (D133, D163), as

@@ -362,6 +362,25 @@ enum Layout {
     /// say two different things about one project.
     static let subRowCap = 6
 
+    /// The conversations an opened project draws: the cap, never over one that
+    /// is not at rest, or all of them once its tail was clicked (D190).
+    static func lines(of row: ColumnRow, in expanded: Set<String>) -> [RowSession] {
+        RowSession.shown(row.members, cap: subRowCap, all: expanded.contains(allKey(row.id)))
+    }
+
+    /// Where "this project shows all its conversations" is remembered: beside its
+    /// being open, in the same set, so it lasts across launches the same way.
+    static func allKey(_ id: String) -> String { id + "\u{1F}all" }
+
+    /// The tail under an opened project, when it has one: how many are left out,
+    /// or, once they are all shown, the way back to the cap.
+    static func tail(of row: ColumnRow, in expanded: Set<String>) -> String? {
+        guard row.members.count > subRowCap else { return nil }
+        if expanded.contains(allKey(row.id)) { return "show fewer" }
+        let rest = row.members.count - lines(of: row, in: expanded).count
+        return rest > 0 ? "and \(rest) more" : nil
+    }
+
     /// Height needed for `rowCount` rows and `subRowCount` opened conversations,
     /// capped at `maxVisibleRows` worth of lines, plus the footer and, while
     /// there is one, the issue strip.

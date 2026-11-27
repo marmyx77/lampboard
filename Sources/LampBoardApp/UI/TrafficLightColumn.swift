@@ -233,7 +233,7 @@ struct TrafficLightColumn: View {
             )
 
             if open {
-                ForEach(row.members.prefix(Layout.subRowCap)) { member in
+                ForEach(Layout.lines(of: row, in: expandedRows)) { member in
                     TrafficLightDot(status: member.session.status, calm: true, listening: false)
                         .scaleEffect(Layout.compactSubDotSize / Layout.dotSize)
                         .frame(maxWidth: .infinity)
@@ -279,8 +279,7 @@ struct TrafficLightColumn: View {
     /// a column that scrolls is a column where the row that needs you can be off
     /// screen. The tail says how many were left rather than leaving you to count.
     private func conversations(of row: ColumnRow) -> some View {
-        let shown = Array(row.members.prefix(Layout.subRowCap))
-        let rest = row.members.count - shown.count
+        let shown = Layout.lines(of: row, in: expandedRows)
 
         return VStack(spacing: Layout.rowSpacing) {
             ForEach(Array(shown.enumerated()), id: \.element.id) { index, member in
@@ -301,13 +300,19 @@ struct TrafficLightColumn: View {
                 )
             }
 
-            if rest > 0 {
-                Text("and \(rest) more")
+            // The tail opens the rest, and closes them again (D190): a line
+            // that said how many were left and led nowhere left a conversation
+            // at rest with no way in but its project's line.
+            if let tail = Layout.tail(of: row, in: expandedRows) {
+                Text(tail)
                     .font(.system(size: 10, weight: .regular, design: .rounded))
                     .foregroundStyle(StatusPalette.timeColor)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: Layout.tailHeight - Layout.rowSpacing)
                     .padding(.leading, 6)
+                    .contentShape(Rectangle())
+                    .onTapGesture { actions.toggleAllConversations(row) }
+                    .accessibilityAddTraits(.isButton)
             }
         }
     }
@@ -372,11 +377,11 @@ struct TrafficLightColumn: View {
     private func heights(of rows: [ColumnRow]) -> [CGFloat] {
         rows.map { row in
             let open = row.count > 1 && expandedRows.contains(row.id)
-            let shown = open ? min(row.members.count, Layout.subRowCap) : 0
+            let shown = open ? Layout.lines(of: row, in: expandedRows).count : 0
             return Layout.blockHeight(
                 rowCount: row.count,
                 shownConversations: shown,
-                hasTail: open && row.members.count > shown,
+                hasTail: open && Layout.tail(of: row, in: expandedRows) != nil,
                 compact: compact,
                 asks: row.sessions.contains { queue?.inlineSessions.contains($0.id) == true }
             )

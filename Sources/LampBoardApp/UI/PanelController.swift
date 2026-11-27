@@ -394,11 +394,11 @@ final class PanelController {
         // a project among them opens onto its conversations like any other.
         func measure(_ row: ColumnRow, _ resting: Bool) -> CGFloat {
             let open = row.count > 1 && preferences.expandedRows.contains(row.id)
-            let shown = open ? min(row.members.count, Layout.subRowCap) : 0
+            let shown = open ? Layout.lines(of: row, in: preferences.expandedRows).count : 0
             return Layout.blockHeight(
                 rowCount: row.count,
                 shownConversations: shown,
-                hasTail: open && row.members.count > shown,
+                hasTail: open && Layout.tail(of: row, in: preferences.expandedRows) != nil,
                 compact: compact,
                 asks: !resting && row.sessions.contains { queue.inlineSessions.contains($0.id) },
                 singleLine: resting
@@ -541,6 +541,14 @@ final class PanelController {
                 guard let self else { return }
                 let held = row.sessions.first { $0.id == self.preferences.focusedSession }
                 self.toggleFocus(sessionId: held?.id ?? row.primary.id)
+            },
+            toggleAllConversations: { [weak self] row in
+                guard let self else { return }
+                self.preferences.expandedRows = Preferences.toggling(
+                    Layout.allKey(row.id), in: self.preferences.expandedRows
+                )
+                self.rebuildContent()
+                self.resizeToFit(self.store.state)
             },
             liveTarget: { [weak self] session in self?.liveTarget(session) },
             startHere: { [weak self] row, plan in self?.startHere(row, plan) },

@@ -160,6 +160,31 @@ enum RowSessionsSuite {
             t.expectEqual(moved.firstSeenAt, born, "still the moment it appeared")
         },
 
+        TestCase("The cap leaves out only conversations at rest, never the one waiting (D190)") { t in
+            // The case from the field: seven agents in one project, the cap at
+            // six, and the one waiting was the seventh to be opened.
+            let sessions = (1...6).map { session("s\($0)", .idle, born: TimeInterval($0) * 100) }
+                + [session("stratega", .awaiting, born: 700)]
+            let shown = RowSession.shown(row(sessions).members, cap: 6)
+            t.expectEqual(shown.count, 6, "still six lines")
+            t.expect(shown.contains { $0.id == "stratega" }, "the waiting one has its own line")
+            t.expectEqual(shown.map(\.id), ["s1", "s2", "s3", "s4", "s5", "stratega"], "in the row's order, the last opened at rest left out")
+        },
+
+        TestCase("Under the cap, or opened in full, every conversation has a line (D190)") { t in
+            let sessions = (1...7).map { session("s\($0)", .idle, born: TimeInterval($0) * 100) }
+            let members = row(sessions).members
+            t.expectEqual(RowSession.shown(Array(members.prefix(6)), cap: 6).count, 6, "six of six")
+            t.expectEqual(RowSession.shown(members, cap: 6).count, 6, "seven at rest: six")
+            t.expectEqual(RowSession.shown(members, cap: 6, all: true).count, 7, "opened in full: seven")
+        },
+
+        TestCase("More conversations at work than the cap all keep their lines (D190)") { t in
+            let sessions = (1...8).map { session("s\($0)", $0 == 1 ? .idle : .working, born: TimeInterval($0) * 100) }
+            let shown = RowSession.shown(row(sessions).members, cap: 6)
+            t.expectEqual(shown.map(\.id), (2...8).map { "s\($0)" }, "all seven at work, the one at rest left out")
+        },
+
         TestCase("A session built without one is first seen when it was last updated") { t in
             // Every construction site that predates this field, including the
             // fixtures, still has to produce a session with a defensible answer.

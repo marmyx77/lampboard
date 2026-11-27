@@ -7166,3 +7166,33 @@ keeps the first name.
 
 **Signal to revisit:** a remote row shown by its folder while its machine's
 `~/.claude/sessions` file has a name.
+
+## D190 · The cap on an opened project leaves out only conversations at rest
+
+An opened project shows at most six conversations, so that one project cannot
+grow the panel past the screen, and a line under them says how many more there
+are. Those six were the first six opened. A seventh got no line of its own
+whatever it was doing, and the line saying how many were left could not be
+clicked. The only way to reach the seventh was the project's own line, which
+opens the most urgent conversation but looks like a folder.
+
+Now the cap leaves out only conversations at rest, the last opened first
+(`RowSession.shown`). A conversation that works, waits or has an answer always
+has its line, in the row's order, even past the cap. The tail line opens the
+rest, reads «show fewer» once it has, and the choice is remembered like the
+project being open.
+
+**Why.** On 27 November 2026 the person could see `tennisrace-stratega`, waiting
+on work it had started, only by clicking TennisRace's first line. It was the
+seventh of seven agents in that project.
+
+**Measured** by `RowSessionsSuite`: seven conversations with the waiting one
+opened last keep it among the six, opened in full they show seven, and seven at
+work past the cap all keep their lines. `bite.sh --linux` lets the cap hide one
+at work and demands the suite fail.
+
+**Not yet:** dragging a conversation inside a capped project moves it by the
+lines shown, so a drag across a line the cap left out lands one place off.
+
+**Signal to revisit:** a conversation that is not at rest absent from its
+opened project's lines.

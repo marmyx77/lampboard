@@ -950,6 +950,15 @@ s = open(p).read()
 open(p, "w").write(s.replace("(compact || singleLine ? sizes.row", "(compact ? sizes.row", 1))
 PY
 
+# The cap that hides any conversation past the sixth: the seventh agent of a
+# project, waiting on its own work, had no line of its own (D190, 27 November 2026).
+protect Sources/LampBoardCore/Models/RowSession.swift
+attack_platform Scripts/test-linux.sh "a cap that hides a conversation at work" "the waiting one has its own line" <<'PY'
+p = "Sources/LampBoardCore/Models/RowSession.swift"
+s = open(p).read()
+open(p, "w").write(s.replace("$0.session.status != .idle || kept.contains($0.id)", "kept.contains($0.id)", 1))
+PY
+
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════
